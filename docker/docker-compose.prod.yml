@@ -1,0 +1,120 @@
+# Production Docker Compose for OpenClaw
+# Hostinger VPS deployment with security hardening
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in your secrets
+#   2. docker-compose -f docker/docker-compose.prod.yml up -d
+#
+# NEVER commit .env file to git!
+
+services:
+  openclaw-gateway:
+    # Use your Docker Hub image (update after pushing)
+    image: ${DOCKER_IMAGE:-piboonsak/openclaw:latest}
+    container_name: openclaw-sgnl-openclaw-1
+    
+    # Security: Run as non-root user
+    user: "1000:1000"
+    
+    # Security: Read-only root filesystem (except mounted volumes)
+    read_only: true
+    
+    # Security: Disable privilege escalation
+    security_opt:
+      - no-new-privileges:true
+    
+    # Security: Drop all capabilities
+    cap_drop:
+      - ALL
+    
+    # Security: Limit process count
+    pids_limit: 200
+    
+    # Ports: Bind to localhost only (127.0.0.1) for security
+    # External access via Nginx reverse proxy on ports 80/443 with SSL
+    # Backend app port 50392 MUST NOT be exposed to external network
+    ports:
+      - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-50392}:50392"
+    
+    # Environment variables (DO NOT commit secrets here - use .env file)
+    environment:
+      # Gateway authentication (REQUIRED)
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      
+      # AI Model providers (at least one required)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      
+      # System environment
+      NODE_ENV: production
+      HOME: /home/node
+      TERM: xterm-256color
+      
+      # Security: Disable shell env loading
+      OPENCLAW_LOAD_SHELL_ENV: "0"
+      
+      # Optional: Tool API keys
+      BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+    
+    # Persistent volumes
+    volumes:
+      # State directory (config, credentials, logs)
+      - openclaw-state:/data/openclaw/state
+      # Workspace directory (agent working directory)
+      - openclaw-workspace:/data/openclaw/workspace
+      # Temporary directory (writable in read-only container)
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 100M
+          mode: 1777
+    
+    # Resource limits (adjust based on VPS plan)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Alternative syntax for older Docker Compose versions:
+    # cpus: 2
+    # mem_limit: 2g
+    # mem_reservation: 512m
+    
+    # Auto-restart on failure
+    restart: unless-stopped
+    
+    # Health check (matches Dockerfile HEALTHCHECK)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50392/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    
+    # Use init to handle zombie processes
+    init: true
+    
+    # Network configuration
+    networks:
+      - openclaw-net
+
+# Named volumes for data persistence
+volumes:
+  openclaw-state:
+    driver: local
+  openclaw-workspace:
+    driver: local
+
+# Internal bridge network
+networks:
+  openclaw-net:
+    driver: bridge
+    internal: false  # Set to true to disable all external network access (sandbox mode)

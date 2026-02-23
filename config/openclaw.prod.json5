@@ -1,0 +1,185 @@
+// OpenClaw Production Configuration Template
+// Secure defaults for Hostinger VPS deployment
+//
+// Location: Copy to ~/.openclaw/openclaw.json on your server
+// Or mount as volume: -v $(pwd)/openclaw.prod.json5:/home/node/.openclaw/openclaw.json:ro
+//
+// IMPORTANT: DO NOT commit real secrets to git!
+// Use environment variables for sensitive values.
+
+{
+  // Gateway configuration
+  gateway: {
+    // Bind to all interfaces inside container (Nginx reverse proxy handles external access)
+    bind: "lan",
+    port: 50392,
+
+    // Authentication (set via env var OPENCLAW_GATEWAY_TOKEN)
+    auth: {
+      // Token will be read from OPENCLAW_GATEWAY_TOKEN env var
+      // Generate with: openssl rand -hex 24
+      // token: "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+
+    // Require HTTPS in production (Hostinger provides via Let's Encrypt)
+    requireHttps: false, // Set true if behind reverse proxy with X-Forwarded-Proto
+
+    // Trust Hostinger's proxy headers
+    trustedProxies: ["127.0.0.1", "::1"],
+
+    // Node command security policy
+    nodes: {
+      // Dangerous commands to deny (privacy/security risk)
+      denyCommands: [
+        "camera.snap",
+        "camera.clip",
+        "screen.record",
+        "calendar.add",
+        "contacts.add",
+        "reminders.add",
+        "sms.send",
+      ],
+      // Explicitly allowed commands (empty = use platform defaults)
+      allowCommands: [],
+    },
+  },
+
+  // Agent configuration
+  agents: {
+    defaults: {
+      // Workspace directory
+      workspace: "/data/openclaw/workspace",
+
+      // Model configuration (fallback chain)
+      model: {
+        primary: "anthropic/claude-opus-4-6",
+        fallback: ["anthropic/claude-3-5-haiku", "moonshot/kimi-k2.5"],
+      },
+
+      // Model aliases (friendly names in UI)
+      models: {
+        "anthropic/claude-opus-4-6": {
+          alias: "Claude Opus (Expert)",
+        },
+        "anthropic/claude-3-5-haiku": {
+          alias: "Claude Haiku (Budget)",
+        },
+        "moonshot/kimi-k2.5": {
+          alias: "Kimi K2.5 (Alternative)",
+        },
+      },
+
+      // Tool access policy (least privilege)
+      tools: {
+        profile: "balanced", // balanced | minimal | unrestricted
+
+        // Disable dangerous tools by default
+        deny: [
+          "shell", // Direct shell access
+          "fs.write", // Unrestricted file writes
+          "network.raw", // Raw network sockets
+        ],
+      },
+    },
+  },
+
+  // Sandbox configuration (defense in depth)
+  sandbox: {
+    enabled: true,
+
+    // Docker sandbox settings
+    docker: {
+      // Network isolation (none = no external network)
+      network_mode: "bridge", // or "none" for full isolation
+
+      // Resource limits
+      memory: "512m",
+      cpus: 1,
+    },
+
+    // Command blocklist (regex patterns)
+    // These are defense-in-depth; sandboxing is the primary security boundary
+    blocklist: [
+      // Destructive file operations
+      "rm\\s+-rf",
+      "rm\\s+--recursive",
+      "mkfs",
+      "dd\\s+if=",
+
+      // Privilege escalation
+      "sudo",
+      "su\\s+",
+      "chmod\\s+777",
+      "chown\\s+-R",
+
+      // Code injection via command substitution
+      "curl.*\\$\\(",
+      "wget.*\\$\\(",
+      ">\\|.*(bash|sh)\\s+-c",
+
+      // Dangerous git operations
+      "git\\s+push\\s+--force",
+      "git\\s+push\\s+-f",
+
+      // Container escape attempts
+      "docker\\s+run",
+      "docker\\s+exec",
+      "/proc/self/",
+
+      // Network scanning
+      "nmap",
+      "masscan",
+    ],
+  },
+
+  // Security policies
+  security: {
+    // DM (Direct Message) policy
+    // pairing = users must be explicitly approved
+    // allowlist = only pre-approved user IDs
+    // open = anyone can message (NOT RECOMMENDED for production)
+    dmPolicy: "pairing",
+
+    // Restrict AI agents from messaging each other
+    restrictedFromAiAgents: true,
+  },
+
+  // Channel configuration (example for LINE)
+  channels: {
+    // LINE Official Account
+    line: {
+      enabled: false, // Set true after obtaining credentials
+      // channelAccessToken: "${LINE_CHANNEL_ACCESS_TOKEN}",  // From env var
+      // channelSecret: "${LINE_CHANNEL_SECRET}",  // From env var
+      dmPolicy: "pairing",
+
+      // Allowlist (LINE user IDs that can interact)
+      allowFrom: [
+        // "U1234567890abcdef1234567890abcdef",  // Add your LINE user ID
+      ],
+    },
+
+    // Telegram (example, disabled by default)
+    telegram: {
+      enabled: false,
+      // botToken: "${TELEGRAM_BOT_TOKEN}",
+      dmPolicy: "pairing",
+    },
+  },
+
+  // Logging configuration
+  logging: {
+    level: "info", // debug | info | warn | error
+    retention: "30d", // Keep logs for 30 days
+    redactSensitive: true, // Auto-redact API keys and tokens
+  },
+
+  // Monitoring and health
+  monitoring: {
+    enabled: true,
+    healthCheck: {
+      enabled: true,
+      path: "/health",
+    },
+  },
+}

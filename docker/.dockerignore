@@ -1,0 +1,94 @@
+# Docker build context exclusions for OpenClaw
+# Reduces image size and build time
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Node modules (will be installed fresh)
+node_modules
+**/node_modules/
+
+# Build artifacts (will be rebuilt)
+dist
+**/.tsbuildinfo
+*.bun-build
+.build
+.build-local
+
+# Environment files (NEVER include secrets in image)
+.env
+.env.*
+!.env.example
+docker-compose.extra.yml
+
+# Package manager artifacts
+pnpm-lock.yaml
+bun.lock
+bun.lockb
+.pnpm-store
+yarn.lock
+package-lock.json
+
+# Test files and coverage
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+coverage
+test-results
+playwright-report
+ui/src/ui/__screenshots__/
+
+# Documentation
+docs
+*.md
+!README.md
+CHANGELOG.md
+LICENSE
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+
+# Platform-specific build artifacts
+apps/android/.gradle
+apps/android/app/build
+apps/android/.cxx
+apps/macos/.build
+apps/macos/.swiftpm
+apps/ios/*.xcodeproj
+apps/ios/*.xcworkspace
+apps/ios/.swiftpm
+apps/ios/.derivedData
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# macOS
+__pycache__
+*.pyc
+.worktrees
+
+# Misc
+.mise.toml
+mise.toml
