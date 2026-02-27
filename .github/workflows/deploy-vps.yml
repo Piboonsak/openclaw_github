@@ -67,15 +67,15 @@ jobs:
           scp -i ~/.ssh/id_ed25519_hostinger \
               -o StrictHostKeyChecking=no \
               docker/nginx/openclaw.conf \
-              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/openclaw/nginx-openclaw.conf"
+              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/openclaw-nginx.conf"
+          # Apply only if it differs from the live config (avoids disrupting Certbot-managed sections)
+          ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            'cp /tmp/openclaw-nginx.conf /etc/nginx/sites-available/openclaw.new && echo "Nginx config staged at /etc/nginx/sites-available/openclaw.new (manual swap if needed)"'
 
-      # ── Copy docker-compose.prod.yml to VPS (idempotent) ──────────────────
-      - name: Sync docker-compose to VPS
-        run: |
-          scp -i ~/.ssh/id_ed25519_hostinger \
-              -o StrictHostKeyChecking=no \
-              docker/docker-compose.prod.yml \
-              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/openclaw/docker-compose.prod.yml"
+      # NOTE: The VPS docker-compose lives at /docker/openclaw-sgnl/docker-compose.yml
+      # (managed by Hostinger Docker Manager). deploy.sh updates the image line in-place
+      # rather than overwriting the whole file (preserves env_file and volume mounts).
 
       # ── Run deploy.sh on VPS ───────────────────────────────────────────────
       - name: Deploy container
@@ -84,6 +84,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           SSH_KEY:  ~/.ssh/id_ed25519_hostinger
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          APP_DIR: /docker/openclaw-sgnl
         run: |
           bash docker/deploy.sh "$IMAGE_TAG"
 

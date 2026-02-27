@@ -28,7 +28,7 @@ VPS_HOST="${VPS_HOST:-srv1414058.hstgr.cloud}"
 VPS_USER="${VPS_USER:-root}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519_hostinger}"
 IMAGE_TAG="${1:-${IMAGE_TAG:-latest}}"
-APP_DIR="${APP_DIR:-/opt/openclaw}"
+APP_DIR="${APP_DIR:-/docker/openclaw-sgnl}"
 DOCKER_IMAGE="piboonsak/openclaw:${IMAGE_TAG}"
 CONTAINER_NAME="openclaw-sgnl-openclaw-1"
 
@@ -62,10 +62,12 @@ CONTAINER_NAME="$3"
 echo "[1/4] Pulling image: $DOCKER_IMAGE"
 docker pull "$DOCKER_IMAGE"
 
-echo "[2/4] Starting/updating container via docker compose"
+echo "[2/4] Updating compose and restarting container"
 cd "$APP_DIR"
-# --pull always ensures the freshly pulled image is used
-docker compose -f docker-compose.prod.yml up -d --pull always
+# Update the image line in docker-compose.yml (works for both local and Hostinger templates)
+sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
+# Start/update container
+docker compose -f docker-compose.yml up -d --pull always
 
 echo "[3/4] Verifying container is running"
 RUNNING=$(docker inspect --format='{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null || echo "false")
