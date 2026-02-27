@@ -50,22 +50,29 @@
       // Workspace directory
       workspace: "/data/openclaw/workspace",
 
-      // Model configuration (fallback chain)
+      // Model configuration (fallback chain with free tier safety net)
       model: {
-        primary: "anthropic/claude-opus-4-6",
-        fallback: ["anthropic/claude-3-5-haiku", "moonshot/kimi-k2.5"],
+        primary: "openrouter/google/gemini-2.5-flash",
+        fallbacks: [
+          "openrouter/google/gemini-2.5-pro",
+          "openrouter/deepseek/deepseek-chat-v3-0324",
+          "openrouter/google/gemini-2.0-flash-exp:free",
+        ],
       },
 
       // Model aliases (friendly names in UI)
       models: {
-        "anthropic/claude-opus-4-6": {
-          alias: "Claude Opus (Expert)",
+        "openrouter/google/gemini-2.5-flash": {
+          alias: "Gemini Flash (Primary)",
         },
-        "anthropic/claude-3-5-haiku": {
-          alias: "Claude Haiku (Budget)",
+        "openrouter/google/gemini-2.5-pro": {
+          alias: "Gemini Pro (Fallback)",
         },
-        "moonshot/kimi-k2.5": {
-          alias: "Kimi K2.5 (Alternative)",
+        "openrouter/deepseek/deepseek-chat-v3-0324": {
+          alias: "DeepSeek V3 (Budget)",
+        },
+        "openrouter/google/gemini-2.0-flash-exp:free": {
+          alias: "Gemini Free (Safety Net)",
         },
       },
 
@@ -79,6 +86,16 @@
           "fs.write", // Unrestricted file writes
           "network.raw", // Raw network sockets
         ],
+      },
+    },
+  },
+
+  // Tool configuration
+  tools: {
+    web: {
+      search: {
+        provider: "brave",
+        // apiKey read from env BRAVE_API_KEY automatically
       },
     },
   },

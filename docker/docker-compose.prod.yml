@@ -57,8 +57,13 @@ services:
       
       # Optional: Tool API keys
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+      BRAVE_API_ANSWER_KEY: ${BRAVE_API_ANSWER_KEY:-}
+      BRAVE_API_SEARCH_KEY: ${BRAVE_API_SEARCH_KEY:-}
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      
+      # OpenRouter (multi-model gateway)
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
     
     # Persistent volumes
     volumes:
