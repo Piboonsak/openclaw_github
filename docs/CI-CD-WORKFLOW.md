@@ -47,6 +47,17 @@ git commit -m "fix(model): increase maxTokens to 16384 for long responses"
 git push origin main
 ```
 
+**Branch naming conventions:**
+- `fix/<issue>-<short-desc>` - Bug fix work (e.g., `fix/ws22-web-search-key`)
+- `feat/<short-desc>` - New features (e.g., `feat/line-webhook-retry`)
+- `infra/<short-desc>` - Infrastructure-only changes (e.g., `infra/nginx-timeouts`)
+- `docs/<short-desc>` - Documentation-only changes (e.g., `docs/cicd-naming`)
+
+**Tag alignment rule (Git tag == Image tag):**
+- Use one shared tag for BOTH Git and Docker image.
+- Format: `vYYYY.M.D` for release, or `vYYYY.M.D-<fix>` for hotfixes.
+- Example: `v2026.2.27` (release), `v2026.2.27-ws22` (hotfix)
+
 **Commit message format:**
 - `fix(scope): description` - Bug fixes
 - `feat(scope): description` - New features
@@ -56,23 +67,22 @@ git push origin main
 ### 3. Build Docker Image
 
 ```bash
-# Build with fix tag (use issue/ticket number or short description)
+# Build with aligned tag (Git tag == Image tag)
 docker build -t piboonsak/openclaw:latest -f Dockerfile .
-docker build -t piboonsak/openclaw:fix-ws22-maxTokens -f Dockerfile .
+docker build -t piboonsak/openclaw:v2026.2.27-ws22 -f Dockerfile .
 
 # Test locally (optional but recommended)
 docker run --rm -it \
   -e OPENROUTER_API_KEY="your-key" \
   -e BRAVE_API_KEY="your-key" \
-  piboonsak/openclaw:fix-ws22-maxTokens \
+  piboonsak/openclaw:v2026.2.27-ws22 \
   openclaw --version
 ```
 
 **Tag naming conventions:**
 - `latest` - Current production release
-- `fix-<issue>-<description>` - Bug fix deployment
-- `feat-<feature>` - Feature release
-- `v2026.2.27` - Version-tagged release
+- `vYYYY.M.D` - Release tag (Git tag + image tag)
+- `vYYYY.M.D-<fix>` - Hotfix tag (Git tag + image tag)
 
 ### 4. Push Image to Docker Hub
 
@@ -81,7 +91,7 @@ docker run --rm -it \
 docker login -u piboonsak
 
 # Push both tags
-docker push piboonsak/openclaw:fix-ws22-maxTokens
+docker push piboonsak/openclaw:v2026.2.27-ws22
 docker push piboonsak/openclaw:latest
 ```
 
