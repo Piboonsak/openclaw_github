@@ -660,7 +660,11 @@ export const linePlugin: ChannelPlugin<ResolvedLineAccount> = {
 
       ctx.log?.info(`[${account.accountId}] starting LINE provider${lineBotLabel}`);
 
-      return getLineRuntime().channel.line.monitorLineProvider({
+      // monitorLineProvider registers the webhook handler and returns immediately.
+      // startAccount must not resolve until the channel is stopped; otherwise the
+      // gateway treats a resolved Promise as "channel stopped" and auto-restarts it.
+      // We await the monitor to start, then hold until the abortSignal fires.
+      await getLineRuntime().channel.line.monitorLineProvider({
         channelAccessToken: token,
         channelSecret: secret,
         accountId: account.accountId,
@@ -668,6 +672,15 @@ export const linePlugin: ChannelPlugin<ResolvedLineAccount> = {
         runtime: ctx.runtime,
         abortSignal: ctx.abortSignal,
         webhookPath: account.config.webhookPath,
+      });
+
+      // Hold startAccount open until channel is aborted/stopped.
+      await new Promise<void>((resolve) => {
+        if (!ctx.abortSignal || ctx.abortSignal.aborted) {
+          resolve();
+          return;
+        }
+        ctx.abortSignal.addEventListener("abort", () => resolve(), { once: true });
       });
     },
     logoutAccount: async ({ accountId, cfg }) => {

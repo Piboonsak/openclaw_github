@@ -62,13 +62,18 @@ COPY --from=builder --chown=node:node /app/openclaw.mjs ./openclaw.mjs
 COPY --from=builder --chown=node:node /app/skills ./skills
 COPY --from=builder --chown=node:node /app/extensions ./extensions
 
-# Create directories for runtime data with correct permissions
-RUN mkdir -p /data/openclaw/state /data/openclaw/workspace /tmp/openclaw && \
-    chown -R node:node /data/openclaw /tmp/openclaw
+# Create directories for runtime data with correct permissions.
+# HOME is set to /data so openclaw config persists in the ./data volume mount.
+RUN mkdir -p /data/.openclaw /data/openclaw/state /data/openclaw/workspace /tmp/openclaw && \
+    chown -R node:node /data /tmp/openclaw
+
+# Add 'openclaw' CLI wrapper so agents/tools can invoke 'openclaw' by name.
+RUN printf '#!/bin/sh\nexec node /app/openclaw.mjs "$@"\n' > /usr/local/bin/openclaw && \
+    chmod +x /usr/local/bin/openclaw
 
 # Set production environment
 ENV NODE_ENV=production \
-    HOME=/home/node \
+    HOME=/data \
     PATH="/app/node_modules/.bin:${PATH}"
 
 # Security: Switch to non-root user (node, UID 1000)
