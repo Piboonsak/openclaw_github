@@ -10,6 +10,29 @@
 
 ---
 
+## Agent Execution Policy (Autonomous CI/CD)
+
+**Purpose:** If an agent modifies application code or production config, it must run the full CI/CD flow automatically based on this document. Do not ask the user for steps that are already defined here.
+
+**Trigger conditions (run CI/CD automatically):**
+- Any change under `src/**`, `config/**`, `docker/**`, or `docs/CI-CD-WORKFLOW.md`
+- Any change that affects production runtime behavior or deployment
+
+**No-ask rule:**
+- If the decision is already defined in this document (paths, commands, step order, skip rules), execute it without asking.
+- Only ask if a choice is not covered anywhere in this document or is destructive/irreversible and not already approved.
+
+**VPS-only changes (no repo update):**
+- If you must change live config or workspace data on the VPS, still follow Steps 5 → 6 → 7 → 8 → 9.
+- Skip Steps 1–4 only when there is no code or repo change.
+
+**Non-Linux developers:**
+- If Docker build/push is not available locally, skip Steps 3–4 and proceed to Step 5.
+
+---
+
+---
+
 ## Standard Deployment Workflow
 
 ### 1. Fix Code Locally
