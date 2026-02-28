@@ -45,7 +45,27 @@ Model note: while any model is supported, I strongly recommend **Anthropic Pro/M
 
 ## Releases
 
-### v2026.2.27 (Latest)
+### v2026.2.28-r3fix (Latest)
+
+**Release Notes:**
+- **Fix:** LINE webhook routing moved to native handler (`/line/` → port 18789) to prevent timeout/499 failures
+- **Fix:** Exec approval behavior corrected for LINE (`tools.exec.askFallback = "allowlist"`) to avoid blocked safe commands
+- **Fix:** Memory embeddings enabled (`agents.defaults.memorySearch.provider = "openai"`) for memory search path
+- **Fix:** Deployment now auto-clears stale LINE sessions (>50KB) to reduce latency and token bloat
+- **Infra:** GitHub Actions deploy pipeline now runs deterministic regression suites after every deploy
+- **CI/CD:** Docker Hub authentication now has 3-retry logic with actionable failure output
+- **Testing:** Added `tests/r3-regression-tests.sh` and automated verification in deploy workflow
+
+**Deployment:**
+- Docker image: `piboonsak/openclaw:latest`
+- Deployed: 2026-02-28
+- VPS: openclaw.yahwan.biz (76.13.210.250)
+- Git tag: `v2026.2.28-r3fix`
+
+**Known Issues:**
+- None — R3 root causes addressed and automated regression checks passed
+
+### v2026.2.27
 
 **Release Notes:**
 - **Fix:** Volume mount path corrected (`/data/.openclaw/`) — fixes session persistence and config loss on restart
