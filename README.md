@@ -43,6 +43,35 @@ New install? Start here: [Getting started](https://docs.openclaw.ai/start/gettin
 
 Model note: while any model is supported, I strongly recommend **Anthropic Pro/Max (100/200) + Opus 4.6** for long‑context strength and better prompt‑injection resistance. See [Onboarding](https://docs.openclaw.ai/start/onboarding).
 
+## Releases
+
+### v2026.2.27 (Latest)
+
+**Release Notes:**
+- **Fix:** Volume mount path corrected (`/data/.openclaw/`) — fixes session persistence and config loss on restart
+- **Fix:** Exec command approval loop eliminated — 14 pre-approved safe commands (date, uptime, whoami, curl, etc.)
+- **Fix:** Exec host set to gateway mode — enables command execution in containerized deployments
+- **Fix:** Browser service now available — added `OPENCLAW_INSTALL_BROWSER` build arg for web scraping
+- **Infra:** Timezone confirmed correct (+07:00 Bangkok) — no change needed
+- **Docs:** Updated CI/CD workflow with new deployment procedure (Step 5)
+- **Testing:** Added comprehensive regression test suite (20+ automated tests, 13 manual LINE tests)
+
+**Deployment:**
+- Docker image: `piboonsak/openclaw:latest`
+- Deployed: 2026-02-28
+- VPS: openclaw.yahwan.biz (76.13.210.250)
+- Git tag: `v2026.2.27-ws23`
+
+**Known Issues:**
+- None — all 7 critical production issues resolved
+
+**Upgrade Instructions:**
+```bash
+git pull origin main
+docker pull piboonsak/openclaw:latest
+docker-compose down && docker-compose up -d
+```
+
 ## Models (selection + auth)
 
 - Models config + CLI: [Models](https://docs.openclaw.ai/concepts/models)
