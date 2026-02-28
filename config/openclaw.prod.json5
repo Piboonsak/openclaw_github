@@ -87,6 +87,14 @@
           "network.raw", // Raw network sockets
         ],
       },
+
+      // Memory search / embeddings configuration
+      // Required for context recall and conversation memory features
+      memorySearch: {
+        provider: "openai", // Uses text-embedding-ada-002 via OPENAI_API_KEY env var
+        sources: ["memory"],
+        fallback: "none", // No fallback — fail gracefully if embeddings unavailable
+      },
     },
   },
 
@@ -117,7 +125,9 @@
       // - deny: silently deny unapproved commands
       // - allowlist: treat as approved if in allowlist
       // - full: allow everything (dangerous)
-      askFallback: "deny",
+      // NOTE: LINE OA has no approval UI, so "deny" blocks ALL exec commands.
+      // Using "allowlist" allows safeBins commands to run without approval prompt.
+      askFallback: "allowlist",
 
       // Host to use: "sandbox" (isolated VM, not available here) or "gateway" (container native execution)
       host: "gateway",
@@ -138,8 +148,8 @@
         "ps",
         "tree",
         "curl",
-        "wget"
-      ]
+        "wget",
+      ],
     },
   },
 

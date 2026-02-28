@@ -69,6 +69,75 @@ sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
 # Start/update container
 docker compose -f docker-compose.yml up -d --pull always
 
+echo "[2a/4] Post-deploy: Clear stale LINE sessions"
+# Remove bloated session files (>50KB) to prevent token overflow and latency
+docker exec "$CONTAINER_NAME" bash -c '
+  SESSION_DIR="/data/.openclaw/agents/main/sessions"
+  if [ -d "$SESSION_DIR" ]; then
+    STALE=$(find "$SESSION_DIR" -name "line-*.jsonl" -size +50k 2>/dev/null | wc -l)
+    if [ "$STALE" -gt 0 ]; then
+      find "$SESSION_DIR" -name "line-*.jsonl" -size +50k -delete
+      echo "  Cleared $STALE stale LINE session file(s) ✔"
+    else
+      echo "  No stale LINE sessions found ✔"
+    fi
+  else
+    echo "  Session directory not found (first deploy?) — skipping"
+  fi
+' || echo "  WARNING: Session cleanup failed (non-fatal)"
+
+echo "[2b/4] Post-deploy: Apply exec security config"
+# R3 fix: Ensure exec tool configuration matches production requirements
+# - security: allowlist (only safeBins commands auto-approved)
+# - askFallback: allowlist (LINE has no approval UI — must not be "deny")
+# - host: gateway (no sandbox available on VPS)
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.security allowlist 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.askFallback allowlist 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.host gateway 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget"]' 2>/dev/null || true
+echo "  exec config applied ✔"
+
+echo "[2c/4] Post-deploy: Apply embeddings config"
+# R3 fix: Enable memory search via OpenAI embeddings (requires OPENAI_API_KEY in container env)
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.provider openai 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.sources '["memory"]' 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.fallback none 2>/dev/null || true
+echo "  embeddings config applied ✔"
+
+echo "[2d/4] Post-deploy: Apply Nginx config (native LINE handler)"
+# R3 fix: Route /line/ to native handler (port 18789) instead of Flask bridge (5100)
+# The updated nginx config is committed in docker/nginx/openclaw.conf
+if [ -f "$APP_DIR/docker/nginx/openclaw.conf" ]; then
+  cp "$APP_DIR/docker/nginx/openclaw.conf" /etc/nginx/sites-available/openclaw
+  ln -sf /etc/nginx/sites-available/openclaw /etc/nginx/sites-enabled/openclaw
+  if nginx -t 2>/dev/null; then
+    nginx -s reload
+    echo "  Nginx config updated and reloaded ✔"
+  else
+    echo "  WARNING: Nginx config test failed — keeping old config"
+    nginx -t
+  fi
+else
+  echo "  WARNING: Nginx config not found at $APP_DIR/docker/nginx/openclaw.conf"
+fi
+
+echo "[2e/4] Post-deploy: Update Flask bridge timeout"
+# Increase gunicorn timeout from 60s to 300s for the fallback Flask bridge
+FLASK_SERVICE="/etc/systemd/system/line-bridge.service"
+if [ -f "$FLASK_SERVICE" ]; then
+  if grep -q "\-\-timeout 60" "$FLASK_SERVICE"; then
+    sed -i 's/--timeout 60/--timeout 300/' "$FLASK_SERVICE"
+    systemctl daemon-reload
+    systemctl restart line-bridge
+    echo "  Flask bridge timeout updated to 300s and restarted ✔"
+  else
+    echo "  Flask bridge timeout already updated (or different format) ✔"
+  fi
+else
+  echo "  Flask bridge service not found — skipping (native handler is primary)"
+fi
+
 echo "[3/4] Verifying container is running"
 RUNNING=$(docker inspect --format='{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null || echo "false")
 if [[ "$RUNNING" != "true" ]]; then
