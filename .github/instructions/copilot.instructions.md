@@ -147,18 +147,111 @@ Use structured JSON logging. Log at stage boundaries, never log response bodies.
 
 ## 9. Debugging & Fixing Issues
 
-**Before investigating any bug:**
+### 9.1 Mandatory Pre-Fix Protocol — Read Before You Code
 
-1. Read `docs/debug/tiered-debug-sop.md` — the full tiered debugging SOP.
-2. Check §7 (Known Issues Pattern Database) for a matching pattern before diagnostics.
-3. Follow the Tier-1 triage checklist (§2) before escalating.
-4. Produce a structured investigation log (§4 schema) for non-trivial issues.
+**REQUIRED before proposing any fix:**
 
-**Before applying any fix:**
+1. **Source Code Review** — Read ALL files related to the failing component:
+   - Entry point (route / handler / worker)
+   - The service/class it calls
+   - Shared utilities or middleware it touches
+   - The test file for that component (if it exists)
+2. **Declare explicitly:** `"I have reviewed [file list] and understand the current behavior."`
+   A fix proposed without this declaration is invalid and must not be executed.
+3. **SOP Reference** — Read `docs/debug/tiered-debug-sop.md`:
+   - Check §7 (Known Issues Pattern Database) before running any diagnostics
+   - Follow the Tier-1 triage checklist (§2) before escalating
+   - Produce a structured investigation log (§4 schema) for non-trivial issues
+4. **CI/CD Reference** — Read `docs/CI-CD-WORKFLOW.md` — branching, pipeline stages, deployment gates, rollback
 
-1. Read `docs/CI-CD-WORKFLOW.md` — branching strategy, pipeline stages, deployment gates, rollback.
-2. Apply fix on the correct branch per CI/CD workflow.
-3. Verify fix passes all CI checks before considering resolved.
+---
+
+### 9.2 Mandatory Log Investigation
+
+**Trigger this block automatically when ANY of the following are true:**
+- Fix attempt is Round 2 or beyond
+- Operating in Plan Mode
+- An automated test returns FAILED
+- About to propose a fix without having read logs
+
+```bash
+# === TIER-0: Full Diagnostic Snapshot — run this first, always ===
+echo "=== CONTAINER STATUS ===" && docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+echo "=== OPENCLAW ERRORS ===" && docker logs openclaw-sgnl-openclaw-1 --tail=200 2>&1 | grep -E "ERROR|Exception|Traceback|sessionId|rate.limit|upstream"
+echo "=== BRIDGE ERRORS ===" && docker logs openclaw-flask-bridge --tail=100 2>&1 | grep -E "ERROR|timeout|status|signature"
+echo "=== NGINX ===" && docker exec openclaw-nginx tail -100 /var/log/nginx/access.log 2>/dev/null | grep -E "4[0-9]{2}|5[0-9]{2}"
+echo "=== TIME SYNC ===" && timedatectl status
+echo "=== DISK ===" && df -h / | awk 'NR==2{print "Used: "$5}'
+```
+
+**Rule:** Log output MUST be quoted in reasoning. A fix that references no log output is invalid.
+
+---
+
+### 9.3 Fix Execution Protocol — Never Skip Steps
+
+```
+1. INVESTIGATE   → Run Tier-0 log commands. Quote the exact error line.
+2. REVIEW CODE   → Read source files (per §9.1). Declare files reviewed.
+3. HYPOTHESIZE   → State root cause + at least one alternative cause.
+4. PLAN A        → Primary fix with exact file/line scope.
+5. PLAN B        → Fallback if Plan A fails. Must be defined BEFORE coding.
+6. IMPLEMENT     → Code only the scoped change. No scope creep.
+7. TEST          → Run automated test (see §9.4).
+8. VERIFY        → Confirm fix resolves the original log error.
+```
+
+Never jump from step 2 to step 6. Never skip Plan B.
+
+---
+
+### 9.4 Test-Fail Loop
+
+```
+Run test
+    │
+    ├─ PASS ──→ Commit + document
+    │
+    └─ FAIL ──→ Immediately re-run Tier-0 log investigation (§9.2)
+                    │
+                    ├─ Root cause identified ──→ Fix → retest (max 3 loops)
+                    │
+                    └─ Ambiguous ──→ PAUSE
+                                     Present to human:
+                                     [A] Hypothesis X — approach + risk
+                                     [B] Hypothesis Y — approach + risk
+                                     [C] Escalate / gather more data
+                                     Await decision before proceeding.
+```
+
+**Rule:** Never retry a failed test with the same fix logic. Always re-investigate logs first.
+Apply fix on the correct branch per `docs/CI-CD-WORKFLOW.md`. Verify fix passes all CI checks before considering resolved.
+
+---
+
+### 9.5 Risk & Prevention Checklist — Required for Every Fix
+
+Answer all before implementing:
+
+| Question | Required Answer |
+|---|---|
+| What other components call this code path? | List them |
+| Does this affect session state? | Yes/No + impact |
+| Could this break on restart or redeploy? | Yes/No + mitigation |
+| What is the rollback path? | Define it |
+| What is Plan B if this fails? | Define it |
+
+If any answer is "unknown" — stop and investigate before coding.
+
+---
+
+### 9.6 Repeat-Issue Prevention
+
+If the same issue appears more than once:
+1. Add a regression test to `/tests/` targeting the exact failure case.
+2. Add a log alert pattern to monitoring config.
+3. Document root cause in `docs/debug/tiered-debug-sop.md` under §7 (Known Issues DB).
+4. Propose a structural fix — not just a patch.
 
 ---
 

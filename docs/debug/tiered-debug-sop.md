@@ -88,7 +88,51 @@ flowchart TD
     style ESC fill:#e9c46a,color:#000
 ```
 
-### 1.5 Severity Classification
+### 1.5 Tier-0: Mandatory Log Snapshot Protocol
+
+**Tier-0 is not a model tier — it is a hard gate that fires before any fix is proposed.**
+
+#### When to trigger Tier-0 (automatic — no human decision required)
+
+| Condition | Trigger |
+|---|---|
+| Fix attempt is Round 2 or beyond | Always |
+| Operating in Plan Mode | Always |
+| Automated test returned FAILED | Always |
+| About to propose a fix without having read logs | Always |
+| P0/P1 severity | Always — skip directly to Tier-2 after snapshot |
+
+#### Tier-0 Snapshot Commands (copy-paste ready)
+
+```bash
+# Run this entire block before diagnosing. No exceptions.
+echo "=== CONTAINER STATUS ===" && docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+echo "=== OPENCLAW ERRORS ===" && docker logs openclaw-sgnl-openclaw-1 --tail=200 2>&1 | grep -E "ERROR|Exception|Traceback|sessionId|rate.limit|upstream"
+echo "=== BRIDGE ERRORS ===" && docker logs openclaw-flask-bridge --tail=100 2>&1 | grep -E "ERROR|timeout|status|signature"
+echo "=== NGINX ===" && docker exec openclaw-nginx tail -100 /var/log/nginx/access.log 2>/dev/null | grep -E "4[0-9]{2}|5[0-9]{2}"
+echo "=== TIME SYNC ===" && timedatectl status
+echo "=== DISK ===" && df -h / | awk 'NR==2{print "Used: "$5}'
+```
+
+**Rule:** Log output must be quoted in the investigation log (§4) before any fix is proposed. A fix that references no log output is invalid.
+
+#### Pre-Code-Review Gate (Tier-0 companion)
+
+Before ANY fix — source code must be reviewed first:
+
+```
+1. Read entry point (route / handler / worker)
+2. Read the service/class it calls
+3. Read shared utilities or middleware it touches
+4. Read the test file for that component (if exists)
+5. Declare: "I have reviewed [file list] and understand the current behavior."
+```
+
+A fix proposed without this declaration must not be executed.
+
+---
+
+### 1.6 Severity Classification
 
 | Severity | Label | Definition | Response SLA |
 |----------|-------|------------|--------------|
@@ -1244,6 +1288,8 @@ Tier-2 MUST NOT:
 ### 6.2 Tier-2 Responsibilities
 
 ```
+[ ] 0. Run Tier-0 snapshot (§1.5) if not already done by Tier-1
+[ ] 0b. Review all source files related to the failing component before coding (Pre-Code-Review Gate §1.5)
 [ ] 1. Read full investigation log — identify what Tier-1 already ruled out
 [ ] 2. Validate Tier-1 root cause hypothesis against additional evidence if needed
 [ ] 3. Perform deep code analysis (diff analysis, log correlation, config audit)
@@ -2010,7 +2056,33 @@ Complete every item before closing the issue:
 [ ] 6. Resolution log filed (JSON, per §4 schema)
 [ ] 7. If P0 or P1: brief post-mortem note added to issue tracker
 [ ] 8. Prevention action item created if issue is likely to recur
+[ ] 9. Regression test added to /tests/ if this was a repeat issue
 ```
+
+### 8.1a Test-Fail Loop (Mandatory)
+
+Whenever an automated test fails during or after a fix:
+
+```
+Run test
+    │
+    ├─ PASS ──→ Commit + document
+    │
+    └─ FAIL ──→ Immediately re-run Tier-0 log snapshot (§1.5)
+                    │
+                    ├─ Root cause identified ──→ Fix → retest (max 3 loops)
+                    │
+                    └─ Ambiguous after 3 loops ──→ PAUSE
+                                                   Present options to human:
+                                                   [A] Hypothesis X — approach + risk
+                                                   [B] Hypothesis Y — approach + risk
+                                                   [C] Escalate / gather more data
+                                                   Await decision before proceeding.
+```
+
+**Rule:** Never retry a failed test with the same fix logic. Always re-investigate logs first.
+
+
 
 ### 8.2 Known Issues DB Update Procedure
 
@@ -2115,6 +2187,7 @@ Update this document when:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2026-02-27 | Initial release — covers full debug lifecycle, 8 known issues, Tier-1/2 protocol |
+| 1.1.0 | 2026-02-28 | Added Tier-0 mandatory log snapshot (§1.5); Pre-Code-Review Gate; Test-Fail Loop (§8.1a); Tier-2 pre-code-review step (§6.2); updated Post-Resolution checklist with regression test requirement |
 
 ---
 

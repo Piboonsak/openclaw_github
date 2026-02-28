@@ -441,6 +441,51 @@ git push origin main
 
 ---
 
+## Pre-Deploy Debug Gate
+
+**Purpose:** Prevent broken fixes from reaching production by enforcing the debug protocol before any merge or deploy.
+
+### Pre-Merge Checklist (Block PR if any unchecked)
+
+```
+[ ] Tier-0 log snapshot was run (§1.5 of tiered-debug-sop.md) — not assumed
+[ ] Source files related to the change were read before coding (Pre-Code-Review Gate)
+[ ] Fix Execution Protocol steps 1–8 were followed in order
+[ ] Plan A AND Plan B were defined before implementation
+[ ] Risk & Prevention Checklist completed (session state, restart impact, rollback path)
+[ ] If this is a repeat issue — regression test added to /tests/
+[ ] All CI checks pass (lint → unit tests → integration tests → build)
+```
+
+### Auto-Test Failure Protocol
+
+When CI pipeline tests fail, the following steps are MANDATORY before retrying:
+
+```bash
+# Step 1 — Dump relevant logs immediately on test failure
+docker logs openclaw-sgnl-openclaw-1 --tail=200 2>&1 | grep -E "ERROR|Exception|Traceback" > ci-debug.log
+docker logs openclaw-flask-bridge --tail=100 2>&1 >> ci-debug.log
+cat ci-debug.log
+
+# Step 2 — Quote the root error line in PR comment before proposing any fix
+# Step 3 — Never retry with same fix logic; re-investigate first
+```
+
+**Future GitHub Actions integration:**
+
+```yaml
+# .github/workflows/ci.yml addition (when Actions is set up)
+- name: On Test Failure — Dump Diagnostic Logs
+  if: failure()
+  run: |
+    docker logs openclaw-sgnl-openclaw-1 --tail=200 2>&1 | grep -E "ERROR|Exception" > ci-debug.log
+    docker logs openclaw-flask-bridge --tail=100 2>&1 >> ci-debug.log
+    cat ci-debug.log
+  # Attach ci-debug.log as artifact for mandatory review before re-push
+```
+
+---
+
 ## Emergency Procedures
 
 ### Rollback to Previous Version
@@ -552,6 +597,7 @@ Required for production:
 | 2026-02-27 | `e8f5f37` | Naming conventions: aligned Git tag == image tag | `docs` | ✅ Merged |
 | 2026-02-27 | `cec2aac` | Config: wire Brave Search apiKey via env substitution | `config` | ✅ Deployed |
 | 2026-02-27 | `ab08d4b` | WS-2.2 fixes: Gemini Flash primary, fallback chain, Brave Search, maxTokens 16384 | `v2026.2.27-ws22` | ✅ Deployed |
+| 2026-02-28 | — | docs: add Pre-Deploy Debug Gate, Auto-Test Failure Protocol, Pre-Merge checklist | `docs` | ✅ Merged |
 
 ---
 
