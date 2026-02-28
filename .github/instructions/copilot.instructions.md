@@ -255,6 +255,63 @@ If the same issue appears more than once:
 
 ---
 
+### 9.7 GitHub Actions & API Key Pre-Flight — Ask Before You Start
+
+**Rule:** If any step of the plan requires GitHub Actions or any external API/secret, all required credentials MUST be confirmed available BEFORE implementation begins. Never start implementation and ask midway.
+
+#### When this triggers
+
+Trigger this check during **Plan Mode** whenever the task involves any of:
+- Running or writing a GitHub Actions workflow (`.github/workflows/`)
+- Docker Hub push (`docker push`)
+- SSH into VPS (`ssh root@...`)
+- Any API call requiring a key: OpenRouter, Brave Search, LINE, Docker Hub, etc.
+- Any `secrets.*` reference in a workflow YAML
+
+#### Pre-Flight Checklist — Complete During Planning, Not During Execution
+
+Before presenting the implementation plan, explicitly confirm each required credential:
+
+```
+[ ] GITHUB_TOKEN / repo PAT       — needed for: gh CLI, Actions triggers, tag push
+[ ] DOCKER_HUB_TOKEN              — needed for: docker push to piboonsak/*
+[ ] OPENROUTER_API_KEY            — needed for: LLM calls, integration tests
+[ ] BRAVE_API_KEY                 — needed for: web search tests
+[ ] LINE_CHANNEL_SECRET           — needed for: webhook signature tests
+[ ] LINE_CHANNEL_ACCESS_TOKEN     — needed for: LINE API calls
+[ ] SSH key / VPS access          — needed for: Step 5 deploy (ssh root@76.13.210.250)
+[ ] Any other secret referenced in the workflow YAML or plan
+```
+
+#### Protocol
+
+```
+1. PLAN      → Identify every step that requires a secret or API key.
+2. CHECK     → For each required key, determine if it is:
+               (a) Already set as a GitHub Actions secret (Settings → Secrets)
+               (b) Available locally as env var
+               (c) Unknown / not confirmed
+3. ASK ONCE  → If ANY key is (c) — STOP. Present a single consolidated
+               question listing ALL missing keys before writing any code:
+
+               "This plan requires the following secrets. Please confirm
+               each is available before I proceed:
+               - [ ] DOCKER_HUB_TOKEN (for docker push in Step 4)
+               - [ ] SSH private key path (for VPS deploy in Step 5)
+               Provide the values or confirm they are already set in
+               GitHub Actions Secrets, then I will begin."
+
+4. WAIT      → Do not write workflow files, scripts, or any implementation
+               until the human confirms all required secrets are in place.
+5. IMPLEMENT → Proceed only after confirmation received.
+```
+
+**Never:** Start implementation and then ask for a secret mid-execution. This wastes time and may leave the repo in a partial state.
+
+**Never:** Assume a secret is set because it was used in a previous session. Always verify in the current plan.
+
+---
+
 ## 10. Code Quality Checklist
 
 - TypeScript (ESM), strict typing, avoid `any`. Never add `@ts-nocheck`.
