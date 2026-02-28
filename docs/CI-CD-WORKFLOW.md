@@ -146,6 +146,33 @@ git push origin main
 - `infra(scope): description` - Infrastructure changes
 - `docs(scope): description` - Documentation only
 
+**Pull Request creation:**
+
+For feature branches (not direct pushes to `main`):
+
+**Option A: GitHub CLI** (requires authentication)
+```bash
+# Set token in environment (for single session)
+$env:GH_TOKEN='your-github-token'
+gh pr create --title "fix(scope): description" --body-file PR_DESCRIPTION.md --base main --head feature-branch-name
+
+# Or use interactive mode
+gh pr create --web
+```
+
+**Option B: Web UI** (no local auth required)
+1. Push feature branch: `git push origin feature-branch-name`
+2. Visit: `https://github.com/<owner>/<repo>/compare/main...feature-branch-name?expand=1`
+3. Fill title + description, click "Create pull request"
+
+**Option C: After push, GitHub provides a URL**
+```
+remote: Create a pull request for 'feature-branch' on GitHub by visiting:
+remote:      https://github.com/owner/repo/pull/new/feature-branch
+```
+
+**PR merge:** After approval, merge to `main` (triggers CI/CD automatically).
+
 ### 3. Build Docker Image (GitHub Actions — Automated)
 
 **Triggered automatically** by push to `main` or tag push (`v*`).
@@ -420,6 +447,7 @@ Repeat this step after every CI/CD pipeline execution until all of the following
 - Migrated Steps 3-7 to GitHub Actions automation ✅
 - Added 22-check automated verification table ✅
 - Added 3-retry Docker Hub auth with actionable error ✅
+- Added PR creation options (gh CLI, web UI, git push URL) — R3 deployment feedback ✅
 
 ---
 
@@ -605,7 +633,8 @@ Required for production:
 | 2026-02-27 | `ab08d4b` | WS-2.2 fixes: Gemini Flash primary, fallback chain, Brave Search, maxTokens 16384 | `v2026.2.27-ws22` | ✅ Deployed |
 | 2026-02-27 | — | 7 production fixes (P0-P3), volume mount correction | `v2026.2.27-ws23` | ✅ Deployed |
 | 2026-02-28 | — | docs: add Pre-Deploy Debug Gate, Auto-Test Failure Protocol, Pre-Merge checklist | `docs` | ✅ Merged |
-| 2026-02-28 | — | R3 fix: GitHub Actions pipeline, native LINE handler, exec config, embeddings, 22-check automated tests | `v2026.2.28-r3fix` | 🔧 In Progress |
+| 2026-02-28 | `c5dd526` | R3 fix: GitHub Actions pipeline, native LINE handler, exec config, embeddings, 22-check automated tests | `v2026.2.28-r3fix` | ✅ Deployed |
+| 2026-02-28 | `da32e17` | docs: CI-CD workflow improvements from R3 deployment (PR creation options, completion verification) | `docs` | ✅ Merged |
 
 ---
 
