@@ -20,65 +20,54 @@ echo ""
 
 # ── I1: Session idle timeout = 30 minutes ────────────────────────────
 echo "Category I1: Session idle timeout"
-CONFIG_FILE="/docker/openclaw-sgnl/config/openclaw.prod.json5"
-if [ -f "$CONFIG_FILE" ]; then
-  if grep -q '"idleMinutes"' "$CONFIG_FILE" 2>/dev/null; then
-    IDLE_VAL=$(grep -oP '"idleMinutes"\s*:\s*\K[0-9]+' "$CONFIG_FILE" 2>/dev/null || echo "0")
-    if [ "$IDLE_VAL" = "30" ]; then
-      pass "I1.1 session.reset.idleMinutes = 30"
-    else
-      fail "I1.1 session.reset.idleMinutes = $IDLE_VAL (expected 30)"
-    fi
+CONTAINER_NAME="openclaw-sgnl-openclaw-1"
+if docker ps --format '{{.Names}}' | grep -q "$CONTAINER_NAME"; then
+  IDLE_VAL=$(docker exec "$CONTAINER_NAME" openclaw config get session.reset.idleMinutes 2>/dev/null || echo "")
+  if [ "$IDLE_VAL" = "30" ]; then
+    pass "I1.1 session.reset.idleMinutes = 30"
   else
-    fail "I1.1 idleMinutes key not found in config"
+    fail "I1.1 session.reset.idleMinutes = $IDLE_VAL (expected 30)"
   fi
 else
-  skip "I1.1 Config file not found at $CONFIG_FILE"
+  skip "I1.1 Container $CONTAINER_NAME not running"
 fi
 
 # ── I2: Context 5x values ────────────────────────────────────────────
 echo ""
 echo "Category I2: Context 5x scaling"
-if [ -f "$CONFIG_FILE" ]; then
+if docker ps --format '{{.Names}}' | grep -q "$CONTAINER_NAME"; then
   check_config_val() {
     local KEY="$1" EXPECTED="$2" LABEL="$3"
-    if grep -q "\"$KEY\"" "$CONFIG_FILE" 2>/dev/null; then
-      VAL=$(grep -oP "\"$KEY\"\s*:\s*\K[0-9]+" "$CONFIG_FILE" 2>/dev/null || echo "0")
-      if [ "$VAL" = "$EXPECTED" ]; then
-        pass "$LABEL = $EXPECTED"
-      else
-        fail "$LABEL = $VAL (expected $EXPECTED)"
-      fi
+    VAL=$(docker exec "$CONTAINER_NAME" openclaw config get "$KEY" 2>/dev/null || echo "")
+    if [ "$VAL" = "$EXPECTED" ]; then
+      pass "$LABEL = $EXPECTED"
     else
-      fail "$LABEL key not found"
+      fail "$LABEL = $VAL (expected $EXPECTED)"
     fi
   }
-  check_config_val "bootstrapMaxChars" "100000" "I2.1 bootstrapMaxChars"
-  check_config_val "bootstrapTotalMaxChars" "750000" "I2.2 bootstrapTotalMaxChars"
-  check_config_val "contextTokens" "1000000" "I2.3 contextTokens"
+  check_config_val "agents.defaults.bootstrapMaxChars" "100000" "I2.1 bootstrapMaxChars"
+  check_config_val "agents.defaults.bootstrapTotalMaxChars" "750000" "I2.2 bootstrapTotalMaxChars"
+  check_config_val "agents.defaults.contextTokens" "1000000" "I2.3 contextTokens"
 else
-  skip "I2 Config file not found"
+  skip "I2 Container $CONTAINER_NAME not running"
 fi
 
 # ── I3: Exec safe-bin profiles count ─────────────────────────────────
 echo ""
 echo "Category I3: Exec safe-bin profiles"
-# The exec-safe-bin-policy.ts should have 17 total profiles after WS-2.4
-# (9 original + 8 new: date, uptime, whoami, hostname, ps, tree, curl, wget)
-# We verify by checking the container image source
-CONTAINER_NAME="openclaw-sgnl-openclaw-1"
+# Check runtime config to verify 8 new safe-bin commands are registered
+# (curl, date, hostname, ps, tree, uptime, wget, whoami)
 if docker ps --format '{{.Names}}' | grep -q "$CONTAINER_NAME"; then
-  # Check if new bins appear in the safeBins config
-  SAFEBINS=$(docker exec "$CONTAINER_NAME" sh -c 'cat /app/config/*.json5 2>/dev/null | grep -i safeBins || echo ""' 2>/dev/null || echo "")
+  SAFEBINS_JSON=$(docker exec "$CONTAINER_NAME" openclaw config get tools.exec.safeBins 2>/dev/null || echo "[]")
   NEW_BINS="date uptime whoami hostname ps tree curl wget"
   MISSING=""
   for BIN in $NEW_BINS; do
-    if ! echo "$SAFEBINS" | grep -q "$BIN" 2>/dev/null; then
+    if ! echo "$SAFEBINS_JSON" | grep -q "\"$BIN\"" 2>/dev/null; then
       MISSING="$MISSING $BIN"
     fi
   done
   if [ -z "$MISSING" ]; then
-    pass "I3.1 All 8 new safe-bin commands found in config"
+    pass "I3.1 All 8 new safe-bin commands configured"
   else
     fail "I3.1 Missing safe bins:$MISSING"
   fi
@@ -89,27 +78,23 @@ fi
 # ── I4: format_response.py exists ────────────────────────────────────
 echo ""
 echo "Category I4: format_response.py"
-SCRIPT_PATH="/docker/openclaw-sgnl/scripts/format_response.py"
-if [ -f "$SCRIPT_PATH" ]; then
-  pass "I4.1 format_response.py exists at $SCRIPT_PATH"
-  # Check it has the format_response function
-  if grep -q "def format_response" "$SCRIPT_PATH" 2>/dev/null; then
+# format_response.py is a utility script; check if it's deployed in container
+if docker exec "$CONTAINER_NAME" test -f /app/services/format_response.py 2>/dev/null; then
+  pass "I4.1 format_response.py exists in container"
+  if docker exec "$CONTAINER_NAME" grep -q "def format_response" /app/services/format_response.py 2>/dev/null; then
+    pass "I4.2 format_response() function defined"
+  else
+    fail "I4.2 format_response() function not found"
+  fi
+elif docker exec "$CONTAINER_NAME" test -f /opt/openclaw/services/format_response.py 2>/dev/null; then
+  pass "I4.1 format_response.py exists at /opt/openclaw"
+  if docker exec "$CONTAINER_NAME" grep -q "def format_response" /opt/openclaw/services/format_response.py 2>/dev/null; then
     pass "I4.2 format_response() function defined"
   else
     fail "I4.2 format_response() function not found"
   fi
 else
-  # Also check inside the container
-  if docker exec "$CONTAINER_NAME" test -f /app/docker/scripts/format_response.py 2>/dev/null; then
-    pass "I4.1 format_response.py exists in container"
-    if docker exec "$CONTAINER_NAME" grep -q "def format_response" /app/docker/scripts/format_response.py 2>/dev/null; then
-      pass "I4.2 format_response() function defined"
-    else
-      fail "I4.2 format_response() function not found in container"
-    fi
-  else
-    skip "I4.1 format_response.py not found (host or container)"
-  fi
+  skip "I4.1 format_response.py not found in container (may not be deployed)"
 fi
 
 # ── I5: Container resource limits ────────────────────────────────────
