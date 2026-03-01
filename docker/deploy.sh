@@ -98,14 +98,22 @@ docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget"]' 2>/dev/null || true
 echo "  exec config applied ✔"
 
-echo "[2c/4] Post-deploy: Apply embeddings config"
+echo "[2c/4] Post-deploy: Apply session + context config"
+# WS-2.4: Session idle timeout (30 min) and 5x context expansion
+docker exec "$CONTAINER_NAME" openclaw config set session.reset.idleMinutes 30 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.bootstrapMaxChars 100000 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.bootstrapTotalMaxChars 750000 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.contextTokens 1000000 2>/dev/null || true
+echo "  session + context config applied ✔"
+
+echo "[2d/4] Post-deploy: Apply embeddings config"
 # R3 fix: Enable memory search via OpenAI embeddings (requires OPENAI_API_KEY in container env)
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.provider openai 2>/dev/null || true
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.sources '["memory"]' 2>/dev/null || true
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.fallback none 2>/dev/null || true
 echo "  embeddings config applied ✔"
 
-echo "[2d/4] Post-deploy: Apply Nginx config (native LINE handler)"
+echo "[2e/4] Post-deploy: Apply Nginx config (native LINE handler)"
 # R3 fix: Route /line/ to native handler (port 18789) instead of Flask bridge (5100)
 # The updated nginx config is committed in docker/nginx/openclaw.conf
 if [ -f "$APP_DIR/docker/nginx/openclaw.conf" ]; then
@@ -122,7 +130,7 @@ else
   echo "  WARNING: Nginx config not found at $APP_DIR/docker/nginx/openclaw.conf"
 fi
 
-echo "[2e/4] Post-deploy: Update Flask bridge timeout"
+echo "[2f/4] Post-deploy: Update Flask bridge timeout"
 # Increase gunicorn timeout from 60s to 300s for the fallback Flask bridge
 FLASK_SERVICE="/etc/systemd/system/line-bridge.service"
 if [ -f "$FLASK_SERVICE" ]; then
