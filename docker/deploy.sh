@@ -138,7 +138,7 @@ else
   echo "  Flask bridge service not found — skipping (native handler is primary)"
 fi
 
-echo "[3/4] Verifying container is running"
+echo "[3/4] Verifying container is running and resource limits applied"
 RUNNING=$(docker inspect --format='{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null || echo "false")
 if [[ "$RUNNING" != "true" ]]; then
   echo "ERROR: Container $CONTAINER_NAME is not running after deploy"
@@ -146,6 +146,19 @@ if [[ "$RUNNING" != "true" ]]; then
   exit 1
 fi
 echo "Container $CONTAINER_NAME is running ✔"
+
+# Verify resource limits are applied (4 vCPU = 4000000000 NanoCpus, 16G = 17179869184 bytes)
+NANO_CPUS=$(docker inspect --format='{{.HostConfig.NanoCpus}}' "$CONTAINER_NAME" 2>/dev/null || echo "0")
+MEM_LIMIT=$(docker inspect --format='{{.HostConfig.Memory}}' "$CONTAINER_NAME" 2>/dev/null || echo "0")
+echo "  CPU limit: $NANO_CPUS NanoCpus (expected: 4000000000)"
+echo "  Memory limit: $MEM_LIMIT bytes (expected: 17179869184)"
+# Warn if limits are not applied (non-fatal — Hostinger Docker Manager may override)
+if [[ "$NANO_CPUS" != "4000000000" && "$NANO_CPUS" != "0" ]]; then
+  echo "  WARNING: CPU limit mismatch — expected 4 vCPU (4000000000), got $NANO_CPUS"
+fi
+if [[ "$MEM_LIMIT" != "17179869184" && "$MEM_LIMIT" != "0" ]]; then
+  echo "  WARNING: Memory limit mismatch — expected 16G (17179869184), got $MEM_LIMIT"
+fi
 
 echo "[4/4] Health check"
 # Wait up to 40 s for the gateway health endpoint to respond

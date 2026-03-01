@@ -21,6 +21,7 @@
 **No-ask rule:**
 - If the decision is already defined in this document (paths, commands, step order, skip rules), execute it without asking.
 - Only ask if a choice is not covered anywhere in this document or is destructive/irreversible and not already approved.
+- When the full procedure (branch → PR → merge → deploy → verify) is documented below, run every step end-to-end without pausing for user confirmation.
 
 **VPS-only changes (no repo update):**
 - If you must change live config or workspace data on the VPS, still follow Steps 5 → 6 → 7 → 8 → 9.
@@ -28,6 +29,44 @@
 
 **Non-Linux developers:**
 - Steps 3–4 run automatically in GitHub Actions on push to `main`. No local Docker build needed.
+
+### Local Credential Bootstrap (Agent token auto-read)
+
+Agents running locally (VS Code Copilot, CLI scripts) must load the GitHub token **automatically** without prompting the user.
+
+**Token file location:**
+```
+D:\key\githubToken.txt
+```
+
+**Bootstrap procedure (run once per session, before any `gh` or `git push` command):**
+
+```powershell
+# PowerShell — read token file and export for gh CLI
+$GH_TOKEN = (Get-Content "D:\key\githubToken.txt" -Raw).Trim()
+$env:GH_TOKEN = $GH_TOKEN
+```
+
+```bash
+# Bash — read token file and export for gh CLI
+export GH_TOKEN=$(cat /d/key/githubToken.txt | tr -d '\n\r')
+```
+
+**Rules:**
+- **NEVER prompt the user for a GitHub token.** Always read from the file above.
+- If the file is missing or empty, fail immediately with:
+  `"ERROR: GitHub token file not found at D:\key\githubToken.txt — create the file with a valid GitHub PAT."`
+- This file is for **local agent/CLI use only**. GitHub Actions runners use repository secrets (`secrets.GITHUB_TOKEN`) — they cannot access local D: drive paths.
+- The token file must NOT be committed to any repository.
+
+**Scope separation:**
+
+| Context | Auth Source | Notes |
+|---|---|---|
+| Local agent (VS Code, CLI) | `D:\key\githubToken.txt` | Read at session start, no prompt |
+| GitHub Actions runners | `secrets.GITHUB_TOKEN` / `secrets.GH_APP_PRIVATE_KEY` | Configured in repo Settings → Secrets |
+| Docker Hub (Actions) | `secrets.DOCKER_USERNAME` + `secrets.DOCKER_TOKEN` | 3-retry logic in docker-build-push.yml |
+| VPS SSH (Actions) | `secrets.VPS_SSH_KEY` | Written to ephemeral runner |
 
 ---
 
@@ -150,10 +189,12 @@ git push origin main
 
 For feature branches (not direct pushes to `main`):
 
-**Option A: GitHub CLI** (requires authentication)
+**Option A: GitHub CLI** (preferred — fully automated)
 ```bash
-# Set token in environment (for single session)
-$env:GH_TOKEN='your-github-token'
+# Token is auto-loaded from D:\key\githubToken.txt (see "Local Credential Bootstrap" above)
+# If not yet loaded in this session:
+$env:GH_TOKEN = (Get-Content "D:\key\githubToken.txt" -Raw).Trim()
+
 gh pr create --title "fix(scope): description" --body-file PR_DESCRIPTION.md --base main --head feature-branch-name
 
 # Or use interactive mode
@@ -451,6 +492,62 @@ Repeat this step after every CI/CD pipeline execution until all of the following
 
 ---
 
+## Pre-Fix Documentation Gate
+
+**Purpose:** Before summarizing a problem or proposing any fix, the agent MUST check existing docs to confirm: (1) whether a solution already exists, and (2) whether the doc reflects current system state.
+
+**Mandatory steps (execute before ANY fix proposal):**
+
+1. **Search `docs/` for relevant documentation:**
+   - `docs/channels/line.md` — LINE channel config and known issues
+   - `docs/channels/troubleshooting.md` — Channel-level troubleshooting
+   - `docs/cli/approvals.md` — Exec approval system and allowlist helpers
+   - `docs/cli/config.md` — All config keys and their defaults
+   - `docs/gateway/` — Gateway internals and WS protocol
+   - `docs/help/` — General troubleshooting guides
+   - `docs/concepts/context.md` — Context window and token limits
+   - `docs/concepts/session.md` — Session lifecycle and timeout config
+   - `docs/debug/tiered-debug-sop.md` — Known Issues Pattern Database (§7)
+
+2. **Confirm explicitly (one of):**
+   - `"Existing solution found in [doc]: [summary]"` → use it, do not reinvent
+   - `"No existing solution found — proposing new approach"` → proceed with fix
+
+3. **Never propose a new approach without first ruling out an existing one.**
+
+4. **Cross-reference:** This gate is also required by `copilot.instructions.md` §9.1 (Pre-Fix Protocol).
+
+---
+
+## Production Resource Limits
+
+**VPS specification:** Hostinger KVM VPS — up to **4 vCPU / 16 GB RAM**.
+
+**Container resource allocation** (set in `docker/docker-compose.prod.yml`):
+
+| Resource | Limit | Reservation | Purpose |
+|----------|-------|-------------|---------|
+| CPU | 4 | 1.0 | Allow burst to full VPS capability |
+| Memory | 16G | 1G | Allow large context windows + embeddings |
+| PIDs | 200 | — | Prevent fork bombs |
+| tmpfs | 100M | — | Scratch space in read-only container |
+
+**When to scale:**
+- Monitor `docker stats openclaw-sgnl-openclaw-1` after deploy
+- If RSS stays above 12G (75%), consider reducing context window config
+- If OOM-killed (exit code 137), check `docker inspect` for memory stats
+
+**Verification (automated):**
+- Regression test checks `NanoCpus` = 4000000000 and `Memory` = 17179869184 bytes
+- Deploy script verifies limits after `docker compose up -d`
+
+- Added token auto-read from `D:\key\githubToken.txt` — no manual token input needed ✅
+- Added Pre-Fix Documentation Gate (mandatory doc search before any fix proposal) ✅
+- Added Production Resource Limits section (4 vCPU / 16 GB) with monitoring guidance ✅
+- Added autonomous end-to-end execution rule (no pause for documented procedures) ✅
+
+---
+
 ## Pre-Deploy Debug Gate
 
 **Purpose:** Prevent broken fixes from reaching production by enforcing the debug protocol before any merge or deploy.
@@ -635,6 +732,7 @@ Required for production:
 | 2026-02-28 | — | docs: add Pre-Deploy Debug Gate, Auto-Test Failure Protocol, Pre-Merge checklist | `docs` | ✅ Merged |
 | 2026-02-28 | `c5dd526` | R3 fix: GitHub Actions pipeline, native LINE handler, exec config, embeddings, 22-check automated tests | `v2026.2.28-r3fix` | ✅ Deployed |
 | 2026-02-28 | `da32e17` | docs: CI-CD workflow improvements from R3 deployment (PR creation options, completion verification) | `docs` | ✅ Merged |
+| 2026-03-01 | — | WS-2.4 CI/CD infra: token auto-read, autonomous no-prompt rules, pre-fix doc gate, resource scaling 4vCPU/16GB, deploy verification | `infra` | 🟡 In Progress |
 
 ---
 

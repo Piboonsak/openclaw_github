@@ -159,7 +159,7 @@ Use structured JSON logging. Log at stage boundaries, never log response bodies.
 2. **Declare explicitly:** `"I have reviewed [file list] and understand the current behavior."`
    A fix proposed without this declaration is invalid and must not be executed.
 3. **SOP Reference** — Read `docs/debug/tiered-debug-sop.md`:
-   - Check §7 (Known Issues Pattern Database) before running any diagnostics
+   - Check (Known Issues Pattern Database) before running any diagnostics
    - Follow the Tier-1 triage checklist (§2) before escalating
    - Produce a structured investigation log (§4 schema) for non-trivial issues
 4. **CI/CD Reference** — Read `docs/CI-CD-WORKFLOW.md` — branching, pipeline stages, deployment gates, rollback
@@ -169,6 +169,7 @@ Use structured JSON logging. Log at stage boundaries, never log response bodies.
 ### 9.2 Mandatory Log Investigation
 
 **Trigger this block automatically when ANY of the following are true:**
+
 - Fix attempt is Round 2 or beyond
 - Operating in Plan Mode
 - An automated test returns FAILED
@@ -197,7 +198,7 @@ echo "=== DISK ===" && df -h / | awk 'NR==2{print "Used: "$5}'
 4. PLAN A        → Primary fix with exact file/line scope.
 5. PLAN B        → Fallback if Plan A fails. Must be defined BEFORE coding.
 6. IMPLEMENT     → Code only the scoped change. No scope creep.
-7. TEST          → Run automated test (see §9.4).
+7. TEST          → Run automated test (see 9.4).
 8. VERIFY        → Confirm fix resolves the original log error.
 ```
 
@@ -212,7 +213,7 @@ Run test
     │
     ├─ PASS ──→ Commit + document
     │
-    └─ FAIL ──→ Immediately re-run Tier-0 log investigation (§9.2)
+    └─ FAIL ──→ Immediately re-run Tier-0 log investigation (see 9.2)
                     │
                     ├─ Root cause identified ──→ Fix → retest (max 3 loops)
                     │
@@ -233,13 +234,13 @@ Apply fix on the correct branch per `docs/CI-CD-WORKFLOW.md`. Verify fix passes 
 
 Answer all before implementing:
 
-| Question | Required Answer |
-|---|---|
-| What other components call this code path? | List them |
-| Does this affect session state? | Yes/No + impact |
-| Could this break on restart or redeploy? | Yes/No + mitigation |
-| What is the rollback path? | Define it |
-| What is Plan B if this fails? | Define it |
+| Question                                   | Required Answer     |
+| ------------------------------------------ | ------------------- |
+| What other components call this code path? | List them           |
+| Does this affect session state?            | Yes/No + impact     |
+| Could this break on restart or redeploy?   | Yes/No + mitigation |
+| What is the rollback path?                 | Define it           |
+| What is Plan B if this fails?              | Define it           |
 
 If any answer is "unknown" — stop and investigate before coding.
 
@@ -248,6 +249,7 @@ If any answer is "unknown" — stop and investigate before coding.
 ### 9.6 Repeat-Issue Prevention
 
 If the same issue appears more than once:
+
 1. Add a regression test to `/tests/` targeting the exact failure case.
 2. Add a log alert pattern to monitoring config.
 3. Document root cause in `docs/debug/tiered-debug-sop.md` under §7 (Known Issues DB).
@@ -262,6 +264,7 @@ If the same issue appears more than once:
 #### When this triggers
 
 Trigger this check during **Plan Mode** whenever the task involves any of:
+
 - Running or writing a GitHub Actions workflow (`.github/workflows/`)
 - Docker Hub push (`docker push`)
 - SSH into VPS (`ssh root@...`)

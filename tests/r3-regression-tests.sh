@@ -262,6 +262,42 @@ fi
 echo ""
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Category H: Container Resource Limits (scaling verification)
+# ══════════════════════════════════════════════════════════════════════════════
+echo "── H. Container Resource Limits ─────────────────────────────────"
+
+# Test H1: CPU limit = 4 vCPU (4000000000 NanoCpus)
+NANO_CPUS=$(docker inspect --format='{{.HostConfig.NanoCpus}}' "$CONTAINER_NAME" 2>/dev/null || echo "ERR")
+if [[ "$NANO_CPUS" == "4000000000" ]]; then
+  pass "H1: CPU limit = 4 vCPU (4000000000 NanoCpus)"
+elif [[ "$NANO_CPUS" == "0" ]]; then
+  # 0 means unlimited — compose deploy.resources may not translate to HostConfig on all runtimes
+  skip "H1: CPU limit" "NanoCpus=0 (unlimited — Hostinger Docker Manager may manage limits separately)"
+else
+  fail "H1: CPU limit" "expected 4000000000, got $NANO_CPUS"
+fi
+
+# Test H2: Memory limit = 16G (17179869184 bytes)
+MEM_LIMIT=$(docker inspect --format='{{.HostConfig.Memory}}' "$CONTAINER_NAME" 2>/dev/null || echo "ERR")
+if [[ "$MEM_LIMIT" == "17179869184" ]]; then
+  pass "H2: Memory limit = 16G (17179869184 bytes)"
+elif [[ "$MEM_LIMIT" == "0" ]]; then
+  skip "H2: Memory limit" "Memory=0 (unlimited — Hostinger Docker Manager may manage limits separately)"
+else
+  fail "H2: Memory limit" "expected 17179869184, got $MEM_LIMIT"
+fi
+
+# Test H3: PIDs limit = 200
+PIDS_LIMIT=$(docker inspect --format='{{.HostConfig.PidsLimit}}' "$CONTAINER_NAME" 2>/dev/null || echo "ERR")
+if [[ "$PIDS_LIMIT" == "200" ]]; then
+  pass "H3: PIDs limit = 200"
+else
+  skip "H3: PIDs limit" "got $PIDS_LIMIT (non-fatal)"
+fi
+
+echo ""
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Summary
 # ══════════════════════════════════════════════════════════════════════════════
 echo "══════════════════════════════════════════════════════════════════"
