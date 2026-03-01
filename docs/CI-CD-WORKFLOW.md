@@ -732,7 +732,8 @@ Required for production:
 | 2026-02-28 | — | docs: add Pre-Deploy Debug Gate, Auto-Test Failure Protocol, Pre-Merge checklist | `docs` | ✅ Merged |
 | 2026-02-28 | `c5dd526` | R3 fix: GitHub Actions pipeline, native LINE handler, exec config, embeddings, 22-check automated tests | `v2026.2.28-r3fix` | ✅ Deployed |
 | 2026-02-28 | `da32e17` | docs: CI-CD workflow improvements from R3 deployment (PR creation options, completion verification) | `docs` | ✅ Merged |
-| 2026-03-01 | — | WS-2.4 CI/CD infra: token auto-read, autonomous no-prompt rules, pre-fix doc gate, resource scaling 4vCPU/16GB, deploy verification | `infra` | 🟡 In Progress |
+| 2026-03-01 | `b141323` | WS-2.4 CI/CD: token auto-read, autonomous no-prompt rules, pre-fix doc gate, resource scaling 4vCPU/16GB | `infra` | ✅ Deployed |
+| 2026-03-01 | `3599bb7` | fix(test): WS-2.4 regression tests — query runtime config, fix safe-bins detection | `test` | ✅ Deployed & ✅ Tests PASS (7 passed, 0 failed, 3 skipped) |
 
 ---
 
