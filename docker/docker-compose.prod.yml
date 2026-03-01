@@ -82,20 +82,22 @@ services:
           size: 100M
           mode: 1777
     
-    # Resource limits (adjust based on VPS plan)
+    # Resource limits — match VPS ceiling (4 vCPU, 16 GB RAM)
+    # Monitor with: docker stats openclaw-sgnl-openclaw-1
+    # If OOM-killed (exit 137): reduce context window config, not these limits
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 2G
+          cpus: '4'
+          memory: 16G
         reservations:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '1.0'
+          memory: 1G
     
     # Alternative syntax for older Docker Compose versions:
-    # cpus: 2
-    # mem_limit: 2g
-    # mem_reservation: 512m
+    # cpus: 4
+    # mem_limit: 16g
+    # mem_reservation: 1g
     
     # Auto-restart on failure
     restart: unless-stopped
