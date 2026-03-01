@@ -117,6 +117,7 @@ jobs:
               -o StrictHostKeyChecking=no \
               tests/regression-tests.sh \
               tests/r3-regression-tests.sh \
+              tests/ws24-regression-tests.sh \
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/"
           echo "Test scripts uploaded to VPS /tmp/"
 
@@ -132,6 +133,12 @@ jobs:
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             'bash /tmp/r3-regression-tests.sh' | tee /tmp/r3-regression-tests-output.txt
+
+      - name: Run WS-2.4 regression tests (session + context + exec + resources)
+        run: |
+          ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            'bash /tmp/ws24-regression-tests.sh' | tee /tmp/ws24-regression-tests-output.txt
 
       # ── On failure: capture diagnostic logs ──────────────────────────────
       - name: Capture diagnostic logs on failure
@@ -163,6 +170,7 @@ jobs:
           path: |
             /tmp/regression-tests-output.txt
             /tmp/r3-regression-tests-output.txt
+            /tmp/ws24-regression-tests-output.txt
             /tmp/diagnostic-logs.txt
           retention-days: 30
 
