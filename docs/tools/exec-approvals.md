@@ -139,10 +139,15 @@ Denied flags by safe-bin profile:
 
 <!-- SAFE_BIN_DENIED_FLAGS:START -->
 
+- `curl`: `--config`, `--output`, `--upload-file`, `-K`, `-T`, `-o`
+- `date`: `--file`, `-f`
 - `grep`: `--dereference-recursive`, `--directories`, `--exclude-from`, `--file`, `--recursive`, `-R`, `-d`, `-f`, `-r`
+- `hostname`: `--boot-id`, `--set`, `-F`, `-b`
 - `jq`: `--argfile`, `--from-file`, `--library-path`, `--rawfile`, `--slurpfile`, `-L`, `-f`
 - `sort`: `--compress-program`, `--files0-from`, `--output`, `-o`
+- `tree`: `--fromfile`
 - `wc`: `--files0-from`
+- `wget`: `--config`, `--input-file`, `--output-document`, `-O`, `-i`
 <!-- SAFE_BIN_DENIED_FLAGS:END -->
 
 Safe bins also force argv tokens to be treated as **literal text** at execution time (no globbing
