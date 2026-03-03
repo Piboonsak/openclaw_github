@@ -89,13 +89,27 @@ docker exec "$CONTAINER_NAME" bash -c '
 echo "[2b/4] Post-deploy: Apply exec security config"
 # R3 fix: Ensure exec tool configuration matches production requirements
 # - security: allowlist (only safeBins commands auto-approved)
-# - askFallback: allowlist (LINE has no approval UI — must not be "deny")
+# - askFallback: allowlist (stored in exec-approvals.json defaults)
 # - host: gateway (no sandbox available on VPS)
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.security allowlist 2>/dev/null || true
-docker exec "$CONTAINER_NAME" openclaw config set tools.exec.askFallback allowlist 2>/dev/null || true
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.host gateway 2>/dev/null || true
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/null || true
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget"]' 2>/dev/null || true
+# askFallback is not a regular tools.exec config path. Persist it in exec-approvals defaults.
+docker exec "$CONTAINER_NAME" node -e '
+const fs = require("node:fs");
+const p = "/data/.openclaw/exec-approvals.json";
+let file = { version: 1, defaults: {}, agents: {} };
+try {
+  const raw = fs.readFileSync(p, "utf8");
+  const parsed = JSON.parse(raw);
+  if (parsed && typeof parsed === "object") file = parsed;
+} catch {}
+file.version = 1;
+file.defaults = { ...(file.defaults || {}), askFallback: "allowlist" };
+if (!file.agents || typeof file.agents !== "object") file.agents = {};
+fs.writeFileSync(p, JSON.stringify(file, null, 2) + "\n", { mode: 0o600 });
+' 2>/dev/null || true
 echo "  exec config applied ✔"
 
 echo "[2c/4] Post-deploy: Apply session + context config"

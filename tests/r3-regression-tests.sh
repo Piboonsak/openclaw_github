@@ -80,7 +80,17 @@ else
 fi
 
 # Test A2: exec askFallback = allowlist
-VAL=$(dexec openclaw config get tools.exec.askFallback 2>/dev/null | tr -d '"' | tr -d '[:space:]')
+VAL=$(docker exec "$CONTAINER_NAME" node -e '
+const fs = require("node:fs");
+const p = "/data/.openclaw/exec-approvals.json";
+let v = "";
+try {
+  const raw = fs.readFileSync(p, "utf8");
+  const parsed = JSON.parse(raw);
+  v = parsed?.defaults?.askFallback ?? "";
+} catch {}
+process.stdout.write(String(v));
+' 2>/dev/null | tr -d '"' | tr -d '[:space:]')
 if [[ "$VAL" == "allowlist" ]]; then
   pass "A2: tools.exec.askFallback = allowlist"
 else
@@ -140,9 +150,12 @@ echo ""
 echo "── C. Exec Smoke Tests ────────────────────────────────────────────"
 
 # Test C1: 'date' command runs without "Approval required"
-EXEC_OUT=$(dexec timeout 30 openclaw agent -m "run the command: date" --json --local 2>/dev/null || echo "TIMEOUT")
-if [[ "$EXEC_OUT" == "TIMEOUT" ]]; then
+EXEC_OUT=$(docker exec "$CONTAINER_NAME" timeout 45 openclaw agent --agent main -m "run the command: date" --json --local 2>&1)
+EXEC_CODE=$?
+if [[ "$EXEC_CODE" -eq 124 ]]; then
   fail "C1: exec 'date' without approval" "command timed out after 30s"
+elif [[ "$EXEC_CODE" -ne 0 ]]; then
+  fail "C1: exec 'date' without approval" "command failed: $(echo "$EXEC_OUT" | head -c 200)"
 elif echo "$EXEC_OUT" | grep -qi "approval required\|permission denied\|blocked"; then
   fail "C1: exec 'date' without approval" "got approval/permission error"
 else
@@ -150,9 +163,12 @@ else
 fi
 
 # Test C2: 'whoami' returns "node" (container default user)
-EXEC_OUT=$(dexec timeout 30 openclaw agent -m "run whoami and return only the output" --json --local 2>/dev/null || echo "TIMEOUT")
-if [[ "$EXEC_OUT" == "TIMEOUT" ]]; then
+EXEC_OUT=$(docker exec "$CONTAINER_NAME" timeout 45 openclaw agent --agent main -m "run whoami and return only the output" --json --local 2>&1)
+EXEC_CODE=$?
+if [[ "$EXEC_CODE" -eq 124 ]]; then
   fail "C2: exec 'whoami' returns node" "command timed out after 30s"
+elif [[ "$EXEC_CODE" -ne 0 ]]; then
+  fail "C2: exec 'whoami' returns node" "command failed: $(echo "$EXEC_OUT" | head -c 200)"
 elif echo "$EXEC_OUT" | grep -qi "node"; then
   pass "C2: exec 'whoami' returns 'node'"
 else

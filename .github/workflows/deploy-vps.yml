@@ -145,18 +145,21 @@ jobs:
       # ── Run regression tests on VPS ──────────────────────────────────────
       - name: Run regression tests (infrastructure)
         run: |
+          set -o pipefail
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             'bash /tmp/regression-tests.sh' | tee /tmp/regression-tests-output.txt
 
       - name: Run R3 regression tests (LINE + exec + config)
         run: |
+          set -o pipefail
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             'bash /tmp/r3-regression-tests.sh' | tee /tmp/r3-regression-tests-output.txt
 
       - name: Run WS-2.4 regression tests (session + context + exec + resources)
         run: |
+          set -o pipefail
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             'bash /tmp/ws24-regression-tests.sh' | tee /tmp/ws24-regression-tests-output.txt
