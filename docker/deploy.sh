@@ -106,6 +106,11 @@ docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.bootstrapTotal
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.contextTokens 1000000 2>/dev/null || true
 echo "  session + context config applied ✔"
 
+echo "[2c2/4] Post-deploy: Apply model config"
+# Issue #33: Claude Sonnet 4.6 as primary model for improved reasoning + cost efficiency
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.model.primary "anthropic/claude-sonnet-4-5" 2>/dev/null || true
+echo "  model config applied ✔"
+
 echo "[2d/4] Post-deploy: Apply embeddings config"
 # R3 fix: Enable memory search via OpenAI embeddings (requires OPENAI_API_KEY in container env)
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.provider openai 2>/dev/null || true
@@ -113,22 +118,10 @@ docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.s
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.fallback none 2>/dev/null || true
 echo "  embeddings config applied ✔"
 
-echo "[2e/4] Post-deploy: Apply Nginx config (native LINE handler)"
-# R3 fix: Route /line/ to native handler (port 18789) instead of Flask bridge (5100)
-# The updated nginx config is committed in docker/nginx/openclaw.conf
-if [ -f "$APP_DIR/docker/nginx/openclaw.conf" ]; then
-  cp "$APP_DIR/docker/nginx/openclaw.conf" /etc/nginx/sites-available/openclaw
-  ln -sf /etc/nginx/sites-available/openclaw /etc/nginx/sites-enabled/openclaw
-  if nginx -t 2>/dev/null; then
-    nginx -s reload
-    echo "  Nginx config updated and reloaded ✔"
-  else
-    echo "  WARNING: Nginx config test failed — keeping old config"
-    nginx -t
-  fi
-else
-  echo "  WARNING: Nginx config not found at $APP_DIR/docker/nginx/openclaw.conf"
-fi
+echo "[2e/4] Post-deploy: Nginx config"
+# Nginx config is now applied by deploy-vps.yml workflow (before deploy.sh runs).
+# The workflow SCPs docker/nginx/openclaw.conf to VPS and applies it with rollback safety.
+echo "  Nginx config managed by GitHub Actions workflow ✔"
 
 echo "[2f/4] Post-deploy: Update Flask bridge timeout"
 # Increase gunicorn timeout from 60s to 300s for the fallback Flask bridge

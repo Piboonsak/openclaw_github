@@ -61,17 +61,38 @@ jobs:
           # Pre-approve host key to avoid interactive prompt
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      # ── Copy the production nginx config to VPS (idempotent) ──────────────
-      - name: Sync Nginx config to VPS
+      # ── Copy the production nginx config to VPS and apply if valid ───────────
+      - name: Sync and apply Nginx config to VPS
         run: |
           scp -i ~/.ssh/id_ed25519_hostinger \
               -o StrictHostKeyChecking=no \
               docker/nginx/openclaw.conf \
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/openclaw-nginx.conf"
-          # Apply only if it differs from the live config (avoids disrupting Certbot-managed sections)
+          # Test and apply the new config (rollback to existing if nginx -t fails)
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            'cp /tmp/openclaw-nginx.conf /etc/nginx/sites-available/openclaw.new && echo "Nginx config staged at /etc/nginx/sites-available/openclaw.new (manual swap if needed)"'
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s << 'NGINX_EOF'
+          set -euo pipefail
+          # Backup current config
+          cp /etc/nginx/sites-available/openclaw /etc/nginx/sites-available/openclaw.bak.$(date +%Y%m%d%H%M%S) 2>/dev/null || true
+          # Apply new config
+          cp /tmp/openclaw-nginx.conf /etc/nginx/sites-available/openclaw
+          ln -sf /etc/nginx/sites-available/openclaw /etc/nginx/sites-enabled/openclaw
+          # Test and reload
+          if nginx -t 2>/dev/null; then
+            nginx -s reload
+            echo "✓ Nginx config applied and reloaded successfully"
+          else
+            echo "ERROR: Nginx config test failed — rolling back"
+            # Restore backup
+            LATEST_BAK=$(ls -t /etc/nginx/sites-available/openclaw.bak.* 2>/dev/null | head -1)
+            if [ -n "$LATEST_BAK" ]; then
+              cp "$LATEST_BAK" /etc/nginx/sites-available/openclaw
+              nginx -s reload
+              echo "Rolled back to previous config"
+            fi
+            exit 1
+          fi
+          NGINX_EOF
 
       # NOTE: The VPS docker-compose lives at /docker/openclaw-sgnl/docker-compose.yml
       # (managed by Hostinger Docker Manager). deploy.sh updates the image line in-place

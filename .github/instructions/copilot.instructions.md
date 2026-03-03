@@ -7,6 +7,20 @@
 
 ---
 
+## 0. Connection & Access
+
+**⚠️ Before SSH/Docker/GitHub/Docker Hub connections, check:** `D:\01_gitrepo\Openclaw\docs\connection.md`
+
+```bash
+# SSH: ssh -i "C:\Users\HP Probook 440 G8\.ssh\id_ed25519_hostinger" root@76.13.210.250
+# Container: openclaw-sgnl-openclaw-1
+# Config: /data/.openclaw/openclaw.json
+# GitHub: gh auth status, repos: Piboonsak/Openclaw, openclaw/openclaw
+# Docker Hub: piboonsak/openclaw
+```
+
+---
+
 ## 1. Architecture Mental Model
 
 ```

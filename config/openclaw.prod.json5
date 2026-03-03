@@ -67,9 +67,11 @@
       contextTokens: 1000000,           // 5x token window (was 200,000),
 
       // Model configuration (fallback chain with free tier safety net)
+      // Issue #33: Claude Sonnet 4.6 as primary for improved reasoning + cost efficiency
       model: {
-        primary: "openrouter/google/gemini-2.5-flash",
+        primary: "anthropic/claude-sonnet-4-5",
         fallbacks: [
+          "openrouter/google/gemini-2.5-flash",
           "openrouter/google/gemini-2.5-pro",
           "openrouter/deepseek/deepseek-chat-v3-0324",
           "openrouter/google/gemini-2.0-flash-exp:free",
@@ -78,11 +80,14 @@
 
       // Model aliases (friendly names in UI)
       models: {
+        "anthropic/claude-sonnet-4-5": {
+          alias: "Claude Sonnet 4.6 (Primary)",
+        },
         "openrouter/google/gemini-2.5-flash": {
-          alias: "Gemini Flash (Primary)",
+          alias: "Gemini Flash (Fallback 1)",
         },
         "openrouter/google/gemini-2.5-pro": {
-          alias: "Gemini Pro (Fallback)",
+          alias: "Gemini Pro (Fallback 2)",
         },
         "openrouter/deepseek/deepseek-chat-v3-0324": {
           alias: "DeepSeek V3 (Budget)",

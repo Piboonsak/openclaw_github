@@ -86,6 +86,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+          # Issue #39: Include Chromium for browser automation tools
+          build-args: |
+            OPENCLAW_INSTALL_BROWSER=1
           # Optional: Enable provenance/SBOM for supply chain security
           # provenance: true
           # sbom: true
