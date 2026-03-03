@@ -51,17 +51,8 @@ RUN apt-get update && \
 # Optionally install Chromium and Xvfb for browser automation.
 # Build with: docker build --build-arg OPENCLAW_INSTALL_BROWSER=1 -f docker/Dockerfile.prod ...
 # Adds ~300MB but eliminates the 60-90s Playwright install on every container start.
+# NOTE: Browser install is deferred until after node_modules COPY (playwright-core needed).
 ARG OPENCLAW_INSTALL_BROWSER=""
-RUN if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb && \
-    mkdir -p /home/node/.cache/ms-playwright && \
-    PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
-    node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
-    chown -R node:node /home/node/.cache/ms-playwright && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
-    fi
 
 # Note: node:22-bookworm-slim already ships a 'node' user at UID/GID 1000.
 # No need to create a separate user; we reuse 'node' throughout.
@@ -79,6 +70,18 @@ COPY --from=builder --chown=node:node /app/skills ./skills
 COPY --from=builder --chown=node:node /app/extensions ./extensions
 # Workspace templates required by src/agents/workspace.ts at runtime
 COPY --from=builder --chown=node:node /app/docs/reference/templates ./docs/reference/templates
+
+# Install Chromium AFTER node_modules are copied (playwright-core CLI needed)
+RUN if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb && \
+    mkdir -p /home/node/.cache/ms-playwright && \
+    PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
+    node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
+    chown -R node:node /home/node/.cache/ms-playwright && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
+    fi
 
 # Create directories for runtime data with correct permissions.
 # HOME is set to /data so openclaw config persists in the ./data volume mount.
