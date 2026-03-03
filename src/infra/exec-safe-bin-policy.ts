@@ -28,6 +28,11 @@ export type SafeBinProfile = {
   maxPositional?: number;
   allowedValueFlags?: ReadonlySet<string>;
   deniedFlags?: ReadonlySet<string>;
+  /** When true, positionals may contain path-like tokens (e.g. /data/file.json). */
+  allowPathPositionals?: boolean;
+  /** When true, bracket characters [] in positionals are not treated as glob tokens.
+   *  Useful for tools like jq where [] is array-index syntax, not shell globbing. */
+  allowBracketPositionals?: boolean;
 };
 
 export type SafeBinProfileFixture = {
@@ -35,6 +40,11 @@ export type SafeBinProfileFixture = {
   maxPositional?: number;
   allowedValueFlags?: readonly string[];
   deniedFlags?: readonly string[];
+  /** When true, positionals may contain path-like tokens (e.g. /data/file.json). */
+  allowPathPositionals?: boolean;
+  /** When true, bracket characters [] in positionals are not treated as glob tokens.
+   *  Useful for tools like jq where [] is array-index syntax, not shell globbing. */
+  allowBracketPositionals?: boolean;
 };
 
 export type SafeBinProfileFixtures = Readonly<Record<string, SafeBinProfileFixture>>;
@@ -54,6 +64,8 @@ function compileSafeBinProfile(fixture: SafeBinProfileFixture): SafeBinProfile {
     maxPositional: fixture.maxPositional,
     allowedValueFlags: toFlagSet(fixture.allowedValueFlags),
     deniedFlags: toFlagSet(fixture.deniedFlags),
+    allowPathPositionals: fixture.allowPathPositionals,
+    allowBracketPositionals: fixture.allowBracketPositionals,
   };
 }
 
@@ -67,7 +79,9 @@ function compileSafeBinProfiles(
 
 export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = {
   jq: {
-    maxPositional: 1,
+    maxPositional: 2,
+    allowPathPositionals: true,
+    allowBracketPositionals: true,
     allowedValueFlags: ["--arg", "--argjson", "--argstr"],
     deniedFlags: [
       "--argfile",
@@ -315,6 +329,8 @@ function normalizeSafeBinProfileFixture(fixture: SafeBinProfileFixture): SafeBin
     maxPositional,
     allowedValueFlags: normalizeFixtureFlags(fixture.allowedValueFlags),
     deniedFlags: normalizeFixtureFlags(fixture.deniedFlags),
+    allowPathPositionals: fixture.allowPathPositionals,
+    allowBracketPositionals: fixture.allowBracketPositionals,
   };
 }
 
@@ -428,8 +444,27 @@ function consumeShortOptionClusterToken(
   return hasGlobToken(raw) ? -1 : index + 1;
 }
 
-function consumePositionalToken(token: string, positional: string[]): boolean {
-  if (!isSafeLiteralToken(token)) {
+function isAcceptablePositional(value: string, profile: SafeBinProfile): boolean {
+  if (!value || value === "-") {
+    return true;
+  }
+  // Check glob characters — if profile allows brackets, only reject * and ?
+  if (profile.allowBracketPositionals) {
+    if (/[*?]/.test(value)) {
+      return false;
+    }
+  } else if (hasGlobToken(value)) {
+    return false;
+  }
+  // Check path-like tokens — allowed when profile explicitly permits
+  if (profile.allowPathPositionals) {
+    return true;
+  }
+  return !isPathLikeToken(value);
+}
+
+function consumePositionalToken(token: string, positional: string[], profile: SafeBinProfile): boolean {
+  if (!isAcceptablePositional(token, profile)) {
     return false;
   }
   positional.push(token);
@@ -464,7 +499,7 @@ export function validateSafeBinArgv(args: string[], profile: SafeBinProfile): bo
         if (!rest || rest === "-") {
           continue;
         }
-        if (!consumePositionalToken(rest, positional)) {
+        if (!consumePositionalToken(rest, positional, profile)) {
           return false;
         }
       }
@@ -472,7 +507,7 @@ export function validateSafeBinArgv(args: string[], profile: SafeBinProfile): bo
     }
 
     if (token.kind === "positional") {
-      if (!consumePositionalToken(token.raw, positional)) {
+      if (!consumePositionalToken(token.raw, positional, profile)) {
         return false;
       }
       i += 1;

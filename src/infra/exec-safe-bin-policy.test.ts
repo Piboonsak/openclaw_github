@@ -56,6 +56,49 @@ describe("exec safe bin policy sort", () => {
   });
 });
 
+describe("exec safe bin policy jq", () => {
+  const jqProfile = SAFE_BIN_PROFILES.jq;
+
+  it("allows jq filter-only (stdin mode)", () => {
+    expect(validateSafeBinArgv(["."], jqProfile)).toBe(true);
+    expect(validateSafeBinArgv(["-r", ".name"], jqProfile)).toBe(true);
+  });
+
+  it("allows jq filter with array indexing brackets", () => {
+    expect(validateSafeBinArgv([".agents.list[0].model.primary"], jqProfile)).toBe(true);
+    expect(validateSafeBinArgv(["-r", ".items[0].name"], jqProfile)).toBe(true);
+  });
+
+  it("allows jq filter with file path argument", () => {
+    expect(
+      validateSafeBinArgv(
+        ["-r", ".agents.list[0].model.primary", "/data/.openclaw/openclaw.json"],
+        jqProfile,
+      ),
+    ).toBe(true);
+  });
+
+  it("allows jq with --arg value flags", () => {
+    expect(validateSafeBinArgv(["--arg", "key", "value", "."], jqProfile)).toBe(true);
+    expect(validateSafeBinArgv(["--argjson", "n", "42", "."], jqProfile)).toBe(true);
+  });
+
+  it("blocks jq with denied flags", () => {
+    expect(validateSafeBinArgv(["-f", "script.jq"], jqProfile)).toBe(false);
+    expect(validateSafeBinArgv(["--from-file", "script.jq"], jqProfile)).toBe(false);
+    expect(validateSafeBinArgv(["-L", "/some/lib"], jqProfile)).toBe(false);
+  });
+
+  it("blocks jq with more than 2 positionals", () => {
+    expect(validateSafeBinArgv([".", "file1.json", "file2.json"], jqProfile)).toBe(false);
+  });
+
+  it("blocks jq with shell glob wildcards in positionals", () => {
+    expect(validateSafeBinArgv([".name", "/data/*.json"], jqProfile)).toBe(false);
+    expect(validateSafeBinArgv([".name", "/data/config?.json"], jqProfile)).toBe(false);
+  });
+});
+
 describe("exec safe bin policy denied-flag matrix", () => {
   for (const [binName, fixture] of Object.entries(SAFE_BIN_PROFILE_FIXTURES)) {
     const profile = SAFE_BIN_PROFILES[binName];
