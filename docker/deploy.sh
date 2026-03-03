@@ -98,12 +98,6 @@ docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget"]' 2>/dev/null || true
 echo "  exec config applied ✔"
 
-echo "[2b2/4] Post-deploy: Apply LINE channel dmPolicy"
-# Issue #32: Set LINE channel dmPolicy to "open" so any LINE OA user can message the bot
-# without requiring individual pairing approval. This is appropriate for a public-facing LINE OA.
-docker exec "$CONTAINER_NAME" openclaw config set channels.line.dmPolicy open 2>/dev/null || true
-echo "  LINE dmPolicy=open applied ✔"
-
 echo "[2c/4] Post-deploy: Apply session + context config"
 # WS-2.4: Session idle timeout (30 min) and 5x context expansion
 docker exec "$CONTAINER_NAME" openclaw config set session.reset.idleMinutes 30 2>/dev/null || true
@@ -123,6 +117,12 @@ docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.p
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.sources '["memory"]' 2>/dev/null || true
 docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.memorySearch.fallback none 2>/dev/null || true
 echo "  embeddings config applied ✔"
+
+echo "[2d2/4] Post-deploy: Apply channel access policy"
+# KI-013 fix: LINE OA is public-facing — dmPolicy must be "open" so all users get AI responses.
+# "pairing" requires manual approval per user, which blocks all new LINE OA conversations.
+docker exec "$CONTAINER_NAME" openclaw config set channels.line.dmPolicy open 2>/dev/null || true
+echo "  channel access policy applied ✔"
 
 echo "[2e/4] Post-deploy: Nginx config"
 # Nginx config is now applied by deploy-vps.yml workflow (before deploy.sh runs).

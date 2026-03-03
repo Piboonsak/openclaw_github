@@ -243,13 +243,14 @@
       // channelAccessToken: "${LINE_CHANNEL_ACCESS_TOKEN}",  // From env var
       // channelSecret: "${LINE_CHANNEL_SECRET}",  // From env var
 
-      // DM policy for LINE channel
-      // "open" = any LINE user can message the bot (appropriate for public LINE OA)
-      // "pairing" = each user must be individually approved via pairing code
-      // Issue #32: Changed from "pairing" to "open" for LINE OA public access
+      // DM policy for LINE channel:
+      //   "pairing" = users must be explicitly approved (safe default for private bots)
+      //   "allowlist" = only pre-approved user IDs in allowFrom[]
+      //   "open" = anyone can message (required for public-facing LINE OA)
+      // KI-013: If LINE OA is public-facing, use "open". "pairing" blocks ALL new users.
       dmPolicy: "open",
 
-      // Allowlist (LINE user IDs that can interact, only used with dmPolicy: "allowlist")
+      // Allowlist (LINE user IDs that can interact)
       allowFrom: [
         // "U1234567890abcdef1234567890abcdef",  // Add your LINE user ID
       ],
