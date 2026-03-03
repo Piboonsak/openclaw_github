@@ -98,6 +98,12 @@ docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget"]' 2>/dev/null || true
 echo "  exec config applied ✔"
 
+echo "[2b2/4] Post-deploy: Apply LINE channel dmPolicy"
+# Issue #32: Set LINE channel dmPolicy to "open" so any LINE OA user can message the bot
+# without requiring individual pairing approval. This is appropriate for a public-facing LINE OA.
+docker exec "$CONTAINER_NAME" openclaw config set channels.line.dmPolicy open 2>/dev/null || true
+echo "  LINE dmPolicy=open applied ✔"
+
 echo "[2c/4] Post-deploy: Apply session + context config"
 # WS-2.4: Session idle timeout (30 min) and 5x context expansion
 docker exec "$CONTAINER_NAME" openclaw config set session.reset.idleMinutes 30 2>/dev/null || true
