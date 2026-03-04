@@ -155,9 +155,13 @@ export async function monitorLineProvider(
   // sends confirm templates to LINE users, and resolves approvals
   // via gateway RPC to break the infinite approval loop (issue #55).
   const execApprovalHandler = new LineExecApprovalHandler({ config });
-  void execApprovalHandler.start().catch((err) => {
+  try {
+    await execApprovalHandler.start();
+  } catch (err) {
     runtime.error?.(danger(`line: exec approval handler failed to start: ${String(err)}`));
-  });
+    // Continue with degraded functionality (approval handler unavailable).
+    // LINE users will still receive text-based fallback approvals.
+  }
 
   // Create the bot
   const bot = createLineBot({
