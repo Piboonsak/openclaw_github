@@ -29,6 +29,7 @@ import {
   type LineInboundContext,
 } from "./bot-message-context.js";
 import { downloadLineMedia } from "./download.js";
+import { parseExecApprovalPostback, type LineExecApprovalHandler } from "./exec-approvals.js";
 import { pushMessageLine, replyMessageLine } from "./send.js";
 import type { LineGroupConfig, ResolvedLineAccount } from "./types.js";
 
@@ -43,6 +44,8 @@ export interface LineHandlerContext {
   runtime: RuntimeEnv;
   mediaMaxBytes: number;
   processMessage: (ctx: LineInboundContext) => Promise<void>;
+  /** LINE exec approval handler for resolving approval postbacks. */
+  execApprovalHandler?: LineExecApprovalHandler;
 }
 
 function resolveLineGroupConfig(params: {
@@ -292,6 +295,32 @@ async function handlePostbackEvent(
 
   if (!(await shouldProcessLineEvent(event, context))) {
     return;
+  }
+
+  // Intercept exec approval postbacks before they reach the agent runtime.
+  // This prevents creating a new agent turn (new run_id) which causes the
+  // infinite approval loop on LINE OA stateless runtime.
+  const approvalData = parseExecApprovalPostback(data);
+  if (approvalData && context.execApprovalHandler) {
+    logVerbose(`line: exec approval postback: ${approvalData.decision} id=${approvalData.approvalId}`);
+    const resolved = await context.execApprovalHandler.resolveApproval(
+      approvalData.approvalId,
+      approvalData.decision,
+    );
+    if (!resolved) {
+      // Approval expired or already resolved — notify user
+      const userId = event.source.type === "user" ? event.source.userId : undefined;
+      if (userId) {
+        try {
+          await pushMessageLine(`line:${userId}`, "⏱️ Approval expired or already resolved.", {
+            accountId: context.account.accountId,
+          });
+        } catch {
+          // Best-effort notification
+        }
+      }
+    }
+    return; // Do NOT pass to processMessage — prevents new agent turn
   }
 
   const postbackContext = await buildLinePostbackContext({

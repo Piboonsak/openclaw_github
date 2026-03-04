@@ -24,6 +24,7 @@ import {
   createImageMessage,
   createLocationMessage,
 } from "./send.js";
+import { LineExecApprovalHandler } from "./exec-approvals.js";
 import { buildTemplateMessageFromPayload } from "./template-messages.js";
 import type { LineChannelData, ResolvedLineAccount } from "./types.js";
 import { createLineNodeWebhookHandler } from "./webhook-node.js";
@@ -149,6 +150,15 @@ export async function monitorLineProvider(
     },
   });
 
+  // Create exec approval handler for LINE confirm template UI.
+  // This mirrors the Discord pattern: subscribes to gateway events,
+  // sends confirm templates to LINE users, and resolves approvals
+  // via gateway RPC to break the infinite approval loop (issue #55).
+  const execApprovalHandler = new LineExecApprovalHandler({ config });
+  void execApprovalHandler.start().catch((err) => {
+    runtime.error?.(danger(`line: exec approval handler failed to start: ${String(err)}`));
+  });
+
   // Create the bot
   const bot = createLineBot({
     channelAccessToken: token,
@@ -156,6 +166,7 @@ export async function monitorLineProvider(
     accountId,
     runtime,
     config,
+    execApprovalHandler,
     onMessage: async (ctx) => {
       if (!ctx) {
         return;
@@ -299,6 +310,7 @@ export async function monitorLineProvider(
   const stopHandler = () => {
     logVerbose(`line: stopping provider for account ${resolvedAccountId}`);
     unregisterHttp();
+    execApprovalHandler.stop();
     recordChannelRuntimeState({
       channel: "line",
       accountId: resolvedAccountId,

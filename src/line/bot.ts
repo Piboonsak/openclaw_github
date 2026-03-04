@@ -7,6 +7,7 @@ import type { RuntimeEnv } from "../runtime.js";
 import { resolveLineAccount } from "./accounts.js";
 import { handleLineWebhookEvents } from "./bot-handlers.js";
 import type { LineInboundContext } from "./bot-message-context.js";
+import type { LineExecApprovalHandler } from "./exec-approvals.js";
 import type { ResolvedLineAccount } from "./types.js";
 import { startLineWebhook } from "./webhook.js";
 
@@ -18,6 +19,8 @@ export interface LineBotOptions {
   config?: OpenClawConfig;
   mediaMaxMb?: number;
   onMessage?: (ctx: LineInboundContext) => Promise<void>;
+  /** Optional exec approval handler for resolving approval postbacks. */
+  execApprovalHandler?: LineExecApprovalHandler;
 }
 
 export interface LineBot {
@@ -59,6 +62,7 @@ export function createLineBot(opts: LineBotOptions): LineBot {
       runtime,
       mediaMaxBytes,
       processMessage,
+      execApprovalHandler: opts.execApprovalHandler,
     });
   };
 

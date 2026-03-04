@@ -98,11 +98,9 @@ function buildTargetKey(target: ExecApprovalForwardTarget): string {
   return [channel, target.to, accountId, threadId].join(":");
 }
 
-// Discord has component-based exec approvals; skip the text fallback there.
-function shouldSkipDiscordForwarding(target: ExecApprovalForwardTarget): boolean {
-  const channel = normalizeMessageChannel(target.channel) ?? target.channel;
-  return channel === "discord";
-}
+// Channels with rich (component-based) exec approval handlers skip text fallback.
+// Imported from shared utility for consistency.
+import { shouldSkipRichChannelForwarding } from "./exec-approval-utils.js";
 
 function formatApprovalCommand(command: string): { inline: boolean; text: string } {
   if (!command.includes("\n") && !command.includes("`")) {
@@ -271,7 +269,7 @@ export function createExecApprovalForwarder(
       }
     }
 
-    const filteredTargets = targets.filter((target) => !shouldSkipDiscordForwarding(target));
+    const filteredTargets = targets.filter((target) => !shouldSkipRichChannelForwarding(target));
 
     if (filteredTargets.length === 0) {
       return;
