@@ -78,6 +78,8 @@ export class LineExecApprovalHandler {
   private gatewayClient: GatewayClient | null = null;
   private opts: LineExecApprovalHandlerOpts;
   private started = false;
+  /** Cache original requests so handleApprovalResolved can look up delivery target. */
+  private requestCache = new Map<string, ExecApprovalRequest>();
 
   constructor(opts: LineExecApprovalHandlerOpts) {
     this.opts = opts;
@@ -123,6 +125,7 @@ export class LineExecApprovalHandler {
     this.started = false;
     this.gatewayClient?.stop();
     this.gatewayClient = null;
+    this.requestCache.clear();
     log.debug("stopped");
   }
 
@@ -175,6 +178,9 @@ export class LineExecApprovalHandler {
       return; // Not a LINE session — ignore (Discord/other handlers will pick it up)
     }
 
+    // Cache the original request so handleApprovalResolved can look up the target
+    this.requestCache.set(request.id, request);
+
     log.debug(`sending approval template for ${request.id} to ${target.to}`);
 
     const templateText = buildApprovalTemplateText(request, Date.now());
@@ -204,8 +210,15 @@ export class LineExecApprovalHandler {
   }
 
   private async handleApprovalResolved(resolved: ExecApprovalResolved): Promise<void> {
+    const request = this.requestCache.get(resolved.id);
+    this.requestCache.delete(resolved.id);
+    if (!request) {
+      log.debug(`no cached request for resolved ${resolved.id} — skipping`);
+      return;
+    }
+
     const cfg = this.opts.getConfig?.() ?? this.opts.config;
-    const target = resolveApprovalTarget({ cfg, request: resolved as unknown as ExecApprovalRequest });
+    const target = resolveApprovalTarget({ cfg, request });
     if (!target) {
       return;
     }
