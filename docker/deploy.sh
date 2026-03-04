@@ -91,8 +91,10 @@ echo "[2b/4] Post-deploy: Apply exec security config"
 # - security: allowlist (only safeBins commands auto-approved)
 # - askFallback: allowlist (stored in exec-approvals.json defaults)
 # - host: gateway (no sandbox available on VPS)
-docker exec "$CONTAINER_NAME" openclaw config set tools.exec.security allowlist 2>/dev/null || true
-docker exec "$CONTAINER_NAME" openclaw config set tools.exec.host gateway 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.security allowlist
+docker exec "$CONTAINER_NAME" openclaw config get tools.exec.security | grep -qx "allowlist"
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.host gateway
+docker exec "$CONTAINER_NAME" openclaw config get tools.exec.host | grep -qx "gateway"
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/null || true
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget"]' 2>/dev/null || true
 # askFallback is not a regular tools.exec config path. Persist it in exec-approvals defaults.
