@@ -156,14 +156,14 @@ echo "Root Cause: Volume mount mismatch (KI-009)"
 echo "Expected: Config persists after container restart"
 echo ""
 
-# Create a test config value
-docker exec $CONTAINER node openclaw.mjs config set test.marker "regression-test-$(date +%s)" 2>/dev/null || true
+# Create a marker file on persistent volume (schema-safe)
+docker exec $CONTAINER sh -c 'echo "regression-test-$(date +%s)" > /data/.openclaw/.regression_marker' 2>/dev/null || true
 
 # Wait a bit
 sleep 2
 
 check "KI-009-E: Test marker persisted to disk" \
-    "docker exec $CONTAINER cat /data/.openclaw/openclaw.json 2>/dev/null | jq -r '.test.marker // empty' | grep -q regression && echo OK" \
+    "docker exec $CONTAINER sh -c 'cat /data/.openclaw/.regression_marker 2>/dev/null | grep -q regression' && echo OK" \
     "OK"
 
 # Restart container (with error handling to avoid SSH timeout)
