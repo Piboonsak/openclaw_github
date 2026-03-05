@@ -67,7 +67,7 @@ echo "Expected: session_status() returns valid session info"
 echo ""
 
 check "KI-009-A: Session store mounted to correct path" \
-    "docker inspect $CONTAINER --format='{{range .Mounts}}{{if eq .Destination \"/data/.openclaw\"}}OK{{end}}{{end}}'" \
+    "docker inspect $CONTAINER --format=\"{{range .Mounts}}{{if eq .Destination \\\"/data/.openclaw\\\"}}OK{{end}}{{end}}\" || echo TEMPLATE_ERROR" \
     "OK"
 
 check "KI-009-B: Config file exists on persistent volume" \
