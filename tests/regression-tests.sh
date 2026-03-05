@@ -221,8 +221,8 @@ warn "KI-009: Deferred to future workstream (GitHub issue TBD)"
 echo -e "\n${YELLOW}[Gateway Health]${NC}\n"
 
 check "Gateway health check port 18789" \
-    "docker exec $CONTAINER curl -s http://localhost:18789/health || echo TIMEOUT" \
-    "200\|OK\|healthy"
+    "docker exec $CONTAINER curl -s -o /dev/null -w '%{http_code}' http://localhost:18789/health || echo TIMEOUT" \
+    "200"
 
 check "Gateway status check (no startup errors)" \
     "docker logs --since=5m $CONTAINER 2>&1 | grep -c 'Error\|FATAL\|panic' || echo 0" \
