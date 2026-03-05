@@ -22,12 +22,12 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 # Helper functions
 pass() {
     echo -e "${GREEN}✓ PASS${NC}: $1"
-    ((PASSED++))
+    ((++PASSED))  # pre-increment: returns new value (safe with set -e)
 }
 
 fail() {
     echo -e "${RED}✗ FAIL${NC}: $1"
-    ((FAILED++))
+    ((++FAILED))  # pre-increment: returns new value (safe with set -e)
 }
 
 warn() {
