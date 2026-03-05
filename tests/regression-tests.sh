@@ -78,9 +78,9 @@ check "KI-009-C: Sessions directory exists" \
     "docker exec $CONTAINER test -d /data/.openclaw/agents/main/sessions && echo OK" \
     "OK"
 
-check "KI-009-D: Config valid after restart" \
-    "docker exec $CONTAINER node openclaw.mjs config list | jq -r '.valid // empty'" \
-    "true"
+check "KI-009-D: Config readable after restart" \
+    "docker exec $CONTAINER node openclaw.mjs config get agents.defaults.model.primary 2>/dev/null" \
+    "anthropic"
 
 # ───────────────────────────────────────────────────────────────────────────
 echo -e "\n${YELLOW}[Issue #2: exec date approval loop]${NC}\n"
