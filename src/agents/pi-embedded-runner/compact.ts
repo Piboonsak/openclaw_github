@@ -69,7 +69,7 @@ import {
   sanitizeSessionHistory,
   sanitizeToolsForGoogle,
 } from "./google.js";
-import { getDmHistoryLimitFromSessionKey, limitHistoryTurns } from "./history.js";
+import { getDmHistoryLimitFromSessionKey, limitHistoryTurns, limitHistoryByTokenBudget } from "./history.js";
 import { resolveGlobalLane, resolveSessionLane } from "./lanes.js";
 import { log } from "./logger.js";
 import { buildModelAliasLines, resolveModel } from "./model.js";
@@ -608,12 +608,18 @@ export async function compactEmbeddedPiSessionDirect(
           validated,
           getDmHistoryLimitFromSessionKey(params.sessionKey, params.config),
         );
+        // Apply token budget limiting to reduce overall prompt size
+        // This adds a second pass of filtering based on token count (after turn-based limit)
+        const budgetLimited = limitHistoryByTokenBudget(
+          truncated,
+          params.config?.agents?.defaults?.promptTokenBudget,
+        );
         // Re-run tool_use/tool_result pairing repair after truncation, since
-        // limitHistoryTurns can orphan tool_result blocks by removing the
+        // limitHistoryTurns/limitHistoryByTokenBudget can orphan tool_result blocks by removing the
         // assistant message that contained the matching tool_use.
         const limited = transcriptPolicy.repairToolUseResultPairing
-          ? sanitizeToolUseResultPairing(truncated)
-          : truncated;
+          ? sanitizeToolUseResultPairing(budgetLimited)
+          : budgetLimited;
         if (limited.length > 0) {
           session.agent.replaceMessages(limited);
         }

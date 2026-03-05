@@ -156,6 +156,8 @@ export type AgentDefaultsConfig = {
   envelopeElapsed?: "on" | "off";
   /** Optional context window cap (used for runtime estimates + status %). */
   contextTokens?: number;
+  /** Prompt token budget: max tokens from full conversation history before API call (default: 12000). */
+  promptTokenBudget?: number;
   /** Optional CLI backends for text-only fallback (claude-cli, etc.). */
   cliBackends?: Record<string, CliBackendConfig>;
   /** Opt-in: prune old tool results from the LLM context to reduce token usage. */

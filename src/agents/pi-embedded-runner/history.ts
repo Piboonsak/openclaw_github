@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { estimateTokens } from "@mariozechner/pi-coding-agent";
 import type { OpenClawConfig } from "../../config/config.js";
 
 const THREAD_SUFFIX_REGEX = /^(.*)(?::(?:thread|topic):\d+)$/i;
@@ -113,3 +114,65 @@ export function getHistoryLimitFromSessionKey(
  * Alias for backward compatibility.
  */
 export const getDmHistoryLimitFromSessionKey = getHistoryLimitFromSessionKey;
+
+/**
+ * Limits conversation history by total token budget using a sliding window approach.
+ * Prioritizes keeping the most recent messages within the token budget.
+ * Falls back to keeping at least the last message if budget is very tight.
+ *
+ * **Default token budget: 12,000 tokens** (conservative to leave room for system prompt + response)
+ */
+export function limitHistoryByTokenBudget(
+  messages: AgentMessage[],
+  budgetTokens: number | undefined = 12_000,
+): AgentMessage[] {
+  // No-op cases: no budget specified, no messages, or empty budget
+  if (!budgetTokens || budgetTokens <= 0 || messages.length === 0) {
+    return messages;
+  }
+
+  let totalTokens = 0;
+  let currentBudget = Math.max(1, Math.floor(budgetTokens));
+  const kept: AgentMessage[] = [];
+  let tokenEstimationFailed = false;
+
+  // Iterate backwards from newest to oldest message
+  // Add messages if they fit within budget, stop when budget exceeded
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    let messageTokens = 0;
+
+    // Estimate tokens for this message
+    try {
+      messageTokens = estimateTokens(msg);
+    } catch (err) {
+      // If estimation fails, abort token-based limiting and return all
+      // (better to send too many tokens and fail clearly than silently drop messages)
+      if (!tokenEstimationFailed) {
+        console.warn(
+          `[limitHistoryByTokenBudget] Token estimation failed: ${String(err)}. ` +
+            `Returning full history to avoid silent message loss.`,
+        );
+        tokenEstimationFailed = true;
+      }
+      return messages;
+    }
+
+    // Check if adding this message would exceed budget
+    if (totalTokens + messageTokens > currentBudget) {
+      // Budget exceeded, stop iterating
+      break;
+    }
+
+    // Message fits, add it (at beginning since we're iterating backwards)
+    kept.unshift(msg);
+    totalTokens += messageTokens;
+  }
+
+  // Safety: always keep at least the last message to maintain conversation continuity
+  if (kept.length === 0 && messages.length > 0) {
+    kept.push(messages[messages.length - 1]);
+  }
+
+  return kept;
+}
