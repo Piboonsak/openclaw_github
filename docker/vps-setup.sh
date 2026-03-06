@@ -65,6 +65,8 @@ systemctl enable nginx
 echo "=== [4/7] Creating application directory: $APP_DIR ==="
 mkdir -p "$APP_DIR"
 mkdir -p "$CERTBOT_WEBROOT"
+mkdir -p "$APP_DIR/volumes/gitrepo"
+chown 1000:1000 "$APP_DIR/volumes/gitrepo" 2>/dev/null || true
 
 # Write docker-compose.prod.yml to the app dir (inline, from the repo copy)
 if [[ ! -f "$APP_DIR/docker-compose.prod.yml" ]]; then
@@ -78,6 +80,7 @@ services:
     image: ${DOCKER_IMAGE:-piboonsak/openclaw:latest}
     container_name: openclaw-sgnl-openclaw-1
     user: "1000:1000"
+    working_dir: /home/node
     read_only: true
     security_opt:
       - no-new-privileges:true
@@ -94,6 +97,7 @@ services:
       GEMINI_API_KEY:         ${GEMINI_API_KEY:-}
       NODE_ENV:               production
       HOME:                   /home/node
+      GITREPO_PATH:           /home/node/gitrepo
       TERM:                   xterm-256color
       OPENCLAW_LOAD_SHELL_ENV: "0"
       BRAVE_API_KEY:          ${BRAVE_API_KEY:-}
@@ -102,6 +106,8 @@ services:
     volumes:
       - openclaw-state:/data/openclaw/state
       - openclaw-workspace:/data/openclaw/workspace
+      - ./.env:/home/node/.env:ro
+      - ./volumes/gitrepo:/home/node/gitrepo
       - type: tmpfs
         target: /tmp
         tmpfs:
@@ -164,6 +170,14 @@ BRAVE_API_ANSWER_KEY=
 BRAVE_API_SEARCH_KEY=
 FIRECRAWL_API_KEY=
 ELEVENLABS_API_KEY=
+
+# Optional GitHub credentials for git/gh operations inside container
+GITHUB_USER=
+GITHUB_TOKEN=
+
+# Development workspace path inside container
+HOME=/home/node
+GITREPO_PATH=/home/node/gitrepo
 ENV_EOF
   chmod 600 "$APP_DIR/.env"
   echo "Template written to $APP_DIR/.env  <-- EDIT THIS FILE before starting"

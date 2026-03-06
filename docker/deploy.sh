@@ -64,6 +64,8 @@ docker pull "$DOCKER_IMAGE"
 
 echo "[2/4] Updating compose and restarting container"
 cd "$APP_DIR"
+# Ensure bind-mount targets exist for development workspace
+mkdir -p "$APP_DIR/volumes/gitrepo"
 # Update the image line in docker-compose.yml (works for both local and Hostinger templates)
 sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
 # Start/update container
@@ -106,8 +108,8 @@ docker exec "$CONTAINER_NAME" openclaw config get tools.exec.host | grep -qx "ga
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/null || true
 # Issue #63: Updated safeBins to include git and gh for agent self-development
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget","git","gh"]' 2>/dev/null || true
-# Issue #64: Enable reasoning mode default
-docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.thinkingDefault low 2>/dev/null || true
+# Issue #64 (Sprint 1.4.1): Set reasoning mode default to high
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.thinkingDefault high 2>/dev/null || true
 # askFallback is not a regular tools.exec config path. Persist it in exec-approvals defaults.
 docker exec "$CONTAINER_NAME" node -e '
 const fs = require("node:fs");

@@ -15,6 +15,7 @@ services:
     
     # Security: Run as non-root user
     user: "1000:1000"
+    working_dir: /home/node
     
     # Security: Read-only root filesystem (except mounted volumes)
     read_only: true
@@ -51,10 +52,10 @@ services:
       MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       
       # System environment
       NODE_ENV: production
-      HOME: /home/node
       TERM: xterm-256color
       
       # Timezone (override in .env; default UTC if unset)
@@ -70,8 +71,21 @@ services:
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       
-      # OpenRouter (multi-model gateway)
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # Channel API credentials (LINE, Discord, Telegram, etc.)
+      LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN:-}
+      LINE_CHANNEL_SECRET: ${LINE_CHANNEL_SECRET:-}
+      
+      # Docker Hub (for image pulls)
+      DOCKER_USERNAME: ${DOCKER_USERNAME:-}
+      DOCKER_TOKEN: ${DOCKER_TOKEN:-}
+      
+      # GitHub (for code operations, optional)
+      GITHUB_USER: ${GITHUB_USER:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      
+      # Container home directory
+      HOME: /home/node
+      GITREPO_PATH: /home/node/gitrepo
     
     # Persistent volumes
     volumes:
@@ -80,6 +94,10 @@ services:
       - openclaw-state:/data/.openclaw
       # Workspace directory (agent working directory)
       - openclaw-workspace:/data/openclaw/workspace
+      # Make env file available inside container for development workflows
+      - ./.env:/home/node/.env:ro
+      # Dedicated development repo area for clone/build tasks
+      - ./volumes/gitrepo:/home/node/gitrepo
       # Temporary directory (writable in read-only container)
       - type: tmpfs
         target: /tmp
