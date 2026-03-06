@@ -2,8 +2,32 @@
 # Regression Test Suite for OpenClaw LINE Bot v2026.2.27-ws23+
 # Covers all 9 issues (P0-P3)
 # Run on VPS: bash tests/regression-tests.sh
+#
+# Test-ID → Failure-Mode → Mitigation
+# ──────────────────────────────────────────────────────────────────────
+# KI-009-A: Volume mount missing       → Redeploy with correct docker-compose
+# KI-009-B: Config file missing         → Check volume mount + redeploy
+# KI-009-C: Sessions dir missing        → Agent auto-creates on first run
+# KI-009-D: Config unreadable           → Volume mount issue or corrupt JSON
+# KI-009-E: Marker not persisted        → Volume not writable, check mount
+# KI-009-F: Restart persistence         → SKIP in CI (SSH timeout); run locally
+# KI-002-A/B/C: safeBins missing cmd    → Update config/openclaw.prod.json5
+# KI-002-D: security not allowlist      → Update config tools.exec.security
+# KI-002-E: ask mode wrong              → Update config tools.exec.ask
+# KI-010-A: exec host wrong             → Set tools.exec.host = gateway
+# KI-010-B: host-not-allowed errors     → Same as KI-010-A
+# KI-011-A: Browser missing             → Rebuild with OPENCLAW_INSTALL_BROWSER=1
+# KI-012-A/B: BRAVE_API_KEY missing     → Set env var in compose/Hostinger UI
+# KI-007-A: Timezone wrong              → Set TZ=Asia/Bangkok in compose
+# KI-007-B: Clock drift                 → Check NTP sync on host
+# ──────────────────────────────────────────────────────────────────────
+#
+# REGRESSION_MODE: ci (default) = skip restart-required tests
+#                  full          = run all tests including container restart
 
 set -e
+
+REGRESSION_MODE="${REGRESSION_MODE:-ci}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -14,6 +38,7 @@ NC='\033[0m'
 CONTAINER="openclaw-sgnl-openclaw-1"
 FAILED=0
 PASSED=0
+SKIPPED=0
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "OpenClaw LINE Bot Regression Test Suite (v2026.2.27-ws23+)${NC}"
@@ -28,6 +53,11 @@ pass() {
 fail() {
     echo -e "${RED}✗ FAIL${NC}: $1"
     ((++FAILED))  # pre-increment: returns new value (safe with set -e)
+}
+
+skip() {
+    echo -e "${YELLOW}⊘ SKIP${NC}: $1 — $2"
+    ((++SKIPPED))
 }
 
 warn() {
@@ -66,9 +96,13 @@ echo "Root Cause: Volume mount mismatch (KI-009)"
 echo "Expected: session_status() returns valid session info"
 echo ""
 
-# KI-009-A: SKIP - Docker template syntax issue (tracked as issue #61)
-# Will be fixed in sprint 1.3 with regression test framework refactor
-warn "KI-009-A: Session store mounted to correct path - SKIPPED (issue #61)"
+# KI-009-A: Verify /data/.openclaw is a named volume mount (CI-safe, no restart)
+MOUNT_DEST=$(docker inspect "$CONTAINER" --format='{{range .Mounts}}{{if eq .Destination "/data/.openclaw"}}{{.Destination}}{{end}}{{end}}' 2>/dev/null)
+if [[ "$MOUNT_DEST" == "/data/.openclaw" ]]; then
+    pass "KI-009-A: Session store mounted to /data/.openclaw (volume confirmed)"
+else
+    fail "KI-009-A: /data/.openclaw not mounted as volume (got: '$MOUNT_DEST')"
+fi
 
 check "KI-009-B: Config file exists on persistent volume" \
     "docker exec $CONTAINER test -f /data/.openclaw/openclaw.json && echo OK" \
@@ -166,23 +200,21 @@ check "KI-009-E: Test marker persisted to disk" \
     "docker exec $CONTAINER sh -c 'cat /data/.openclaw/.regression_marker 2>/dev/null | grep -q regression' && echo OK" \
     "OK"
 
-# Restart container (with error handling to avoid SSH timeout)
-# NOTE: Skipping remote docker restart in CI/CD to prevent SSH session timeouts
-# This test passes locally but causes GitHub Actions SSH sessions to hang
-# TODO: Refactor to use local container restart or remove in Sprint 1.3
+# Clean up test marker
+docker exec "$CONTAINER" rm -f /data/.openclaw/.regression_marker 2>/dev/null || true
 
-echo -e "\n  Restarting container to verify persistence..."
-echo "  ℹ️  Skipping KI-009-F: Container restart test (SSH timeout risk in CI/CD)"
-warn "KI-009-F: Restart persistence test skipped in GitHub Actions (see #61)"
-
-# Show that we at least verify config is readable BEFORE restart
-echo "  ✓ Config was readable before restart (KI-009-E passed)"
-echo "  ✓ Config markers can be persisted (KI-009-E verified)"
-pass "KI-009-F: Config persistence verified (pre-restart check passed)"
-
-# NOTE: Skip cleanup to avoid issues - test marker is harmless and config delete might timeout
-# Clean up test marker would go here but removed due to SSH timeout risks
-# docker exec $CONTAINER node openclaw.mjs config delete test 2>/dev/null || true
+# KI-009-F: Container restart persistence test
+# Restart causes SSH session timeouts in GitHub Actions CI.
+# Only run in full mode (REGRESSION_MODE=full).
+if [[ "$REGRESSION_MODE" == "full" ]]; then
+    echo -e "\n  Restarting container to verify persistence..."
+    docker restart "$CONTAINER" 2>/dev/null && sleep 30
+    check "KI-009-F: Config persists after container restart" \
+        "docker exec $CONTAINER node openclaw.mjs config get agents.defaults.model.primary 2>/dev/null" \
+        "anthropic"
+else
+    skip "KI-009-F: Restart persistence test" "REGRESSION_MODE=ci (SSH timeout risk); run with REGRESSION_MODE=full locally"
+fi
 
 # ───────────────────────────────────────────────────────────────────────────
 echo -e "\n${YELLOW}[Issue #7: Docker time sync (host UTC vs container +07)]${NC}\n"
@@ -255,12 +287,13 @@ echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━�
 echo -e "Test Results${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 
-total=$((PASSED + FAILED))
-echo -e "Passed: ${GREEN}$PASSED${NC} / $total"
-echo -e "Failed: ${RED}$FAILED${NC} / $total"
+total=$((PASSED + FAILED + SKIPPED))
+echo -e "Passed:  ${GREEN}$PASSED${NC} / $total"
+echo -e "Failed:  ${RED}$FAILED${NC} / $total"
+echo -e "Skipped: ${YELLOW}$SKIPPED${NC} / $total"
 
 if [ $FAILED -eq 0 ]; then
-    echo -e "\n${GREEN}✓ All regression tests passed!${NC}\n"
+    echo -e "\n${GREEN}✓ All regression tests passed! ($SKIPPED skipped)${NC}\n"
     exit 0
 else
     echo -e "\n${RED}✗ $FAILED test(s) failed. See details above.${NC}\n"
