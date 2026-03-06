@@ -66,9 +66,9 @@
       bootstrapTotalMaxChars: 750000, // 5x total bootstrap (was 150,000)
       contextTokens: 1000000, // 5x token window (was 200,000),
 
-      // Issue #64: Enable reasoning/thinking mode by default
+      // Issue #64: Enable deep reasoning by default for development-heavy workflows
       // Valid levels: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
-      thinkingDefault: "low",
+      thinkingDefault: "high",
 
       // Model configuration (fallback chain with free tier safety net)
       // Issue #33: Claude Sonnet 4.6 as primary for improved reasoning + cost efficiency
@@ -191,8 +191,8 @@
       network_mode: "bridge", // or "none" for full isolation
 
       // Resource limits
-      memory: "512m",
-      cpus: 1,
+      memory: "1024m",
+      cpus: 2,
     },
 
     // Command blocklist (regex patterns)
