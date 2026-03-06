@@ -259,7 +259,7 @@ check "Gateway health check port 18789" \
     "200"
 
 check "Gateway status check (no startup errors)" \
-    "docker logs --since=5m $CONTAINER 2>&1 | grep -v 'exec-approvals.*gateway token' | grep -c 'Error\|FATAL\|panic' || echo 0" \
+    "docker logs --since=5m $CONTAINER 2>&1 | grep -v 'gateway token missing' | grep -c 'Error\|FATAL\|panic' || echo 0" \
     "0"
 
 check "No missing environment variable errors" \
