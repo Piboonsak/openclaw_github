@@ -28,9 +28,6 @@ services:
     cap_drop:
       - ALL
     
-    # Security: Limit process count
-    pids_limit: 200
-    
     # Ports: Bind to localhost only (127.0.0.1) for security
     # External access via Nginx reverse proxy on ports 80/443 with SSL
     # Backend app port 18789 MUST NOT be exposed to external network
@@ -108,11 +105,13 @@ services:
     # Resource limits — match VPS ceiling (4 vCPU, 16 GB RAM)
     # Monitor with: docker stats openclaw-sgnl-openclaw-1
     # If OOM-killed (exit 137): reduce context window config, not these limits
+    # Security: Limit process count (inside deploy.resources to avoid compose conflict)
     deploy:
       resources:
         limits:
           cpus: '4'
           memory: 16G
+          pids: 200
         reservations:
           cpus: '1.0'
           memory: 1G
