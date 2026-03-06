@@ -97,6 +97,11 @@ sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
 # to remove old containers before creating new ones with the same container_name.
 docker compose -f docker-compose.yml up -d --pull always --remove-orphans
 
+# Wait for container runtime to be fully ready before exec commands
+# Without this, docker exec fails with "OCI runtime exec failed: error executing setns process"
+echo "  Waiting for container runtime to initialize..."
+sleep 10
+
 echo "[2a/4] Post-deploy: Clear stale LINE sessions + lock files"
 # Remove bloated session files (>50KB) to prevent token overflow and latency
 # Also remove stale .loc lock files left from previous container runs (KI-009-C1)
