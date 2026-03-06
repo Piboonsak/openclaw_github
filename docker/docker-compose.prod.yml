@@ -36,6 +36,11 @@ services:
     ports:
       - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
     
+    # Load environment variables from .env file (Issue #67: Dev workspace support)
+    # Place .env next to docker-compose.prod.yml; copy from .env.example
+    env_file:
+      - .env
+    
     # Environment variables (DO NOT commit secrets here - use .env file)
     environment:
       # Gateway authentication (REQUIRED)
