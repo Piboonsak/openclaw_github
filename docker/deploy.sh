@@ -52,6 +52,23 @@ run_remote() {
       "${VPS_USER}@${VPS_HOST}" "$@"
 }
 
+# ── Sync compose file from repo to VPS ───────────────────────────────────────
+# Issue #67: deploy.sh previously only sed-updated the image tag, so new volume
+# mounts and env_file directives in docker-compose.prod.yml never reached VPS.
+# Now we sync the full compose file on every deploy to keep VPS in sync with repo.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_SRC="${SCRIPT_DIR}/docker-compose.prod.yml"
+if [[ -f "$COMPOSE_SRC" ]]; then
+  echo "→ Syncing docker-compose.prod.yml → VPS:${APP_DIR}/docker-compose.yml"
+  scp -i "$SSH_KEY" \
+      -o StrictHostKeyChecking=no \
+      "$COMPOSE_SRC" \
+      "${VPS_USER}@${VPS_HOST}:${APP_DIR}/docker-compose.yml"
+else
+  echo "WARNING: docker-compose.prod.yml not found at $COMPOSE_SRC"
+  echo "         Falling back to existing compose file on VPS"
+fi
+
 # ── Deploy steps (executed on the VPS) ───────────────────────────────────────
 run_remote bash -s -- "$DOCKER_IMAGE" "$APP_DIR" "$CONTAINER_NAME" << 'REMOTE_EOF'
 set -euo pipefail
@@ -64,9 +81,16 @@ docker pull "$DOCKER_IMAGE"
 
 echo "[2/4] Updating compose and restarting container"
 cd "$APP_DIR"
-# Ensure bind-mount targets exist for development workspace
+# Ensure bind-mount targets exist for development workspace (Issue #67)
 mkdir -p "$APP_DIR/volumes/gitrepo"
-# Update the image line in docker-compose.yml (works for both local and Hostinger templates)
+chown 1000:1000 "$APP_DIR/volumes/gitrepo" 2>/dev/null || true
+# Ensure .env exists so the bind mount doesn't create a directory
+if [[ ! -f "$APP_DIR/.env" ]]; then
+  echo "WARNING: .env not found at $APP_DIR/.env — creating empty placeholder"
+  touch "$APP_DIR/.env"
+  chmod 600 "$APP_DIR/.env"
+fi
+# Update the image line in docker-compose.yml (overrides the variable default)
 sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
 # Start/update container
 docker compose -f docker-compose.yml up -d --pull always

@@ -95,8 +95,9 @@ jobs:
           NGINX_EOF
 
       # NOTE: The VPS docker-compose lives at /docker/openclaw-sgnl/docker-compose.yml
-      # (managed by Hostinger Docker Manager). deploy.sh updates the image line in-place
-      # rather than overwriting the whole file (preserves env_file and volume mounts).
+      # deploy.sh now syncs docker/docker-compose.prod.yml from repo to VPS on every deploy
+      # (Issue #67), then updates the image tag in-place. This ensures new volume mounts,
+      # env_file directives, and environment variables reach the VPS.
 
       # ── Run deploy.sh on VPS ───────────────────────────────────────────────
       - name: Deploy container
