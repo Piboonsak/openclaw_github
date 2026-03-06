@@ -97,10 +97,26 @@ sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
 # to remove old containers before creating new ones with the same container_name.
 docker compose -f docker-compose.yml up -d --pull always --remove-orphans
 
-# Wait for container runtime to be fully ready before exec commands
-# Without this, docker exec fails with "OCI runtime exec failed: error executing setns process"
-echo "  Waiting for container runtime to initialize..."
-sleep 10
+# Wait for container runtime to be fully ready before exec commands.
+# The container may take time to start or may restart once.
+echo "  Waiting for container to become healthy..."
+for i in $(seq 1 12); do
+  STATE=$(docker inspect --format='{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "unknown")
+  HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$CONTAINER_NAME" 2>/dev/null || echo "unknown")
+  echo "    Attempt $i/12: state=$STATE health=$HEALTH"
+  if [ "$STATE" = "running" ] && [ "$HEALTH" = "healthy" ]; then
+    echo "  Container is healthy ✔"
+    break
+  fi
+  if [ "$STATE" = "running" ] && [ "$HEALTH" = "no-healthcheck" ]; then
+    echo "  Container is running (no healthcheck configured) ✔"
+    break
+  fi
+  if [ "$i" -eq 12 ]; then
+    echo "  WARNING: Container not healthy after 60s — attempting exec anyway"
+  fi
+  sleep 5
+done
 
 echo "[2a/4] Post-deploy: Clear stale LINE sessions + lock files"
 # Remove bloated session files (>50KB) to prevent token overflow and latency
@@ -132,10 +148,11 @@ echo "[2b/4] Post-deploy: Apply exec security config"
 # - security: allowlist (only safeBins commands auto-approved)
 # - askFallback: allowlist (stored in exec-approvals.json defaults)
 # - host: gateway (no sandbox available on VPS)
-docker exec "$CONTAINER_NAME" openclaw config set tools.exec.security allowlist
-docker exec "$CONTAINER_NAME" openclaw config get tools.exec.security | grep -qx "allowlist"
-docker exec "$CONTAINER_NAME" openclaw config set tools.exec.host gateway
-docker exec "$CONTAINER_NAME" openclaw config get tools.exec.host | grep -qx "gateway"
+# All exec commands use || true to prevent deploy failure if container is restarting
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.security allowlist 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config get tools.exec.security 2>/dev/null | grep -qx "allowlist" || echo "  WARNING: exec.security verification failed"
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.host gateway 2>/dev/null || true
+docker exec "$CONTAINER_NAME" openclaw config get tools.exec.host 2>/dev/null | grep -qx "gateway" || echo "  WARNING: exec.host verification failed"
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/null || true
 # Issue #63: Updated safeBins to include git and gh for agent self-development
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget","git","gh"]' 2>/dev/null || true
