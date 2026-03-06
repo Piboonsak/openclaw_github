@@ -177,6 +177,17 @@ The LINE plugin also ships a `/card` command for Flex message presets:
 /card info "Welcome" "Thanks for joining!"
 ```
 
+It also includes reasoning-depth commands:
+
+```text
+/thinking            # Show current reasoning mode
+/thinking high       # Set default reasoning to high
+/think high          # Alias of /thinking high
+/think help          # Show usage and valid levels
+```
+
+Reasoning levels: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
+
 ## Troubleshooting
 
 - **Webhook verification fails:** ensure the webhook URL is HTTPS and the
