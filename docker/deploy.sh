@@ -104,7 +104,10 @@ docker exec "$CONTAINER_NAME" openclaw config get tools.exec.security | grep -qx
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.host gateway
 docker exec "$CONTAINER_NAME" openclaw config get tools.exec.host | grep -qx "gateway"
 docker exec "$CONTAINER_NAME" openclaw config set tools.exec.ask on-miss 2>/dev/null || true
-docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget"]' 2>/dev/null || true
+# Issue #63: Updated safeBins to include git and gh for agent self-development
+docker exec "$CONTAINER_NAME" openclaw config set tools.exec.safeBins '["jq","cut","uniq","head","tail","tr","wc","date","uptime","whoami","hostname","ps","tree","curl","wget","git","gh"]' 2>/dev/null || true
+# Issue #64: Enable reasoning mode default
+docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.thinkingDefault low 2>/dev/null || true
 # askFallback is not a regular tools.exec config path. Persist it in exec-approvals defaults.
 docker exec "$CONTAINER_NAME" node -e '
 const fs = require("node:fs");
