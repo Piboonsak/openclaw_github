@@ -82,7 +82,7 @@ fi
 # Test A2: exec askFallback = allowlist
 VAL=$(docker exec "$CONTAINER_NAME" node -e '
 const fs = require("node:fs");
-const p = "/data/.openclaw/exec-approvals.json";
+const p = "/home/node/.openclaw/exec-approvals.json";
 let v = "";
 try {
   const raw = fs.readFileSync(p, "utf8");
@@ -151,7 +151,7 @@ echo "── C. Exec Smoke Tests ───────────────�
 
 # Pre-C: Clear stale session lock files to prevent "session file locked" errors
 # After deploy/restart, previous session locks may still exist and block new agent calls
-dexec bash -c 'find /data/.openclaw/agents/main/sessions/ -name "*.loc" -delete 2>/dev/null' || true
+dexec bash -c 'find /home/node/.openclaw/agents/main/sessions/ -name "*.loc" -delete 2>/dev/null' || true
 
 # Test C1: 'date' command runs without "Approval required"
 EXEC_OUT=$(docker exec "$CONTAINER_NAME" timeout 45 openclaw agent --agent main -m "run the command: date" --json --local 2>&1)
@@ -250,7 +250,7 @@ echo ""
 echo "── F. Session Cleanup ─────────────────────────────────────────────"
 
 # Test F1: No LINE session files > 50KB (bloated sessions cleared by deploy.sh)
-BLOATED=$(dexec bash -c 'find /data/.openclaw/agents/main/sessions -name "line-*.jsonl" -size +50k 2>/dev/null | wc -l' || echo "0")
+BLOATED=$(dexec bash -c 'find /home/node/.openclaw/agents/main/sessions -name "line-*.jsonl" -size +50k 2>/dev/null | wc -l' || echo "0")
 BLOATED=$(echo "$BLOATED" | tr -d '[:space:]')
 if [[ "$BLOATED" == "0" ]]; then
   pass "F1: No bloated LINE sessions (>50KB)"
