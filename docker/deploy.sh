@@ -123,6 +123,7 @@ echo "[2a/4] Post-deploy: Clear stale LINE sessions + lock files"
 # Also remove stale .loc lock files left from previous container runs (KI-009-C1)
 docker exec "$CONTAINER_NAME" bash -c '
   SESSION_DIR="/home/node/.openclaw/agents/main/sessions"
+  mkdir -p "$SESSION_DIR"
   if [ -d "$SESSION_DIR" ]; then
     STALE=$(find "$SESSION_DIR" -name "line-*.jsonl" -size +50k 2>/dev/null | wc -l)
     if [ "$STALE" -gt 0 ]; then
