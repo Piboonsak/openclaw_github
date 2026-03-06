@@ -15,7 +15,7 @@ services:
     
     # Security: Run as non-root user
     user: "1000:1000"
-    working_dir: /home/node
+    working_dir: /app
     
     # Security: Read-only root filesystem (except mounted volumes)
     read_only: true
