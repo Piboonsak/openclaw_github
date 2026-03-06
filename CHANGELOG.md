@@ -2,6 +2,20 @@
 
 Docs: https://docs.openclaw.ai
 
+## 2026.3.6 (Sprint 1.4)
+
+### Changes
+
+- Infrastructure/Docker: add GitHub CLI (gh) to production Docker image so agents can execute git and GitHub CLI operations for self-development capabilities. (#62)
+- Agents/Runtime: set reasoning mode default to `low` for enhanced agent thinking behavior across all channels. (#64)
+- Channels/LINE: add interactive `/thinking` command for LINE OA users to query and control agent reasoning mode at runtime. (#65)
+- DevOps/Docker: add `.env` file support to docker-compose for flexible development workspace environment variable configuration. (#67)
+
+### Fixes
+
+- DevOps/Deploy: fix deployment script to properly apply repository config changes (safeBins allowlist + thinkingDefault) instead of overwriting with hardcoded defaults, ensuring configuration updates take effect immediately after deploy.
+- Security/Exec: expand safeBins allowlist to include `git` and `gh` binaries, enabling agent code execution and repository operations when approved by policy. (#63)
+
 ## 2026.2.22 (Unreleased)
 
 ### Changes
