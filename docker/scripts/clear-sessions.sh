@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-SESSIONS_DIR="/data/.openclaw/agents/main/sessions"
+SESSIONS_DIR="/home/node/.openclaw/agents/main/sessions"
 BACKUP_SUFFIX="bak.$(date -u +%Y%m%dT%H%M%SZ)"
 
 if [ ! -d "$SESSIONS_DIR" ]; then

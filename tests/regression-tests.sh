@@ -100,18 +100,18 @@ echo ""
 # Instead of checking Docker mount types (which varies by docker-compose config),
 # we verify persistence by checking if config files exist on the mounted volume.
 # This is the same check as KI-009-B below, but we run it first for early detection.
-if docker exec $CONTAINER test -f /data/.openclaw/openclaw.json 2>/dev/null; then
+if docker exec $CONTAINER test -f /home/node/.openclaw/openclaw.json 2>/dev/null; then
     pass "KI-009-A: Config persists on mounted volume (verified via file check)"
 else
-    fail "KI-009-A: Config file /data/.openclaw/openclaw.json not found"
+    fail "KI-009-A: Config file /home/node/.openclaw/openclaw.json not found"
 fi
 
 check "KI-009-B: Config file exists on persistent volume" \
-    "docker exec $CONTAINER test -f /data/.openclaw/openclaw.json && echo OK" \
+    "docker exec $CONTAINER test -f /home/node/.openclaw/openclaw.json && echo OK" \
     "OK"
 
 check "KI-009-C: Sessions directory exists" \
-    "docker exec $CONTAINER test -d /data/.openclaw/agents/main/sessions && echo OK" \
+    "docker exec $CONTAINER test -d /home/node/.openclaw/agents/main/sessions && echo OK" \
     "OK"
 
 check "KI-009-D: Config readable after restart" \
@@ -193,17 +193,17 @@ echo "Expected: Config persists after container restart"
 echo ""
 
 # Create a marker file on persistent volume (schema-safe)
-docker exec $CONTAINER sh -c 'echo "regression-test-$(date +%s)" > /data/.openclaw/.regression_marker' 2>/dev/null || true
+docker exec $CONTAINER sh -c 'echo "regression-test-$(date +%s)" > /home/node/.openclaw/.regression_marker' 2>/dev/null || true
 
 # Wait a bit
 sleep 2
 
 check "KI-009-E: Test marker persisted to disk" \
-    "docker exec $CONTAINER sh -c 'cat /data/.openclaw/.regression_marker 2>/dev/null | grep -q regression' && echo OK" \
+    "docker exec $CONTAINER sh -c 'cat /home/node/.openclaw/.regression_marker 2>/dev/null | grep -q regression' && echo OK" \
     "OK"
 
 # Clean up test marker
-docker exec "$CONTAINER" rm -f /data/.openclaw/.regression_marker 2>/dev/null || true
+docker exec "$CONTAINER" rm -f /home/node/.openclaw/.regression_marker 2>/dev/null || true
 
 # KI-009-F: Container restart persistence test
 # Restart causes SSH session timeouts in GitHub Actions CI.
@@ -278,7 +278,7 @@ docker inspect $CONTAINER --format='Mounts: {{len .Mounts}} configured'
 
 echo ""
 echo "✓ Config file:"
-docker exec $CONTAINER test -f /data/.openclaw/openclaw.json && echo "  Config file exists" || echo "  Config file MISSING"
+docker exec $CONTAINER test -f /home/node/.openclaw/openclaw.json && echo "  Config file exists" || echo "  Config file MISSING"
 
 echo ""
 echo "✓ Backup status:"

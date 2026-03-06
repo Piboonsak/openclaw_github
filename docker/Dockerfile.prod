@@ -96,9 +96,10 @@ RUN if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
     fi
 
 # Create directories for runtime data with correct permissions.
-# HOME is set to /data so openclaw config persists in the ./data volume mount.
-RUN mkdir -p /data/.openclaw /data/openclaw/state /data/openclaw/workspace /tmp/openclaw && \
-    chown -R node:node /data /tmp/openclaw
+# /home/node/.openclaw is the config dir when compose overrides HOME=/home/node.
+# /data paths kept for backward compatibility with existing volumes.
+RUN mkdir -p /home/node/.openclaw /data/.openclaw /data/openclaw/state /data/openclaw/workspace /tmp/openclaw && \
+    chown -R node:node /home/node/.openclaw /data /tmp/openclaw
 
 # Add 'openclaw' CLI wrapper so agents/tools can invoke 'openclaw' by name.
 RUN printf '#!/bin/sh\nexec node /app/openclaw.mjs "$@"\n' > /usr/local/bin/openclaw && \

@@ -122,7 +122,7 @@ echo "[2a/4] Post-deploy: Clear stale LINE sessions + lock files"
 # Remove bloated session files (>50KB) to prevent token overflow and latency
 # Also remove stale .loc lock files left from previous container runs (KI-009-C1)
 docker exec "$CONTAINER_NAME" bash -c '
-  SESSION_DIR="/data/.openclaw/agents/main/sessions"
+  SESSION_DIR="/home/node/.openclaw/agents/main/sessions"
   if [ -d "$SESSION_DIR" ]; then
     STALE=$(find "$SESSION_DIR" -name "line-*.jsonl" -size +50k 2>/dev/null | wc -l)
     if [ "$STALE" -gt 0 ]; then
@@ -161,7 +161,7 @@ docker exec "$CONTAINER_NAME" openclaw config set agents.defaults.thinkingDefaul
 # askFallback is not a regular tools.exec config path. Persist it in exec-approvals defaults.
 docker exec "$CONTAINER_NAME" node -e '
 const fs = require("node:fs");
-const p = "/data/.openclaw/exec-approvals.json";
+const p = "/home/node/.openclaw/exec-approvals.json";
 let file = { version: 1, defaults: {}, agents: {} };
 try {
   const raw = fs.readFileSync(p, "utf8");

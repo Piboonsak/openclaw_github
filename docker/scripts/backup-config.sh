@@ -2,7 +2,7 @@
 # Backup OpenClaw configuration and session data
 # 
 # Usage: docker compose run --rm backup-config
-# Creates timestamped backup of /data/.openclaw/ directory
+# Creates timestamped backup of /home/node/.openclaw/ directory
 # 
 # Location: ./backups/openclaw.json.<YYYYMMDD-HHMMSS>
 # Also backs up: sessions/ and exec-approvals.json
@@ -11,7 +11,7 @@ set -euo pipefail
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_DIR="/backups"
-SOURCE_DIR="/data/.openclaw"
+SOURCE_DIR="/home/node/.openclaw"
 
 echo "==================================================="
 echo "OpenClaw Configuration Backup"
