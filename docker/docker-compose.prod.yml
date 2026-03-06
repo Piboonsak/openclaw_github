@@ -95,12 +95,11 @@ services:
       - ./.env:/home/node/.env:ro
       # Dedicated development repo area for clone/build tasks
       - ./volumes/gitrepo:/home/node/gitrepo
-      # Temporary directory (writable in read-only container)
-      - type: tmpfs
-        target: /tmp
-        tmpfs:
-          size: 100M
-          mode: 1777
+    
+    # tmpfs mount for /tmp — required for read-only rootfs container
+    # Using top-level tmpfs directive for broader Docker Compose compatibility
+    tmpfs:
+      - /tmp:size=100M,mode=1777
     
     # Resource limits — match VPS ceiling (4 vCPU, 16 GB RAM)
     # Monitor with: docker stats openclaw-sgnl-openclaw-1
