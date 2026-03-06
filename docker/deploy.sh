@@ -93,7 +93,9 @@ fi
 # Update the image line in docker-compose.yml (overrides the variable default)
 sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
 # Start/update container
-docker compose -f docker-compose.yml up -d --pull always
+# --remove-orphans: required when service name changes (e.g. openclaw → openclaw-gateway)
+# to remove old containers before creating new ones with the same container_name.
+docker compose -f docker-compose.yml up -d --pull always --remove-orphans
 
 echo "[2a/4] Post-deploy: Clear stale LINE sessions + lock files"
 # Remove bloated session files (>50KB) to prevent token overflow and latency
