@@ -149,6 +149,10 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 echo "── C. Exec Smoke Tests ────────────────────────────────────────────"
 
+# Pre-C: Clear stale session lock files to prevent "session file locked" errors
+# After deploy/restart, previous session locks may still exist and block new agent calls
+dexec bash -c 'find /data/.openclaw/agents/main/sessions/ -name "*.loc" -delete 2>/dev/null' || true
+
 # Test C1: 'date' command runs without "Approval required"
 EXEC_OUT=$(docker exec "$CONTAINER_NAME" timeout 45 openclaw agent --agent main -m "run the command: date" --json --local 2>&1)
 EXEC_CODE=$?

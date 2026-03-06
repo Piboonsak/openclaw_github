@@ -69,8 +69,9 @@ sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" docker-compose.yml
 # Start/update container
 docker compose -f docker-compose.yml up -d --pull always
 
-echo "[2a/4] Post-deploy: Clear stale LINE sessions"
+echo "[2a/4] Post-deploy: Clear stale LINE sessions + lock files"
 # Remove bloated session files (>50KB) to prevent token overflow and latency
+# Also remove stale .loc lock files left from previous container runs (KI-009-C1)
 docker exec "$CONTAINER_NAME" bash -c '
   SESSION_DIR="/data/.openclaw/agents/main/sessions"
   if [ -d "$SESSION_DIR" ]; then
@@ -80,6 +81,13 @@ docker exec "$CONTAINER_NAME" bash -c '
       echo "  Cleared $STALE stale LINE session file(s) ✔"
     else
       echo "  No stale LINE sessions found ✔"
+    fi
+    LOCKS=$(find "$SESSION_DIR" -name "*.loc" 2>/dev/null | wc -l)
+    if [ "$LOCKS" -gt 0 ]; then
+      find "$SESSION_DIR" -name "*.loc" -delete
+      echo "  Cleared $LOCKS stale session lock file(s) ✔"
+    else
+      echo "  No stale lock files found ✔"
     fi
   else
     echo "  Session directory not found (first deploy?) — skipping"
