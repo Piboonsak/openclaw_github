@@ -1,0 +1,71 @@
+╔══════════════════════════════════════════════════════════════════╗
+║        R3 Regression Test Suite — OpenClaw Production          ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Container: openclaw-sgnl-openclaw-1
+Started:   2026-03-07 13:03:57 UTC
+
+── Pre-flight ──────────────────────────────────────────────────────
+Container is running ✔
+
+── A. Exec Configuration ──────────────────────────────────────────
+  ✔ PASS: A1: tools.exec.security = allowlist
+  ✔ PASS: A2: tools.exec.askFallback = allowlist
+  ✔ PASS: A3: tools.exec.host = gateway
+  ✔ PASS: A4: safeBins contains 'date'
+  ✔ PASS: A5: safeBins contains 'jq'
+  ✔ PASS: A6: safeBins contains 'whoami'
+
+── B. Embeddings Configuration ────────────────────────────────────
+  ✔ PASS: B1: memorySearch.provider = openai
+
+── C. Exec Smoke Tests ────────────────────────────────────────────
+  ✔ PASS: C1: exec 'date' runs without approval prompt
+  ✔ PASS: C2: exec 'whoami' returns 'node'
+
+── D. LINE Webhook ────────────────────────────────────────────────
+  ✔ PASS: D1: LINE webhook returns HTTP 200 (native handler)
+
+── E. Nginx Routing ───────────────────────────────────────────────
+  ✔ PASS: E1: Nginx /line/ → port 18789 (native handler)
+  ✔ PASS: E2: Nginx /line-bridge/ → port 5100 (Flask fallback)
+
+── F. Session Cleanup ─────────────────────────────────────────────
+  ✔ PASS: F1: No bloated LINE sessions (>50KB)
+
+── G. Flask Bridge Fallback ───────────────────────────────────────
+  ✔ PASS: G1: Flask bridge health endpoint responds HTTP 200
+
+── H. Container Resource Limits ─────────────────────────────────
+  ✔ PASS: H1: CPU limit = 4 vCPU (4000000000 NanoCpus)
+  ✔ PASS: H2: Memory limit = 16G (17179869184 bytes)
+  ✔ PASS: H3: PIDs limit = 200
+
+══════════════════════════════════════════════════════════════════
+  R3 Regression Test Results
+══════════════════════════════════════════════════════════════════
+
+  ✔ PASS: A1: tools.exec.security = allowlist
+  ✔ PASS: A2: tools.exec.askFallback = allowlist
+  ✔ PASS: A3: tools.exec.host = gateway
+  ✔ PASS: A4: safeBins contains 'date'
+  ✔ PASS: A5: safeBins contains 'jq'
+  ✔ PASS: A6: safeBins contains 'whoami'
+  ✔ PASS: B1: memorySearch.provider = openai
+  ✔ PASS: C1: exec 'date' runs without approval prompt
+  ✔ PASS: C2: exec 'whoami' returns 'node'
+  ✔ PASS: D1: LINE webhook returns HTTP 200 (native handler)
+  ✔ PASS: E1: Nginx /line/ → port 18789 (native handler)
+  ✔ PASS: E2: Nginx /line-bridge/ → port 5100 (Flask fallback)
+  ✔ PASS: F1: No bloated LINE sessions (>50KB)
+  ✔ PASS: G1: Flask bridge health endpoint responds HTTP 200
+  ✔ PASS: H1: CPU limit = 4 vCPU (4000000000 NanoCpus)
+  ✔ PASS: H2: Memory limit = 16G (17179869184 bytes)
+  ✔ PASS: H3: PIDs limit = 200
+
+  TOTAL: 17 | PASS: 17 | FAIL: 0 | SKIP: 0
+
+  Finished: 2026-03-07 13:05:05 UTC
+══════════════════════════════════════════════════════════════════
+
+RESULT: PASSED (all 17 tests passed, 0 skipped)
