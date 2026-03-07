@@ -91,6 +91,8 @@ services:
       - openclaw-state:/data/.openclaw
       # Also mount state at $HOME/.openclaw so app can write to it (read_only: true blocks /app)
       - openclaw-state:/app/.openclaw
+      # Mount state at /etc/passwd homedir too — os.homedir() reads /etc/passwd not $HOME
+      - openclaw-state:/home/node/.openclaw
       # Workspace directory (agent working directory)
       - openclaw-workspace:/data/openclaw/workspace
       # Make env file available inside container
