@@ -97,11 +97,9 @@ services:
       # Dedicated development repo area for clone/build tasks
       - ./volumes/gitrepo:/app/gitrepo
       # Temporary directory (writable in read-only container)
-      - type: tmpfs
-        target: /tmp
-        tmpfs:
-          size: 100M
-          mode: 1777
+      # tmpfs: Docker creates /tmp with mode 1777 by default
+      # If job tmpfs needs custom size: docker run --tmpfs /tmp:size=100M,mode=1777
+      - /tmp
     
     # Resource limits — match VPS ceiling (4 vCPU, 16 GB RAM)
     # Monitor with: docker stats openclaw-sgnl-openclaw-1
