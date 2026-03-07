@@ -89,6 +89,8 @@ services:
       # State directory (config, credentials, logs) — CRITICAL: must mount to /data/.openclaw (HOME path)
       # Previously: /data/openclaw/state (WRONG — config lost on restart)
       - openclaw-state:/data/.openclaw
+      # Also mount state at $HOME/.openclaw so app can write to it (read_only: true blocks /app)
+      - openclaw-state:/app/.openclaw
       # Workspace directory (agent working directory)
       - openclaw-workspace:/data/openclaw/workspace
       # Make env file available inside container
