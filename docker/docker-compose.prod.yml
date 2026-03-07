@@ -15,7 +15,7 @@ services:
     
     # Security: Run as non-root user
     user: "1000:1000"
-    working_dir: /home/node
+    working_dir: /app
     
     # Security: Read-only root filesystem (except mounted volumes)
     read_only: true
@@ -81,8 +81,8 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       
       # Container home directory
-      HOME: /home/node
-      GITREPO_PATH: /home/node/gitrepo
+      HOME: /app
+      GITREPO_PATH: /app/gitrepo
     
     # Persistent volumes
     volumes:
@@ -92,10 +92,10 @@ services:
       # Workspace directory (agent working directory)
       - openclaw-workspace:/data/openclaw/workspace
       # Make env file available inside container
-      # NOTE: .env MUST be inside $HOME directory so it's writable if needed
-      - ./.env:/home/node/.env:ro
+      # NOTE: .env MUST be inside working directory so it's accessible
+      - ./.env:/app/.env:ro
       # Dedicated development repo area for clone/build tasks
-      - ./volumes/gitrepo:/home/node/gitrepo
+      - ./volumes/gitrepo:/app/gitrepo
       # Temporary directory (writable in read-only container)
       - type: tmpfs
         target: /tmp
