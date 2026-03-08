@@ -70,31 +70,32 @@
       // Valid levels: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
       thinkingDefault: "high",
 
-      // Model configuration (fallback chain with free tier safety net)
-      // Issue #33: Claude Sonnet 4.6 as primary for improved reasoning + cost efficiency
+      // Model configuration — Sprint 1.5 Cost Optimization (PR #80)
+      // MiniMax M2.5 as primary (~50-66x cheaper than Opus)
+      // Opus kept as first fallback for capability safety net
       model: {
-        primary: "anthropic/claude-sonnet-4-5",
+        primary: "minimax/minimax-m2.5",
         fallbacks: [
+          "anthropic/claude-opus-4-6",
           "openrouter/google/gemini-2.5-flash",
-          "openrouter/google/gemini-2.5-pro",
-          "openrouter/deepseek/deepseek-chat-v3-0324",
+          "anthropic/claude-3-5-haiku",
           "openrouter/google/gemini-2.0-flash-exp:free",
         ],
       },
 
       // Model aliases (friendly names in UI)
       models: {
-        "anthropic/claude-sonnet-4-5": {
-          alias: "Claude Sonnet 4.6 (Primary)",
+        "minimax/minimax-m2.5": {
+          alias: "MiniMax M2.5 (Primary)",
+        },
+        "anthropic/claude-opus-4-6": {
+          alias: "Claude Opus (Analyst/Fallback)",
+        },
+        "anthropic/claude-3-5-haiku": {
+          alias: "Haiku (Budget)",
         },
         "openrouter/google/gemini-2.5-flash": {
-          alias: "Gemini Flash (Fallback 1)",
-        },
-        "openrouter/google/gemini-2.5-pro": {
-          alias: "Gemini Pro (Fallback 2)",
-        },
-        "openrouter/deepseek/deepseek-chat-v3-0324": {
-          alias: "DeepSeek V3 (Budget)",
+          alias: "Gemini Flash (Fallback)",
         },
         "openrouter/google/gemini-2.0-flash-exp:free": {
           alias: "Gemini Free (Safety Net)",
@@ -119,6 +120,41 @@
         provider: "openai", // Uses text-embedding-ada-002 via OPENAI_API_KEY env var
         sources: ["memory"],
         fallback: "none", // No fallback — fail gracefully if embeddings unavailable
+      },
+    },
+
+    // Per-role model overrides (Sprint 1.5)
+    list: {
+      main: {
+        model: {
+          primary: "minimax/minimax-m2.5",
+          fallbacks: ["anthropic/claude-opus-4-6", "openrouter/google/gemini-2.5-flash"],
+        },
+      },
+      analyst: {
+        // Analyst keeps Opus as primary — needs high reasoning capability
+        model: {
+          primary: "anthropic/claude-opus-4-6",
+          fallbacks: ["minimax/minimax-m2.5", "openrouter/google/gemini-2.5-pro"],
+        },
+      },
+      "gold-checker": {
+        model: {
+          primary: "openrouter/google/gemini-2.5-flash",
+          fallbacks: ["openrouter/deepseek/deepseek-chat-v3-0324"],
+        },
+      },
+      scheduler: {
+        model: {
+          primary: "anthropic/claude-3-5-haiku",
+          fallbacks: ["openrouter/deepseek/deepseek-chat-v3-0324"],
+        },
+      },
+      worker: {
+        model: {
+          primary: "openrouter/google/gemini-2.5-flash",
+          fallbacks: ["openrouter/deepseek/deepseek-chat-v3-0324"],
+        },
       },
     },
   },
