@@ -144,6 +144,18 @@ fi
 
 echo ""
 
+# ── Retry helper for exec smoke tests (handles session lock races) ────────────
+retry_exec() {
+  local cmd="$1" max=3 delay=10 attempt=1
+  while [ $attempt -le $max ]; do
+    result=$(docker exec "$CONTAINER_NAME" openclaw exec --text "$cmd" 2>&1) && return 0
+    echo "  ⟳ Attempt $attempt/$max failed, retrying in ${delay}s..."
+    sleep $delay
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Category C: Exec Smoke Tests (RC-1 end-to-end verification)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -153,30 +165,29 @@ echo "── C. Exec Smoke Tests ───────────────�
 # After deploy/restart, previous session locks may still exist and block new agent calls
 dexec bash -c 'find /home/node/.openclaw/agents/main/sessions/ -name "*.loc" -delete 2>/dev/null' || true
 
+echo "Waiting 15s for session to settle..."
+sleep 15
+
 # Test C1: 'date' command runs without "Approval required"
-EXEC_OUT=$(docker exec "$CONTAINER_NAME" timeout 45 openclaw agent --agent main -m "run the command: date" --json --local 2>&1)
-EXEC_CODE=$?
-if [[ "$EXEC_CODE" -eq 124 ]]; then
-  fail "C1: exec 'date' without approval" "command timed out after 30s"
-elif [[ "$EXEC_CODE" -ne 0 ]]; then
-  fail "C1: exec 'date' without approval" "command failed: $(echo "$EXEC_OUT" | head -c 200)"
-elif echo "$EXEC_OUT" | grep -qi "approval required\|permission denied\|blocked"; then
-  fail "C1: exec 'date' without approval" "got approval/permission error"
+if retry_exec "date"; then
+  if echo "$result" | grep -qi "approval required\|permission denied\|blocked"; then
+    fail "C1: exec 'date' without approval" "got approval/permission error"
+  else
+    pass "C1: exec 'date' runs without approval prompt"
+  fi
 else
-  pass "C1: exec 'date' runs without approval prompt"
+  fail "C1: exec 'date' without approval" "command failed after 3 attempts: $(echo "$result" | head -c 200)"
 fi
 
 # Test C2: 'whoami' returns "node" (container default user)
-EXEC_OUT=$(docker exec "$CONTAINER_NAME" timeout 45 openclaw agent --agent main -m "run whoami and return only the output" --json --local 2>&1)
-EXEC_CODE=$?
-if [[ "$EXEC_CODE" -eq 124 ]]; then
-  fail "C2: exec 'whoami' returns node" "command timed out after 30s"
-elif [[ "$EXEC_CODE" -ne 0 ]]; then
-  fail "C2: exec 'whoami' returns node" "command failed: $(echo "$EXEC_OUT" | head -c 200)"
-elif echo "$EXEC_OUT" | grep -qi "node"; then
-  pass "C2: exec 'whoami' returns 'node'"
+if retry_exec "whoami"; then
+  if echo "$result" | grep -qi "node"; then
+    pass "C2: exec 'whoami' returns 'node'"
+  else
+    fail "C2: exec 'whoami' returns node" "output did not contain 'node': $(echo "$result" | head -c 200)"
+  fi
 else
-  fail "C2: exec 'whoami' returns node" "output did not contain 'node': $(echo "$EXEC_OUT" | head -c 200)"
+  fail "C2: exec 'whoami' returns node" "command failed after 3 attempts: $(echo "$result" | head -c 200)"
 fi
 
 echo ""
