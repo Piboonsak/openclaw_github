@@ -64,6 +64,21 @@ warn() {
     echo -e "${YELLOW}⚠ WARN${NC}: $1"
 }
 
+# Helper: get container startup logs (from container start, first 500 lines)
+# Uses docker inspect to get the container's actual start time so results are
+# consistent regardless of how long the container has been running. Falls back
+# to --since=5m if docker inspect fails. The head -500 limit is intentional:
+# we want the FIRST 500 lines from startup (not the last N), so --tail cannot
+# be used here. Startup log volume is low, so the full fetch is acceptable.
+container_startup_logs() {
+    local container="${1:-$CONTAINER}"
+    local cstart
+    cstart=$(docker inspect --format='{{.State.StartedAt}}' "$container" 2>/dev/null)
+    # ${cstart:-5m}: bash :-  operator expands to default on both unset AND empty string,
+    # so an empty cstart (docker inspect failure) correctly falls back to 5m.
+    docker logs --since="${cstart:-5m}" "$container" 2>&1 | head -500
+}
+
 check() {
     local name="$1"
     local cmd="$2"
@@ -258,12 +273,23 @@ check "Gateway health check port 18789" \
     "docker exec $CONTAINER curl -s -o /dev/null -w '%{http_code}' http://localhost:18789/health || echo TIMEOUT" \
     "200"
 
+# Fetch startup logs once and reuse for both checks and diagnostics.
+# This avoids multiple round-trips to docker logs for the same data.
+_STARTUP_LOG=$(container_startup_logs $CONTAINER)
+
 check "Gateway status check (no startup errors)" \
-    "docker logs --since=5m $CONTAINER 2>&1 | grep -v 'gateway token missing' | grep -c 'Error\|FATAL\|panic' || echo 0" \
+    "echo \"\$_STARTUP_LOG\" | grep -v 'gateway token missing' | grep -c 'Error\|FATAL\|panic' || echo 0" \
     "0"
 
+# Diagnostic: show actual startup error lines to help identify real issues
+_STARTUP_ERRORS=$(echo "$_STARTUP_LOG" | grep -v 'gateway token missing' | grep 'Error\|FATAL\|panic' || true)
+if [ -n "$_STARTUP_ERRORS" ]; then
+    echo "  [diagnostic] Startup error lines found:"
+    echo "$_STARTUP_ERRORS" | head -10 | sed 's/^/    /'
+fi
+
 check "No missing environment variable errors" \
-    "docker logs --since=5m $CONTAINER 2>&1 | grep -c 'MissingEnvVarError' || echo 0" \
+    "echo \"\$_STARTUP_LOG\" | grep -c 'MissingEnvVarError' || echo 0" \
     "0"
 
 # ───────────────────────────────────────────────────────────────────────────

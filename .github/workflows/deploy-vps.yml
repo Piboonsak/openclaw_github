@@ -209,10 +209,16 @@ jobs:
           mkdir -p "$LOG_DIR"
           
           {
-            echo "=== Container logs (last 200 lines, errors only) ==="
+            echo "=== Container startup errors (Error|FATAL|panic in first 500 lines since start) ==="
             ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-              'docker logs openclaw-sgnl-openclaw-1 --tail=200 2>&1 | grep -E "ERROR|Exception|Traceback|FATAL"' || true
+              'CSTART=$(docker inspect --format="{{.State.StartedAt}}" openclaw-sgnl-openclaw-1 2>/dev/null); docker logs --since="${CSTART:-5m}" openclaw-sgnl-openclaw-1 2>&1 | head -500 | grep -E "Error|FATAL|panic" || echo "(none)"' || true
+
+            echo ""
+            echo "=== Container logs (last 200 lines, all error patterns) ==="
+            ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+              'docker logs openclaw-sgnl-openclaw-1 --tail=200 2>&1 | grep -E "Error|Exception|Traceback|FATAL|panic"' || true
             
             echo ""
             echo "=== Container status ==="
