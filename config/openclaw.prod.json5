@@ -60,11 +60,12 @@
       // Workspace directory
       workspace: "/data/openclaw/workspace",
 
-      // Context window: 5x expansion for sustained multi-turn conversations
-      // Defaults: bootstrapMaxChars=20K, bootstrapTotalMaxChars=150K, contextTokens=200K
-      bootstrapMaxChars: 100000, // 5x per-file context (was 20,000)
-      bootstrapTotalMaxChars: 750000, // 5x total bootstrap (was 150,000)
-      contextTokens: 1000000, // 5x token window (was 200,000),
+      // Context controls (Sprint 1.5): keep prompt size bounded to control cost/latency
+      // The previous 5x expansion inflated prompts significantly in long-running sessions.
+      bootstrapMaxChars: 12000, // per-file bootstrap cap
+      bootstrapTotalMaxChars: 60000, // total bootstrap cap across all injected files
+      contextTokens: 128000, // strict context ceiling for runtime estimates/status
+      promptTokenBudget: 10000, // hard history budget before each API call
 
       // Issue #64: Enable deep reasoning by default for development-heavy workflows
       // Valid levels: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
@@ -98,7 +99,7 @@
           alias: "Gemini Flash (Fallback)",
         },
         "openrouter/google/gemini-2.0-flash-exp:free": {
-          alias: "Gemini Free (Safety Net)",
+          alias: "Gemini Free (Safety Net 5)",
         },
       },
 
