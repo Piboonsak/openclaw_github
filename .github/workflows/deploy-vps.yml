@@ -133,22 +133,19 @@ jobs:
       # We selectively merge ONLY the model-related fields from the repo template.
       - name: Sync model config to VPS
         run: |
-          # Extract model config from repo's JSON5 template using Node.js
-          # (strips comments, extracts agents.defaults.model and agents.defaults.models)
+          # Install json5 parser (JSON5 has unquoted keys that JSON.parse cannot handle)
+          npm install --no-save json5
+
+          # Extract model config from repo's JSON5 template
           node -e "
+            const json5 = require('json5');
             const fs = require('fs');
             const src = fs.readFileSync('config/openclaw.prod.json5', 'utf8');
-            // Strip JSON5 comments (// and /* */)
-            const json = src
-              .replace(/\/\/.*$/gm, '')
-              .replace(/\/\*[\s\S]*?\*\//g, '')
-              .replace(/,\s*([\]}])/g, '\$1');
-            const cfg = JSON.parse(json);
+            const cfg = json5.parse(src);
             const patch = {
               model: cfg.agents.defaults.model,
               models: cfg.agents.defaults.models
             };
-            // Also extract per-role overrides if present
             if (cfg.agents.list) {
               patch.list = cfg.agents.list;
             }
