@@ -133,11 +133,12 @@ jobs:
       # We selectively merge ONLY the model-related fields from the repo template.
       - name: Sync model config to VPS
         run: |
-          # Install json5 parser (JSON5 has unquoted keys that JSON.parse cannot handle)
-          npm install --no-save json5
+          # Install json5 in isolated temp dir to avoid ERESOLVE conflicts with project deps
+          TMPDIR=$(mktemp -d)
+          (cd "$TMPDIR" && npm init -y --silent && npm install --silent json5)
 
           # Extract model config from repo's JSON5 template
-          node -e "
+          NODE_PATH="$TMPDIR/node_modules" node -e "
             const json5 = require('json5');
             const fs = require('fs');
             const src = fs.readFileSync('config/openclaw.prod.json5', 'utf8');
@@ -152,6 +153,7 @@ jobs:
             fs.writeFileSync('/tmp/model-patch.json', JSON.stringify(patch, null, 2));
             console.log('Model patch extracted:', JSON.stringify(patch.model, null, 2));
           "
+          rm -rf "$TMPDIR"
 
           # Upload patch to VPS
           scp -i ~/.ssh/id_ed25519_hostinger \
