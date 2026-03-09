@@ -1,0 +1,9 @@
+=== Container logs (last 200 lines, errors only) ===
+
+=== Container status ===
+CONTAINER ID   IMAGE                       COMMAND                  CREATED              STATUS                    PORTS                        NAMES
+7952d4af3add   piboonsak/openclaw:latest   "docker-entrypoint.s…"   About a minute ago   Up 35 seconds (healthy)   127.0.0.1:18789->18789/tcp   openclaw-sgnl-openclaw-1
+
+=== Nginx config test ===
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
