@@ -1,0 +1,8 @@
+=== Container logs (last 200 lines, errors only) ===
+ssh: connect to host srv1414058.hstgr.cloud port 22: Network is unreachable
+
+=== Container status ===
+ssh: connect to host srv1414058.hstgr.cloud port 22: Network is unreachable
+
+=== Nginx config test ===
+ssh: connect to host srv1414058.hstgr.cloud port 22: Network is unreachable
