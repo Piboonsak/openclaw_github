@@ -136,6 +136,23 @@ timeouts that exhausted profile rotation (other errors do not advance fallback).
 When a run starts with a model override (hooks or CLI), fallbacks still end at
 `agents.defaults.model.primary` after trying any configured fallbacks.
 
+## Role-tiered strategy
+
+Use a role-tiered model chain so cost, quality, and reliability stay balanced.
+
+| Tier | Role | Primary model | Fallback chain | Auto-switch triggers |
+| --- | --- | --- | --- | --- |
+| Tier 1 | Default chat + routine automation | `minimax/minimax-m2.5` | `anthropic/claude-sonnet-4-5` -> `openrouter/google/gemini-2.5-flash` -> `openrouter/google/gemini-2.5-pro` | Provider auth failure, rate limit, timeout, or billing disable on active profile |
+| Tier 2 | Higher-quality reasoning + complex tool orchestration | `anthropic/claude-sonnet-4-5` | `openrouter/google/gemini-2.5-pro` -> `openrouter/deepseek/deepseek-chat-v3-0324` | Tier 1 output quality not sufficient, repeated tool planning errors, or explicit operator override |
+| Tier 3 | Emergency continuity / budget safety net | `openrouter/google/gemini-2.0-flash-exp:free` | none | Budget exhaustion, provider outage, or fallback chain exhaustion |
+
+Operational notes:
+
+- Keep `agents.defaults.model.primary` aligned with Tier 1 in production.
+- Keep at least one non-primary provider in `fallbacks` to avoid single-provider outages.
+- Promote to Tier 2 only when quality requirements justify the extra cost.
+- Use Tier 3 only as a temporary continuity mode and revert after incident recovery.
+
 ## Related config
 
 See [Gateway configuration](/gateway/configuration) for:
