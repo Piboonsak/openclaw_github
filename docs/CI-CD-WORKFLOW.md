@@ -66,7 +66,7 @@ export GH_TOKEN=$(cat /d/key/githubToken.txt | tr -d '\n\r')
 | Local agent (VS Code, CLI) | `D:\key\githubToken.txt` | Read at session start, no prompt |
 | GitHub Actions runners | `secrets.GITHUB_TOKEN` / `secrets.GH_APP_PRIVATE_KEY` | Configured in repo Settings → Secrets |
 | Docker Hub (Actions) | `secrets.DOCKER_USERNAME` + `secrets.DOCKER_TOKEN` | 3-retry logic in docker-build-push.yml |
-| VPS SSH (Actions) | `secrets.VPS_SSH_KEY` | Written to ephemeral runner |
+| VPS SSH (Actions) | `secrets.DEPLOY_SSH_PRIVATE_KEY` | Written to ephemeral runner |
 
 ---
 
@@ -90,7 +90,7 @@ Push to main (or tag v*)
                     ▼
 ┌─────────────────────────────────────────────────────┐
 │  deploy-vps.yml                                     │
-│  ├── Configure SSH key (VPS_SSH_KEY)                │
+│  ├── Configure SSH key (DEPLOY_SSH_PRIVATE_KEY)                │
 │  ├── SCP Nginx config to VPS                        │
 │  ├── Run docker/deploy.sh on VPS via SSH            │
 │  │   ├── docker pull piboonsak/openclaw:latest      │
@@ -115,7 +115,7 @@ All secrets are configured in **Settings → Secrets and variables → Actions**
 |---|---|---|
 | `DOCKER_USERNAME` | Docker Hub login (`piboonsak`) | docker-build-push.yml |
 | `DOCKER_TOKEN` | Docker Hub Personal Access Token | docker-build-push.yml |
-| `VPS_SSH_KEY` | SSH private key for VPS (`id_ed25519_hostinger`) | deploy-vps.yml |
+| `DEPLOY_SSH_PRIVATE_KEY` | SSH private key for VPS (`id_ed25519_hostinger`) | deploy-vps.yml |
 | `VPS_HOST` | VPS hostname (`srv1414058.hstgr.cloud`) | deploy-vps.yml |
 | `VPS_USER` | SSH user (`root`) | deploy-vps.yml |
 | `GH_APP_PRIVATE_KEY` | GitHub App for issue/PR automation | labeler.yml, stale.yml |
@@ -270,7 +270,7 @@ This is part of Step 3 — the `docker-build-push.yml` workflow handles both bui
 **Workflow:** `.github/workflows/deploy-vps.yml`
 
 **What it does:**
-1. **SSH key setup** — Writes `VPS_SSH_KEY` to ephemeral runner, scans host keys
+1. **SSH key setup** — Writes `DEPLOY_SSH_PRIVATE_KEY` to ephemeral runner, scans host keys
 2. **Sync Nginx config** — SCPs `docker/nginx/openclaw.conf` to VPS (`/tmp/openclaw-nginx.conf`)
 3. **Run deploy.sh** — Executes `docker/deploy.sh` on VPS via SSH:
    - `docker pull piboonsak/openclaw:<tag>`
@@ -715,7 +715,7 @@ Required for production:
 
 - `DOCKER_USERNAME` - Docker Hub username
 - `DOCKER_TOKEN` - Docker Hub access token
-- `VPS_SSH_KEY` - SSH private key for VPS
+- `DEPLOY_SSH_PRIVATE_KEY` - SSH private key for VPS
 - `VPS_HOST` - VPS IP (76.13.210.250)
 - `VPS_USER` - VPS user (root)
 
