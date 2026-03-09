@@ -147,9 +147,6 @@ jobs:
               model: cfg.agents.defaults.model,
               models: cfg.agents.defaults.models
             };
-            if (cfg.agents.list) {
-              patch.list = cfg.agents.list;
-            }
             fs.writeFileSync('/tmp/model-patch.json', JSON.stringify(patch, null, 2));
             console.log('Model patch extracted:', JSON.stringify(patch.model, null, 2));
           "
@@ -185,11 +182,10 @@ jobs:
           cp "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
           echo "✓ Backed up existing config"
 
-          # Selective merge: update model, models, and per-role list from patch
+          # Selective merge: update only model and models (not agents.list — schema differs)
           jq --slurpfile patch "$PATCH_FILE" '
             .agents.defaults.model = $patch[0].model |
-            .agents.defaults.models = $patch[0].models |
-            if $patch[0].list then .agents.list = $patch[0].list else . end
+            .agents.defaults.models = $patch[0].models
           ' "$CONFIG_FILE" > "$CONFIG_FILE.tmp"
 
           mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
