@@ -1,0 +1,32 @@
+═══════════════════════════════════════════════════════
+  WS-2.4 Regression Tests — 2026-03-09 04:12 UTC
+═══════════════════════════════════════════════════════
+
+Category I1: Session idle timeout
+  ✓ I1.1 session.reset.idleMinutes = 30
+
+Category I2: Context 5x scaling
+  ✓ I2.1 bootstrapMaxChars = 100000
+  ✓ I2.2 bootstrapTotalMaxChars = 750000
+  ✓ I2.3 contextTokens = 1000000
+
+Category I3: Exec safe-bin profiles
+  ✓ I3.1 All 8 new safe-bin commands configured
+
+Category I4: format_response.py
+  ⊘ I4.1 format_response.py not found in container (may not be deployed) (skipped)
+
+Category I5: Container resource limits (4vCPU / 16GB)
+  ✓ I5.1 CPU limit = 4 vCPU (NanoCPUs: 4000000000)
+  ✓ I5.2 Memory limit = 16 GB
+
+Category I6: Health check
+  ✓ I6.1 Health endpoint returns 200
+
+Category I7: Docker image version
+  ✓ I7.1 Container running piboonsak/openclaw image (piboonsak/openclaw:latest)
+
+═══════════════════════════════════════════════════════
+  WS-2.4 Results: 9 passed · 0 failed · 1 skipped
+═══════════════════════════════════════════════════════
+RESULT: PASS
