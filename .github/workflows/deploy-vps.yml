@@ -75,7 +75,22 @@ jobs:
           echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519_hostinger
           chmod 600 ~/.ssh/id_ed25519_hostinger
           # Pre-approve host key to avoid interactive prompt
-          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # Retry ssh-keyscan in case VPS is transiently unreachable (Issue #110)
+          # Allow failure — subsequent SSH commands use -o StrictHostKeyChecking=no
+          for i in 1 2 3; do
+            if ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "✓ ssh-keyscan succeeded (attempt $i)"
+              break
+            fi
+            echo "⚠ ssh-keyscan attempt $i/3 failed — retrying in 15s"
+            sleep 15
+          done || true
+          # Verify key authentication works before proceeding
+          if ! ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "echo 'SSH auth OK'"; then
+            echo "ERROR: Cannot authenticate to VPS — check VPS_SSH_KEY secret or VPS network"
+            exit 1
+          fi
 
       # ── Copy the production nginx config to VPS and apply if valid ───────────
       - name: Sync and apply Nginx config to VPS
@@ -133,9 +148,14 @@ jobs:
       # We selectively merge ONLY the model-related fields from the repo template.
       - name: Sync model config to VPS
         run: |
-          # Install json5 in isolated temp dir to avoid ERESOLVE conflicts with project deps
+          # Install json5 with pinned version to avoid npm resolution failures (Issue #109)
           TMPDIR=$(mktemp -d)
-          (cd "$TMPDIR" && npm init -y --silent && npm install --silent json5)
+          echo "Installing json5@2.2.3 in isolated temp dir..."
+          if ! (cd "$TMPDIR" && npm init -y --silent && npm install --silent --no-save json5@2.2.3); then
+            echo "ERROR: npm install json5 failed — cannot parse JSON5 config"
+            rm -rf "$TMPDIR"
+            exit 1
+          fi
 
           # Extract model config from repo's JSON5 template
           NODE_PATH="$TMPDIR/node_modules" node -e "
@@ -209,6 +229,17 @@ jobs:
             echo "  attempt $i/12: status=$STATUS — waiting 10s"
             sleep 10
           done
+
+          # Verify config persistence (Issues #97, #100)
+          echo ""
+          echo "=== Config Verification ==="
+          echo "Primary model: $(jq -r '.agents.defaults.model.primary' "$CONFIG_FILE")"
+          echo "safeBins count: $(jq -r '.tools.exec.safeBins | length' "$CONFIG_FILE")"
+          echo "safeBins includes ps: $(jq -r '.tools.exec.safeBins | contains(["ps"])' "$CONFIG_FILE")"
+          echo "safeBins includes git: $(jq -r '.tools.exec.safeBins | contains(["git"])' "$CONFIG_FILE")"
+          echo "safeBins includes gh: $(jq -r '.tools.exec.safeBins | contains(["gh"])' "$CONFIG_FILE")"
+          echo "Config file owner: $(stat -c '%U:%G' "$CONFIG_FILE")"
+          echo "Config file permissions: $(stat -c '%a' "$CONFIG_FILE")"
 
           rm -f "$PATCH_FILE"
           CONFIG_EOF
