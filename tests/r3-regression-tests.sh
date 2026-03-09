@@ -149,6 +149,10 @@ retry_exec() {
   local cmd="$1" max=3 delay=10 attempt=1
   while [ $attempt -le $max ]; do
     result=$(docker exec "$CONTAINER_NAME" openclaw exec --text "$cmd" 2>&1) && return 0
+    # Newer OpenClaw builds removed `openclaw exec`; detect once and let caller decide to skip.
+    if echo "$result" | grep -qi "unknown command 'exec'"; then
+      return 2
+    fi
     echo "  ⟳ Attempt $attempt/$max failed, retrying in ${delay}s..."
     sleep $delay
     attempt=$((attempt + 1))
@@ -169,23 +173,31 @@ echo "Waiting 15s for session to settle..."
 sleep 15
 
 # Test C1: 'date' command runs without "Approval required"
-if retry_exec "date"; then
+retry_exec "date"
+C1_STATUS=$?
+if [ $C1_STATUS -eq 0 ]; then
   if echo "$result" | grep -qi "approval required\|permission denied\|blocked"; then
     fail "C1: exec 'date' without approval" "got approval/permission error"
   else
     pass "C1: exec 'date' runs without approval prompt"
   fi
+elif [ $C1_STATUS -eq 2 ]; then
+  skip "C1: exec 'date' without approval" "openclaw exec command removed in current CLI"
 else
   fail "C1: exec 'date' without approval" "command failed after 3 attempts: $(echo "$result" | head -c 200)"
 fi
 
 # Test C2: 'whoami' returns "node" (container default user)
-if retry_exec "whoami"; then
+retry_exec "whoami"
+C2_STATUS=$?
+if [ $C2_STATUS -eq 0 ]; then
   if echo "$result" | grep -qi "node"; then
     pass "C2: exec 'whoami' returns 'node'"
   else
     fail "C2: exec 'whoami' returns node" "output did not contain 'node': $(echo "$result" | head -c 200)"
   fi
+elif [ $C2_STATUS -eq 2 ]; then
+  skip "C2: exec 'whoami' returns node" "openclaw exec command removed in current CLI"
 else
   fail "C2: exec 'whoami' returns node" "command failed after 3 attempts: $(echo "$result" | head -c 200)"
 fi
