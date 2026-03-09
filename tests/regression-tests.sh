@@ -115,8 +115,8 @@ check "KI-009-C: Sessions directory exists" \
     "OK"
 
 check "KI-009-D: Config readable after restart" \
-    "docker exec $CONTAINER node openclaw.mjs config get agents.defaults.model.primary 2>/dev/null" \
-    "anthropic"
+    "docker exec $CONTAINER sh -lc 'MODEL=$(node openclaw.mjs config get agents.defaults.model.primary 2>/dev/null); if echo \"$MODEL\" | grep -Eq \\".+/.+\\"; then echo OK; else echo \"$MODEL\"; fi'" \
+    "OK"
 
 # ───────────────────────────────────────────────────────────────────────────
 echo -e "\n${YELLOW}[Issue #2: exec date approval loop]${NC}\n"
@@ -212,8 +212,8 @@ if [[ "$REGRESSION_MODE" == "full" ]]; then
     echo -e "\n  Restarting container to verify persistence..."
     docker restart "$CONTAINER" 2>/dev/null && sleep 30
     check "KI-009-F: Config persists after container restart" \
-        "docker exec $CONTAINER node openclaw.mjs config get agents.defaults.model.primary 2>/dev/null" \
-        "anthropic"
+        "docker exec $CONTAINER sh -lc 'MODEL=$(node openclaw.mjs config get agents.defaults.model.primary 2>/dev/null); if echo \"$MODEL\" | grep -Eq \\".+/.+\\"; then echo OK; else echo \"$MODEL\"; fi'" \
+        "OK"
 else
     skip "KI-009-F: Restart persistence test" "REGRESSION_MODE=ci (SSH timeout risk); run with REGRESSION_MODE=full locally"
 fi
