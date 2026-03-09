@@ -127,6 +127,97 @@ jobs:
         run: |
           bash docker/deploy.sh "$IMAGE_TAG"
 
+      # ── Sync model config from repo to VPS (selective merge) ─────────────
+      # The VPS config at /data/.openclaw/openclaw.json contains runtime state
+      # (meta, wizard, plugins, commands) that must be preserved.
+      # We selectively merge ONLY the model-related fields from the repo template.
+      - name: Sync model config to VPS
+        run: |
+          # Extract model config from repo's JSON5 template using Node.js
+          # (strips comments, extracts agents.defaults.model and agents.defaults.models)
+          node -e "
+            const fs = require('fs');
+            const src = fs.readFileSync('config/openclaw.prod.json5', 'utf8');
+            // Strip JSON5 comments (// and /* */)
+            const json = src
+              .replace(/\/\/.*$/gm, '')
+              .replace(/\/\*[\s\S]*?\*\//g, '')
+              .replace(/,\s*([\]}])/g, '\$1');
+            const cfg = JSON.parse(json);
+            const patch = {
+              model: cfg.agents.defaults.model,
+              models: cfg.agents.defaults.models
+            };
+            // Also extract per-role overrides if present
+            if (cfg.agents.list) {
+              patch.list = cfg.agents.list;
+            }
+            fs.writeFileSync('/tmp/model-patch.json', JSON.stringify(patch, null, 2));
+            console.log('Model patch extracted:', JSON.stringify(patch.model, null, 2));
+          "
+
+          # Upload patch to VPS
+          scp -i ~/.ssh/id_ed25519_hostinger \
+              -o StrictHostKeyChecking=no \
+              /tmp/model-patch.json \
+              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/model-patch.json"
+
+          # Merge patch into running config using jq, then restart container
+          ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s << 'CONFIG_EOF'
+          set -euo pipefail
+          CONTAINER="openclaw-sgnl-openclaw-1"
+          VOL_PATH=$(docker volume inspect openclaw-sgnl_openclaw-state --format '{{ .Mountpoint }}' 2>/dev/null || true)
+
+          if [ -z "$VOL_PATH" ]; then
+            echo "WARNING: Could not find openclaw-state volume — skipping config sync"
+            exit 0
+          fi
+
+          CONFIG_FILE="$VOL_PATH/openclaw.json"
+          PATCH_FILE="/tmp/model-patch.json"
+
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "WARNING: Config file not found at $CONFIG_FILE — skipping"
+            exit 0
+          fi
+
+          # Backup current config
+          cp "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
+          echo "✓ Backed up existing config"
+
+          # Selective merge: update model, models, and per-role list from patch
+          jq --slurpfile patch "$PATCH_FILE" '
+            .agents.defaults.model = $patch[0].model |
+            .agents.defaults.models = $patch[0].models |
+            if $patch[0].list then .agents.list = $patch[0].list else . end
+          ' "$CONFIG_FILE" > "$CONFIG_FILE.tmp"
+
+          mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+          chown 1000:1000 "$CONFIG_FILE"
+          echo "✓ Model config merged into $CONFIG_FILE"
+          echo "  Primary model: $(jq -r '.agents.defaults.model.primary' "$CONFIG_FILE")"
+
+          # Restart container to pick up new config
+          cd /docker/openclaw-sgnl
+          docker compose restart
+          echo "✓ Container restarted to apply new config"
+
+          # Wait for container to be healthy
+          echo "Waiting for container health..."
+          for i in $(seq 1 12); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo "unknown")
+            if [ "$STATUS" = "healthy" ]; then
+              echo "✓ Container is healthy"
+              break
+            fi
+            echo "  attempt $i/12: status=$STATUS — waiting 10s"
+            sleep 10
+          done
+
+          rm -f "$PATCH_FILE"
+          CONFIG_EOF
+
       # ── Verify HTTPS endpoint is reachable (external check) ───────────────
       - name: Verify HTTPS health endpoint
         run: |
