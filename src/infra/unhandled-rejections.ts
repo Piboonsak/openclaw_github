@@ -154,26 +154,44 @@ export function installUnhandledRejectionHandler(): void {
     }
 
     if (isFatalError(reason)) {
-      console.error("[openclaw] FATAL unhandled rejection:", formatUncaughtError(reason));
+      console.error(
+        "[openclaw] ❌ FATAL unhandled rejection — agent terminating:",
+        formatUncaughtError(reason),
+      );
+      console.error(
+        "[openclaw] ℹ️  User was NOT notified (Issue #104). Check logs or enable channel error forwarding.",
+      );
       process.exit(1);
       return;
     }
 
     if (isConfigError(reason)) {
-      console.error("[openclaw] CONFIGURATION ERROR - requires fix:", formatUncaughtError(reason));
+      console.error(
+        "[openclaw] ❌ CONFIGURATION ERROR — requires fix:",
+        formatUncaughtError(reason),
+      );
+      console.error(
+        "[openclaw] ℹ️  User was NOT notified. Fix config and redeploy via CI/CD.",
+      );
       process.exit(1);
       return;
     }
 
     if (isTransientNetworkError(reason)) {
       console.warn(
-        "[openclaw] Non-fatal unhandled rejection (continuing):",
+        "[openclaw] ⚠️  Non-fatal unhandled rejection (continuing):",
         formatUncaughtError(reason),
       );
       return;
     }
 
-    console.error("[openclaw] Unhandled promise rejection:", formatUncaughtError(reason));
+    console.error(
+      "[openclaw] ❌ Unhandled promise rejection — agent terminating:",
+      formatUncaughtError(reason),
+    );
+    console.error(
+      "[openclaw] ℹ️  User was NOT notified (Issue #104). To report errors to channels, implement channel error forwarding.",
+    );
     process.exit(1);
   });
 }
