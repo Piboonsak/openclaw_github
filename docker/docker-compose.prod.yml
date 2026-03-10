@@ -79,6 +79,7 @@ services:
       # GitHub (for code operations, optional)
       GITHUB_USER: ${GITHUB_USER:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GH_TOKEN: ${GITHUB_TOKEN:-}
       
       # Container home directory
       HOME: /app
