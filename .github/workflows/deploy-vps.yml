@@ -157,18 +157,23 @@ jobs:
             exit 1
           fi
 
-          # Extract model config from repo's JSON5 template
+          # Extract model config + token budget config from repo's JSON5 template
           NODE_PATH="$TMPDIR/node_modules" node -e "
             const json5 = require('json5');
             const fs = require('fs');
             const src = fs.readFileSync('config/openclaw.prod.json5', 'utf8');
             const cfg = json5.parse(src);
+            const d = cfg.agents.defaults;
             const patch = {
-              model: cfg.agents.defaults.model,
-              models: cfg.agents.defaults.models
+              model: d.model,
+              models: d.models,
+              contextTokens: d.contextTokens,
+              bootstrapMaxChars: d.bootstrapMaxChars,
+              bootstrapTotalMaxChars: d.bootstrapTotalMaxChars,
+              promptTokenBudget: d.promptTokenBudget,
             };
             fs.writeFileSync('/tmp/model-patch.json', JSON.stringify(patch, null, 2));
-            console.log('Model patch extracted:', JSON.stringify(patch.model, null, 2));
+            console.log('Patch extracted:', JSON.stringify({ model: patch.model, contextTokens: patch.contextTokens, bootstrapTotalMaxChars: patch.bootstrapTotalMaxChars }, null, 2));
           "
           rm -rf "$TMPDIR"
 
@@ -202,16 +207,22 @@ jobs:
           cp "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
           echo "✓ Backed up existing config"
 
-          # Selective merge: update only model and models (not agents.list — schema differs)
+          # Selective merge: update model, models, and token budget settings
           jq --slurpfile patch "$PATCH_FILE" '
             .agents.defaults.model = $patch[0].model |
-            .agents.defaults.models = $patch[0].models
+            .agents.defaults.models = $patch[0].models |
+            .agents.defaults.contextTokens = $patch[0].contextTokens |
+            .agents.defaults.bootstrapMaxChars = $patch[0].bootstrapMaxChars |
+            .agents.defaults.bootstrapTotalMaxChars = $patch[0].bootstrapTotalMaxChars |
+            .agents.defaults.promptTokenBudget = $patch[0].promptTokenBudget
           ' "$CONFIG_FILE" > "$CONFIG_FILE.tmp"
 
           mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
           chown 1000:1000 "$CONFIG_FILE"
           echo "✓ Model config merged into $CONFIG_FILE"
           echo "  Primary model: $(jq -r '.agents.defaults.model.primary' "$CONFIG_FILE")"
+          echo "  contextTokens: $(jq -r '.agents.defaults.contextTokens' "$CONFIG_FILE")"
+          echo "  bootstrapTotalMaxChars: $(jq -r '.agents.defaults.bootstrapTotalMaxChars' "$CONFIG_FILE")"
 
           # Restart container to pick up new config
           cd /docker/openclaw-sgnl
@@ -234,6 +245,9 @@ jobs:
           echo ""
           echo "=== Config Verification ==="
           echo "Primary model: $(jq -r '.agents.defaults.model.primary' "$CONFIG_FILE")"
+          echo "contextTokens: $(jq -r '.agents.defaults.contextTokens' "$CONFIG_FILE")"
+          echo "bootstrapMaxChars: $(jq -r '.agents.defaults.bootstrapMaxChars' "$CONFIG_FILE")"
+          echo "bootstrapTotalMaxChars: $(jq -r '.agents.defaults.bootstrapTotalMaxChars' "$CONFIG_FILE")"
           echo "safeBins count: $(jq -r '.tools.exec.safeBins | length' "$CONFIG_FILE")"
           echo "safeBins includes ps: $(jq -r '.tools.exec.safeBins | contains(["ps"])' "$CONFIG_FILE")"
           echo "safeBins includes git: $(jq -r '.tools.exec.safeBins | contains(["git"])' "$CONFIG_FILE")"
