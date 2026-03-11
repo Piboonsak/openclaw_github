@@ -150,70 +150,106 @@ jobs:
       # (Issue #67), then updates the image tag in-place. This ensures new volume mounts,
       # env_file directives, and environment variables reach the VPS.
 
-      # ── Sync OpenRouter key into VPS .env (CI/CD-managed) ─────────────────
-      - name: Sync OpenRouter API key to VPS env
+      # ── Sync runtime secrets into VPS .env (CI/CD-managed) ───────────────
+      - name: Sync runtime secrets to VPS env
         env:
+          ANTHROPIC_API_KEY: ${{ secrets['ANTHROPIC_API_KEY'] }}
+          BRAVE_API_ANSWER_KEY: ${{ secrets['BRAVE_API_ANSWER_KEY'] }}
+          BRAVE_API_KEY: ${{ secrets['BRAVE_API_KEY'] }}
+          BRAVE_API_SEARCH_KEY: ${{ secrets['BRAVE_API_SEARCH_KEY'] }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets['LINE_CHANNEL_ACCESS_TOKEN'] }}
+          LINE_CHANNEL_SECRET: ${{ secrets['LINE_CHANNEL_SECRET'] }}
+          OPENAI_API_KEY: ${{ secrets['OPENAI_API_KEY'] }}
+          OPENCLAW_GATEWAY_TOKEN: ${{ secrets['OPENCLAW_GATEWAY_TOKEN'] }}
           OPENROUTER_API_KEY: ${{ secrets['OPENROUTER_API_KEY'] }}
         run: |
           set -euo pipefail
 
-          if [ -z "${OPENROUTER_API_KEY:-}" ]; then
-            echo "ERROR: Missing OPENROUTER_API_KEY GitHub secret."
-            echo "Set it in repo secrets before deploy to avoid auth failures."
+          TMPDIR=$(mktemp -d)
+          SECRETS_FILE="$TMPDIR/openclaw-runtime-secrets.env"
+          touch "$SECRETS_FILE"
+          chmod 600 "$SECRETS_FILE"
+
+          MISSING_KEYS=()
+          add_secret() {
+            local key="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              MISSING_KEYS+=("$key")
+              return
+            fi
+            printf '%s=%s\n' "$key" "$value" >> "$SECRETS_FILE"
+          }
+
+          add_secret "ANTHROPIC_API_KEY" "${ANTHROPIC_API_KEY:-}"
+          add_secret "BRAVE_API_ANSWER_KEY" "${BRAVE_API_ANSWER_KEY:-}"
+          add_secret "BRAVE_API_KEY" "${BRAVE_API_KEY:-}"
+          add_secret "BRAVE_API_SEARCH_KEY" "${BRAVE_API_SEARCH_KEY:-}"
+          add_secret "LINE_CHANNEL_ACCESS_TOKEN" "${LINE_CHANNEL_ACCESS_TOKEN:-}"
+          add_secret "LINE_CHANNEL_SECRET" "${LINE_CHANNEL_SECRET:-}"
+          add_secret "OPENAI_API_KEY" "${OPENAI_API_KEY:-}"
+          add_secret "OPENCLAW_GATEWAY_TOKEN" "${OPENCLAW_GATEWAY_TOKEN:-}"
+          add_secret "OPENROUTER_API_KEY" "${OPENROUTER_API_KEY:-}"
+
+          if [ "${#MISSING_KEYS[@]}" -gt 0 ]; then
+            echo "ERROR: Missing required GitHub secrets: ${MISSING_KEYS[*]}"
+            rm -rf "$TMPDIR"
             exit 1
           fi
-
-          # Transfer key via temp file to avoid shell escaping pitfalls.
-          printf '%s' "$OPENROUTER_API_KEY" > /tmp/openrouter.key
-          chmod 600 /tmp/openrouter.key
 
           scp -i ~/.ssh/id_ed25519_hostinger \
               -o StrictHostKeyChecking=no \
               -o ConnectTimeout=30 \
               -o ServerAliveInterval=15 \
               -o ServerAliveCountMax=4 \
-              /tmp/openrouter.key \
-              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/openrouter.key"
+              "$SECRETS_FILE" \
+              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/openclaw-runtime-secrets.env"
 
           timeout 180 ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             -o ConnectTimeout=30 \
             -o ServerAliveInterval=15 \
             -o ServerAliveCountMax=4 \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s << 'OPENROUTER_EOF'
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s << 'RUNTIME_SECRETS_EOF'
           set -euo pipefail
           APP_DIR="/docker/openclaw-sgnl"
           ENV_FILE="$APP_DIR/.env"
-          KEY_FILE="/tmp/openrouter.key"
+          SECRETS_FILE="/tmp/openclaw-runtime-secrets.env"
 
-          if [ ! -s "$KEY_FILE" ]; then
-            echo "ERROR: /tmp/openrouter.key missing on VPS"
+          if [ ! -s "$SECRETS_FILE" ]; then
+            echo "ERROR: /tmp/openclaw-runtime-secrets.env missing on VPS"
             exit 1
           fi
 
-          KEY_VALUE=$(cat "$KEY_FILE")
           touch "$ENV_FILE"
           chmod 600 "$ENV_FILE"
 
-          awk -v key="$KEY_VALUE" '
-            BEGIN { updated = 0 }
-            /^OPENROUTER_API_KEY=/ {
-              print "OPENROUTER_API_KEY=" key
-              updated = 1
-              next
-            }
-            { print }
-            END {
-              if (!updated) print "OPENROUTER_API_KEY=" key
-            }
-          ' "$ENV_FILE" > "$ENV_FILE.tmp"
+          while IFS='=' read -r key value; do
+            if [ -z "$key" ]; then
+              continue
+            fi
 
-          mv "$ENV_FILE.tmp" "$ENV_FILE"
+            awk -v k="$key" -v v="$value" '
+              BEGIN { updated = 0 }
+              $0 ~ "^" k "=" {
+                print k "=" v
+                updated = 1
+                next
+              }
+              { print }
+              END {
+                if (!updated) print k "=" v
+              }
+            ' "$ENV_FILE" > "$ENV_FILE.tmp"
+
+            mv "$ENV_FILE.tmp" "$ENV_FILE"
+          done < "$SECRETS_FILE"
+
           chmod 600 "$ENV_FILE"
-          rm -f "$KEY_FILE"
-          echo "✓ OPENROUTER_API_KEY synced to $ENV_FILE"
-          OPENROUTER_EOF
+          rm -f "$SECRETS_FILE"
+          echo "✓ Runtime secrets synced to $ENV_FILE"
+          RUNTIME_SECRETS_EOF
 
-          rm -f /tmp/openrouter.key
+          rm -rf "$TMPDIR"
 
       # ── Run deploy.sh on VPS ───────────────────────────────────────────────
       - name: Deploy container
