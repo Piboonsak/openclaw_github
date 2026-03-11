@@ -44,6 +44,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Checkout Openclaw docs repository
+        uses: actions/checkout@v4
+        with:
+          repository: Piboonsak/Openclaw
+          path: openclaw-docs
+
       # ── Create deployment log directory ────────────────────────────────────
       - name: Create deployment log directory
         run: |
@@ -257,6 +263,49 @@ jobs:
 
           rm -f "$PATCH_FILE"
           CONFIG_EOF
+
+      # ── Sync NongKung markdown workspace files from Openclaw repo ───────
+      - name: Upload NongKung markdown files to VPS
+        run: |
+          set -euo pipefail
+          SRC_DIR="openclaw-docs/bots/nongkung"
+          OUT_TGZ="/tmp/nongkung-md.tgz"
+
+          if [ ! -d "$SRC_DIR" ]; then
+            echo "ERROR: Source directory not found: $SRC_DIR"
+            exit 1
+          fi
+
+          tar -C "$SRC_DIR" -czf "$OUT_TGZ" -- *.md
+
+          scp -i ~/.ssh/id_ed25519_hostinger \
+              -o StrictHostKeyChecking=no \
+              "$OUT_TGZ" \
+              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/nongkung-md.tgz"
+
+      - name: Sync NongKung markdown files into OpenClaw workspace volume
+        run: |
+          ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s << 'MD_SYNC_EOF'
+          set -euo pipefail
+
+          VOL_PATH=$(docker volume inspect openclaw-sgnl_openclaw-state --format '{{ .Mountpoint }}' 2>/dev/null || true)
+          if [ -z "$VOL_PATH" ]; then
+            echo "ERROR: Could not resolve openclaw-state volume mountpoint"
+            exit 1
+          fi
+
+          TARGET_DIR="$VOL_PATH/workspace/bots/nongkung"
+          mkdir -p "$TARGET_DIR"
+
+          tar -xzf /tmp/nongkung-md.tgz -C "$TARGET_DIR"
+          chown -R 1000:1000 "$VOL_PATH/workspace"
+
+          echo "Synced markdown files to: $TARGET_DIR"
+          ls -la "$TARGET_DIR" | head -50
+
+          rm -f /tmp/nongkung-md.tgz
+          MD_SYNC_EOF
 
       # ── Verify HTTPS endpoint is reachable (external check) ───────────────
       - name: Verify HTTPS health endpoint
