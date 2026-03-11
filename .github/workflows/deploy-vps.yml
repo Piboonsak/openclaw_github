@@ -78,9 +78,21 @@ jobs:
 
       # ── Write SSH key to disk (ephemeral runner) ───────────────────────────
       - name: Configure SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519_hostinger
+
+          # Prefer VPS_SSH_KEY (operator-managed), fallback to DEPLOY_SSH_PRIVATE_KEY.
+          SSH_KEY_CONTENT="${VPS_SSH_KEY:-${DEPLOY_SSH_PRIVATE_KEY:-}}"
+          if [ -z "$SSH_KEY_CONTENT" ]; then
+            echo "ERROR: Missing SSH private key secret. Set VPS_SSH_KEY (preferred) or DEPLOY_SSH_PRIVATE_KEY."
+            exit 1
+          fi
+
+          printf '%s\n' "$SSH_KEY_CONTENT" > ~/.ssh/id_ed25519_hostinger
           chmod 600 ~/.ssh/id_ed25519_hostinger
           # Pre-approve host key to avoid interactive prompt
           # Retry ssh-keyscan in case VPS is transiently unreachable (Issue #110)
@@ -96,7 +108,7 @@ jobs:
           # Verify key authentication works before proceeding
           if ! ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
                "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "echo 'SSH auth OK'"; then
-            echo "ERROR: Cannot authenticate to VPS — check VPS_SSH_KEY secret or VPS network"
+            echo "ERROR: Cannot authenticate to VPS — check VPS_SSH_KEY/DEPLOY_SSH_PRIVATE_KEY and VPS network"
             exit 1
           fi
 
@@ -137,6 +149,65 @@ jobs:
       # deploy.sh now syncs docker/docker-compose.prod.yml from repo to VPS on every deploy
       # (Issue #67), then updates the image tag in-place. This ensures new volume mounts,
       # env_file directives, and environment variables reach the VPS.
+
+      # ── Sync OpenRouter key into VPS .env (CI/CD-managed) ─────────────────
+      - name: Sync OpenRouter API key to VPS env
+        env:
+          OPENROUTER_API_KEY: ${{ secrets['OPENROUTER_API_KEY'] }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+            echo "ERROR: Missing OPENROUTER_API_KEY GitHub secret."
+            echo "Set it in repo secrets before deploy to avoid auth failures."
+            exit 1
+          fi
+
+          # Transfer key via temp file to avoid shell escaping pitfalls.
+          printf '%s' "$OPENROUTER_API_KEY" > /tmp/openrouter.key
+          chmod 600 /tmp/openrouter.key
+
+          scp -i ~/.ssh/id_ed25519_hostinger \
+              -o StrictHostKeyChecking=no \
+              /tmp/openrouter.key \
+              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/openrouter.key"
+
+          ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s << 'OPENROUTER_EOF'
+          set -euo pipefail
+          APP_DIR="/docker/openclaw-sgnl"
+          ENV_FILE="$APP_DIR/.env"
+          KEY_FILE="/tmp/openrouter.key"
+
+          if [ ! -s "$KEY_FILE" ]; then
+            echo "ERROR: /tmp/openrouter.key missing on VPS"
+            exit 1
+          fi
+
+          KEY_VALUE=$(cat "$KEY_FILE")
+          touch "$ENV_FILE"
+          chmod 600 "$ENV_FILE"
+
+          awk -v key="$KEY_VALUE" '
+            BEGIN { updated = 0 }
+            /^OPENROUTER_API_KEY=/ {
+              print "OPENROUTER_API_KEY=" key
+              updated = 1
+              next
+            }
+            { print }
+            END {
+              if (!updated) print "OPENROUTER_API_KEY=" key
+            }
+          ' "$ENV_FILE" > "$ENV_FILE.tmp"
+
+          mv "$ENV_FILE.tmp" "$ENV_FILE"
+          chmod 600 "$ENV_FILE"
+          rm -f "$KEY_FILE"
+          echo "✓ OPENROUTER_API_KEY synced to $ENV_FILE"
+          OPENROUTER_EOF
+
+          rm -f /tmp/openrouter.key
 
       # ── Run deploy.sh on VPS ───────────────────────────────────────────────
       - name: Deploy container

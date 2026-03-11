@@ -77,10 +77,10 @@
       model: {
         primary: "openrouter/minimax/minimax-m2.5",
         fallbacks: [
-          "anthropic/claude-opus-4-6",
           "openrouter/google/gemini-2.5-flash",
-          "anthropic/claude-3-5-haiku",
-          "openrouter/google/gemini-2.0-flash-exp:free",
+          "openrouter/deepseek/deepseek-chat-v3-0324",
+          "openrouter/openai/gpt-4o-mini",
+          "anthropic/claude-opus-4-6",
         ],
       },
 
@@ -92,14 +92,14 @@
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus (Analyst/Fallback)",
         },
-        "anthropic/claude-3-5-haiku": {
-          alias: "Haiku (Budget)",
-        },
         "openrouter/google/gemini-2.5-flash": {
           alias: "Gemini Flash (Fallback)",
         },
-        "openrouter/google/gemini-2.0-flash-exp:free": {
-          alias: "Gemini Free (Safety Net 5)",
+        "openrouter/deepseek/deepseek-chat-v3-0324": {
+          alias: "DeepSeek V3 (Fallback)",
+        },
+        "openrouter/openai/gpt-4o-mini": {
+          alias: "GPT-4o Mini (Fallback)",
         },
       },
 
