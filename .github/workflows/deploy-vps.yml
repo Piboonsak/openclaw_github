@@ -169,10 +169,16 @@ jobs:
 
           scp -i ~/.ssh/id_ed25519_hostinger \
               -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=4 \
               /tmp/openrouter.key \
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/openrouter.key"
 
-          ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+          timeout 180 ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash -s << 'OPENROUTER_EOF'
           set -euo pipefail
           APP_DIR="/docker/openclaw-sgnl"
