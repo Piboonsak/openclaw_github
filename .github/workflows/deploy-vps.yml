@@ -49,6 +49,7 @@ jobs:
         with:
           repository: Piboonsak/Openclaw
           path: openclaw-docs
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # ── Create deployment log directory ────────────────────────────────────
       - name: Create deployment log directory
