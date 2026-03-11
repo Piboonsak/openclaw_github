@@ -78,15 +78,9 @@ jobs:
 
       # ── Write SSH key to disk (ephemeral runner) ───────────────────────────
       - name: Configure SSH key
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY != '' && secrets.VPS_SSH_KEY || secrets.DEPLOY_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          if [ -z "${SSH_PRIVATE_KEY}" ]; then
-            echo "ERROR: Missing SSH key secret. Set VPS_SSH_KEY (preferred) or DEPLOY_SSH_PRIVATE_KEY"
-            exit 1
-          fi
-          echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519_hostinger
+          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519_hostinger
           chmod 600 ~/.ssh/id_ed25519_hostinger
           # Pre-approve host key to avoid interactive prompt
           # Retry ssh-keyscan in case VPS is transiently unreachable (Issue #110)
