@@ -1,0 +1,18 @@
+=== Container logs (last 200 lines, errors only) ===
+Warning: Identity file /home/runner/.ssh/id_ed25519_hostinger not accessible: No such file or directory.
+Warning: Permanently added 'srv1414058.hstgr.cloud' (ED25519) to the list of known hosts.
+Permission denied, please try again.
+Permission denied, please try again.
+root@srv1414058.hstgr.cloud: Permission denied (publickey,password).
+
+=== Container status ===
+Warning: Identity file /home/runner/.ssh/id_ed25519_hostinger not accessible: No such file or directory.
+Permission denied, please try again.
+Permission denied, please try again.
+root@srv1414058.hstgr.cloud: Permission denied (publickey,password).
+
+=== Nginx config test ===
+Warning: Identity file /home/runner/.ssh/id_ed25519_hostinger not accessible: No such file or directory.
+Permission denied, please try again.
+Permission denied, please try again.
+root@srv1414058.hstgr.cloud: Permission denied (publickey,password).
