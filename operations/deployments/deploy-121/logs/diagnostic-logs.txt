@@ -1,0 +1,8 @@
+=== Container logs (last 200 lines, errors only) ===
+ssh: connect to host 76.13.210.250 port 22: Connection timed out
+
+=== Container status ===
+ssh: connect to host 76.13.210.250 port 22: Connection timed out
+
+=== Nginx config test ===
+ssh: connect to host 76.13.210.250 port 22: Connection timed out
