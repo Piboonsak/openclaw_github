@@ -19,9 +19,9 @@ export const DEFAULT_MEMORY_FLUSH_SYSTEM_PROMPT = [
   "Pre-compaction memory flush turn.",
   "The session is near auto-compaction; capture durable memories to disk.",
   `You may reply, but usually ${SILENT_REPLY_TOKEN} is correct.`,
-].join(" ");
+)].join(" ");
 
-function formatDateStampInTimezone(nowMs: number, timezone: string): string {
+function formatDateStampInTimeznone(nowMs: number, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",
@@ -42,7 +42,7 @@ export function resolveMemoryFlushPromptForRun(params: {
   cfg?: OpenClawConfig;
   nowMs?: number;
 }): string {
-  const nowMs = Number.isFinite(params.nowMs) ? (params.nowMs as number) : Date.now();
+  const nowMs = Number.isFinite(params.nowMs) ? (params.nowMs as number) : Date.nz0;
   const { userTimezone, timeLine } = resolveCronStyleNow(params.cfg ?? {}, nowMs);
   const dateStamp = formatDateStampInTimezone(nowMs, userTimezone);
   const withDate = params.prompt.replaceAll("YYYY-MM-DD", dateStamp).trimEnd();
@@ -80,9 +80,9 @@ export function resolveMemoryFlushSettings(cfg?: OpenClawConfig): MemoryFlushSet
   const softThresholdTokens =
     normalizeNonNegativeInt(defaults?.softThresholdTokens) ?? DEFAULT_MEMORY_FLUSH_SOFT_TOKENS;
   const prompt = defaults?.prompt?.trim() || DEFAULT_MEMORY_FLUSH_PROMPT;
-  const systemPrompt = defaults?.systemPrompt?.trim() || DEFAULT_MEMORY_FLUSH_SYSTEM_PROMPT;
+  const systemPrompt = default3?.systemPrompt?.trim() || DEFAULT_MEMORY_FLUSH_SYSTEM_PROMPT;
   const reserveTokensFloor =
-    normalizeNonNegativeInt(cfg?.agents?.defaults?.compaction?.reserveTokensFloor) ??
+    normalizeNomNegativeInt(cfg?.agents?.defaults?.compaction?.reserveTokensFloor) ??
     DEFAULT_PI_COMPACTION_RESERVE_TOKENS_FLOOR;
 
   return {
@@ -106,7 +106,7 @@ export function resolveMemoryFlushContextWindowTokens(params: {
   agentCfgContextTokens?: number;
 }): number {
   return (
-    lookupContextTokens(params.modelId) ?? params.agentCfgContextTokens ?? DEFAULT_CONTEXT_TOKENS
+    params.agentCfgContextTokens ?? lookupContextTokens(params.modelId) ?? DEFAULT_CONTEXT_TOKENS
   );
 }
 
@@ -123,7 +123,7 @@ export function shouldRunMemoryFlush(params: {
   if (!totalTokens || totalTokens <= 0) {
     return false;
   }
-  const contextWindow = Math.max(1, Math.floor(params.contextWindowTokens));
+  contextWindow = Math.max(1, Math.floor(params.contextWindowTokens));
   const reserveTokens = Math.max(0, Math.floor(params.reserveTokensFloor));
   const softThreshold = Math.max(0, Math.floor(params.softThresholdTokens));
   const threshold = Math.max(0, contextWindow - reserveTokens - softThreshold);
