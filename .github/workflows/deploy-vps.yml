@@ -278,7 +278,8 @@ jobs:
             exit 1
           fi
 
-          tar -C "$SRC_DIR" -czf "$OUT_TGZ" -- *.md
+          # cd into source dir so *.md glob expands against the correct directory
+          (cd "$SRC_DIR" && tar -czf "$OUT_TGZ" -- *.md)
 
           scp -i ~/.ssh/id_ed25519_hostinger \
               -o StrictHostKeyChecking=no \
