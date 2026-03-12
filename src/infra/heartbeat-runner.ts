@@ -79,6 +79,52 @@ export function setHeartbeatsEnabled(enabled: boolean) {
   heartbeatsEnabled = enabled;
 }
 
+/**
+ * Retry helper with exponential backoff + jitter.
+ * Retries up to maxAttempts times, with delays following: delay = baseDelayMs * (2 ^ attempt) + random jitter.
+ * Only retries on transient errors (429, 5xx, network timeouts).
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+    maxDelayMs?: number;
+    isRetryable?: (err: unknown) => boolean;
+  } = {},
+): Promise<T> {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const baseDelayMs = options.baseDelayMs ?? 500;
+  const maxDelayMs = options.maxDelayMs ?? 8000;
+
+  const isRetryableError = options.isRetryable ?? ((err: unknown) => {
+    const errMsg = String(err);
+    // Retry on rate limit (429), server error (5xx), and network issues
+    return /429|500|502|503|504|ECONNREFUSED|ETIMEDOUT|timeout/i.test(errMsg);
+  });
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableError(err) || attempt === maxAttempts - 1) {
+        throw err;
+      }
+      // Exponential backoff with jitter
+      const baseWait = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
+      const jitter = Math.random() * baseWait * 0.1; // ±10% jitter
+      const delayMs = Math.round(baseWait + jitter);
+      log.debug(
+        `retry heartbeat send attempt ${attempt + 1}/${maxAttempts} after ${delayMs}ms due to: ${String(lastErr)}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 type HeartbeatConfig = AgentDefaultsConfig["heartbeat"];
 type HeartbeatAgent = {
   agentId: string;
@@ -696,17 +742,30 @@ export async function runHeartbeatOnce(opts: {
         return false;
       }
     }
-    await deliverOutboundPayloads({
-      cfg,
-      channel: delivery.channel,
-      to: delivery.to,
-      accountId: delivery.accountId,
-      threadId: delivery.threadId,
-      payloads: [{ text: heartbeatOkText }],
-      agentId,
-      deps: opts.deps,
-    });
-    return true;
+    try {
+      await retryWithBackoff(
+        () =>
+          deliverOutboundPayloads({
+            cfg,
+            channel: delivery.channel,
+            to: delivery.to,
+            accountId: delivery.accountId,
+            threadId: delivery.threadId,
+            payloads: [{ text: heartbeatOkText }],
+            agentId,
+            deps: opts.deps,
+          }),
+        {
+          maxAttempts: 2,
+          baseDelayMs: 500,
+          maxDelayMs: 5000,
+        },
+      );
+      return true;
+    } catch (err) {
+      log.error(`failed to send heartbeat ok payload after retries: ${String(err)}`);
+      return false;
+    }
   };
 
   try {

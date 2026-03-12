@@ -215,6 +215,41 @@
         "git",
         "gh",
       ],
+
+      // Safe bin profile definitions
+      // Sprint 1.8 WS-B: Define profiles for expensive tools (git, gh) to avoid blocking on validation
+      safeBinProfiles: {
+        git: {
+          maxPositional: 10,
+          allowPathPositionals: true,
+          allowedValueFlags: [
+            "--branch",
+            "--depth",
+            "--single-branch",
+            "--no-single-branch",
+            "--help",
+            "--version",
+          ],
+          deniedFlags: ["--force-with-lease", "-f"],
+        },
+        gh: {
+          maxPositional: 5,
+          allowPathPositionals: true,
+          allowedValueFlags: [
+            "--help",
+            "--version",
+            "--repo",
+            "-R",
+            "--jq",
+            "-q",
+            "--json",
+            "-J",
+            "--template",
+            "-t",
+          ],
+          deniedFlags: ["--help"],
+        },
+      },
     },
   },
 

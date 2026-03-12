@@ -26,6 +26,52 @@ export const EXEC_APPROVAL_POSTBACK_PREFIX = "exec_approval=";
 const COMMAND_PREVIEW_MAX = 140;
 
 /**
+ * Retry helper with exponential backoff + jitter.
+ * Retries up to maxAttempts times, with delays following: delay = baseDelayMs * (2 ^ attempt) + random jitter.
+ * Only retries on transient errors (429, 5xx, network timeouts).
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+    maxDelayMs?: number;
+    isRetryable?: (err: unknown) => boolean;
+  } = {},
+): Promise<T> {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const baseDelayMs = options.baseDelayMs ?? 300;
+  const maxDelayMs = options.maxDelayMs ?? 5000;
+
+  const isRetryableError = options.isRetryable ?? ((err: unknown) => {
+    const errMsg = String(err);
+    // Retry on rate limit (429), server error (5xx), and network issues
+    return /429|500|502|503|504|ECONNREFUSED|ETIMEDOUT|timeout/i.test(errMsg);
+  });
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableError(err) || attempt === maxAttempts - 1) {
+        throw err;
+      }
+      // Exponential backoff with jitter
+      const baseWait = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
+      const jitter = Math.random() * baseWait * 0.1; // ±10% jitter
+      const delayMs = Math.round(baseWait + jitter);
+      log.debug(
+        `retry attempt ${attempt + 1}/${maxAttempts} after ${delayMs}ms due to: ${String(lastErr)}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * Parse exec approval postback data.
  * Expected format: `exec_approval=<decision>&id=<approvalId>`
  * Returns null if the data does not match the expected format.
@@ -213,16 +259,32 @@ export class LineExecApprovalHandler {
 
     try {
       const pushFn = this.opts.pushTemplate ?? pushTemplateMessage;
-      await pushFn(target.to, template, { accountId: target.accountId });
+      await retryWithBackoff(
+        () => pushFn(target.to, template, { accountId: target.accountId }),
+        {
+          maxAttempts: 3,
+          baseDelayMs: 300,
+          maxDelayMs: 5000,
+        },
+      );
+      log.debug(`sent approval template for ${request.id} successfully`);
     } catch (err) {
-      log.error(`failed to send approval template: ${String(err)}`);
+      log.error(`failed to send approval template after retries: ${String(err)}`);
       try {
         const pushTextFn = this.opts.pushText ?? pushMessageLine;
-        await pushTextFn(target.to, buildApprovalFallbackText(request, Date.now()), {
-          accountId: target.accountId,
-        });
+        await retryWithBackoff(
+          () =>
+            pushTextFn(target.to, buildApprovalFallbackText(request, Date.now()), {
+              accountId: target.accountId,
+            }),
+          {
+            maxAttempts: 2,
+            baseDelayMs: 500,
+            maxDelayMs: 3000,
+          },
+        );
       } catch (fallbackErr) {
-        log.error(`failed to send approval fallback text: ${String(fallbackErr)}`);
+        log.error(`failed to send approval fallback text after retries: ${String(fallbackErr)}`);
       }
     }
   }
@@ -256,9 +318,16 @@ export class LineExecApprovalHandler {
 
     try {
       const pushFn = this.opts.pushText ?? pushMessageLine;
-      await pushFn(target.to, text, { accountId: target.accountId });
+      await retryWithBackoff(
+        () => pushFn(target.to, text, { accountId: target.accountId }),
+        {
+          maxAttempts: 2,
+          baseDelayMs: 300,
+          maxDelayMs: 3000,
+        },
+      );
     } catch (err) {
-      log.error(`failed to send resolution message: ${String(err)}`);
+      log.error(`failed to send resolution message after retries: ${String(err)}`);
     }
   }
 }
