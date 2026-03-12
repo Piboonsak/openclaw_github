@@ -181,7 +181,8 @@
       // - off: no prompts at all
       // - on-miss: prompt only if command not in allowlist
       // - always: prompt every time
-      ask: "on-miss",
+      // Hotfix: disable approvals for LINE to avoid approval-template rate-limit storms.
+      ask: "off",
 
       // Fallback when no UI available (LINE has no approval UI)
       // - deny: silently deny unapproved commands
