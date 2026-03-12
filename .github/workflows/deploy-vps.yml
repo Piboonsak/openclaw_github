@@ -304,9 +304,11 @@ jobs:
               promptTokenBudget: d.promptTokenBudget,
               execAsk: exec.ask,
               execSecurity: exec.security,
+              execSafeBins: exec.safeBins,
+              execSafeBinProfiles: exec.safeBinProfiles,
             };
             fs.writeFileSync('/tmp/model-patch.json', JSON.stringify(patch, null, 2));
-            console.log('Patch extracted:', JSON.stringify({ model: patch.model, contextTokens: patch.contextTokens, bootstrapTotalMaxChars: patch.bootstrapTotalMaxChars, execAsk: patch.execAsk, execSecurity: patch.execSecurity }, null, 2));
+            console.log('Patch extracted:', JSON.stringify({ model: patch.model, contextTokens: patch.contextTokens, bootstrapTotalMaxChars: patch.bootstrapTotalMaxChars, execAsk: patch.execAsk, execSecurity: patch.execSecurity, execSafeBinsCount: Array.isArray(patch.execSafeBins) ? patch.execSafeBins.length : 0, execSafeBinProfilesCount: patch.execSafeBinProfiles ? Object.keys(patch.execSafeBinProfiles).length : 0 }, null, 2));
           "
           rm -rf "$TMPDIR"
 
@@ -349,7 +351,9 @@ jobs:
             .agents.defaults.bootstrapTotalMaxChars = $patch[0].bootstrapTotalMaxChars |
             .agents.defaults.promptTokenBudget = $patch[0].promptTokenBudget |
             .tools.exec.ask = ($patch[0].execAsk // .tools.exec.ask) |
-            .tools.exec.security = ($patch[0].execSecurity // .tools.exec.security)
+            .tools.exec.security = ($patch[0].execSecurity // .tools.exec.security) |
+            .tools.exec.safeBins = ($patch[0].execSafeBins // .tools.exec.safeBins) |
+            .tools.exec.safeBinProfiles = ($patch[0].execSafeBinProfiles // .tools.exec.safeBinProfiles)
           ' "$CONFIG_FILE" > "$CONFIG_FILE.tmp"
 
           mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
