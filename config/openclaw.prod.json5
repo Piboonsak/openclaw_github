@@ -228,7 +228,44 @@
 
       // Safe bin profile definitions
       // Sprint 1.8 WS-B: Define profiles for expensive tools (git, gh) to avoid blocking on validation
+      // KI-002: Added profiles for ls, pwd, find, sed, awk, id, stat (previously ignored as unprofiled)
       safeBinProfiles: {
+        ls: {
+          maxPositional: 3,
+          allowPathPositionals: true,
+        },
+        pwd: {
+          maxPositional: 0,
+        },
+        find: {
+          maxPositional: 5,
+          allowPathPositionals: true,
+          allowedValueFlags: [
+            "-name", "-iname", "-type", "-mtime", "-mmin",
+            "-maxdepth", "-mindepth", "-size", "-user",
+            "-group", "-perm", "-newer", "-path", "-ipath",
+            "-print", "-print0",
+          ],
+          deniedFlags: ["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprint0"],
+        },
+        sed: {
+          maxPositional: 1,
+          allowedValueFlags: ["-e", "-n", "-r", "-E"],
+          deniedFlags: ["-i", "--in-place"],
+        },
+        awk: {
+          minPositional: 1,
+          maxPositional: 1,
+          allowedValueFlags: ["-F", "--field-separator", "-v", "--assign"],
+        },
+        id: {
+          maxPositional: 1,
+        },
+        stat: {
+          maxPositional: 3,
+          allowPathPositionals: true,
+          allowedValueFlags: ["-c", "--format", "-L", "--dereference", "-f", "--file-system"],
+        },
         git: {
           minPositional: 0,
           maxPositional: 10,
