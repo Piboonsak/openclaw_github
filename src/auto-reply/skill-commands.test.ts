@@ -96,6 +96,15 @@ describe("resolveSkillCommandInvocation", () => {
     expect(invocation?.args).toBeUndefined();
   });
 
+  it("normalizes direct slash command lookup names", () => {
+    const invocation = resolveSkillCommandInvocation({
+      commandBodyNormalized: "/demo-skill do the thing",
+      skillCommands: [{ name: "demo_skill", skillName: "demo-skill", description: "Demo" }],
+    });
+    expect(invocation?.command.name).toBe("demo_skill");
+    expect(invocation?.args).toBe("do the thing");
+  });
+
   it("returns null for unknown commands", () => {
     const invocation = resolveSkillCommandInvocation({
       commandBodyNormalized: "/unknown arg",

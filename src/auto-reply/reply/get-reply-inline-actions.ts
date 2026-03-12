@@ -176,6 +176,16 @@ export async function handleInlineActions(params: {
           skillCommands,
         })
       : null;
+  if (allowTextCommands && shouldLoadSkillCommands) {
+    const requested = resolveSlashCommandName(command.commandBodyNormalized);
+    if (requested) {
+      logVerbose(
+        skillInvocation
+          ? `Skill command resolved: /${requested} -> ${skillInvocation.command.skillName}`
+          : `Skill command not resolved: /${requested}`,
+      );
+    }
+  }
   if (skillInvocation) {
     if (!command.isAuthorizedSender) {
       logVerbose(

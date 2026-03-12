@@ -2,6 +2,7 @@ import { messagingApi } from "@line/bot-sdk";
 import { loadConfig } from "../config/config.js";
 import { logVerbose } from "../globals.js";
 import { recordChannelActivity } from "../infra/channel-activity.js";
+import { retryAsync } from "../infra/retry.js";
 import { resolveLineAccount } from "./accounts.js";
 import { resolveLineChannelAccessToken } from "./channel-access-token.js";
 import type { LineSendResult } from "./types.js";
@@ -23,6 +24,13 @@ const userProfileCache = new Map<
   { displayName: string; pictureUrl?: string; fetchedAt: number }
 >();
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const LINE_RETRY_ATTEMPTS = 4;
+const LINE_RETRY_MIN_DELAY_MS = 300;
+const LINE_RETRY_MAX_DELAY_MS = 5000;
+const LINE_RETRY_JITTER = 0.2;
+
+// Serialize outbound sends per LINE account to reduce short burst collisions.
+const lineOutboundChains = new Map<string, Promise<void>>();
 
 interface LineSendOpts {
   channelAccessToken?: string;
@@ -138,6 +146,85 @@ function logLineHttpError(err: unknown, context: string): void {
   }
 }
 
+function isLineRateLimitError(err: unknown): boolean {
+  if (!err || typeof err !== "object") {
+    return false;
+  }
+  const withStatus = err as { status?: unknown; statusCode?: unknown };
+  const status =
+    typeof withStatus.status === "number"
+      ? withStatus.status
+      : typeof withStatus.statusCode === "number"
+        ? withStatus.statusCode
+        : undefined;
+  if (status === 429) {
+    return true;
+  }
+  const text = String(err);
+  return /429|too many requests/i.test(text);
+}
+
+function resolveRetryAfterMs(err: unknown): number | undefined {
+  if (!err || typeof err !== "object") {
+    return undefined;
+  }
+  const response = (err as { response?: { headers?: unknown } }).response;
+  const headers = response?.headers;
+  if (!headers || typeof headers !== "object") {
+    return undefined;
+  }
+  const retryAfterRaw = (headers as Record<string, unknown>)["retry-after"];
+  if (typeof retryAfterRaw === "number" && Number.isFinite(retryAfterRaw)) {
+    return Math.max(0, retryAfterRaw * 1000);
+  }
+  if (typeof retryAfterRaw === "string") {
+    const parsed = Number(retryAfterRaw);
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, parsed * 1000);
+    }
+  }
+  return undefined;
+}
+
+async function runWithLineRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  return retryAsync(fn, {
+    label,
+    attempts: LINE_RETRY_ATTEMPTS,
+    minDelayMs: LINE_RETRY_MIN_DELAY_MS,
+    maxDelayMs: LINE_RETRY_MAX_DELAY_MS,
+    jitter: LINE_RETRY_JITTER,
+    shouldRetry: (err) => isLineRateLimitError(err),
+    retryAfterMs: resolveRetryAfterMs,
+    onRetry: (info) => {
+      const maxRetries = Math.max(1, info.maxAttempts - 1);
+      logVerbose(
+        `line: retry ${info.attempt}/${maxRetries} for ${info.label ?? label} in ${info.delayMs}ms: ${String(info.err)}`,
+      );
+    },
+  });
+}
+
+async function runLineOutboundSerial<T>(accountId: string, fn: () => Promise<T>): Promise<T> {
+  const previous = lineOutboundChains.get(accountId) ?? Promise.resolve();
+  const gate = previous.catch(() => undefined);
+  let release: () => void = () => undefined;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const chain = gate.then(() => current);
+  lineOutboundChains.set(accountId, chain);
+  try {
+    await gate;
+    return await fn();
+  } finally {
+    release();
+    const latest = lineOutboundChains.get(accountId);
+    if (latest && latest === chain) {
+      lineOutboundChains.delete(accountId);
+    }
+  }
+}
+
 function recordLineOutboundActivity(accountId: string): void {
   recordChannelActivity({
     channel: "line",
@@ -157,20 +244,23 @@ async function pushLineMessages(
   }
 
   const { account, client, chatId } = createLinePushContext(to, opts);
-  const pushRequest = client.pushMessage({
-    to: chatId,
-    messages,
-  });
-
-  if (behavior.errorContext) {
-    const errorContext = behavior.errorContext;
-    await pushRequest.catch((err) => {
-      logLineHttpError(err, errorContext);
-      throw err;
-    });
-  } else {
-    await pushRequest;
-  }
+  await runLineOutboundSerial(account.accountId, () =>
+    runWithLineRetry(async () => {
+      const pushRequest = client.pushMessage({
+        to: chatId,
+        messages,
+      });
+      if (behavior.errorContext) {
+        const errorContext = behavior.errorContext;
+        await pushRequest.catch((err) => {
+          logLineHttpError(err, errorContext);
+          throw err;
+        });
+      } else {
+        await pushRequest;
+      }
+    }, "line.pushMessage"),
+  );
 
   recordLineOutboundActivity(account.accountId);
 
@@ -194,11 +284,16 @@ async function replyLineMessages(
   behavior: LineReplyBehavior = {},
 ): Promise<void> {
   const { account, client } = createLineMessagingClient(opts);
-
-  await client.replyMessage({
-    replyToken,
-    messages,
-  });
+  await runLineOutboundSerial(account.accountId, () =>
+    runWithLineRetry(
+      () =>
+        client.replyMessage({
+          replyToken,
+          messages,
+        }),
+      "line.replyMessage",
+    ),
+  );
 
   recordLineOutboundActivity(account.accountId);
 

@@ -63,6 +63,16 @@ function buildApprovalTemplateText(request: ExecApprovalRequest, nowMs: number):
   return `⚠️ Exec approval required\n\nCommand:\n${commandPreview}\n\nExpires: ${expiresIn}s`;
 }
 
+function buildApprovalFallbackText(request: ExecApprovalRequest, nowMs: number): string {
+  const command = request.request.command;
+  const commandPreview =
+    command.length > COMMAND_PREVIEW_MAX
+      ? `${command.slice(0, COMMAND_PREVIEW_MAX)}…`
+      : command;
+  const expiresIn = Math.max(0, Math.round((request.expiresAtMs - nowMs) / 1000));
+  return `⚠️ Exec approval required\nID: ${request.id}\nCommand: ${commandPreview}\nExpires in ${expiresIn}s\n\nPlease retry the command if approval buttons do not appear.`;
+}
+
 export type LineExecApprovalHandlerOpts = {
   config: OpenClawConfig;
   gatewayUrl?: string;
@@ -206,6 +216,14 @@ export class LineExecApprovalHandler {
       await pushFn(target.to, template, { accountId: target.accountId });
     } catch (err) {
       log.error(`failed to send approval template: ${String(err)}`);
+      try {
+        const pushTextFn = this.opts.pushText ?? pushMessageLine;
+        await pushTextFn(target.to, buildApprovalFallbackText(request, Date.now()), {
+          accountId: target.accountId,
+        });
+      } catch (fallbackErr) {
+        log.error(`failed to send approval fallback text: ${String(fallbackErr)}`);
+      }
     }
   }
 

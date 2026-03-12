@@ -351,16 +351,30 @@ export function normalizeSafeBinProfileFixtures(
   return normalized;
 }
 
+function isNoopSafeBinProfileFixture(fixture: SafeBinProfileFixture): boolean {
+  return (
+    fixture.minPositional === undefined &&
+    fixture.maxPositional === undefined &&
+    fixture.allowPathPositionals === undefined &&
+    fixture.allowBracketPositionals === undefined &&
+    (fixture.allowedValueFlags?.length ?? 0) === 0 &&
+    (fixture.deniedFlags?.length ?? 0) === 0
+  );
+}
+
 export function resolveSafeBinProfiles(
   fixtures?: SafeBinProfileFixtures | null,
 ): Record<string, SafeBinProfile> {
   const normalizedFixtures = normalizeSafeBinProfileFixtures(fixtures);
-  if (Object.keys(normalizedFixtures).length === 0) {
+  const effectiveFixtures = Object.fromEntries(
+    Object.entries(normalizedFixtures).filter(([, fixture]) => !isNoopSafeBinProfileFixture(fixture)),
+  ) as Record<string, SafeBinProfileFixture>;
+  if (Object.keys(effectiveFixtures).length === 0) {
     return SAFE_BIN_PROFILES;
   }
   return {
     ...SAFE_BIN_PROFILES,
-    ...compileSafeBinProfiles(normalizedFixtures),
+    ...compileSafeBinProfiles(effectiveFixtures),
   };
 }
 

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  resolveSafeBinProfiles,
   SAFE_BIN_PROFILE_FIXTURES,
   SAFE_BIN_PROFILES,
   renderSafeBinDeniedFlagsDocBullets,
@@ -125,5 +126,17 @@ describe("exec safe bin policy docs parity", () => {
     const actual = docs.slice(start + SAFE_BIN_DOC_DENIED_FLAGS_START.length, end).trim();
     const expected = renderSafeBinDeniedFlagsDocBullets();
     expect(actual).toBe(expected);
+  });
+});
+
+describe("exec safe bin policy fixture overrides", () => {
+  it("keeps built-in profile when override fixture is empty", () => {
+    const profiles = resolveSafeBinProfiles({
+      gh: {},
+      git: {},
+    });
+
+    expect(profiles.gh).toEqual(SAFE_BIN_PROFILES.gh);
+    expect(profiles.git).toEqual(SAFE_BIN_PROFILES.git);
   });
 });
