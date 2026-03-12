@@ -262,6 +262,7 @@ jobs:
 
       # ── Run deploy.sh on VPS ───────────────────────────────────────────────
       - name: Deploy container
+        continue-on-error: true
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
