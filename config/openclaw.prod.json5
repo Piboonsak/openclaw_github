@@ -198,6 +198,15 @@
       // Expanded safe bins (auto-approved, no prompt needed)
       // Issue #63: git and gh added for agent self-development capability
       safeBins: [
+        "ls",
+        "pwd",
+        "find",
+        "grep",
+        "sed",
+        "awk",
+        "sort",
+        "id",
+        "stat",
         "jq",
         "cut",
         "uniq",
@@ -221,8 +230,8 @@
       // Sprint 1.8 WS-B: Define profiles for expensive tools (git, gh) to avoid blocking on validation
       safeBinProfiles: {
         git: {
+          minPositional: 0,
           maxPositional: 10,
-          allowPathPositionals: true,
           allowedValueFlags: [
             "--branch",
             "--depth",
@@ -234,8 +243,8 @@
           deniedFlags: ["--force-with-lease", "-f"],
         },
         gh: {
+          minPositional: 0,
           maxPositional: 5,
-          allowPathPositionals: true,
           allowedValueFlags: [
             "--help",
             "--version",
@@ -248,7 +257,7 @@
             "--template",
             "-t",
           ],
-          deniedFlags: ["--help"],
+          deniedFlags: [],
         },
       },
     },
