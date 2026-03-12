@@ -264,25 +264,29 @@ echo "Expected: no known critical keywords in the recent log window"
 echo ""
 
 keyword_window="30m"
+keyword_since=$(docker inspect -f '{{.State.StartedAt}}' "$CONTAINER" 2>/dev/null || true)
+if [ -z "$keyword_since" ]; then
+    keyword_since="$keyword_window"
+fi
 
 check "KI-035-A: No 'Unknown config keys' in recent logs" \
-    "docker logs --since=$keyword_window $CONTAINER 2>&1 | grep -c 'Unknown config keys' || echo 0" \
+    "docker logs --since=$keyword_since $CONTAINER 2>&1 | grep -c 'Unknown config keys' || echo 0" \
     "0"
 
 check "KI-035-B: No 'allowPathPositionals' in recent logs" \
-    "docker logs --since=$keyword_window $CONTAINER 2>&1 | grep -c 'allowPathPositionals' || echo 0" \
+    "docker logs --since=$keyword_since $CONTAINER 2>&1 | grep -c 'allowPathPositionals' || echo 0" \
     "0"
 
 check "KI-035-C: No 'missing safeBinProfiles' in recent logs" \
-    "docker logs --since=$keyword_window $CONTAINER 2>&1 | grep -c 'missing safeBinProfiles' || echo 0" \
+    "docker logs --since=$keyword_since $CONTAINER 2>&1 | grep -c 'missing safeBinProfiles' || echo 0" \
     "0"
 
 check "KI-035-D: No 'Run \"openclaw doctor --fix\"' hint spam in recent logs" \
-    "docker logs --since=$keyword_window $CONTAINER 2>&1 | grep -c 'Run \"openclaw doctor --fix\"' || echo 0" \
+    "docker logs --since=$keyword_since $CONTAINER 2>&1 | grep -c 'Run \"openclaw doctor --fix\"' || echo 0" \
     "0"
 
 check "KI-036-A: No allowlist misses in recent logs" \
-    "docker logs --since=$keyword_window $CONTAINER 2>&1 | grep -c 'exec denied: allowlist miss' || echo 0" \
+    "docker logs --since=$keyword_since $CONTAINER 2>&1 | grep -c 'exec denied: allowlist miss' || echo 0" \
     "0"
 
 # ───────────────────────────────────────────────────────────────────────────
