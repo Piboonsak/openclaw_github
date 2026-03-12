@@ -106,8 +106,21 @@ jobs:
             sleep 15
           done || true
           # Verify key authentication works before proceeding
-          if ! ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
-               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "echo 'SSH auth OK'"; then
+          AUTH_OK=0
+          for i in 1 2 3; do
+            if ssh -i ~/.ssh/id_ed25519_hostinger \
+                 -o StrictHostKeyChecking=no \
+                 -o ConnectTimeout=30 \
+                 -o ServerAliveInterval=15 \
+                 -o ServerAliveCountMax=2 \
+                 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "echo 'SSH auth OK'"; then
+              AUTH_OK=1
+              break
+            fi
+            echo "⚠ SSH auth attempt $i/3 failed — retrying in 15s"
+            sleep 15
+          done
+          if [ "$AUTH_OK" -ne 1 ]; then
             echo "ERROR: Cannot authenticate to VPS — check VPS_SSH_KEY/DEPLOY_SSH_PRIVATE_KEY and VPS network"
             exit 1
           fi
@@ -533,19 +546,31 @@ jobs:
           
           {
             echo "=== Container logs (last 200 lines, errors only) ==="
-            ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            timeout 45 ssh -i ~/.ssh/id_ed25519_hostinger \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=20 \
+              -o ServerAliveInterval=10 \
+              -o ServerAliveCountMax=2 \
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
               'docker logs openclaw-sgnl-openclaw-1 --tail=200 2>&1 | grep -E "ERROR|Exception|Traceback|FATAL"' || true
             
             echo ""
             echo "=== Container status ==="
-            ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            timeout 45 ssh -i ~/.ssh/id_ed25519_hostinger \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=20 \
+              -o ServerAliveInterval=10 \
+              -o ServerAliveCountMax=2 \
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
               'docker ps -a --filter name=openclaw' || true
             
             echo ""
             echo "=== Nginx config test ==="
-            ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
+            timeout 45 ssh -i ~/.ssh/id_ed25519_hostinger \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=20 \
+              -o ServerAliveInterval=10 \
+              -o ServerAliveCountMax=2 \
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
               'nginx -t 2>&1' || true
           } > "$LOG_DIR/diagnostic-logs.txt" 2>&1
