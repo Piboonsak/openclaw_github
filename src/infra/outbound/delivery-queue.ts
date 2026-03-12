@@ -9,6 +9,7 @@ import type { OutboundChannel } from "./targets.js";
 const QUEUE_DIRNAME = "delivery-queue";
 const FAILED_DIRNAME = "failed";
 const MAX_RETRIES = 5;
+const DEFAULT_MAX_RECOVERY_MS = 300_000; // 5m: prevents large backlog deferral after restarts.
 
 /** Backoff delays in milliseconds indexed by retry count (1-based). */
 const BACKOFF_MS: readonly number[] = [
@@ -218,7 +219,7 @@ export async function recoverPendingDeliveries(opts: {
   stateDir?: string;
   /** Override for testing — resolves instead of using real setTimeout. */
   delay?: (ms: number) => Promise<void>;
-  /** Maximum wall-clock time for recovery in ms. Remaining entries are deferred to next restart. Default: 60 000. */
+  /** Maximum wall-clock time for recovery in ms. Remaining entries are deferred to next restart. Default: 300 000. */
   maxRecoveryMs?: number;
 }): Promise<{ recovered: number; failed: number; skipped: number }> {
   const pending = await loadPendingDeliveries(opts.stateDir);
@@ -232,7 +233,7 @@ export async function recoverPendingDeliveries(opts: {
   opts.log.info(`Found ${pending.length} pending delivery entries — starting recovery`);
 
   const delayFn = opts.delay ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-  const deadline = Date.now() + (opts.maxRecoveryMs ?? 60_000);
+  const deadline = Date.now() + (opts.maxRecoveryMs ?? DEFAULT_MAX_RECOVERY_MS);
 
   let recovered = 0;
   let failed = 0;
