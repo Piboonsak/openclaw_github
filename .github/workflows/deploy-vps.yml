@@ -223,7 +223,16 @@ jobs:
           touch "$ENV_FILE"
           chmod 600 "$ENV_FILE"
 
-          while IFS='=' read -r key value; do
+          while IFS= read -r line || [ -n "$line" ]; do
+            if [ -z "$line" ]; then
+              continue
+            fi
+
+            # Preserve secret values exactly (including trailing '='),
+            # so parse key/value by splitting only on the first '='.
+            key="${line%%=*}"
+            value="${line#*=}"
+
             if [ -z "$key" ]; then
               continue
             fi
