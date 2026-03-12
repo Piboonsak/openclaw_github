@@ -232,14 +232,12 @@
       safeBinProfiles: {
         ls: {
           maxPositional: 3,
-          allowPathPositionals: true,
         },
         pwd: {
           maxPositional: 0,
         },
         find: {
           maxPositional: 5,
-          allowPathPositionals: true,
           allowedValueFlags: [
             "-name", "-iname", "-type", "-mtime", "-mmin",
             "-maxdepth", "-mindepth", "-size", "-user",
@@ -263,7 +261,6 @@
         },
         stat: {
           maxPositional: 3,
-          allowPathPositionals: true,
           allowedValueFlags: ["-c", "--format", "-L", "--dereference", "-f", "--file-system"],
         },
         git: {
