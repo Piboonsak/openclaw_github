@@ -728,7 +728,8 @@ export async function runHeartbeatOnce(opts: {
     visibility.showOk && delivery.channel !== "none" && delivery.to,
   );
   const maybeSendHeartbeatOk = async () => {
-    if (!canAttemptHeartbeatOk || delivery.channel === "none" || !delivery.to) {
+    const heartbeatTo = delivery.to;
+    if (!canAttemptHeartbeatOk || delivery.channel === "none" || !heartbeatTo) {
       return false;
     }
     const heartbeatPlugin = getChannelPlugin(delivery.channel);
@@ -748,7 +749,7 @@ export async function runHeartbeatOnce(opts: {
           deliverOutboundPayloads({
             cfg,
             channel: delivery.channel,
-            to: delivery.to,
+            to: heartbeatTo,
             accountId: delivery.accountId,
             threadId: delivery.threadId,
             payloads: [{ text: heartbeatOkText }],
