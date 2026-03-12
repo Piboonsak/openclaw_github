@@ -285,6 +285,7 @@ jobs:
             const src = fs.readFileSync('config/openclaw.prod.json5', 'utf8');
             const cfg = json5.parse(src);
             const d = cfg.agents.defaults;
+            const exec = cfg.tools?.exec ?? {};
             const patch = {
               model: d.model,
               models: d.models,
@@ -292,9 +293,11 @@ jobs:
               bootstrapMaxChars: d.bootstrapMaxChars,
               bootstrapTotalMaxChars: d.bootstrapTotalMaxChars,
               promptTokenBudget: d.promptTokenBudget,
+              execAsk: exec.ask,
+              execSecurity: exec.security,
             };
             fs.writeFileSync('/tmp/model-patch.json', JSON.stringify(patch, null, 2));
-            console.log('Patch extracted:', JSON.stringify({ model: patch.model, contextTokens: patch.contextTokens, bootstrapTotalMaxChars: patch.bootstrapTotalMaxChars }, null, 2));
+            console.log('Patch extracted:', JSON.stringify({ model: patch.model, contextTokens: patch.contextTokens, bootstrapTotalMaxChars: patch.bootstrapTotalMaxChars, execAsk: patch.execAsk, execSecurity: patch.execSecurity }, null, 2));
           "
           rm -rf "$TMPDIR"
 
@@ -335,7 +338,9 @@ jobs:
             .agents.defaults.contextTokens = $patch[0].contextTokens |
             .agents.defaults.bootstrapMaxChars = $patch[0].bootstrapMaxChars |
             .agents.defaults.bootstrapTotalMaxChars = $patch[0].bootstrapTotalMaxChars |
-            .agents.defaults.promptTokenBudget = $patch[0].promptTokenBudget
+            .agents.defaults.promptTokenBudget = $patch[0].promptTokenBudget |
+            .tools.exec.ask = ($patch[0].execAsk // .tools.exec.ask) |
+            .tools.exec.security = ($patch[0].execSecurity // .tools.exec.security)
           ' "$CONFIG_FILE" > "$CONFIG_FILE.tmp"
 
           mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
@@ -369,6 +374,8 @@ jobs:
           echo "contextTokens: $(jq -r '.agents.defaults.contextTokens' "$CONFIG_FILE")"
           echo "bootstrapMaxChars: $(jq -r '.agents.defaults.bootstrapMaxChars' "$CONFIG_FILE")"
           echo "bootstrapTotalMaxChars: $(jq -r '.agents.defaults.bootstrapTotalMaxChars' "$CONFIG_FILE")"
+          echo "tools.exec.ask: $(jq -r '.tools.exec.ask' "$CONFIG_FILE")"
+          echo "tools.exec.security: $(jq -r '.tools.exec.security' "$CONFIG_FILE")"
           echo "safeBins count: $(jq -r '.tools.exec.safeBins | length' "$CONFIG_FILE")"
           echo "safeBins includes ps: $(jq -r '.tools.exec.safeBins | contains(["ps"])' "$CONFIG_FILE")"
           echo "safeBins includes git: $(jq -r '.tools.exec.safeBins | contains(["git"])' "$CONFIG_FILE")"
