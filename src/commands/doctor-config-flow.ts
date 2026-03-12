@@ -19,6 +19,7 @@ import {
   listInterpreterLikeSafeBins,
   resolveMergedSafeBinProfileFixtures,
 } from "../infra/exec-safe-bin-runtime-policy.js";
+import { resolveSafeBinProfiles } from "../infra/exec-safe-bin-policy.js";
 import { listTelegramAccountIds, resolveTelegramAccount } from "../telegram/accounts.js";
 import { note } from "../terminal/note.js";
 import { isRecord, resolveHomeDir } from "../utils.js";
@@ -744,10 +745,11 @@ function collectExecSafeBinScopes(cfg: OpenClawConfig): ExecSafeBinScopeRef[] {
         scopePath: "tools.exec",
         safeBins,
         exec: globalExec,
-        mergedProfiles:
+        mergedProfiles: resolveSafeBinProfiles(
           resolveMergedSafeBinProfileFixtures({
             global: globalExec,
-          }) ?? {},
+          }),
+        ),
       });
     }
   }
@@ -768,11 +770,12 @@ function collectExecSafeBinScopes(cfg: OpenClawConfig): ExecSafeBinScopeRef[] {
       scopePath: `agents.list.${agent.id}.tools.exec`,
       safeBins,
       exec: agentExec,
-      mergedProfiles:
+      mergedProfiles: resolveSafeBinProfiles(
         resolveMergedSafeBinProfileFixtures({
           global: globalExec,
           local: agentExec,
-        }) ?? {},
+        }),
+      ),
     });
   }
   return scopes;

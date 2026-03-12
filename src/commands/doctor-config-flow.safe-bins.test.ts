@@ -105,4 +105,53 @@ describe("doctor config flow safe bins", () => {
       "Doctor warnings",
     );
   });
+
+  it("does not warn for built-in profiled safeBins when custom profile is omitted", async () => {
+    await runDoctorConfigWithInput({
+      config: {
+        tools: {
+          exec: {
+            safeBins: ["curl", "grep", "head"],
+          },
+        },
+      },
+    });
+
+    expect(noteSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("missing safeBinProfiles.curl"),
+      "Doctor warnings",
+    );
+    expect(noteSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("missing safeBinProfiles.grep"),
+      "Doctor warnings",
+    );
+    expect(noteSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("missing safeBinProfiles.head"),
+      "Doctor warnings",
+    );
+  });
+
+  it("does not scaffold built-in profiled safeBins in repair mode", async () => {
+    const result = await runDoctorConfigWithInput({
+      repair: true,
+      config: {
+        tools: {
+          exec: {
+            safeBins: ["curl", "grep", "head"],
+          },
+        },
+      },
+    });
+
+    const cfg = result.cfg as {
+      tools?: {
+        exec?: {
+          safeBinProfiles?: Record<string, object>;
+        };
+      };
+    };
+    expect(cfg.tools?.exec?.safeBinProfiles?.curl).toBeUndefined();
+    expect(cfg.tools?.exec?.safeBinProfiles?.grep).toBeUndefined();
+    expect(cfg.tools?.exec?.safeBinProfiles?.head).toBeUndefined();
+  });
 });
