@@ -60,6 +60,7 @@ declare -A required_vars=(
     ["OPENROUTER_API_KEY"]="OpenRouter"
     ["BRAVE_API_KEY"]="Brave Search"
     ["OPENCLAW_GATEWAY_TOKEN"]="Gateway Auth"
+    ["GH_TOKEN"]="GitHub CLI"
 )
 
 all_set=true
@@ -77,6 +78,21 @@ done
 if [ "$all_set" = false ]; then
     echo -e "\n  ${YELLOW}Fix with:${NC} bash docker/scripts/check-env.sh"
     exit 1
+fi
+
+# 4.1 GH_TOKEN validity
+echo -e "\n${YELLOW}[4.1] GH_TOKEN Validity${NC}"
+if docker exec $CONTAINER sh -lc "gh --version >/dev/null 2>&1"; then
+    if docker exec $CONTAINER sh -lc "gh auth status >/tmp/gh-auth-status.txt 2>&1; test $? -eq 0"; then
+        echo -e "  ${GREEN}✓${NC} GH_TOKEN is valid for gh auth"
+    else
+        echo -e "  ${RED}✗${NC} GH_TOKEN is invalid (gh auth failed)"
+        docker exec $CONTAINER sh -lc "tail -n 5 /tmp/gh-auth-status.txt" 2>/dev/null || true
+        echo "    Action: rotate token and update GH_TOKEN/GITHUB_TOKEN in runtime env, then restart container"
+        exit 1
+    fi
+else
+    echo -e "  ${YELLOW}⚠${NC} gh CLI unavailable in container; skip token auth validation"
 fi
 
 # 5. Tools Configuration

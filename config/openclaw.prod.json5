@@ -220,6 +220,8 @@
         "hostname",
         "ps",
         "tree",
+        "cat",
+        "echo",
         "curl",
         "wget",
         "git",
@@ -262,6 +264,12 @@
         stat: {
           maxPositional: 3,
           allowedValueFlags: ["-c", "--format", "-L", "--dereference", "-f", "--file-system"],
+        },
+        cat: {
+          maxPositional: 2,
+        },
+        echo: {
+          maxPositional: 8,
         },
         git: {
           minPositional: 0,

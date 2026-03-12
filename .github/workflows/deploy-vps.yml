@@ -157,6 +157,10 @@ jobs:
           BRAVE_API_ANSWER_KEY: ${{ secrets['BRAVE_API_ANSWER_KEY'] }}
           BRAVE_API_KEY: ${{ secrets['BRAVE_API_KEY'] }}
           BRAVE_API_SEARCH_KEY: ${{ secrets['BRAVE_API_SEARCH_KEY'] }}
+          # Use workflow-scoped token for runtime gh auth sync.
+          # If long-lived gh access is required, replace with an operator PAT secret.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets['LINE_CHANNEL_ACCESS_TOKEN'] }}
           LINE_CHANNEL_SECRET: ${{ secrets['LINE_CHANNEL_SECRET'] }}
           OPENAI_API_KEY: ${{ secrets['OPENAI_API_KEY'] }}
@@ -185,6 +189,8 @@ jobs:
           add_secret "BRAVE_API_ANSWER_KEY" "${BRAVE_API_ANSWER_KEY:-}"
           add_secret "BRAVE_API_KEY" "${BRAVE_API_KEY:-}"
           add_secret "BRAVE_API_SEARCH_KEY" "${BRAVE_API_SEARCH_KEY:-}"
+          add_secret "GITHUB_TOKEN" "${GITHUB_TOKEN:-}"
+          add_secret "GH_TOKEN" "${GH_TOKEN:-}"
           add_secret "LINE_CHANNEL_ACCESS_TOKEN" "${LINE_CHANNEL_ACCESS_TOKEN:-}"
           add_secret "LINE_CHANNEL_SECRET" "${LINE_CHANNEL_SECRET:-}"
           add_secret "OPENAI_API_KEY" "${OPENAI_API_KEY:-}"

@@ -173,7 +173,7 @@ describe("createOpenClawCodingTools safeBins", () => {
             command: "echo hello",
             workdir: tmpDir,
           }),
-        ).rejects.toThrow("exec denied: allowlist miss");
+        ).rejects.toThrow("exec denied: allowlist miss (bins=echo)");
       },
     );
   });

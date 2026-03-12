@@ -54,6 +54,32 @@ export type ProcessGatewayAllowlistResult = {
   pendingResult?: AgentToolResult<ExecToolDetails>;
 };
 
+function describeAllowlistMissBins(params: {
+  segments: { argv: string[]; resolution: { executableName?: string; rawExecutable?: string } | null }[];
+  segmentSatisfiedBy: ("allowlist" | "safeBins" | "skills" | null)[];
+}): string {
+  const deniedBins = new Set<string>();
+  for (let i = 0; i < params.segments.length; i += 1) {
+    if (params.segmentSatisfiedBy[i]) {
+      continue;
+    }
+    const segment = params.segments[i];
+    const raw =
+      segment.resolution?.executableName ??
+      segment.resolution?.rawExecutable ??
+      segment.argv[0] ??
+      "";
+    const normalized = raw.trim().toLowerCase();
+    if (normalized) {
+      deniedBins.add(normalized);
+    }
+  }
+  if (deniedBins.size === 0) {
+    return "analysis-unresolved";
+  }
+  return `bins=${Array.from(deniedBins).toSorted().join(",")}`;
+}
+
 export async function processGatewayAllowlist(
   params: ProcessGatewayAllowlistParams,
 ): Promise<ProcessGatewayAllowlistResult> {
@@ -282,7 +308,7 @@ export async function processGatewayAllowlist(
   }
 
   if (hostSecurity === "allowlist" && (!analysisOk || !allowlistSatisfied)) {
-    throw new Error("exec denied: allowlist miss");
+    throw new Error(`exec denied: allowlist miss (${describeAllowlistMissBins(allowlistEval)})`);
   }
 
   let execCommandOverride: string | undefined;
