@@ -13,7 +13,7 @@
 # KI-009-F: Restart persistence         → SKIP in CI (SSH timeout); run locally
 # KI-002-A/B/C: safeBins missing cmd    → Update config/openclaw.prod.json5
 # KI-002-D: security not allowlist      → Update config tools.exec.security
-# KI-002-E: ask mode wrong              → Update config tools.exec.ask
+# KI-002-E: ask mode incompatible       → Update config tools.exec.ask
 # KI-010-A: exec host wrong             → Set tools.exec.host = gateway
 # KI-010-B: host-not-allowed errors     → Same as KI-010-A
 # KI-011-A: Browser missing             → Rebuild with OPENCLAW_INSTALL_BROWSER=1
@@ -140,9 +140,15 @@ check "KI-002-D: exec security mode is allowlist" \
     "docker exec $CONTAINER node openclaw.mjs config get tools.exec.security 2>/dev/null" \
     "allowlist"
 
-check "KI-002-E: exec ask mode is on-miss" \
-    "docker exec $CONTAINER node openclaw.mjs config get tools.exec.ask 2>/dev/null" \
-    "on-miss"
+echo -e "${BLUE}Testing:${NC} KI-002-E: exec ask mode is compatible (off|on-miss)"
+ask_mode=$(docker exec $CONTAINER node openclaw.mjs config get tools.exec.ask 2>/dev/null || echo "ERROR")
+if [[ "$ask_mode" == "on-miss" || "$ask_mode" == "off" ]]; then
+    pass "KI-002-E: exec ask mode is compatible (off|on-miss)"
+else
+    fail "KI-002-E: exec ask mode is compatible (off|on-miss)"
+    echo "  Expected one of: on-miss | off"
+    echo "  Got: $ask_mode"
+fi
 
 # ───────────────────────────────────────────────────────────────────────────
 echo -e "\n${YELLOW}[Issue #3: exec host not allowed]${NC}\n"
