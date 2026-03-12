@@ -10,7 +10,13 @@ metadata:
 
 You are an orchestrator. Follow these 6 phases exactly. Do not skip phases.
 
-IMPORTANT — No `gh` CLI dependency. This skill uses curl + the GitHub REST API exclusively. The GH_TOKEN env var is already injected by OpenClaw. Pass it as a Bearer token in all API calls:
+IMPORTANT — Treat this as an authenticated GitHub path for private repositories.
+
+- Do not use `web_search` or `web_fetch` for private issue/PR retrieval.
+- Primary path for this skill is authenticated GitHub REST via `curl` + `GH_TOKEN`.
+- If `GH_TOKEN` is missing or invalid, fail with an explicit auth error and stop.
+
+This skill uses curl + the GitHub REST API exclusively. The GH_TOKEN env var is already injected by OpenClaw. Pass it as a Bearer token in all API calls:
 
 ```
 curl -s -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" ...

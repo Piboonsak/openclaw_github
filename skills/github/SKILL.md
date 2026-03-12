@@ -156,6 +156,32 @@ gh issue list --repo owner/repo --state open --json number,title,labels,createdA
   --jq '.[] | "[\(.number)] \(.title) - \([.labels[].name] | join(", ")) (\(.createdAt[:10]))"'
 ```
 
+## Private Repo Access Decision Tree
+
+Use this decision tree whenever the user asks for private GitHub issue/PR data.
+
+1. If the repo or issue is private, do not use `web_search` or `web_fetch`.
+2. Verify authenticated access first:
+
+```bash
+gh auth status
+```
+
+3. Primary path: use `gh api` with explicit repo endpoint.
+
+```bash
+gh api repos/owner/repo/issues/123 --jq '{number,title,state,author:.user.login}'
+```
+
+4. If `gh` is unavailable but `GH_TOKEN` exists, fallback to `curl` + GitHub REST API.
+
+```bash
+curl -s -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/owner/repo/issues/123"
+```
+
+5. If both authenticated paths fail, return exact error output and ask for auth repair; do not silently downgrade to web tools for private data.
+
 ## Notes
 
 - Always specify `--repo owner/repo` when not in a git directory
