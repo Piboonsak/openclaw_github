@@ -71,35 +71,26 @@
       // Valid levels: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
       thinkingDefault: "high",
 
-      // Model configuration — Sprint 1.5 Cost Optimization (PR #80)
-      // MiniMax M2.5 via OpenRouter as primary (~50-66x cheaper than Opus)
-      // Opus kept as first fallback for capability safety net
+      // Model configuration
+      // Revert to Anthropic-first routing due OpenRouter billing instability.
       model: {
-        primary: "openrouter/minimax/minimax-m2.5",
+        primary: "anthropic/claude-sonnet-4-6",
         fallbacks: [
-          "openrouter/google/gemini-2.5-flash",
-          "openrouter/deepseek/deepseek-chat-v3-0324",
-          "openrouter/openai/gpt-4o-mini",
           "anthropic/claude-opus-4-6",
+          "anthropic/claude-3-5-haiku",
         ],
       },
 
       // Model aliases (friendly names in UI)
       models: {
-        "openrouter/minimax/minimax-m2.5": {
-          alias: "MiniMax M2.5 (Primary)",
+        "anthropic/claude-sonnet-4-6": {
+          alias: "Claude Sonnet 4.6 (Primary)",
         },
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus (Analyst/Fallback)",
         },
-        "openrouter/google/gemini-2.5-flash": {
-          alias: "Gemini Flash (Fallback)",
-        },
-        "openrouter/deepseek/deepseek-chat-v3-0324": {
-          alias: "DeepSeek V3 (Fallback)",
-        },
-        "openrouter/openai/gpt-4o-mini": {
-          alias: "GPT-4o Mini (Fallback)",
+        "anthropic/claude-3-5-haiku": {
+          alias: "Claude 3.5 Haiku (Fallback)",
         },
       },
 
@@ -128,33 +119,33 @@
     list: {
       main: {
         model: {
-          primary: "openrouter/minimax/minimax-m2.5",
-          fallbacks: ["anthropic/claude-opus-4-6", "openrouter/google/gemini-2.5-flash"],
+          primary: "anthropic/claude-sonnet-4-6",
+          fallbacks: ["anthropic/claude-opus-4-6", "anthropic/claude-3-5-haiku"],
         },
       },
       analyst: {
         // Analyst keeps Opus as primary — needs high reasoning capability
         model: {
           primary: "anthropic/claude-opus-4-6",
-          fallbacks: ["openrouter/minimax/minimax-m2.5", "openrouter/google/gemini-2.5-pro"],
+          fallbacks: ["anthropic/claude-sonnet-4-6", "anthropic/claude-3-5-haiku"],
         },
       },
       "gold-checker": {
         model: {
-          primary: "openrouter/google/gemini-2.5-flash",
-          fallbacks: ["openrouter/deepseek/deepseek-chat-v3-0324"],
+          primary: "anthropic/claude-sonnet-4-6",
+          fallbacks: ["anthropic/claude-3-5-haiku"],
         },
       },
       scheduler: {
         model: {
           primary: "anthropic/claude-3-5-haiku",
-          fallbacks: ["openrouter/deepseek/deepseek-chat-v3-0324"],
+          fallbacks: ["anthropic/claude-sonnet-4-6"],
         },
       },
       worker: {
         model: {
-          primary: "openrouter/google/gemini-2.5-flash",
-          fallbacks: ["openrouter/deepseek/deepseek-chat-v3-0324"],
+          primary: "anthropic/claude-sonnet-4-6",
+          fallbacks: ["anthropic/claude-3-5-haiku"],
         },
       },
     },
