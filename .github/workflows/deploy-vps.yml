@@ -15,11 +15,8 @@ name: Deploy to Hostinger VPS
 #   DOCKER_TOKEN         Docker Hub PAT (already set for docker-build-push)
 
 on:
-  workflow_run:
-    workflows: ["Build and Push Docker Image"]
-    types: [completed]
-    branches: [main]
-
+  # Secrets are now managed in private Openclaw repo workflows.
+  # Keep only manual trigger here for break-glass usage.
   workflow_dispatch:
     inputs:
       image_tag:
@@ -37,9 +34,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Only deploy when the build workflow succeeded (skip on failure/cancel)
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository

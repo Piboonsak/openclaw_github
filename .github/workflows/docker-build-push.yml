@@ -21,13 +21,26 @@ jobs:
       packages: write
     
     steps:
+      - name: Guard secrets (skip on public repo)
+        id: guard
+        run: |
+          if [ -z "${{ secrets.DOCKER_USERNAME }}" ] || [ -z "${{ secrets.DOCKER_TOKEN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Docker secrets are missing; skipping build in public repo."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout code
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/checkout@v4
       
       - name: Set up Docker Buildx
+        if: steps.guard.outputs.skip != 'true'
         uses: docker/setup-buildx-action@v3
       
       - name: Log in to Docker Hub (3-retry)
+        if: steps.guard.outputs.skip != 'true'
         id: docker-login
         run: |
           MAX_ATTEMPTS=3
@@ -60,6 +73,7 @@ jobs:
           exit 1
       
       - name: Extract metadata (tags, labels)
+        if: steps.guard.outputs.skip != 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -75,6 +89,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
       
       - name: Build and push Docker image
+        if: steps.guard.outputs.skip != 'true'
         id: build-and-push
         uses: docker/build-push-action@v5
         with:
@@ -94,4 +109,5 @@ jobs:
           # sbom: true
       
       - name: Image digest
+        if: steps.guard.outputs.skip != 'true'
         run: echo "Image pushed with digest ${{ steps.build-and-push.outputs.digest }}"
