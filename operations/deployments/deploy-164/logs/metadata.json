@@ -1,0 +1,9 @@
+{
+  "run_id": "23045439215",
+  "run_number": 164,
+  "branch": "refs/heads/main",
+  "commit_sha": "119cdd5e1ce9b8dbe20d4d973bfb336065282007",
+  "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+  "workflow_file": "deploy-vps.yml",
+  "repository": "Piboonsak/openclaw_github"
+}
