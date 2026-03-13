@@ -343,6 +343,8 @@ const ToolExecSafeBinProfileSchema = z
     maxPositional: z.number().int().nonnegative().optional(),
     allowedValueFlags: z.array(z.string()).optional(),
     deniedFlags: z.array(z.string()).optional(),
+    allowPathPositionals: z.boolean().optional(),
+    allowBracketPositionals: z.boolean().optional(),
   })
   .strict();
 

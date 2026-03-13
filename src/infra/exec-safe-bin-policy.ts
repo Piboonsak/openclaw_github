@@ -324,14 +324,22 @@ function normalizeSafeBinProfileFixture(fixture: SafeBinProfileFixture): SafeBin
     maxPositionalRaw < minPositional
       ? minPositional
       : maxPositionalRaw;
-  return {
+  const normalized: SafeBinProfileFixture = {
     minPositional,
     maxPositional,
     allowedValueFlags: normalizeFixtureFlags(fixture.allowedValueFlags),
     deniedFlags: normalizeFixtureFlags(fixture.deniedFlags),
-    allowPathPositionals: fixture.allowPathPositionals,
-    allowBracketPositionals: fixture.allowBracketPositionals,
   };
+
+  // Keep optional policy booleans only when explicitly configured.
+  if (typeof fixture.allowPathPositionals === "boolean") {
+    normalized.allowPathPositionals = fixture.allowPathPositionals;
+  }
+  if (typeof fixture.allowBracketPositionals === "boolean") {
+    normalized.allowBracketPositionals = fixture.allowBracketPositionals;
+  }
+
+  return normalized;
 }
 
 export function normalizeSafeBinProfileFixtures(
