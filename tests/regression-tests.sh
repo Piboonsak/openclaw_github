@@ -41,7 +41,7 @@ FAILED=0
 PASSED=0
 SKIPPED=0
 
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "OpenClaw LINE Bot Regression Test Suite (v2026.2.27-ws23+)${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 
@@ -149,15 +149,15 @@ echo "Expected: exec date runs without approval prompt"
 echo ""
 
 check "KI-002-A: exec safeBins includes date" \
-    "docker exec $CONTAINER node openclaw.mjs config get tools.exec.safeBins 2>/dev/null | jq -r '.[]? // empty' | grep -c '^date\$'" \
+    "docker exec $CONTAINER node openclaw.mjs config get tools.exec.safeBins 2>/dev/null | jq -r '.[]? // empty' | grep -c '^date$'" \
     "1"
 
 check "KI-002-B: exec safeBins includes uptime" \
-    "docker exec $CONTAINER node openclaw.mjs config get tools.exec.safeBins 2>/dev/null | jq -r '.[]? // empty' | grep -c '^uptime\$'" \
+    "docker exec $CONTAINER node openclaw.mjs config get tools.exec.safeBins 2>/dev/null | jq -r '.[]? // empty' | grep -c '^uptime$'" \
     "1"
 
 check "KI-002-C: exec safeBins includes whoami" \
-    "docker exec $CONTAINER node openclaw.mjs config get tools.exec.safeBins 2>/dev/null | jq -r '.[]? // empty' | grep -c '^whoami\$'" \
+    "docker exec $CONTAINER node openclaw.mjs config get tools.exec.safeBins 2>/dev/null | jq -r '.[]? // empty' | grep -c '^whoami$'" \
     "1"
 
 check "KI-002-D: exec security mode is allowlist" \
@@ -213,7 +213,7 @@ check "KI-012-A: BRAVE_API_KEY environment variable is set" \
     "SET"
 
 check "KI-012-B: BRAVE_API_KEY is not empty" \
-    "docker exec $CONTAINER sh -c 'test -n \"\$(echo \${BRAVE_API_KEY:-} | tr -d '\\''\\s'\\''  )\" && echo VALID || echo EMPTY'" \
+    "docker exec $CONTAINER sh -c 'test -n \"\$(echo \${BRAVE_API_KEY:-} | tr -d '\''\s'\'' )\" && echo VALID || echo EMPTY'" \
     "VALID"
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -316,12 +316,15 @@ check "Gateway health check port 18789" \
     "docker exec $CONTAINER curl -s -o /dev/null -w '%{http_code}' http://localhost:18789/health || echo TIMEOUT" \
     "200"
 
+# Issue #11: Anchor startup error check to container start time and exclude
+# known false-positive startup messages (allowPathPositionals, Unknown config keys)
+# that appear during normal gateway initialization but do not indicate real errors.
 check "Gateway status check (no startup errors)" \
-    "docker logs --since=5m $CONTAINER 2>&1 | grep -v 'gateway token missing' | grep -c 'Error\|FATAL\|panic' || echo 0" \
+    "docker logs --since=$keyword_since $CONTAINER 2>&1 | grep -v 'gateway token missing' | grep -v 'allowPathPositionals' | grep -v 'Unknown config keys' | grep -c 'Error\|FATAL\|panic' || echo 0" \
     "0"
 
 check "No missing environment variable errors" \
-    "docker logs --since=5m $CONTAINER 2>&1 | grep -c 'MissingEnvVarError' || echo 0" \
+    "docker logs --since=$keyword_since $CONTAINER 2>&1 | grep -c 'MissingEnvVarError' || echo 0" \
     "0"
 
 # ───────────────────────────────────────────────────────────────────────────
