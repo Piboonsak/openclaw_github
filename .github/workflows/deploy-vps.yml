@@ -170,10 +170,10 @@ jobs:
           BRAVE_API_ANSWER_KEY: ${{ secrets['BRAVE_API_ANSWER_KEY'] }}
           BRAVE_API_KEY: ${{ secrets['BRAVE_API_KEY'] }}
           BRAVE_API_SEARCH_KEY: ${{ secrets['BRAVE_API_SEARCH_KEY'] }}
-          # Use workflow-scoped token for runtime gh auth sync.
-          # If long-lived gh access is required, replace with an operator PAT secret.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Runtime token must be a long-lived operator PAT (GH_TOKEN secret),
+          # not the workflow-scoped GitHub token which cannot be reused in-container.
+          GITHUB_TOKEN: ${{ secrets['GH_TOKEN'] }}
+          GH_TOKEN: ${{ secrets['GH_TOKEN'] }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets['LINE_CHANNEL_ACCESS_TOKEN'] }}
           LINE_CHANNEL_SECRET: ${{ secrets['LINE_CHANNEL_SECRET'] }}
           OPENAI_API_KEY: ${{ secrets['OPENAI_API_KEY'] }}
