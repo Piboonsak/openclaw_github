@@ -74,9 +74,9 @@
       // Model configuration
       // Cost-optimized default routing for NongKung operations via OpenRouter plan.
       model: {
-        primary: "openrouter/minimax/minimax-m2.5",
+        primary: "anthropic/claude-sonnet-4-6",
         fallbacks: [
-          "anthropic/claude-sonnet-4-6",
+          "openrouter/minimax/minimax-m2.5",
           "anthropic/claude-opus-4-6",
           "anthropic/claude-3-5-haiku",
         ],
@@ -85,10 +85,10 @@
       // Model aliases (friendly names in UI)
       models: {
         "openrouter/minimax/minimax-m2.5": {
-          alias: "MiniMax M2.5 via OpenRouter (Primary)",
+          alias: "MiniMax M2.5 via OpenRouter (Fallback)",
         },
         "anthropic/claude-sonnet-4-6": {
-          alias: "Claude Sonnet 4.6 (Fallback)",
+          alias: "Claude Sonnet 4.6 (Primary)",
         },
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus (Analyst/Fallback)",
@@ -123,9 +123,9 @@
     list: {
       main: {
         model: {
-          primary: "openrouter/minimax/minimax-m2.5",
+          primary: "anthropic/claude-sonnet-4-6",
           fallbacks: [
-            "anthropic/claude-sonnet-4-6",
+            "openrouter/minimax/minimax-m2.5",
             "anthropic/claude-3-5-haiku",
           ],
         },
