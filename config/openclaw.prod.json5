@@ -72,10 +72,11 @@
       thinkingDefault: "high",
 
       // Model configuration
-      // Revert to Anthropic-first routing due OpenRouter billing instability.
+      // Cost-optimized default routing for NongKung operations via OpenRouter plan.
       model: {
-        primary: "anthropic/claude-sonnet-4-6",
+        primary: "openrouter/minimax/minimax-m2.5",
         fallbacks: [
+          "anthropic/claude-sonnet-4-6",
           "anthropic/claude-opus-4-6",
           "anthropic/claude-3-5-haiku",
         ],
@@ -83,8 +84,11 @@
 
       // Model aliases (friendly names in UI)
       models: {
+        "openrouter/minimax/minimax-m2.5": {
+          alias: "MiniMax M2.5 via OpenRouter (Primary)",
+        },
         "anthropic/claude-sonnet-4-6": {
-          alias: "Claude Sonnet 4.6 (Primary)",
+          alias: "Claude Sonnet 4.6 (Fallback)",
         },
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus (Analyst/Fallback)",
@@ -119,15 +123,21 @@
     list: {
       main: {
         model: {
-          primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["anthropic/claude-opus-4-6", "anthropic/claude-3-5-haiku"],
+          primary: "openrouter/minimax/minimax-m2.5",
+          fallbacks: [
+            "anthropic/claude-sonnet-4-6",
+            "anthropic/claude-3-5-haiku",
+          ],
         },
       },
       analyst: {
         // Analyst keeps Opus as primary — needs high reasoning capability
         model: {
           primary: "anthropic/claude-opus-4-6",
-          fallbacks: ["anthropic/claude-sonnet-4-6", "anthropic/claude-3-5-haiku"],
+          fallbacks: [
+            "anthropic/claude-sonnet-4-6",
+            "anthropic/claude-3-5-haiku",
+          ],
         },
       },
       "gold-checker": {
@@ -232,12 +242,32 @@
         find: {
           maxPositional: 5,
           allowedValueFlags: [
-            "-name", "-iname", "-type", "-mtime", "-mmin",
-            "-maxdepth", "-mindepth", "-size", "-user",
-            "-group", "-perm", "-newer", "-path", "-ipath",
-            "-print", "-print0",
+            "-name",
+            "-iname",
+            "-type",
+            "-mtime",
+            "-mmin",
+            "-maxdepth",
+            "-mindepth",
+            "-size",
+            "-user",
+            "-group",
+            "-perm",
+            "-newer",
+            "-path",
+            "-ipath",
+            "-print",
+            "-print0",
           ],
-          deniedFlags: ["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprint0"],
+          deniedFlags: [
+            "-exec",
+            "-execdir",
+            "-ok",
+            "-okdir",
+            "-delete",
+            "-fprint",
+            "-fprint0",
+          ],
         },
         sed: {
           maxPositional: 1,
@@ -254,7 +284,14 @@
         },
         stat: {
           maxPositional: 3,
-          allowedValueFlags: ["-c", "--format", "-L", "--dereference", "-f", "--file-system"],
+          allowedValueFlags: [
+            "-c",
+            "--format",
+            "-L",
+            "--dereference",
+            "-f",
+            "--file-system",
+          ],
         },
         cat: {
           maxPositional: 2,
