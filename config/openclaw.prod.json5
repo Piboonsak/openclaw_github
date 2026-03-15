@@ -65,11 +65,11 @@
       bootstrapMaxChars: 12000, // per-file bootstrap cap
       bootstrapTotalMaxChars: 60000, // total bootstrap cap across all injected files
       contextTokens: 128000, // strict context ceiling for runtime estimates/status
-      promptTokenBudget: 10000, // hard history budget before each API call
+      promptTokenBudget: 20000, // hard history budget before each API call
 
       // Issue #64: Enable deep reasoning by default for development-heavy workflows
       // Valid levels: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
-      thinkingDefault: "high",
+      thinkingDefault: "low",
 
       // Model configuration
       // Cost-optimized default routing for NongKung operations via OpenRouter plan.
