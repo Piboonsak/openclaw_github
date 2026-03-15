@@ -3,6 +3,7 @@ import { loadConfig } from "../config/config.js";
 import { logVerbose } from "../globals.js";
 import { recordChannelActivity } from "../infra/channel-activity.js";
 import { retryAsync } from "../infra/retry.js";
+import { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveLineAccount } from "./accounts.js";
 import { resolveLineChannelAccessToken } from "./channel-access-token.js";
 import type { LineSendResult } from "./types.js";
@@ -28,6 +29,7 @@ const LINE_RETRY_ATTEMPTS = 4;
 const LINE_RETRY_MIN_DELAY_MS = 300;
 const LINE_RETRY_MAX_DELAY_MS = 5000;
 const LINE_RETRY_JITTER = 0.2;
+const lineSendLog = createSubsystemLogger("line/send");
 
 // Serialize outbound sends per LINE account to reduce short burst collisions.
 const lineOutboundChains = new Map<string, Promise<void>>();
@@ -186,6 +188,66 @@ function resolveRetryAfterMs(err: unknown): number | undefined {
   return undefined;
 }
 
+function resolveLineErrorStatus(err: unknown): number | undefined {
+  if (!err || typeof err !== "object") {
+    return undefined;
+  }
+  const withStatus = err as { status?: unknown; statusCode?: unknown };
+  if (typeof withStatus.status === "number") {
+    return withStatus.status;
+  }
+  if (typeof withStatus.statusCode === "number") {
+    return withStatus.statusCode;
+  }
+  return undefined;
+}
+
+function resolveLineStatusText(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") {
+    return undefined;
+  }
+  const withStatusText = err as { statusText?: unknown };
+  return typeof withStatusText.statusText === "string" ? withStatusText.statusText : undefined;
+}
+
+function logLineRateLimitDiagnostic(
+  err: unknown,
+  context: {
+    endpoint: string;
+    accountId?: string;
+    chatId?: string;
+    messageCount?: number;
+    phase: "retry" | "failed" | "non-fatal";
+    attempt?: number;
+    maxAttempts?: number;
+    delayMs?: number;
+  },
+): void {
+  const status = resolveLineErrorStatus(err);
+  if (status !== 429 && !isLineRateLimitError(err)) {
+    return;
+  }
+
+  const retryAfterMs = resolveRetryAfterMs(err);
+  lineSendLog.warn(
+    `LINE rate limit detected endpoint=${context.endpoint} phase=${context.phase}`,
+    {
+      endpoint: context.endpoint,
+      phase: context.phase,
+      status: status ?? 429,
+      statusText: resolveLineStatusText(err),
+      retryAfterMs,
+      accountId: context.accountId,
+      chatId: context.chatId,
+      messageCount: context.messageCount,
+      attempt: context.attempt,
+      maxAttempts: context.maxAttempts,
+      delayMs: context.delayMs,
+      error: String(err),
+    },
+  );
+}
+
 async function runWithLineRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   return retryAsync(fn, {
     label,
@@ -197,6 +259,13 @@ async function runWithLineRetry<T>(fn: () => Promise<T>, label: string): Promise
     retryAfterMs: resolveRetryAfterMs,
     onRetry: (info) => {
       const maxRetries = Math.max(1, info.maxAttempts - 1);
+      logLineRateLimitDiagnostic(info.err, {
+        endpoint: info.label ?? label,
+        phase: "retry",
+        attempt: info.attempt,
+        maxAttempts: maxRetries,
+        delayMs: info.delayMs,
+      });
       logVerbose(
         `line: retry ${info.attempt}/${maxRetries} for ${info.label ?? label} in ${info.delayMs}ms: ${String(info.err)}`,
       );
@@ -244,23 +313,34 @@ async function pushLineMessages(
   }
 
   const { account, client, chatId } = createLinePushContext(to, opts);
-  await runLineOutboundSerial(account.accountId, () =>
-    runWithLineRetry(async () => {
-      const pushRequest = client.pushMessage({
-        to: chatId,
-        messages,
-      });
-      if (behavior.errorContext) {
-        const errorContext = behavior.errorContext;
-        await pushRequest.catch((err) => {
-          logLineHttpError(err, errorContext);
-          throw err;
+  try {
+    await runLineOutboundSerial(account.accountId, () =>
+      runWithLineRetry(async () => {
+        const pushRequest = client.pushMessage({
+          to: chatId,
+          messages,
         });
-      } else {
-        await pushRequest;
-      }
-    }, "line.pushMessage"),
-  );
+        if (behavior.errorContext) {
+          const errorContext = behavior.errorContext;
+          await pushRequest.catch((err: unknown) => {
+            logLineHttpError(err, errorContext);
+            throw err;
+          });
+        } else {
+          await pushRequest;
+        }
+      }, "line.pushMessage"),
+    );
+  } catch (err) {
+    logLineRateLimitDiagnostic(err, {
+      endpoint: "line.pushMessage",
+      accountId: account.accountId,
+      chatId,
+      messageCount: messages.length,
+      phase: "failed",
+    });
+    throw err;
+  }
 
   recordLineOutboundActivity(account.accountId);
 
@@ -284,16 +364,26 @@ async function replyLineMessages(
   behavior: LineReplyBehavior = {},
 ): Promise<void> {
   const { account, client } = createLineMessagingClient(opts);
-  await runLineOutboundSerial(account.accountId, () =>
-    runWithLineRetry(
-      () =>
-        client.replyMessage({
-          replyToken,
-          messages,
-        }),
-      "line.replyMessage",
-    ),
-  );
+  try {
+    await runLineOutboundSerial(account.accountId, () =>
+      runWithLineRetry(
+        () =>
+          client.replyMessage({
+            replyToken,
+            messages,
+          }),
+        "line.replyMessage",
+      ),
+    );
+  } catch (err) {
+    logLineRateLimitDiagnostic(err, {
+      endpoint: "line.replyMessage",
+      accountId: account.accountId,
+      messageCount: messages.length,
+      phase: "failed",
+    });
+    throw err;
+  }
 
   recordLineOutboundActivity(account.accountId);
 
@@ -503,14 +593,21 @@ export async function showLoadingAnimation(
   opts: { channelAccessToken?: string; accountId?: string; loadingSeconds?: number } = {},
 ): Promise<void> {
   const { client } = createLineMessagingClient(opts);
+  const normalizedChatId = normalizeTarget(chatId);
 
   try {
     await client.showLoadingAnimation({
-      chatId: normalizeTarget(chatId),
+      chatId: normalizedChatId,
       loadingSeconds: opts.loadingSeconds ?? 20,
     });
     logVerbose(`line: showing loading animation to ${chatId}`);
   } catch (err) {
+    logLineRateLimitDiagnostic(err, {
+      endpoint: "line.showLoadingAnimation",
+      accountId: opts.accountId,
+      chatId: normalizedChatId,
+      phase: "non-fatal",
+    });
     // Loading animation may fail for groups or unsupported clients - ignore
     logVerbose(`line: loading animation failed (non-fatal): ${String(err)}`);
   }
