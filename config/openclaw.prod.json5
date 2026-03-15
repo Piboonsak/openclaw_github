@@ -161,6 +161,25 @@
     },
   },
 
+  // Provider model caps
+  // Keep explicit maxTokens for OpenRouter models to avoid long replies being cut early.
+  models: {
+    providers: {
+      openrouter: {
+        models: [
+          {
+            id: "openrouter/minimax/minimax-m2.5",
+            maxTokens: 16384,
+          },
+          {
+            id: "openrouter/google/gemini-2.5-flash",
+            maxTokens: 16384,
+          },
+        ],
+      },
+    },
+  },
+
   // Tool configuration
   tools: {
     web: {
@@ -401,6 +420,12 @@
       enabled: false, // Set true after obtaining credentials
       // channelAccessToken: "${LINE_CHANNEL_ACCESS_TOKEN}",  // From env var
       // channelSecret: "${LINE_CHANNEL_SECRET}",  // From env var
+
+      // Outbound text delivery controls
+      // textChunkLimit: per-message limit for LINE text payloads
+      // chunkMode: newline = prefer paragraph boundaries before length splitting
+      textChunkLimit: 5000,
+      chunkMode: "newline",
 
       // DM policy for LINE channel:
       //   "pairing" = users must be explicitly approved (safe default for private bots)
