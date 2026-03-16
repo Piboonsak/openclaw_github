@@ -3,7 +3,6 @@ import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { registerLineCardCommand } from "./src/card-command.js";
 import { linePlugin } from "./src/channel.js";
 import { setLineRuntime } from "./src/runtime.js";
-import { registerLineThinkingCommand } from "./src/thinking-command.js";
 
 const plugin = {
   id: "line",
@@ -14,7 +13,6 @@ const plugin = {
     setLineRuntime(api.runtime);
     api.registerChannel({ plugin: linePlugin });
     registerLineCardCommand(api);
-    registerLineThinkingCommand(api);
   },
 };
 
