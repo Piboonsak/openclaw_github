@@ -74,10 +74,10 @@
       // Model configuration
       // Cost-optimized default routing for NongKung operations via OpenRouter plan.
       model: {
-        primary: "openrouter/minimax/minimax-m2.5",
+        primary: "anthropic/claude-opus-4-6",
         fallbacks: [
           "anthropic/claude-sonnet-4-6",
-          "anthropic/claude-opus-4-6",
+          "openrouter/minimax/minimax-m2.5",
           "anthropic/claude-3-5-haiku",
         ],
       },
@@ -123,9 +123,10 @@
     list: {
       main: {
         model: {
-          primary: "openrouter/minimax/minimax-m2.5",
+          primary: "anthropic/claude-opus-4-6",
           fallbacks: [
             "anthropic/claude-sonnet-4-6",
+            "openrouter/minimax/minimax-m2.5",
             "anthropic/claude-3-5-haiku",
           ],
         },
