@@ -162,17 +162,35 @@
   },
 
   // Provider model caps
-  // Keep explicit maxTokens for OpenRouter models to avoid long replies being cut early.
+  // Keep explicit maxTokens for providers to avoid long replies being cut early.
+  // Canary baseline: raised from 16k -> 32k (2x). If stable and no 429/rate-limit issues,
+  // Sprint #150 can temporarily test higher caps in controlled windows.
   models: {
     providers: {
       openrouter: {
         models: [
           {
             id: "openrouter/minimax/minimax-m2.5",
-            maxTokens: 16384,
+            maxTokens: 32768,
           },
           {
             id: "openrouter/google/gemini-2.5-flash",
+            maxTokens: 32768,
+          },
+        ],
+      },
+      anthropic: {
+        models: [
+          {
+            id: "anthropic/claude-sonnet-4-6",
+            maxTokens: 32768,
+          },
+          {
+            id: "anthropic/claude-opus-4-6",
+            maxTokens: 32768,
+          },
+          {
+            id: "anthropic/claude-3-5-haiku",
             maxTokens: 16384,
           },
         ],
