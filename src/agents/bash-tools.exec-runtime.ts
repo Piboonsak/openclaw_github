@@ -51,6 +51,21 @@ export function validateHostEnv(env: Record<string, string>): void {
     }
   }
 }
+
+const FORCE_NOTIFY_EMPTY_SUCCESS_PATTERNS: RegExp[] = [
+  /\bgh\s+pr\s+merge\b/i,
+  /\bgh\s+workflow\s+(run|watch)\b/i,
+  /\bgh\s+run\s+watch\b/i,
+  /\bdeploy\b/i,
+];
+
+function shouldForceNotifyOnEmptySuccess(command: string): boolean {
+  const normalized = command.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return false;
+  }
+  return FORCE_NOTIFY_EMPTY_SUCCESS_PATTERNS.some((pattern) => pattern.test(normalized));
+}
 export const DEFAULT_MAX_OUTPUT = clampWithDefault(
   readEnvInt("PI_BASH_MAX_OUTPUT_CHARS"),
   200_000,
@@ -214,7 +229,12 @@ function maybeNotifyOnExit(session: ProcessSession, status: "completed" | "faile
   const output = compactNotifyOutput(
     tail(session.tail || session.aggregated || "", DEFAULT_NOTIFY_TAIL_CHARS),
   );
-  if (status === "completed" && !output && session.notifyOnExitEmptySuccess !== true) {
+  if (
+    status === "completed" &&
+    !output &&
+    session.notifyOnExitEmptySuccess !== true &&
+    !shouldForceNotifyOnEmptySuccess(session.command)
+  ) {
     return;
   }
   const summary = output

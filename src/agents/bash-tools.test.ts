@@ -418,6 +418,32 @@ describe("exec notifyOnExit", () => {
     expect(events.length).toBeGreaterThan(0);
     expect(events.some((event) => event.includes("Exec completed"))).toBe(true);
   });
+
+  it("emits completion events for merge/deploy-like commands even with empty output", async () => {
+    const tool = createTestExecTool({
+      allowBackground: true,
+      backgroundMs: 0,
+      notifyOnExit: true,
+      sessionKey: "agent:main:main",
+    });
+
+    const mergeDeployLikeNoOutputCmd = isWin
+      ? "$null='gh pr merge 123 --auto'; Start-Sleep -Milliseconds 15"
+      : "cmd='gh pr merge 123 --auto'; sleep 0.015";
+
+    const result = await tool.execute("call4", {
+      command: mergeDeployLikeNoOutputCmd,
+      background: true,
+    });
+
+    expect(result.details.status).toBe("running");
+    const sessionId = (result.details as { sessionId: string }).sessionId;
+    const status = await waitForCompletion(sessionId);
+    expect(status).toBe("completed");
+    const events = peekSystemEvents("agent:main:main");
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.some((event) => event.includes("Exec completed"))).toBe(true);
+  });
 });
 
 describe("exec PATH handling", () => {
