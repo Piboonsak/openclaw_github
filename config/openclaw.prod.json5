@@ -335,6 +335,12 @@
         },
         cat: {
           maxPositional: 2,
+          allowPathPositionals: true,
+        },
+        head: {
+          maxPositional: 1,
+          allowPathPositionals: true,
+          allowedValueFlags: ["-n", "--lines", "-c", "--bytes"],
         },
         echo: {
           maxPositional: 8,
