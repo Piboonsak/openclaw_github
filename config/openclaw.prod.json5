@@ -380,8 +380,9 @@
       network_mode: "bridge", // or "none" for full isolation
 
       // Resource limits
-      memory: "1024m",
-      cpus: 2,
+      // Raised to better match current VPS capacity and reduce premature resource throttling.
+      memory: "4096m",
+      cpus: 4,
     },
 
     // Command blocklist (regex patterns)
