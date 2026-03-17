@@ -1,7 +1,3 @@
 {
-    "recommendations": [
-        "github.copilot",
-        "github.copilot-chat",
-        "oxc.oxc-vscode"
-    ]
+  "recommendations": ["github.copilot", "github.copilot-chat", "oxc.oxc-vscode"]
 }

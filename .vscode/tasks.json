@@ -1,12 +1,17 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "pnpm check",
-			"type": "shell",
-			"command": "pnpm check",
-			"problemMatcher": [],
-			"group": "build"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "pnpm check",
+      "type": "shell",
+      "command": "pnpm.cmd check",
+      "options": {
+        "env": {
+          "PATH": "${env:LOCALAPPDATA}\\Programs\\nodejs\\current;${env:PATH}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ]
 }
