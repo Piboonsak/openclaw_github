@@ -162,6 +162,22 @@
   models: {
     mode: "merge",
     providers: {
+      openrouter: {
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKey: "${OPENROUTER_API_KEY}",
+        api: "openai-completions",
+        models: [
+          {
+            id: "minimax/minimax-m2.5",
+            name: "MiniMax M2.5 via OpenRouter",
+            reasoning: true,
+            input: ["text"],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            contextWindow: 128000,
+            maxTokens: 16384,
+          },
+        ],
+      },
       anthropic: {
         baseUrl: "https://api.anthropic.com",
         apiKey: "${ANTHROPIC_API_KEY}",
