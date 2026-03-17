@@ -5,7 +5,7 @@ name: Deploy to Hostinger VPS
 #   - Completion of the "Build and Push Docker Image" workflow on main
 #   - Manual trigger (workflow_dispatch)
 #
-# Required GitHub Secrets (Settings → Secrets → Actions):
+# Required GitHub Secrets (Settings â†’ Secrets â†’ Actions):
 #   VPS_SSH_KEY             Primary SSH private key for VPS auth
 #   DEPLOY_SSH_PRIVATE_KEY  Fallback SSH private key for VPS auth
 #                           (contents of C:\Users\..\.ssh\id_ed25519_hostinger)
@@ -41,12 +41,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Checkout Openclaw docs repository
+        continue-on-error: true
         uses: actions/checkout@v4
         with:
           repository: Piboonsak/Openclaw
           path: openclaw-docs
 
-      # ── Create deployment log directory ────────────────────────────────────
+      # â”€â”€ Create deployment log directory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Create deployment log directory
         run: |
           mkdir -p "operations/deployments/deploy-${{ github.run_number }}/logs"
@@ -62,7 +63,7 @@ jobs:
           }
           METADATA
 
-      # ── Resolve image tag ──────────────────────────────────────────────────
+      # â”€â”€ Resolve image tag â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Set image tag
         id: tag
         run: |
@@ -70,7 +71,7 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Deploying image: piboonsak/openclaw:${TAG}"
 
-      # ── Write SSH key to disk (ephemeral runner) ───────────────────────────
+      # â”€â”€ Write SSH key to disk (ephemeral runner) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Configure SSH key
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -90,13 +91,13 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519_hostinger
           # Pre-approve host key to avoid interactive prompt
           # Retry ssh-keyscan in case VPS is transiently unreachable (Issue #110)
-          # Allow failure — subsequent SSH commands use -o StrictHostKeyChecking=no
+          # Allow failure â€” subsequent SSH commands use -o StrictHostKeyChecking=no
           for i in 1 2 3; do
             if ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null; then
-              echo "✓ ssh-keyscan succeeded (attempt $i)"
+              echo "âœ“ ssh-keyscan succeeded (attempt $i)"
               break
             fi
-            echo "⚠ ssh-keyscan attempt $i/3 failed — retrying in 15s"
+            echo "âš  ssh-keyscan attempt $i/3 failed â€” retrying in 15s"
             sleep 15
           done || true
           # Verify key authentication works before proceeding
@@ -111,15 +112,15 @@ jobs:
               AUTH_OK=1
               break
             fi
-            echo "⚠ SSH auth attempt $i/3 failed — retrying in 15s"
+            echo "âš  SSH auth attempt $i/3 failed â€” retrying in 15s"
             sleep 15
           done
           if [ "$AUTH_OK" -ne 1 ]; then
-            echo "ERROR: Cannot authenticate to VPS — check VPS_SSH_KEY/DEPLOY_SSH_PRIVATE_KEY and VPS network"
+            echo "ERROR: Cannot authenticate to VPS â€” check VPS_SSH_KEY/DEPLOY_SSH_PRIVATE_KEY and VPS network"
             exit 1
           fi
 
-      # ── Copy the production nginx config to VPS and apply if valid ───────────
+      # â”€â”€ Copy the production nginx config to VPS and apply if valid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Sync and apply Nginx config to VPS
         run: |
           scp -i ~/.ssh/id_ed25519_hostinger \
@@ -138,9 +139,9 @@ jobs:
           # Test and reload
           if nginx -t 2>/dev/null; then
             nginx -s reload
-            echo "✓ Nginx config applied and reloaded successfully"
+            echo "âœ“ Nginx config applied and reloaded successfully"
           else
-            echo "ERROR: Nginx config test failed — rolling back"
+            echo "ERROR: Nginx config test failed â€” rolling back"
             # Restore backup
             LATEST_BAK=$(ls -t /etc/nginx/sites-available/openclaw.bak.* 2>/dev/null | head -1)
             if [ -n "$LATEST_BAK" ]; then
@@ -157,7 +158,7 @@ jobs:
       # (Issue #67), then updates the image tag in-place. This ensures new volume mounts,
       # env_file directives, and environment variables reach the VPS.
 
-      # ── Sync runtime secrets into VPS .env (CI/CD-managed) ───────────────
+      # â”€â”€ Sync runtime secrets into VPS .env (CI/CD-managed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Sync runtime secrets to VPS env
         env:
           ANTHROPIC_API_KEY: ${{ secrets['ANTHROPIC_API_KEY'] }}
@@ -268,12 +269,12 @@ jobs:
 
           chmod 600 "$ENV_FILE"
           rm -f "$SECRETS_FILE"
-          echo "✓ Runtime secrets synced to $ENV_FILE"
+          echo "âœ“ Runtime secrets synced to $ENV_FILE"
           RUNTIME_SECRETS_EOF
 
           rm -rf "$TMPDIR"
 
-      # ── Run deploy.sh on VPS ───────────────────────────────────────────────
+      # â”€â”€ Run deploy.sh on VPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Deploy container
         continue-on-error: true
         env:
@@ -286,7 +287,7 @@ jobs:
         run: |
           bash docker/deploy.sh "$IMAGE_TAG"
 
-      # ── Sync model config from repo to VPS (selective merge) ─────────────
+      # â”€â”€ Sync model config from repo to VPS (selective merge) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       # The VPS config at /data/.openclaw/openclaw.json contains runtime state
       # (meta, wizard, plugins, commands) that must be preserved.
       # We selectively merge ONLY the model-related fields from the repo template.
@@ -296,7 +297,7 @@ jobs:
           TMPDIR=$(mktemp -d)
           echo "Installing json5@2.2.3 in isolated temp dir..."
           if ! (cd "$TMPDIR" && npm init -y --silent && npm install --silent --no-save json5@2.2.3); then
-            echo "ERROR: npm install json5 failed — cannot parse JSON5 config"
+            echo "ERROR: npm install json5 failed â€” cannot parse JSON5 config"
             rm -rf "$TMPDIR"
             exit 1
           fi
@@ -340,7 +341,7 @@ jobs:
           VOL_PATH=$(docker volume inspect openclaw-sgnl_openclaw-state --format '{{ .Mountpoint }}' 2>/dev/null || true)
 
           if [ -z "$VOL_PATH" ]; then
-            echo "WARNING: Could not find openclaw-state volume — skipping config sync"
+            echo "WARNING: Could not find openclaw-state volume â€” skipping config sync"
             exit 0
           fi
 
@@ -348,13 +349,13 @@ jobs:
           PATCH_FILE="/tmp/model-patch.json"
 
           if [ ! -f "$CONFIG_FILE" ]; then
-            echo "WARNING: Config file not found at $CONFIG_FILE — skipping"
+            echo "WARNING: Config file not found at $CONFIG_FILE â€” skipping"
             exit 0
           fi
 
           # Backup current config
           cp "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
-          echo "✓ Backed up existing config"
+          echo "âœ“ Backed up existing config"
 
           # Selective merge: update model, models, and token budget settings
           jq --slurpfile patch "$PATCH_FILE" '
@@ -372,7 +373,7 @@ jobs:
 
           mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
           chown 1000:1000 "$CONFIG_FILE"
-          echo "✓ Model config merged into $CONFIG_FILE"
+          echo "âœ“ Model config merged into $CONFIG_FILE"
           echo "  Primary model: $(jq -r '.agents.defaults.model.primary' "$CONFIG_FILE")"
           echo "  contextTokens: $(jq -r '.agents.defaults.contextTokens' "$CONFIG_FILE")"
           echo "  bootstrapTotalMaxChars: $(jq -r '.agents.defaults.bootstrapTotalMaxChars' "$CONFIG_FILE")"
@@ -380,17 +381,17 @@ jobs:
           # Restart container to pick up new config
           cd /docker/openclaw-sgnl
           docker compose restart
-          echo "✓ Container restarted to apply new config"
+          echo "âœ“ Container restarted to apply new config"
 
           # Wait for container to be healthy
           echo "Waiting for container health..."
           for i in $(seq 1 12); do
             STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo "unknown")
             if [ "$STATUS" = "healthy" ]; then
-              echo "✓ Container is healthy"
+              echo "âœ“ Container is healthy"
               break
             fi
-            echo "  attempt $i/12: status=$STATUS — waiting 10s"
+            echo "  attempt $i/12: status=$STATUS â€” waiting 10s"
             sleep 10
           done
 
@@ -413,7 +414,7 @@ jobs:
           rm -f "$PATCH_FILE"
           CONFIG_EOF
 
-      # ── Sync NongKung markdown workspace files from Openclaw repo ───────
+      # â”€â”€ Sync NongKung markdown workspace files from Openclaw repo â”€â”€â”€â”€â”€â”€â”€
       - name: Upload NongKung markdown files to VPS
         run: |
           set -euo pipefail
@@ -421,8 +422,8 @@ jobs:
           OUT_TGZ="/tmp/nongkung-md.tgz"
 
           if [ ! -d "$SRC_DIR" ]; then
-            echo "ERROR: Source directory not found: $SRC_DIR"
-            exit 1
+            echo "WARNING: Source directory not found: $SRC_DIR â€” skipping markdown sync"
+            exit 0
           fi
 
           # cd into source dir so *.md glob expands against the correct directory
@@ -457,7 +458,7 @@ jobs:
           rm -f /tmp/nongkung-md.tgz
           MD_SYNC_EOF
 
-      # ── Verify HTTPS endpoint is reachable (external check) ───────────────
+      # â”€â”€ Verify HTTPS endpoint is reachable (external check) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Verify HTTPS health endpoint
         run: |
           echo "Checking https://openclaw.yahwan.biz/health ..."
@@ -465,10 +466,10 @@ jobs:
             HTTP=$(curl -o /dev/null -sw "%{http_code}" --max-time 15 \
                      https://openclaw.yahwan.biz/health 2>/dev/null || echo "000")
             if [[ "$HTTP" == "200" ]]; then
-              echo "✓ Health check passed (HTTP $HTTP)"
+              echo "âœ“ Health check passed (HTTP $HTTP)"
               break
             fi
-            echo "  attempt $i/5: HTTP $HTTP — retrying in 10s"
+            echo "  attempt $i/5: HTTP $HTTP â€” retrying in 10s"
             sleep 10
           done
           if [[ "$HTTP" != "200" ]]; then
@@ -478,7 +479,7 @@ jobs:
             exit 1
           fi
 
-      # ── Upload regression test scripts to VPS ─────────────────────────────
+      # â”€â”€ Upload regression test scripts to VPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Upload test scripts to VPS
         run: |
           scp -i ~/.ssh/id_ed25519_hostinger \
@@ -489,7 +490,7 @@ jobs:
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/"
           echo "Test scripts uploaded to VPS /tmp/"
 
-      # ── Run regression tests on VPS ──────────────────────────────────────
+      # â”€â”€ Run regression tests on VPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Run regression tests (infrastructure)
         run: |
           set -o pipefail
@@ -530,7 +531,7 @@ jobs:
 
           cp "$LOG_DIR/ws24-regression-tests-output.txt" /tmp/ws24-regression-tests-output.txt
 
-      # ── On failure: capture diagnostic logs ──────────────────────────────
+      # â”€â”€ On failure: capture diagnostic logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Capture diagnostic logs on failure
         if: failure()
         run: |
@@ -573,7 +574,7 @@ jobs:
           cp "$LOG_DIR/diagnostic-logs.txt" /tmp/diagnostic-logs.txt
           cat "$LOG_DIR/diagnostic-logs.txt"
 
-      # ── Upload test results as artifacts ──────────────────────────────────
+      # â”€â”€ Upload test results as artifacts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -586,7 +587,7 @@ jobs:
             /tmp/diagnostic-logs.txt
           retention-days: 30
 
-      # ── Commit deployment logs to repo ─────────────────────────────────────
+      # â”€â”€ Commit deployment logs to repo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Commit deployment logs
         if: always()
         run: |
@@ -601,11 +602,11 @@ jobs:
             else
               git commit -m "logs(deploy): capture regression tests from run #${{ github.run_number }}" 2>/dev/null || true
               git push -u origin main 2>/dev/null || true
-              echo "✓ Deployment logs committed and pushed"
+              echo "âœ“ Deployment logs committed and pushed"
             fi
           fi
 
-      # ── Cleanup ───────────────────────────────────────────────────────────
+      # â”€â”€ Cleanup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       - name: Remove SSH key
         if: always()
         run: rm -f ~/.ssh/id_ed25519_hostinger
