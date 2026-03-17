@@ -160,8 +160,22 @@ function isLineRateLimitError(err: unknown): boolean {
   if (status === 429) {
     return true;
   }
-  const text = String(err);
+  const text = unknownToString(err);
   return /429|too many requests/i.test(text);
+}
+
+function unknownToString(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value instanceof Error) {
+    return `${value.name}: ${value.message}`;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
 }
 
 function resolveRetryAfterMs(err: unknown): number | undefined {

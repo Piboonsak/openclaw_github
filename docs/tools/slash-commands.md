@@ -104,7 +104,7 @@ Text + native (when enabled):
 - `/reasoning on|off|stream` (alias: `/reason`; when on, sends a separate message prefixed `Reasoning:`; `stream` = Telegram draft only)
 - `/elevated on|off|ask|full` (alias: `/elev`; `full` skips exec approvals)
 - `/exec host=<sandbox|gateway|node> security=<deny|allowlist|full> ask=<off|on-miss|always> node=<id>` (send `/exec` to show current)
-- `/model <name>` (alias: `/models`; or `/<alias>` from `agents.defaults.models.*.alias`)
+- `/model <name>` (model switch; alias typo-compat: `/modle`; model listing command: `/models`; also supports `/<alias>` from `agents.defaults.models.*.alias`)
 - `/queue <mode>` (plus options like `debounce:2s cap:25 drop:summarize`; send `/queue` to see current settings)
 - `/bash <command>` (host-only; alias for `! <command>`; requires `commands.bash: true` + `tools.elevated` allowlists)
 
@@ -133,6 +133,7 @@ Notes:
   - Example: `hey /status` triggers a status reply, and the remaining text continues through the normal flow.
 - Currently: `/help`, `/commands`, `/status`, `/whoami` (`/id`).
 - Unauthorized command-only messages are silently ignored, and inline `/...` tokens are treated as plain text.
+- Self-service session controls (`/new`, `/reset`, `/session`, `/model`, `/models`) can run for senders who already have channel access; privileged controls such as `/restart`, `/config`, and `/debug` still require command authorization.
 - **Skill commands:** `user-invocable` skills are exposed as slash commands. Names are sanitized to `a-z0-9_` (max 32 chars); collisions get numeric suffixes (e.g. `_2`).
   - `/skill <name> [input]` runs a skill by name (useful when native command limits prevent per-skill commands).
   - By default, skill commands are forwarded to the model as a normal request.
@@ -167,6 +168,7 @@ Notes:
 - On Discord, `/model` and `/models` open an interactive picker with provider and model dropdowns plus a Submit step.
 - `/model <#>` selects from that picker (and prefers the current provider when possible).
 - `/model status` shows the detailed view, including configured provider endpoint (`baseUrl`) and API mode (`api`) when available.
+- Model commands are strict: supported forms are `/model`, `/models`, and `/modle` (typo-compat alias). Near-miss spellings return an error with a recommended command.
 
 ## Debug overrides
 

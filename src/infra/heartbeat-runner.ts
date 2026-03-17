@@ -97,11 +97,13 @@ async function retryWithBackoff<T>(
   const baseDelayMs = options.baseDelayMs ?? 500;
   const maxDelayMs = options.maxDelayMs ?? 8000;
 
-  const isRetryableError = options.isRetryable ?? ((err: unknown) => {
-    const errMsg = String(err);
-    // Retry on rate limit (429), server error (5xx), and network issues
-    return /429|500|502|503|504|ECONNREFUSED|ETIMEDOUT|timeout/i.test(errMsg);
-  });
+  const isRetryableError =
+    options.isRetryable ??
+    ((err: unknown) => {
+      const errMsg = String(err);
+      // Retry on rate limit (429), server error (5xx), and network issues
+      return /429|500|502|503|504|ECONNREFUSED|ETIMEDOUT|timeout/i.test(errMsg);
+    });
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {

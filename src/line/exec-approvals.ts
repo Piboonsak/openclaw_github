@@ -1,19 +1,22 @@
 import type { OpenClawConfig } from "../config/config.js";
-import { loadConfig } from "../config/config.js";
 import { buildGatewayConnectionDetails } from "../gateway/call.js";
 import { GatewayClient } from "../gateway/client.js";
 import type { EventFrame } from "../gateway/protocol/index.js";
+import { resolveApprovalTarget } from "../infra/exec-approval-utils.js";
 import type {
   ExecApprovalDecision,
   ExecApprovalRequest,
   ExecApprovalResolved,
 } from "../infra/exec-approvals.js";
-import { resolveApprovalTarget } from "../infra/exec-approval-utils.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
-import { normalizeMessageChannel, GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../utils/message-channel.js";
-import { createConfirmTemplate } from "./template-messages.js";
+import {
+  normalizeMessageChannel,
+  GATEWAY_CLIENT_MODES,
+  GATEWAY_CLIENT_NAMES,
+} from "../utils/message-channel.js";
 import { postbackAction } from "./actions.js";
 import { pushTemplateMessage, pushMessageLine } from "./send.js";
+import { createConfirmTemplate } from "./template-messages.js";
 
 export type { ExecApprovalRequest, ExecApprovalResolved };
 
@@ -43,11 +46,13 @@ async function retryWithBackoff<T>(
   const baseDelayMs = options.baseDelayMs ?? 300;
   const maxDelayMs = options.maxDelayMs ?? 5000;
 
-  const isRetryableError = options.isRetryable ?? ((err: unknown) => {
-    const errMsg = String(err);
-    // Retry on rate limit (429), server error (5xx), and network issues
-    return /429|500|502|503|504|ECONNREFUSED|ETIMEDOUT|timeout/i.test(errMsg);
-  });
+  const isRetryableError =
+    options.isRetryable ??
+    ((err: unknown) => {
+      const errMsg = String(err);
+      // Retry on rate limit (429), server error (5xx), and network issues
+      return /429|500|502|503|504|ECONNREFUSED|ETIMEDOUT|timeout/i.test(errMsg);
+    });
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -102,9 +107,7 @@ export function parseExecApprovalPostback(
 function buildApprovalTemplateText(request: ExecApprovalRequest, nowMs: number): string {
   const command = request.request.command;
   const commandPreview =
-    command.length > COMMAND_PREVIEW_MAX
-      ? `${command.slice(0, COMMAND_PREVIEW_MAX)}…`
-      : command;
+    command.length > COMMAND_PREVIEW_MAX ? `${command.slice(0, COMMAND_PREVIEW_MAX)}…` : command;
   const expiresIn = Math.max(0, Math.round((request.expiresAtMs - nowMs) / 1000));
   return `⚠️ Exec approval required\n\nCommand:\n${commandPreview}\n\nExpires: ${expiresIn}s`;
 }
@@ -112,9 +115,7 @@ function buildApprovalTemplateText(request: ExecApprovalRequest, nowMs: number):
 function buildApprovalFallbackText(request: ExecApprovalRequest, nowMs: number): string {
   const command = request.request.command;
   const commandPreview =
-    command.length > COMMAND_PREVIEW_MAX
-      ? `${command.slice(0, COMMAND_PREVIEW_MAX)}…`
-      : command;
+    command.length > COMMAND_PREVIEW_MAX ? `${command.slice(0, COMMAND_PREVIEW_MAX)}…` : command;
   const expiresIn = Math.max(0, Math.round((request.expiresAtMs - nowMs) / 1000));
   return `⚠️ Exec approval required\nID: ${request.id}\nCommand: ${commandPreview}\nExpires in ${expiresIn}s\n\nPlease retry the command if approval buttons do not appear.`;
 }
@@ -245,11 +246,7 @@ export class LineExecApprovalHandler {
       `exec_approval=allow-once&id=${request.id}`,
       "✅ Approved",
     );
-    const denyAction = postbackAction(
-      "Deny",
-      `exec_approval=deny&id=${request.id}`,
-      "❌ Denied",
-    );
+    const denyAction = postbackAction("Deny", `exec_approval=deny&id=${request.id}`, "❌ Denied");
     const template = createConfirmTemplate(
       templateText,
       approveAction,
@@ -259,14 +256,11 @@ export class LineExecApprovalHandler {
 
     try {
       const pushFn = this.opts.pushTemplate ?? pushTemplateMessage;
-      await retryWithBackoff(
-        () => pushFn(target.to, template, { accountId: target.accountId }),
-        {
-          maxAttempts: 3,
-          baseDelayMs: 300,
-          maxDelayMs: 5000,
-        },
-      );
+      await retryWithBackoff(() => pushFn(target.to, template, { accountId: target.accountId }), {
+        maxAttempts: 3,
+        baseDelayMs: 300,
+        maxDelayMs: 5000,
+      });
       log.debug(`sent approval template for ${request.id} successfully`);
     } catch (err) {
       log.error(`failed to send approval template after retries: ${String(err)}`);
@@ -318,14 +312,11 @@ export class LineExecApprovalHandler {
 
     try {
       const pushFn = this.opts.pushText ?? pushMessageLine;
-      await retryWithBackoff(
-        () => pushFn(target.to, text, { accountId: target.accountId }),
-        {
-          maxAttempts: 2,
-          baseDelayMs: 300,
-          maxDelayMs: 3000,
-        },
-      );
+      await retryWithBackoff(() => pushFn(target.to, text, { accountId: target.accountId }), {
+        maxAttempts: 2,
+        baseDelayMs: 300,
+        maxDelayMs: 3000,
+      });
     } catch (err) {
       log.error(`failed to send resolution message after retries: ${String(err)}`);
     }

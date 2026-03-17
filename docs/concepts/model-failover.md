@@ -140,11 +140,11 @@ When a run starts with a model override (hooks or CLI), fallbacks still end at
 
 Use a role-tiered model chain so cost, quality, and reliability stay balanced.
 
-| Tier | Role | Primary model | Fallback chain | Auto-switch triggers |
-| --- | --- | --- | --- | --- |
-| Tier 1 | Default chat + routine automation | `minimax/minimax-m2.5` | `anthropic/claude-sonnet-4-5` -> `openrouter/google/gemini-2.5-flash` -> `openrouter/google/gemini-2.5-pro` | Provider auth failure, rate limit, timeout, or billing disable on active profile |
-| Tier 2 | Higher-quality reasoning + complex tool orchestration | `anthropic/claude-sonnet-4-5` | `openrouter/google/gemini-2.5-pro` -> `openrouter/deepseek/deepseek-chat-v3-0324` | Tier 1 output quality not sufficient, repeated tool planning errors, or explicit operator override |
-| Tier 3 | Emergency continuity / budget safety net | `openrouter/google/gemini-2.0-flash-exp:free` | none | Budget exhaustion, provider outage, or fallback chain exhaustion |
+| Tier   | Role                                                  | Primary model                                 | Fallback chain                                                                                              | Auto-switch triggers                                                                               |
+| ------ | ----------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Tier 1 | Default chat + routine automation                     | `minimax/minimax-m2.5`                        | `anthropic/claude-sonnet-4-5` -> `openrouter/google/gemini-2.5-flash` -> `openrouter/google/gemini-2.5-pro` | Provider auth failure, rate limit, timeout, or billing disable on active profile                   |
+| Tier 2 | Higher-quality reasoning + complex tool orchestration | `anthropic/claude-sonnet-4-5`                 | `openrouter/google/gemini-2.5-pro` -> `openrouter/deepseek/deepseek-chat-v3-0324`                           | Tier 1 output quality not sufficient, repeated tool planning errors, or explicit operator override |
+| Tier 3 | Emergency continuity / budget safety net              | `openrouter/google/gemini-2.0-flash-exp:free` | none                                                                                                        | Budget exhaustion, provider outage, or fallback chain exhaustion                                   |
 
 Operational notes:
 

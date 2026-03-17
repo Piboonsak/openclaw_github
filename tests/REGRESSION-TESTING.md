@@ -44,6 +44,7 @@ bash docker/scripts/check-env.sh
 ```
 
 **Expected Output:**
+
 ```
 ✓ OPENCLAW_GATEWAY_TOKEN (first8....last4)
 ✓ OPENROUTER_API_KEY (first8....last4)
@@ -53,6 +54,7 @@ bash docker/scripts/check-env.sh
 ```
 
 **If any key is missing:**
+
 1. Set in Hostinger Control Panel → Environment Variables
 2. Restart container: `docker compose down && docker compose up -d`
 3. Re-run check: `bash docker/scripts/check-env.sh`
@@ -65,12 +67,14 @@ docker ps --filter "name=openclaw" --format "table {{.Names}}\t{{.Status}}\t{{.P
 ```
 
 **Expected Output:**
+
 ```
 NAME                        STATUS              PORTS
 openclaw-sgnl-openclaw-1    Up 2 minutes        18789/tcp
 ```
 
 **If not running:**
+
 ```bash
 docker compose up -d
 sleep 15  # Wait for startup
@@ -97,6 +101,7 @@ bash tests/pre-test-checklist.sh
 ```
 
 This validates:
+
 - ✓ Container running
 - ✓ Volume mounts correct (`/data/.openclaw/`)
 - ✓ Configuration files exist and are valid
@@ -115,6 +120,7 @@ bash tests/regression-tests.sh
 ```
 
 This verifies:
+
 - ✓ KI-009: Volume mount path (root cause of issues #1, #5, #6)
 - ✓ KI-002: exec safeBins includes date, uptime, whoami
 - ✓ KI-010: exec host set to gateway
@@ -125,6 +131,7 @@ This verifies:
 - ✓ No MissingEnvVarError in logs
 
 **Expected Result:**
+
 ```
 Passed: 20+ / 20+
 Failed: 0 / 20+
@@ -133,6 +140,7 @@ Failed: 0 / 20+
 ```
 
 **If tests fail:**
+
 1. Check specific failure message
 2. Review gateway logs: `docker logs --since=10m openclaw-sgnl-openclaw-1`
 3. Verify volume mount: `docker inspect openclaw-sgnl-openclaw-1 | grep -A5 openclaw-state`
@@ -148,83 +156,99 @@ Send these messages to the LINE bot and verify responses. Each message tests one
 ### Test Group 1: session_status & Volume Persistence (Issues #1, #5, #6)
 
 **Message 1A (Thai):**
+
 ```
 ตอนนี้กี่โมงแล้วครับ
 ```
 
 **Expected Response:**
+
 - Returns current time (e.g., "เวลา 15:32 น. ค่ะ")
 - No "Unknown sessionId" error
 - Time matches actual +07:00 Bangkok timezone
 
 **Message 1B (Thai):**
+
 ```
 ใช้โมเดลไหน
 ```
 
 **Expected Response:**
+
 - Shows model and provider (e.g., "ใช้ Gemini 2.5 Flash ค่ะ")
 - No errors
 
 ### Test Group 2: exec date Approval (Issue #2)
 
 **Message 2A (Thai):**
+
 ```
 รันคำสั่ง date
 ```
 
 **Expected Response:**
+
 - Returns date/time immediately (no approval prompt)
 - Example: "Tue Feb 17 15:32:45 +07 2026"
 
 **Message 2B (Thai):**
+
 ```
 บอกเวลาปัจจุบันด้วยคำสั่ง
 ```
 
 **Expected Response:**
+
 - LLM uses exec date command
 - Returns accurate time without approval loop
 
 ### Test Group 3: exec host = gateway (Issue #3)
 
 **Message 3A (Thai):**
+
 ```
 แสดงผู้ใช้ปัจจุบัน
 ```
 
 **Expected Response:**
+
 - Can execute whoami on gateway host
 - Returns username (e.g., "node")
 - No "host not allowed" error
 
 **Message 3B (Thai):**
+
 ```
 รันคำสั่ง ps aux | head -5
 ```
 
 **Expected Response:**
+
 - Process list returned
 - No host mismatch errors
 
 ### Test Group 4: Browser or web_search Fallback (Issue #4)
 
 **Message 4A (Thai):**
+
 ```
 ค้นหาราคาทองวันนี้
 ```
 
 **Expected Response:**
+
 - Returns current gold price
 - Uses web_search (if browser not available)
 - No 5-second timeout
 
 **Message 4B (Thai):**
+
 ```
 ดึงข้อมูลข่าวไทยเกี่ยวกับ "บิตคอยน์"
 ```
 
 **Expected Response:**
+
 - Returns news search results
 - Either uses browser (if available) or web_search
 - Accurate and recent results
@@ -232,27 +256,32 @@ Send these messages to the LINE bot and verify responses. Each message tests one
 ### Test Group 5: API Key Persistence (Issue #5)
 
 **Message 5A (Thai):**
+
 ```
 ค้นหา "ราคาเงิน" วันนี้
 ```
 
 **Expected Response:**
+
 - web_search API works
 - Returns silver price/market data
 - No MissingEnvVarError
 
 **Message 5B:**
+
 ```
 After restart - send the same message again
 ```
 
 **Expected Response:**
+
 - Same result (API key persisted)
 - No data loss after container restart
 
 ### Test Group 6: Config Persistence (Issue #6)
 
 **Test Procedure:**
+
 ```bash
 # 1. Get current config
 docker exec openclaw-sgnl-openclaw-1 node openclaw.mjs config get tools.exec.host
@@ -268,6 +297,7 @@ docker exec openclaw-sgnl-openclaw-1 node openclaw.mjs config get tools.exec.hos
 ```
 
 **Expected Result:**
+
 - Config value same before and after restart
 - Gateway responds to LINE messages immediately
 - No "Unknown sessionId" after restart
@@ -275,15 +305,18 @@ docker exec openclaw-sgnl-openclaw-1 node openclaw.mjs config get tools.exec.hos
 ### Test Group 7: Timezone Handling (Issue #7)
 
 **Message 7A (Thai):**
+
 ```
 ตอนนี้เป็นเวลาท้องถิ่นไหน
 ```
 
 **Expected Response:**
+
 - Shows Bangkok timezone (+07:00)
 - Accurate time
 
 **VPS Verification:**
+
 ```bash
 # Host timezone (UTC)
 date
@@ -297,11 +330,13 @@ docker exec openclaw-sgnl-openclaw-1 date
 ### Test Group 8: Combined Workflow (All Issues)
 
 **Message 8 (Thai):**
+
 ```
 บอกเวลา ราคาทองวันนี้ ชื่อผู้ใช้ปัจจุบัน
 ```
 
 **Expected Response:**
+
 - LLM uses 3 different tools:
   - session_status() → time
   - web_search() → gold price
@@ -310,6 +345,7 @@ docker exec openclaw-sgnl-openclaw-1 date
 - No errors or timeouts
 
 **Example Response:**
+
 ```
 เวลา 15:32 น. ค่ะ
 ชื่อผู้ใช้ node
@@ -322,31 +358,31 @@ docker exec openclaw-sgnl-openclaw-1 date
 
 ### Automated Test Results
 
-| Component | Check | Status | Evidence |
-|-----------|-------|--------|----------|
-| Container | Running | ✓ | `docker ps` shows Up |
-| Volume | Mounted to /data/.openclaw | ✓ | `docker inspect` shows correct path |
-| Config | Valid and parseable | ✓ | `config list \| jq '.valid'` = true |
-| session_status | No errors | ✓ | `docker logs \| grep -c "Unknown sessionId"` = 0 |
-| exec | Allowlist mode, date in safeBins | ✓ | `config get tools.exec.*` correct |
-| Web Search | API key set | ✓ | `docker exec echo $BRAVE_API_KEY` not empty |
-| Timezone | +07:00 (Bangkok) | ✓ | `docker exec date +%z` = +0700 |
-| Persistence | Config survives restart | ✓ | Config same before/after |
-| Backup | Enabled and working | ✓ | `ls /backups/openclaw.json.*` exists |
-| Health | Gateway responding | ✓ | `curl 18789/health` = 200 |
+| Component      | Check                            | Status | Evidence                                         |
+| -------------- | -------------------------------- | ------ | ------------------------------------------------ |
+| Container      | Running                          | ✓      | `docker ps` shows Up                             |
+| Volume         | Mounted to /data/.openclaw       | ✓      | `docker inspect` shows correct path              |
+| Config         | Valid and parseable              | ✓      | `config list \| jq '.valid'` = true              |
+| session_status | No errors                        | ✓      | `docker logs \| grep -c "Unknown sessionId"` = 0 |
+| exec           | Allowlist mode, date in safeBins | ✓      | `config get tools.exec.*` correct                |
+| Web Search     | API key set                      | ✓      | `docker exec echo $BRAVE_API_KEY` not empty      |
+| Timezone       | +07:00 (Bangkok)                 | ✓      | `docker exec date +%z` = +0700                   |
+| Persistence    | Config survives restart          | ✓      | Config same before/after                         |
+| Backup         | Enabled and working              | ✓      | `ls /backups/openclaw.json.*` exists             |
+| Health         | Gateway responding               | ✓      | `curl 18789/health` = 200                        |
 
 ### Manual Test Results
 
-| Issue # | Test Message | Response | Status |
-|---------|--------------|----------|--------|
-| #1 | "ตอนนี้กี่โมง" | Time returned | ✓ PASS |
-| #2 | "รันคำสั่ง date" | Date without approval | ✓ PASS |
-| #3 | "แสดงผู้ใช้" | whoami returned | ✓ PASS |
-| #4 | "ค้นหาราคาทอง" | Gold price returned | ✓ PASS |
-| #5 | "ค้นหา บิตคอยน์" | API key used (no error) | ✓ PASS |
-| #6 | "After restart: ตอนนี้กี่โมง" | Works (config persisted) | ✓ PASS |
-| #7 | "ช่วงเวลาเท่าไหร่" | Bangkok time (+07:00) | ✓ PASS |
-| #8 | Combined query | All tools work | ✓ PASS |
+| Issue # | Test Message                  | Response                 | Status |
+| ------- | ----------------------------- | ------------------------ | ------ |
+| #1      | "ตอนนี้กี่โมง"                | Time returned            | ✓ PASS |
+| #2      | "รันคำสั่ง date"              | Date without approval    | ✓ PASS |
+| #3      | "แสดงผู้ใช้"                  | whoami returned          | ✓ PASS |
+| #4      | "ค้นหาราคาทอง"                | Gold price returned      | ✓ PASS |
+| #5      | "ค้นหา บิตคอยน์"              | API key used (no error)  | ✓ PASS |
+| #6      | "After restart: ตอนนี้กี่โมง" | Works (config persisted) | ✓ PASS |
+| #7      | "ช่วงเวลาเท่าไหร่"            | Bangkok time (+07:00)    | ✓ PASS |
+| #8      | Combined query                | All tools work           | ✓ PASS |
 
 **Overall Status:** ✅ All tests passed
 
@@ -359,11 +395,13 @@ docker exec openclaw-sgnl-openclaw-1 date
 **Cause:** Volume mount not fixed
 
 **Check:**
+
 ```bash
 docker inspect openclaw-sgnl-openclaw-1 --format='{{range .Mounts}}{{.Destination}} → {{.Source}}{{println}}{{end}}'
 ```
 
 **Fix:**
+
 1. Edit `docker-compose.prod.yml` line 75
 2. Change: `openclaw-state:/data/openclaw/state`
 3. To: `openclaw-state:/data/.openclaw`
@@ -376,11 +414,13 @@ docker inspect openclaw-sgnl-openclaw-1 --format='{{range .Mounts}}{{.Destinatio
 **Cause:** API key environment variable not set
 
 **Check:**
+
 ```bash
 bash docker/scripts/check-env.sh
 ```
 
 **Fix:**
+
 1. Set in Hostinger UI or `.env` file
 2. Restart: `docker compose down && docker compose up -d`
 3. Verify: `docker exec openclaw-sgnl-openclaw-1 sh -c 'echo ${BRAVE_API_KEY}'`
@@ -392,11 +432,13 @@ bash docker/scripts/check-env.sh
 **Cause:** Command not in safeBins list
 
 **Check:**
+
 ```bash
 docker exec openclaw-sgnl-openclaw-1 node openclaw.mjs config get tools.exec.safeBins
 ```
 
 **Fix:**
+
 1. Add command to `config/exec-approvals.prod.json` safeBins array
 2. Or set in gateway: `docker exec openclaw-sgnl-openclaw-1 node openclaw.mjs config set tools.exec.safeBins '[date, uptime, ...]'`
 3. Restart: `docker restart openclaw-sgnl-openclaw-1`
@@ -408,14 +450,17 @@ docker exec openclaw-sgnl-openclaw-1 node openclaw.mjs config get tools.exec.saf
 **Cause:** Chromium not installed (OPENCLAW_INSTALL_BROWSER=1 not set)
 
 **Check:**
+
 ```bash
 docker exec openclaw-sgnl-openclaw-1 ls /home/node/.cache/ms-playwright/chromium-*/
 ```
 
 **Fix (option A — use web_search fallback):**
+
 - Config already handles this, no action needed
 
 **Fix (option B — rebuild with browser):**
+
 ```bash
 docker build \
   --build-arg OPENCLAW_INSTALL_BROWSER=1 \
@@ -430,11 +475,13 @@ docker push piboonsak/openclaw:v2026.2.27
 ### Issue: Container won't start after restart
 
 **Check logs:**
+
 ```bash
 docker logs openclaw-sgnl-openclaw-1 | tail -30
 ```
 
 **Common causes:**
+
 - Volume mount path wrong → Fix `docker-compose.prod.yml`
 - Config file corrupted → Restore from backup:
   ```bash
@@ -465,14 +512,14 @@ Before marking tests complete:
 
 ## Success Criteria
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| Automated test pass rate | 100% (0 failures) | ✓ |
-| Manual message responses | 8/8 expected | ✓ |
-| Config persistence | 100% (no data loss) | ✓ |
-| Tool functionality | All working | ✓ |
-| Gateway uptime | Continuous | ✓ |
-| No error logs | 0 MissingEnvVarError, 0 Unknown sessionId | ✓ |
+| Metric                   | Target                                    | Status |
+| ------------------------ | ----------------------------------------- | ------ |
+| Automated test pass rate | 100% (0 failures)                         | ✓      |
+| Manual message responses | 8/8 expected                              | ✓      |
+| Config persistence       | 100% (no data loss)                       | ✓      |
+| Tool functionality       | All working                               | ✓      |
+| Gateway uptime           | Continuous                                | ✓      |
+| No error logs            | 0 MissingEnvVarError, 0 Unknown sessionId | ✓      |
 
 ---
 
@@ -491,6 +538,7 @@ Once all regression tests pass:
 ## Questions?
 
 See detailed guides at:
+
 - [docs/debug/tiered-debug-sop.md](../../docs/debug/tiered-debug-sop.md) — Known issues (KI-001 through KI-012)
 - [docs/CI-CD-WORKFLOW.md](../../docs/CI-CD-WORKFLOW.md) — Deployment procedures
 - [docs/workspace/TOOLS.md.additions.md](../../docs/workspace/TOOLS.md.additions.md) — Tool guidance

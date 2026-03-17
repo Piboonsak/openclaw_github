@@ -1,4 +1,5 @@
 ﻿# Implementation Summary: Production-Ready OpenClaw Deployment
+
 ## Secure Docker Container + CI/CD Pipeline + Hostinger VPS Setup
 
 **Date Completed:** February 23, 2026  
@@ -44,6 +45,7 @@ This document summarizes the **end-to-end production deployment implementation**
 **Infrastructure Documentation:** [prepare_infra_openclaw_Hostinger.md](prepare_infra_openclaw_Hostinger.md)
 
 #### Deployment Architecture
+
 ```
 Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 ├─ Public IP: 76.13.210.250
@@ -78,11 +80,13 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 #### Configuration Files Updated for Production
 
 **Container Configuration:**
+
 - ✅ `docker/Dockerfile.prod` — Port updated to 18789, healthcheck aligned
 - ✅ `docker/docker-compose.prod.yml` — Container name: `openclaw-sgnl-openclaw-1`, port `127.0.0.1:18789:18789`
 - ✅ `config/openclaw.prod.json5` — Gateway port: 18789, security policies configured
 
 **Documentation:**
+
 - ✅ `docs/prepare_infra_openclaw_Hostinger.md` — Complete 14-phase infrastructure setup guide
 - ✅ `docs/IMPLEMENTATION-SUMMARY.md` — Updated with production values
 - ✅ `docs/hostinger-production-deploy.md` — Deployment guide with Hostinger Docker Manager
@@ -90,6 +94,7 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 #### Production Readiness Checklist
 
 **Container Security:**
+
 - ✅ Non-root user (uid 1000) configured
 - ✅ Read-only filesystem enforced (except volumes)
 - ✅ No new privileges flag set
@@ -99,6 +104,7 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 - ✅ Health checks: HTTP 200 /health every 30s
 
 **Network Security:**
+
 - ✅ Backend port (18789) bound to 127.0.0.1 only (NOT 0.0.0.0)
 - ✅ Nginx reverse proxy on public-facing ports (80/443)
 - ✅ Hostinger Cloud Firewall drops port 18789 from external
@@ -106,18 +112,21 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 - ✅ HTTP redirects to HTTPS (HSTS headers)
 
 **DNS Configuration:**
+
 - ✅ Nameservers migrated: Squarespace → Hostinger
 - ✅ DNS A records configured: @ and openclaw → 76.13.210.250
 - ✅ TTL: 50s (root), 14400s (subdomain)
 - ✅ DNS propagation: Verified via dnschecker.org
 
 **SSL/TLS Setup:**
+
 - ✅ Certificate: Let's Encrypt for openclaw.yahwan.biz
 - ✅ Auto-renewal: Certbot systemd timer enabled
 - ✅ Expiry: 90 days from issue (auto-renew at 30-day mark)
 - ✅ Cipher: TLSv1.2+, high-strength ciphers
 
 **Firewall Rules (Hostinger Cloud Firewall):**
+
 - ✅ Rule 1: ACCEPT TCP 80 (HTTP redirect)
 - ✅ Rule 2: ACCEPT TCP 443 (HTTPS/WebSocket)
 - ✅ Rule 3: ACCEPT TCP 22 (SSH admin)
@@ -149,12 +158,14 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 #### Deployment Path Forward
 
 **GitHub Actions CI/CD:**
+
 1. Set GitHub Secrets: DOCKER_USERNAME, DOCKER_TOKEN
 2. Push code to main branch
 3. GitHub Actions automatically builds and pushes to Docker Hub
 4. Image available: piboonsak/openclaw:latest
 
 **Hostinger Deployment:**
+
 1. Configure DNS A record (complete)
 2. Install SSL certificate (Let's Encrypt, complete)
 3. Deploy via Hostinger Docker Manager:
@@ -167,6 +178,7 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 5. Test: https://openclaw.yahwan.biz/health
 
 **Optional Enhancements:**
+
 - [ ] LINE Official Account integration
 - [ ] Backup strategy for /data/openclaw volumes
 - [ ] Monitoring and alerting setup
@@ -183,6 +195,7 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 **Purpose:** Multi-stage Docker build optimized for production with security hardening.
 
 **Key Features:**
+
 - **Builder stage:** Full Node.js 22 Bookworm, pnpm, build dist + UI
 - **Runtime stage:** Minimal Node.js 22 Bookworm Slim, production dependencies only
 - **Security:** Non-root user (openclaw:1000), read-only filesystem compatible, no secrets
@@ -190,6 +203,7 @@ Production Environment: Hostinger VPS (Ubuntu 24.04 LTS)
 - **Entrypoint:** `node openclaw.mjs gateway --allow-unconfigured --bind lan --port 18789`
 
 **Build command:**
+
 ```bash
 docker build -f docker/Dockerfile.prod -t piboonsak/openclaw:latest .
 ```
@@ -203,6 +217,7 @@ docker build -f docker/Dockerfile.prod -t piboonsak/openclaw:latest .
 **Purpose:** Production orchestration with complete security configuration.
 
 **Key Features:**
+
 - **Service:** openclaw-gateway on port 18789
 - **Security opts:** read_only: true, no-new-privileges, cap_drop: ALL
 - **Resource limits:** 2 CPUs, 2GB memory, 200 PIDs
@@ -211,6 +226,7 @@ docker build -f docker/Dockerfile.prod -t piboonsak/openclaw:latest .
 - **Health check:** HTTP GET /health every 30s, 3 retries, 10s timeout
 
 **Deploy command:**
+
 ```bash
 cd docker
 docker-compose -f docker-compose.prod.yml up -d
@@ -225,13 +241,15 @@ docker-compose -f docker-compose.prod.yml up -d
 **Purpose:** Reduce Docker build context size and exclude sensitive files.
 
 **Excluded:**
+
 - node_modules, .git, tests, docs
 - .env files and credentials
-- Build artifacts (dist, apps/*/build)
+- Build artifacts (dist, apps/\*/build)
 - Platform-specific builds (macOS, iOS, Android)
 - Configuration and logs
 
 **Benefits:**
+
 - Faster build times
 - Smaller image size
 - No accidental secret inclusion
@@ -245,11 +263,13 @@ docker-compose -f docker-compose.prod.yml up -d
 **Purpose:** Automated CI/CD pipeline to build and push images to Docker Hub.
 
 **Triggers:**
+
 - Push to `main` branch
 - Version tags (`v*`)
 - Manual dispatch (workflow_dispatch)
 
 **Steps:**
+
 1. Checkout code
 2. Set up Docker Buildx (multi-platform support)
 3. Log in to Docker Hub (using secrets.DOCKER_USERNAME and secrets.DOCKER_TOKEN)
@@ -257,6 +277,7 @@ docker-compose -f docker-compose.prod.yml up -d
 5. Build and push to piboonsak/openclaw
 
 **Image Tags:**
+
 - `latest` (from main branch)
 - `main-<sha>` (commit SHA prefix)
 - Semver versions (from git tags: `v2026.2.22` → `2026.2.22`)
@@ -274,22 +295,26 @@ docker-compose -f docker-compose.prod.yml up -d
 **Key Sections:**
 
 **Gateway:**
+
 - Bind: LAN (0.0.0.0)
 - Port: 18789
 - Auth: Token via environment variable
 - Dangerous node commands denied: camera.snap, screen.record, contacts.add, etc.
 
 **Agent/Model:**
+
 - Default model: anthropic/claude-opus-4-6
 - Fallback chain: ["anthropic/claude-3-5-haiku", "moonshot/kimi-k2.5"]
 - Providers: Anthropic (primary), Moonshot (fallback)
 
 **Security:**
+
 - DM policy: "pairing" (not open)
 - Restricted from AI agents: true
 - Sandbox enabled with blocklist
 
 **Sandbox Blocklist Patterns:**
+
 - `rm\\s+-rf` — Prevent recursive deletion
 - `sudo` — No privilege escalation
 - `curl.*\\$\\(` — Block command injection
@@ -298,10 +323,12 @@ docker-compose -f docker-compose.prod.yml up -d
 - And more...
 
 **Channels:**
+
 - LINE template (disabled by default)
 - Placeholders for access token and secret
 
 **Logging:**
+
 - Level: info
 - Retention: 30 days
 - Redact sensitive: true
@@ -313,11 +340,13 @@ docker-compose -f docker-compose.prod.yml up -d
 **Location:** `d:\01_gitrepo\openclaw_github\.env.example`
 
 **Changes:**
+
 - ✅ Added `MOONSHOT_API_KEY` for Kimi model support
 - ✅ Added `LINE_CHANNEL_ACCESS_TOKEN` and `LINE_CHANNEL_SECRET` for LINE integration
 - ✅ Added `NODE_ENV` for environment specification
 
 **Required for Production:**
+
 ```bash
 OPENCLAW_GATEWAY_TOKEN=<48-char-hex-token>
 ANTHROPIC_API_KEY=sk-ant-<your-key>
@@ -333,6 +362,7 @@ OPENCLAW_LOAD_SHELL_ENV=0
 **Location:** `d:\01_gitrepo\openclaw_github\docs\hostinger-production-deploy.md`
 
 **Content:** 11 comprehensive sections:
+
 1. Overview
 2. Prerequisites
 3. Phase 1: DNS and SSL Setup
@@ -356,6 +386,7 @@ OPENCLAW_LOAD_SHELL_ENV=0
 **Location:** `d:\01_gitrepo\openclaw_github\README.md`
 
 **Changes:**
+
 - ✅ Added new section: "Production Deployment (Docker + Hostinger)"
 - ✅ Linked to production deployment guide
 - ✅ Quick overview of security features
@@ -388,6 +419,7 @@ Value: <your-docker-hub-personal-access-token>
 ```
 
 **Verification:**
+
 - Both secrets should appear in the list (values masked as ••••••)
 
 ---
@@ -395,6 +427,7 @@ Value: <your-docker-hub-personal-access-token>
 ### Phase 2: Trigger Docker Build (Automatic or Manual)
 
 **Option A: Automatic (Recommended)**
+
 ```bash
 # Commit all changes and push to main branch
 git add .
@@ -403,22 +436,26 @@ git push origin main
 ```
 
 GitHub Actions will automatically:
+
 - Build the Docker image
 - Push to Docker Hub as `piboonsak/openclaw:latest`
 - Tag with commit SHA
 
 **Option B: Manual Trigger**
+
 1. Go to: GitHub → Actions → "Build and Push Docker Image"
 2. Click: **Run workflow**
 3. Select branch: `main`
 4. Click: **Run workflow**
 
 **Monitor progress:**
+
 - GitHub Actions tab shows build status
 - Expected duration: ~5-10 minutes
 - All steps should be green ✅
 
 **Verify on Docker Hub:**
+
 ```bash
 # Check Docker Hub web UI
 https://hub.docker.com/r/piboonsak/openclaw/tags
@@ -447,6 +484,7 @@ docker inspect piboonsak/openclaw:latest
 5. Click **Save**
 
 **Verify DNS propagation (wait 15-30 minutes):**
+
 ```bash
 nslookup openclaw.yahwan.biz
 # Should resolve to your Hostinger VPS IP
@@ -467,6 +505,7 @@ nslookup openclaw.yahwan.biz
 7. Wait ~2 minutes for provisioning
 
 **Verify SSL (will fail until container deployed):**
+
 ```bash
 curl -I https://openclaw.yahwan.biz/
 # Expected: Valid SSL, but 502/503 (no service yet)
@@ -477,17 +516,20 @@ curl -I https://openclaw.yahwan.biz/
 ### Phase 5: Deploy on Hostinger Docker Manager
 
 **Access Docker Manager:**
+
 1. Hostinger hPanel → Select VPS → **Docker Manager**
 
 **Create New Service:**
 
 **Basic Info:**
+
 ```
 Service Name: openclaw-gateway
 Image:        piboonsak/openclaw:latest
 ```
 
 **Port Mapping:**
+
 ```
 External: 18789
 Internal: 18789
@@ -495,6 +537,7 @@ Protocol: TCP
 ```
 
 **Environment Variables:**
+
 ```bash
 # REQUIRED
 OPENCLAW_GATEWAY_TOKEN=8b7c3329e9a1b6d4f0c5e2a98d7b1f4c6e8a2d5b9f3c7e1a4d6b8f0c3e5a7b2d
@@ -509,6 +552,7 @@ OPENCLAW_LOAD_SHELL_ENV=0
 ```
 
 **Volume Mounts:**
+
 ```
 Volume 1:
 Host Path:      /data/openclaw/state
@@ -522,6 +566,7 @@ Mode:           Read/Write
 ```
 
 **Advanced Settings (if available):**
+
 ```
 Memory Limit:    2GB
 CPU Limit:       2 cores
@@ -534,6 +579,7 @@ Health Check:    Enabled
 ```
 
 **Deploy:**
+
 - Click **Deploy** or **Create Service**
 - Wait ~1-2 minutes for startup
 
@@ -544,6 +590,7 @@ Health Check:    Enabled
 **Step 1: Check Service Status**
 
 In Docker Manager:
+
 - Service status should show: **Running** (green indicator)
 - Click service → **Logs** tab
 - Look for:
@@ -554,11 +601,13 @@ In Docker Manager:
   ```
 
 **Step 2: Test Health Endpoint**
+
 ```bash
 curl https://openclaw.yahwan.biz/health
 ```
 
 Expected response:
+
 ```json
 {
   "status": "ok",
@@ -568,17 +617,20 @@ Expected response:
 ```
 
 **Step 3: Access Web UI**
+
 1. Open browser: `https://openclaw.yahwan.biz/`
 2. Should see OpenClaw login screen
 3. Enter gateway token: `8b7c3329e9a1b6d4f0c5e2a98d7b1f4c6e8a2d5b9f3c7e1a4d6b8f0c3e5a7b2d`
 4. Chat interface should load
 
 **Step 4: Test AI Chat**
+
 1. Send message: `Hello, what model are you using?`
 2. Expected: Response from Claude Opus
 3. Verify response quality and latency
 
 **Step 5: Verify Model Fallback**
+
 1. Check config tab for fallback models
 2. Optionally test by temporarily disabling primary model
 
@@ -647,6 +699,7 @@ docker-compose -f docker-compose.prod.yml up -d --force-recreate
 After deployment, verify all security measures are in place:
 
 ### Container Security
+
 - [ ] Container runs as non-root user (uid 1000)
 - [ ] Filesystem is read-only except for data volumes
 - [ ] No new privileges flag is set
@@ -655,12 +708,14 @@ After deployment, verify all security measures are in place:
 - [ ] Health checks are enabled
 
 ### Network Security
+
 - [ ] HTTPS enabled with valid Let's Encrypt certificate
 - [ ] Gateway requires token authentication
 - [ ] Port 18789 is properly forwarded
 - [ ] No unnecessary ports are exposed
 
 ### Application Security
+
 - [ ] DM policy is set to "pairing" (not "open")
 - [ ] Dangerous node commands are denied
 - [ ] Sandbox is enabled with blocklist
@@ -668,6 +723,7 @@ After deployment, verify all security measures are in place:
 - [ ] Sensitive values are redacted in logs
 
 ### Operational Security
+
 - [ ] Backup strategy is configured
 - [ ] API keys are stored in password manager
 - [ ] Logs are monitored for anomalies
@@ -682,11 +738,13 @@ After deployment, verify all security measures are in place:
 ### Issue: GitHub Actions build fails
 
 **Possible causes:**
+
 - Docker Hub credentials not set in GitHub Secrets
 - Invalid Dockerfile syntax
 - Insufficient permissions
 
 **Resolution:**
+
 1. Check GitHub Secrets are set: DOCKER_USERNAME, DOCKER_TOKEN
 2. Verify Docker Hub token has read/write/delete permissions
 3. Check workflow logs for specific error
@@ -694,11 +752,13 @@ After deployment, verify all security measures are in place:
 ### Issue: Container won't start on Hostinger
 
 **Possible causes:**
+
 - Missing required environment variable (OPENCLAW_GATEWAY_TOKEN)
 - Invalid API key
 - Port conflict
 
 **Resolution:**
+
 1. Check Docker Manager → Logs for error details
 2. Verify all required env vars are set
 3. Ensure no other service uses port 18789
@@ -706,11 +766,13 @@ After deployment, verify all security measures are in place:
 ### Issue: Can't access https://openclaw.yahwan.biz/
 
 **Possible causes:**
+
 - DNS not propagated
 - SSL certificate not installed
 - Firewall blocking port
 
 **Resolution:**
+
 ```bash
 # Check DNS
 nslookup openclaw.yahwan.biz
@@ -725,11 +787,13 @@ ss -ltnp | grep 18789
 ### Issue: AI model returns errors
 
 **Possible causes:**
+
 - Invalid API key
 - Quota exceeded
 - Model not available
 
 **Resolution:**
+
 1. Verify API key is correct in Hostinger env vars
 2. Check provider console for balance/quota
 3. Test API key with curl
@@ -754,6 +818,7 @@ Follow the LINE section in the [main deployment plan](../../Openclaw/docs/plan-h
 ### 2. Backup Configuration
 
 Set up automated backups:
+
 - Hostinger Daily Backups (enable during VPS purchase)
 - Manual: backup `/data/openclaw/state` and `/data/openclaw/workspace`
 - Export environment variables from Hostinger UI
@@ -761,6 +826,7 @@ Set up automated backups:
 ### 3. Monitoring and Alerting
 
 Optional monitoring setup:
+
 - Container metrics via Docker stats
 - Log aggregation (e.g., Logtail, Papertrail)
 - Uptime monitoring (e.g., UptimeRobot, Pingdom)
@@ -769,6 +835,7 @@ Optional monitoring setup:
 ### 4. Scale and Optimize
 
 As usage grows:
+
 - Increase resource limits (CPU/RAM)
 - Upgrade VPS plan if needed
 - Consider horizontal scaling with load balancer
@@ -792,6 +859,7 @@ As usage grows:
 Use this checklist to track your deployment progress:
 
 ### Pre-Deployment
+
 - [x] Production Dockerfile created
 - [x] Production docker-compose created
 - [x] GitHub Actions workflow created
@@ -800,6 +868,7 @@ Use this checklist to track your deployment progress:
 - [x] README updated
 
 ### Infrastructure Setup (February 23, 2026)
+
 - [x] Complete infrastructure documentation created
 - [x] Production Dockerfile created with port 18789
 - [x] Production docker-compose.yml configured
@@ -815,6 +884,7 @@ Use this checklist to track your deployment progress:
 - [x] WebSocket support verified in Nginx config
 
 ### GitHub Setup
+
 - [ ] GitHub Secrets set (DOCKER_USERNAME, DOCKER_TOKEN)
 - [ ] Code pushed to main branch
 - [ ] GitHub Actions build triggered
@@ -822,12 +892,14 @@ Use this checklist to track your deployment progress:
 - [ ] Image verified on Docker Hub
 
 ### DNS and SSL
+
 - [ ] DNS A record configured (Squarespace)
 - [ ] DNS propagation verified
 - [ ] SSL certificate installed (Hostinger Let's Encrypt)
 - [ ] SSL verification completed
 
 ### Hostinger Deployment
+
 - [ ] Docker Manager service created
 - [ ] Environment variables configured
 - [ ] Volume mounts configured
@@ -835,6 +907,7 @@ Use this checklist to track your deployment progress:
 - [ ] Service deployed and running
 
 ### Verification
+
 - [ ] Service status: Running
 - [ ] Health endpoint responding
 - [ ] Web UI accessible via HTTPS
@@ -843,19 +916,21 @@ Use this checklist to track your deployment progress:
 - [ ] Model fallback verified
 
 ### Security Audit
+
 - [ ] Container security verified (non-root, read-only, etc.)
 - [ ] Network security verified (HTTPS, auth, firewall)
 - [ ] Application security verified (DM policy, sandbox, etc.)
 - [ ] Operational security verified (backups, monitoring, etc.)
 
 ### Optional Enhancements
+
 - [ ] LINE integration configured
 - [ ] Backup strategy implemented
 - [ ] Monitoring and alerting set up
 - [ ] Documentation reviewed and updated
 
 **Progress:** 13/48 items completed (Infrastructure Complete ✅ | Deployment Pending ⏳)
- 
+
 ---
 
 **Status:** ✅ Infrastructure Ready | ⏳ Awaiting Docker Hub Push and Hostinger Deployment  
@@ -867,6 +942,7 @@ Use this checklist to track your deployment progress:
 ## Acknowledgments
 
 This implementation follows security best practices from:
+
 - Docker Security Best Practices
 - OWASP Container Security
 - CIS Docker Benchmark

@@ -1,8 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import {
-  parseExecApprovalPostback,
-  EXEC_APPROVAL_POSTBACK_PREFIX,
-} from "./exec-approvals.js";
+import { parseExecApprovalPostback, EXEC_APPROVAL_POSTBACK_PREFIX } from "./exec-approvals.js";
+import type { LineExecApprovalHandler } from "./exec-approvals.js";
 
 // --------------------------------------------------------------------------
 // Unit tests for parseExecApprovalPostback (pure function, no mocks needed)
@@ -71,8 +69,8 @@ vi.mock("./download.js", () => ({
   },
 }));
 
-const pushMessageLineMock = vi.fn(async () => {});
-const replyMessageLineMock = vi.fn(async () => {});
+const pushMessageLineMock = vi.fn(async (..._args: unknown[]) => {});
+const replyMessageLineMock = vi.fn(async (..._args: unknown[]) => {});
 
 vi.mock("./send.js", () => ({
   pushMessageLine: (...args: unknown[]) => pushMessageLineMock(...args),
@@ -151,7 +149,7 @@ describe("handlePostbackEvent exec approval interception", () => {
       runtime: createRuntime(),
       mediaMaxBytes: 1,
       processMessage,
-      execApprovalHandler: handler as any,
+      execApprovalHandler: handler as unknown as LineExecApprovalHandler,
     });
 
     expect(resolveApproval).toHaveBeenCalledWith("abc-123", "allow-once");
@@ -172,7 +170,7 @@ describe("handlePostbackEvent exec approval interception", () => {
       runtime: createRuntime(),
       mediaMaxBytes: 1,
       processMessage,
-      execApprovalHandler: handler as any,
+      execApprovalHandler: handler as unknown as LineExecApprovalHandler,
     });
 
     expect(resolveApproval).toHaveBeenCalledWith("expired-1", "deny");
@@ -196,7 +194,7 @@ describe("handlePostbackEvent exec approval interception", () => {
       runtime: createRuntime(),
       mediaMaxBytes: 1,
       processMessage,
-      execApprovalHandler: handler as any,
+      execApprovalHandler: handler as unknown as LineExecApprovalHandler,
     });
 
     // Approval handler should NOT be called for non-approval postbacks
