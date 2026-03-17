@@ -317,6 +317,42 @@ describe("resolveCommandAuthorization", () => {
       expect(auth.isAuthorizedSender).toBe(true);
     });
 
+    it("allows self-service commands without access-group authorization", () => {
+      const cfg = {
+        channels: { whatsapp: { allowFrom: ["+15551234567"] } },
+      } as OpenClawConfig;
+
+      const ctx = {
+        Provider: "whatsapp",
+        Surface: "whatsapp",
+        From: "whatsapp:+15551234567",
+        SenderE164: "+15551234567",
+      } as MsgContext;
+
+      const sessionAuth = resolveCommandAuthorization({
+        ctx,
+        cfg,
+        commandAuthorized: false,
+        commandBody: "/new anthropic/claude-opus-4-6",
+      });
+      const modelAuth = resolveCommandAuthorization({
+        ctx,
+        cfg,
+        commandAuthorized: false,
+        commandBody: "/modle opus",
+      });
+      const restartAuth = resolveCommandAuthorization({
+        ctx,
+        cfg,
+        commandAuthorized: false,
+        commandBody: "/restart",
+      });
+
+      expect(sessionAuth.isAuthorizedSender).toBe(true);
+      expect(modelAuth.isAuthorizedSender).toBe(true);
+      expect(restartAuth.isAuthorizedSender).toBe(false);
+    });
+
     it("allows all senders when commands.allowFrom includes wildcard", () => {
       const cfg = {
         commands: {

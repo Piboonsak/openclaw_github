@@ -196,6 +196,28 @@ describe("initSessionState RawBody", () => {
     expect(result.bodyStripped).toBe("");
   });
 
+  it("treats /session new as a reset alias", async () => {
+    const root = await makeCaseDir("openclaw-rawbody-session-new-");
+    const storePath = path.join(root, "sessions.json");
+    const cfg = { session: { store: storePath } } as OpenClawConfig;
+
+    const groupMessageCtx = {
+      Body: `[Context]\nJake: /session new KeepThisCase\n[from: Jake]`,
+      RawBody: "/session new KeepThisCase",
+      ChatType: "group",
+      SessionKey: "agent:main:whatsapp:group:g1",
+    };
+
+    const result = await initSessionState({
+      ctx: groupMessageCtx,
+      cfg,
+      commandAuthorized: true,
+    });
+
+    expect(result.isNewSession).toBe(true);
+    expect(result.bodyStripped).toBe("KeepThisCase");
+  });
+
   it("preserves argument casing while still matching reset triggers case-insensitively", async () => {
     const root = await makeCaseDir("openclaw-rawbody-reset-case-");
     const storePath = path.join(root, "sessions.json");

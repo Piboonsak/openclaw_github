@@ -39,6 +39,17 @@ import { stripMentions, stripStructuralPrefixes } from "./mentions.js";
 
 const log = createSubsystemLogger("session-init");
 
+function normalizeSessionResetAlias(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^\/session\s+(new|reset)(?:\s+([\s\S]+))?$/i);
+  if (!match) {
+    return trimmed;
+  }
+  const action = match[1]?.toLowerCase();
+  const args = match[2] ?? "";
+  return args ? `/${action} ${args}` : `/${action}`;
+}
+
 export type SessionInitResult = {
   sessionCtx: TemplateContext;
   sessionEntry: SessionEntry;
@@ -179,8 +190,10 @@ export async function initSessionState(params: {
 
   // Reset triggers are configured as lowercased commands (e.g. "/new"), but users may type
   // "/NEW" etc. Match case-insensitively while keeping the original casing for any stripped body.
-  const trimmedBodyLower = trimmedBody.toLowerCase();
-  const strippedForResetLower = strippedForReset.toLowerCase();
+  const canonicalTrimmedBody = normalizeSessionResetAlias(trimmedBody);
+  const canonicalStrippedForReset = normalizeSessionResetAlias(strippedForReset);
+  const trimmedBodyLower = canonicalTrimmedBody.toLowerCase();
+  const strippedForResetLower = canonicalStrippedForReset.toLowerCase();
 
   for (const trigger of resetTriggers) {
     if (!trigger) {
@@ -202,7 +215,10 @@ export async function initSessionState(params: {
       strippedForResetLower.startsWith(triggerPrefixLower)
     ) {
       isNewSession = true;
-      bodyStripped = strippedForReset.slice(trigger.length).trimStart();
+      const bodyForStrip = strippedForResetLower.startsWith(triggerPrefixLower)
+        ? canonicalStrippedForReset
+        : canonicalTrimmedBody;
+      bodyStripped = bodyForStrip.slice(trigger.length).trimStart();
       resetTriggered = true;
       break;
     }

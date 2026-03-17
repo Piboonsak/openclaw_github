@@ -182,6 +182,10 @@ describe("commands registry", () => {
   it("normalizes dock command aliases", () => {
     expect(normalizeCommandBody("/dock_telegram")).toBe("/dock-telegram");
   });
+
+  it("normalizes /modle alias to /model", () => {
+    expect(normalizeCommandBody("/modle gpt-5")).toBe("/model gpt-5");
+  });
 });
 
 describe("commands registry args", () => {

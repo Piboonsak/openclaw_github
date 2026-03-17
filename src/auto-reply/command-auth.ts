@@ -16,6 +16,29 @@ export type CommandAuthorization = {
   to?: string;
 };
 
+const SELF_SERVICE_COMMANDS = new Set([
+  "/new",
+  "/reset",
+  "/session",
+  "/model",
+  "/models",
+  "/modle",
+]);
+
+function extractCommandToken(body?: string): string | undefined {
+  const trimmed = (body ?? "").trim().toLowerCase();
+  if (!trimmed.startsWith("/")) {
+    return undefined;
+  }
+  const match = trimmed.match(/^\/[a-z0-9_-]+/i);
+  return match?.[0];
+}
+
+function isSelfServiceCommand(body?: string): boolean {
+  const token = extractCommandToken(body);
+  return token ? SELF_SERVICE_COMMANDS.has(token) : false;
+}
+
 function resolveProviderFromContext(ctx: MsgContext, cfg: OpenClawConfig): ChannelId | undefined {
   const explicitMessageChannel =
     normalizeMessageChannel(ctx.Provider) ??
@@ -219,6 +242,7 @@ export function resolveCommandAuthorization(params: {
   ctx: MsgContext;
   cfg: OpenClawConfig;
   commandAuthorized: boolean;
+  commandBody?: string;
 }): CommandAuthorization {
   const { ctx, cfg, commandAuthorized } = params;
   const providerId = resolveProviderFromContext(ctx, cfg);
@@ -327,8 +351,9 @@ export function resolveCommandAuthorization(params: {
       : undefined;
     isAuthorizedSender = commandsAllowAll || Boolean(matchedCommandsAllowFrom);
   } else {
-    // Fall back to existing behavior
-    isAuthorizedSender = commandAuthorized && isOwnerForCommands;
+    // Fall back to existing behavior while allowing non-privileged session controls.
+    isAuthorizedSender =
+      (commandAuthorized || isSelfServiceCommand(params.commandBody)) && isOwnerForCommands;
   }
 
   return {

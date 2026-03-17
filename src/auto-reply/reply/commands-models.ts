@@ -30,6 +30,89 @@ export type ModelsProviderData = {
   resolvedDefault: { provider: string; model: string };
 };
 
+const MODEL_COMMAND_ALIASES = ["/models", "/model", "/modle"] as const;
+
+function resolveCommandToken(body: string): string | undefined {
+  const match = body
+    .trim()
+    .toLowerCase()
+    .match(/^\/[\w-]+/);
+  return match?.[0];
+}
+
+function computeEditDistance(a: string, b: string): number {
+  if (a === b) {
+    return 0;
+  }
+  if (!a.length) {
+    return b.length;
+  }
+  if (!b.length) {
+    return a.length;
+  }
+
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const dp: number[][] = Array.from({ length: rows }, (_, row) => {
+    const values = Array.from({ length: cols }, () => 0);
+    values[0] = row;
+    return values;
+  });
+  for (let col = 0; col < cols; col += 1) {
+    dp[0][col] = col;
+  }
+
+  for (let row = 1; row < rows; row += 1) {
+    for (let col = 1; col < cols; col += 1) {
+      const cost = a[row - 1] === b[col - 1] ? 0 : 1;
+      dp[row][col] = Math.min(
+        dp[row - 1][col] + 1,
+        dp[row][col - 1] + 1,
+        dp[row - 1][col - 1] + cost,
+      );
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function recommendModelAlias(token: string): string {
+  let best: string = MODEL_COMMAND_ALIASES[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const alias of MODEL_COMMAND_ALIASES) {
+    const distance = computeEditDistance(token, alias);
+    if (distance < bestDistance) {
+      best = alias;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function resolveModelCommandSpellingError(body: string): ReplyPayload | null {
+  const token = resolveCommandToken(body);
+  if (!token) {
+    return null;
+  }
+  if (MODEL_COMMAND_ALIASES.includes(token as (typeof MODEL_COMMAND_ALIASES)[number])) {
+    return null;
+  }
+
+  const closestDistance = Math.min(
+    ...MODEL_COMMAND_ALIASES.map((alias) => computeEditDistance(token, alias)),
+  );
+  if (closestDistance > 2) {
+    return null;
+  }
+
+  const recommended = recommendModelAlias(token);
+  const lines = [
+    `Unknown model command: ${token}`,
+    `Did you mean: ${recommended}`,
+    "Allowed aliases: /models, /model, /modle",
+  ];
+  return { text: lines.join("\n") };
+}
+
 /**
  * Build provider/model data from config and catalog.
  * Exported for reuse by callback handlers.
@@ -380,6 +463,20 @@ export const handleModelsCommand: CommandHandler = async (params, allowTextComma
     agentDir: modelsAgentDir,
     sessionEntry: params.sessionEntry,
   });
+  if (!reply) {
+    return null;
+  }
+  return { reply, shouldContinue: false };
+};
+
+export const handleModelCommandSpellingGuard: CommandHandler = async (
+  params,
+  allowTextCommands,
+) => {
+  if (!allowTextCommands) {
+    return null;
+  }
+  const reply = resolveModelCommandSpellingError(params.command.commandBodyNormalized);
   if (!reply) {
     return null;
   }

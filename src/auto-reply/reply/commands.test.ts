@@ -812,6 +812,32 @@ describe("/models command", () => {
     expect(result.reply?.text).toContain("localai/ultra-chat");
     expect(result.reply?.text).not.toContain("Unknown provider");
   });
+
+  it("returns suggestion for misspelled model commands", async () => {
+    const result = await handleCommands(
+      buildPolicyParams("/modles anthropic", cfg, {
+        Provider: "discord",
+        Surface: "discord",
+      }),
+    );
+
+    expect(result.shouldContinue).toBe(false);
+    expect(result.reply?.text).toContain("Unknown model command: /modles");
+    expect(result.reply?.text).toContain("Did you mean: /modle");
+    expect(result.reply?.text).toContain("Allowed aliases: /models, /model, /modle");
+  });
+
+  it("does not block unrelated commands", async () => {
+    const result = await handleCommands(
+      buildPolicyParams("/status", cfg, {
+        Provider: "discord",
+        Surface: "discord",
+      }),
+    );
+
+    expect(result.shouldContinue).toBe(false);
+    expect(result.reply?.text).not.toContain("Unknown model command");
+  });
 });
 
 describe("handleCommands plugin commands", () => {

@@ -704,6 +704,7 @@ function buildChatCommands(): ChatCommandDefinition[] {
   registerAlias(commands, "reasoning", "/reason");
   registerAlias(commands, "elevated", "/elev");
   registerAlias(commands, "steer", "/tell");
+  registerAlias(commands, "model", "/modle");
 
   assertCommandRegistry(commands);
   return commands;

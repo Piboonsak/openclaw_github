@@ -19,6 +19,7 @@ export function buildCommandContext(params: {
     ctx,
     cfg,
     commandAuthorized: params.commandAuthorized,
+    commandBody: triggerBodyNormalized,
   });
   const surface = (ctx.Surface ?? ctx.Provider ?? "").trim().toLowerCase();
   const channel = (ctx.Provider ?? surface).trim().toLowerCase();

@@ -123,6 +123,19 @@ const coreEntries: CoreCliEntry[] = [
   {
     commands: [
       {
+        name: "restart",
+        description: "Restart OpenClaw services",
+        hasSubcommands: true,
+      },
+    ],
+    register: async ({ program }) => {
+      const mod = await import("./register.restart.js");
+      mod.registerRestartCommands(program);
+    },
+  },
+  {
+    commands: [
+      {
         name: "message",
         description: "Send, read, and manage messages",
         hasSubcommands: true,
