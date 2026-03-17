@@ -441,8 +441,8 @@ describe("exec notifyOnExit", () => {
     const status = await waitForCompletion(sessionId);
     expect(status).toBe("completed");
     const events = peekSystemEvents("agent:main:main");
-    expect(events.length).toBeGreaterThan(0);
-    expect(events.some((event) => event.includes("Exec completed"))).toBe(true);
+    const completionEvents = events.filter((event) => event.includes("Exec completed"));
+    expect(completionEvents.length).toBe(1);
   });
 });
 

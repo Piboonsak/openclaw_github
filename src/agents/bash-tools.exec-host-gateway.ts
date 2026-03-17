@@ -55,7 +55,10 @@ export type ProcessGatewayAllowlistResult = {
 };
 
 function describeAllowlistMissBins(params: {
-  segments: { argv: string[]; resolution: { executableName?: string; rawExecutable?: string } | null }[];
+  segments: {
+    argv: string[];
+    resolution: { executableName?: string; rawExecutable?: string } | null;
+  }[];
   segmentSatisfiedBy: ("allowlist" | "safeBins" | "skills" | null)[];
 }): string {
   const deniedBins = new Set<string>();
