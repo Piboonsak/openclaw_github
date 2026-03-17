@@ -94,12 +94,16 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
     ],
   },
   grep: {
-    // Keep grep stdin-only: pattern must come from -e/--regexp.
-    // Allowing one positional is ambiguous because -e consumes the pattern and
-    // frees the positional slot for a filename.
-    maxPositional: 0,
+    maxPositional: 2,
+    allowPathPositionals: true,
     allowedValueFlags: [
       "--regexp",
+      "--ignore-case",
+      "--line-number",
+      "--count",
+      "--files-with-matches",
+      "--recursive",
+      "--exclude-dir",
       "--max-count",
       "--after-context",
       "--before-context",
@@ -110,6 +114,12 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
       "--include",
       "--label",
       "-e",
+      "-i",
+      "-n",
+      "-c",
+      "-l",
+      "-r",
+      "-R",
       "-m",
       "-A",
       "-B",
@@ -121,11 +131,8 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
       "--exclude-from",
       "--dereference-recursive",
       "--directories",
-      "--recursive",
       "-f",
       "-d",
-      "-r",
-      "-R",
     ],
   },
   cut: {
@@ -157,7 +164,6 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
       "-S",
       "-T",
     ],
-    // --compress-program can invoke an external executable and breaks stdin-only guarantees.
     deniedFlags: ["--compress-program", "--files0-from", "--output", "-o"],
   },
   uniq: {
@@ -173,11 +179,13 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
     ],
   },
   head: {
-    maxPositional: 0,
+    maxPositional: 4,
+    allowPathPositionals: true,
     allowedValueFlags: ["--lines", "--bytes", "-n", "-c"],
   },
   tail: {
-    maxPositional: 0,
+    maxPositional: 4,
+    allowPathPositionals: true,
     allowedValueFlags: [
       "--lines",
       "--bytes",
@@ -196,7 +204,6 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
     maxPositional: 0,
     deniedFlags: ["--files0-from"],
   },
-  // ── WS-2.4: 8 newly profiled safe bins ────────────────────────────────
   date: {
     maxPositional: 0,
     allowedValueFlags: ["--date", "-d", "--reference", "-r"],
@@ -229,9 +236,108 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
       "-G",
     ],
   },
+  ls: {
+    maxPositional: 6,
+    allowPathPositionals: true,
+    allowedValueFlags: ["--color", "--block-size", "--time-style", "-I", "--ignore"],
+  },
+  find: {
+    maxPositional: 10,
+    allowPathPositionals: true,
+    allowedValueFlags: [
+      "-name",
+      "-iname",
+      "-path",
+      "-ipath",
+      "-type",
+      "-maxdepth",
+      "-mindepth",
+      "-mtime",
+      "-mmin",
+      "-size",
+      "-user",
+      "-group",
+      "-perm",
+      "-print",
+      "-print0",
+      "-printf",
+      "-quit",
+    ],
+  },
+  gh: {
+    minPositional: 0,
+    maxPositional: 12,
+    allowedValueFlags: [
+      "--help",
+      "--version",
+      "--repo",
+      "-R",
+      "--field",
+      "-F",
+      "--method",
+      "-X",
+      "--hostname",
+      "-H",
+      "--paginate",
+      "--jq",
+      "-q",
+      "--json",
+      "--template",
+      "-t",
+      "--limit",
+      "-L",
+      "--search",
+      "-S",
+      "--state",
+      "-s",
+      "--label",
+      "-l",
+      "--assignee",
+      "-a",
+      "--author",
+      "--mention",
+      "--milestone",
+      "--base",
+      "--head",
+      "--web",
+    ],
+  },
+  git: {
+    minPositional: 1,
+    maxPositional: 8,
+    allowedValueFlags: [
+      "-C",
+      "--git-dir",
+      "--work-tree",
+      "--since",
+      "--until",
+      "--author",
+      "--grep",
+      "--max-count",
+      "-n",
+      "--format",
+      "--pretty",
+      "--name-only",
+      "--name-status",
+      "--stat",
+      "--shortstat",
+      "--decorate",
+      "--abbrev-commit",
+      "--oneline",
+      "--no-pager",
+    ],
+  },
   tree: {
-    maxPositional: 0,
+    maxPositional: 2,
+    allowPathPositionals: true,
+    allowedValueFlags: ["-L", "-I", "-a", "-d", "-f", "-h", "--noreport"],
     deniedFlags: ["--fromfile"],
+  },
+  env: {
+    maxPositional: 0,
+  },
+  printenv: {
+    maxPositional: 1,
   },
   curl: {
     maxPositional: 1,
@@ -265,6 +371,13 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
       "-S",
       "--write-out",
       "-w",
+      "--fail",
+      "-f",
+      "--fail-with-body",
+      "--head",
+      "-I",
+      "--include",
+      "-i",
     ],
     deniedFlags: ["--config", "-K", "--output", "-o", "--upload-file", "-T"],
   },
@@ -284,6 +397,15 @@ export const SAFE_BIN_PROFILE_FIXTURES: Record<string, SafeBinProfileFixture> = 
       "-q",
     ],
     deniedFlags: ["--config", "--input-file", "-i", "--output-document", "-O"],
+  },
+  cat: {
+    maxPositional: 8,
+    allowPathPositionals: true,
+  },
+  openclaw: {
+    minPositional: 1,
+    maxPositional: 4,
+    allowedValueFlags: ["--help", "--version", "--json"],
   },
 };
 
@@ -375,7 +497,9 @@ export function resolveSafeBinProfiles(
 ): Record<string, SafeBinProfile> {
   const normalizedFixtures = normalizeSafeBinProfileFixtures(fixtures);
   const effectiveFixtures = Object.fromEntries(
-    Object.entries(normalizedFixtures).filter(([, fixture]) => !isNoopSafeBinProfileFixture(fixture)),
+    Object.entries(normalizedFixtures).filter(
+      ([, fixture]) => !isNoopSafeBinProfileFixture(fixture),
+    ),
   ) as Record<string, SafeBinProfileFixture>;
   if (Object.keys(effectiveFixtures).length === 0) {
     return SAFE_BIN_PROFILES;
@@ -485,7 +609,11 @@ function isAcceptablePositional(value: string, profile: SafeBinProfile): boolean
   return !isPathLikeToken(value);
 }
 
-function consumePositionalToken(token: string, positional: string[], profile: SafeBinProfile): boolean {
+function consumePositionalToken(
+  token: string,
+  positional: string[],
+  profile: SafeBinProfile,
+): boolean {
   if (!isAcceptablePositional(token, profile)) {
     return false;
   }
