@@ -302,7 +302,9 @@ async function handlePostbackEvent(
   // infinite approval loop on LINE OA stateless runtime.
   const approvalData = parseExecApprovalPostback(data);
   if (approvalData && context.execApprovalHandler) {
-    logVerbose(`line: exec approval postback: ${approvalData.decision} id=${approvalData.approvalId}`);
+    logVerbose(
+      `line: exec approval postback: ${approvalData.decision} id=${approvalData.approvalId}`,
+    );
     const resolved = await context.execApprovalHandler.resolveApproval(
       approvalData.approvalId,
       approvalData.decision,

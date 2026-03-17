@@ -3,6 +3,7 @@
 ## ⚠️ CRITICAL RULE
 
 **NEVER SSH directly into VPS to fix issues.** All changes MUST go through this CI/CD pipeline to ensure:
+
 - Changes are version-controlled
 - Deployments are reproducible
 - VPS crashes can be recovered
@@ -15,19 +16,23 @@
 **Purpose:** If an agent modifies application code or production config, it must run the full CI/CD flow automatically based on this document. Do not ask the user for steps that are already defined here.
 
 **Trigger conditions (run CI/CD automatically):**
+
 - Any change under `src/**`, `config/**`, `docker/**`, or `docs/CI-CD-WORKFLOW.md`
 - Any change that affects production runtime behavior or deployment
 
 **No-ask rule:**
+
 - If the decision is already defined in this document (paths, commands, step order, skip rules), execute it without asking.
 - Only ask if a choice is not covered anywhere in this document or is destructive/irreversible and not already approved.
 - When the full procedure (branch → PR → merge → deploy → verify) is documented below, run every step end-to-end without pausing for user confirmation.
 
 **VPS-only changes (no repo update):**
+
 - If you must change live config or workspace data on the VPS, still follow Steps 5 → 6 → 7 → 8 → 9.
 - Skip Steps 1–4 only when there is no code or repo change.
 
 **Non-Linux developers:**
+
 - Steps 3–4 run automatically in GitHub Actions on push to `main`. No local Docker build needed.
 
 ### Local Credential Bootstrap (Agent token auto-read)
@@ -35,6 +40,7 @@
 Agents running locally (VS Code Copilot, CLI scripts) must load the GitHub token **automatically** without prompting the user.
 
 **Token file location:**
+
 ```
 D:\key\githubToken.txt
 ```
@@ -53,6 +59,7 @@ export GH_TOKEN=$(cat /d/key/githubToken.txt | tr -d '\n\r')
 ```
 
 **Rules:**
+
 - **NEVER prompt the user for a GitHub token.** Always read from the file above.
 - If the file is missing or empty, fail immediately with:
   `"ERROR: GitHub token file not found at D:\key\githubToken.txt — create the file with a valid GitHub PAT."`
@@ -61,12 +68,12 @@ export GH_TOKEN=$(cat /d/key/githubToken.txt | tr -d '\n\r')
 
 **Scope separation:**
 
-| Context | Auth Source | Notes |
-|---|---|---|
-| Local agent (VS Code, CLI) | `D:\key\githubToken.txt` | Read at session start, no prompt |
-| GitHub Actions runners | `secrets.GITHUB_TOKEN` / `secrets.GH_APP_PRIVATE_KEY` | Configured in repo Settings → Secrets |
-| Docker Hub (Actions) | `secrets.DOCKER_USERNAME` + `secrets.DOCKER_TOKEN` | 3-retry logic in docker-build-push.yml |
-| VPS SSH (Actions) | `secrets.DEPLOY_SSH_PRIVATE_KEY` | Written to ephemeral runner |
+| Context                    | Auth Source                                           | Notes                                  |
+| -------------------------- | ----------------------------------------------------- | -------------------------------------- |
+| Local agent (VS Code, CLI) | `D:\key\githubToken.txt`                              | Read at session start, no prompt       |
+| GitHub Actions runners     | `secrets.GITHUB_TOKEN` / `secrets.GH_APP_PRIVATE_KEY` | Configured in repo Settings → Secrets  |
+| Docker Hub (Actions)       | `secrets.DOCKER_USERNAME` + `secrets.DOCKER_TOKEN`    | 3-retry logic in docker-build-push.yml |
+| VPS SSH (Actions)          | `secrets.DEPLOY_SSH_PRIVATE_KEY`                      | Written to ephemeral runner            |
 
 ---
 
@@ -111,23 +118,23 @@ Push to main (or tag v*)
 
 All secrets are configured in **Settings → Secrets and variables → Actions**:
 
-| Secret | Purpose | Used By |
-|---|---|---|
-| `DOCKER_USERNAME` | Docker Hub login (`piboonsak`) | docker-build-push.yml |
-| `DOCKER_TOKEN` | Docker Hub Personal Access Token | docker-build-push.yml |
-| `DEPLOY_SSH_PRIVATE_KEY` | SSH private key for VPS (`id_ed25519_hostinger`) | deploy-vps.yml |
-| `VPS_HOST` | VPS hostname (`srv1414058.hstgr.cloud`) | deploy-vps.yml |
-| `VPS_USER` | SSH user (`root`) | deploy-vps.yml |
-| `GH_APP_PRIVATE_KEY` | GitHub App for issue/PR automation | labeler.yml, stale.yml |
+| Secret                   | Purpose                                          | Used By                |
+| ------------------------ | ------------------------------------------------ | ---------------------- |
+| `DOCKER_USERNAME`        | Docker Hub login (`piboonsak`)                   | docker-build-push.yml  |
+| `DOCKER_TOKEN`           | Docker Hub Personal Access Token                 | docker-build-push.yml  |
+| `DEPLOY_SSH_PRIVATE_KEY` | SSH private key for VPS (`id_ed25519_hostinger`) | deploy-vps.yml         |
+| `VPS_HOST`               | VPS hostname (`srv1414058.hstgr.cloud`)          | deploy-vps.yml         |
+| `VPS_USER`               | SSH user (`root`)                                | deploy-vps.yml         |
+| `GH_APP_PRIVATE_KEY`     | GitHub App for issue/PR automation               | labeler.yml, stale.yml |
 
 ### Workflow Files
 
-| File | Trigger | Purpose |
-|---|---|---|
-| `.github/workflows/docker-build-push.yml` | push to `main`, tags `v*`, manual | Build + push Docker image to Docker Hub |
-| `.github/workflows/deploy-vps.yml` | after docker-build-push succeeds, manual | Deploy to VPS + run automated verification |
-| `.github/workflows/ci.yml` | push to `main`, PRs | Lint, type-check, tests, multi-platform |
-| `.github/workflows/docker-release.yml` | push to `main`, tags `v*` | Multi-arch build to GHCR |
+| File                                      | Trigger                                  | Purpose                                    |
+| ----------------------------------------- | ---------------------------------------- | ------------------------------------------ |
+| `.github/workflows/docker-build-push.yml` | push to `main`, tags `v*`, manual        | Build + push Docker image to Docker Hub    |
+| `.github/workflows/deploy-vps.yml`        | after docker-build-push succeeds, manual | Deploy to VPS + run automated verification |
+| `.github/workflows/ci.yml`                | push to `main`, PRs                      | Lint, type-check, tests, multi-platform    |
+| `.github/workflows/docker-release.yml`    | push to `main`, tags `v*`                | Multi-arch build to GHCR                   |
 
 ---
 
@@ -148,6 +155,7 @@ cd d:\01_gitrepo\openclaw_github
 ```
 
 **Pre-commit checks:**
+
 ```bash
 pnpm check           # Lint & format
 pnpm test            # Run tests
@@ -169,17 +177,20 @@ git push origin main
 ```
 
 **Branch naming conventions:**
+
 - `fix/<issue>-<short-desc>` - Bug fix work (e.g., `fix/ws22-web-search-key`)
 - `feat/<short-desc>` - New features (e.g., `feat/line-webhook-retry`)
 - `infra/<short-desc>` - Infrastructure-only changes (e.g., `infra/nginx-timeouts`)
 - `docs/<short-desc>` - Documentation-only changes (e.g., `docs/cicd-naming`)
 
 **Tag alignment rule (Git tag == Image tag):**
+
 - Use one shared tag for BOTH Git and Docker image.
 - Format: `vYYYY.M.D` for release, or `vYYYY.M.D-<fix>` for hotfixes.
 - Example: `v2026.2.28` (release), `v2026.2.28-r3fix` (hotfix)
 
 **Commit message format:**
+
 - `fix(scope): description` - Bug fixes
 - `feat(scope): description` - New features
 - `infra(scope): description` - Infrastructure changes
@@ -190,6 +201,7 @@ git push origin main
 For feature branches (not direct pushes to `main`):
 
 **Option A: GitHub CLI** (preferred — fully automated)
+
 ```bash
 # Token is auto-loaded from D:\key\githubToken.txt (see "Local Credential Bootstrap" above)
 # If not yet loaded in this session:
@@ -202,11 +214,13 @@ gh pr create --web
 ```
 
 **Option B: Web UI** (no local auth required)
+
 1. Push feature branch: `git push origin feature-branch-name`
 2. Visit: `https://github.com/<owner>/<repo>/compare/main...feature-branch-name?expand=1`
 3. Fill title + description, click "Create pull request"
 
 **Option C: After push, GitHub provides a URL**
+
 ```
 remote: Create a pull request for 'feature-branch' on GitHub by visiting:
 remote:      https://github.com/owner/repo/pull/new/feature-branch
@@ -221,6 +235,7 @@ remote:      https://github.com/owner/repo/pull/new/feature-branch
 **Workflow:** `.github/workflows/docker-build-push.yml`
 
 **What it does:**
+
 1. Checks out the repository
 2. Sets up Docker Buildx
 3. Logs in to Docker Hub using `DOCKER_USERNAME` + `DOCKER_TOKEN` (with **3-retry logic** — if auth fails after 3 attempts, workflow fails with actionable error)
@@ -232,6 +247,7 @@ remote:      https://github.com/owner/repo/pull/new/feature-branch
 6. Uses GitHub Actions cache (`type=gha`) for faster builds
 
 **Docker Hub auth failure handling:**
+
 ```
 Retry 1 → docker/login-action with DOCKER_USERNAME + DOCKER_TOKEN
 Retry 2 → (if failed) wait 10s, retry login + build
@@ -244,10 +260,12 @@ Retry 3 → (if failed) wait 30s, retry login + build
 **Manual trigger:** Go to Actions → "Build and Push Docker Image" → Run workflow.
 
 **Verify on Docker Hub:**
+
 - Visit: https://hub.docker.com/r/piboonsak/openclaw/tags
 - Confirm tags are present and image size matches
 
 **Tag naming conventions:**
+
 - `latest` - Current production release
 - `vYYYY.M.D` - Release tag (Git tag + image tag)
 - `vYYYY.M.D-<fix>` - Hotfix tag (Git tag + image tag)
@@ -257,6 +275,7 @@ Retry 3 → (if failed) wait 30s, retry login + build
 This is part of Step 3 — the `docker-build-push.yml` workflow handles both build **and** push in a single job.
 
 **Tag naming conventions:**
+
 - `latest` - Current production release (on main branch)
 - `main-<sha>` - Git SHA-tagged build
 - `<version>` - Semver from git tags (e.g., `v2026.2.28` → `2026.2.28`)
@@ -270,6 +289,7 @@ This is part of Step 3 — the `docker-build-push.yml` workflow handles both bui
 **Workflow:** `.github/workflows/deploy-vps.yml`
 
 **What it does:**
+
 1. **SSH key setup** — Writes `DEPLOY_SSH_PRIVATE_KEY` to ephemeral runner, scans host keys
 2. **Sync Nginx config** — SCPs `docker/nginx/openclaw.conf` to VPS (`/tmp/openclaw-nginx.conf`)
 3. **Run deploy.sh** — Executes `docker/deploy.sh` on VPS via SSH:
@@ -327,6 +347,7 @@ git push origin v2026.2.28-r3fix
 ```
 
 **Verify on GitHub:**
+
 - https://github.com/Piboonsak/openclaw_github/releases
 - New tag should appear with commit details
 
@@ -336,30 +357,30 @@ All health checks run automatically inside the `deploy-vps.yml` workflow. The wo
 
 #### 6.1 Automated Verification Pipeline (in deploy-vps.yml)
 
-| # | Check | Method | Pass Criteria | Workflow Step |
-|---|---|---|---|---|
-| 1 | Container running | `docker inspect --format='{{.State.Running}}'` | `true` | deploy.sh [3/4] |
-| 2 | Gateway health (internal) | `curl -sf http://localhost:18789/health` | HTTP 200 (8 retries, 40s) | deploy.sh [4/4] |
-| 3 | HTTPS health (external) | `curl https://openclaw.yahwan.biz/health` | HTTP 200 (5 retries, 50s) | deploy-vps.yml |
-| 4 | Exec security config | `openclaw config get tools.exec.security` | `"allowlist"` | r3-regression-tests.sh |
-| 5 | Exec askFallback | `openclaw config get tools.exec.askFallback` | `"allowlist"` | r3-regression-tests.sh |
-| 6 | Exec safeBins has `date` | `openclaw config get tools.exec.safeBins` | contains `date` | r3-regression-tests.sh |
-| 7 | Exec safeBins has `jq` | `openclaw config get tools.exec.safeBins` | contains `jq` | r3-regression-tests.sh |
-| 8 | Exec safeBins has `whoami` | `openclaw config get tools.exec.safeBins` | contains `whoami` | r3-regression-tests.sh |
-| 9 | Embeddings provider | `openclaw config get agents.defaults.memorySearch.provider` | `"openai"` | r3-regression-tests.sh |
-| 10 | Exec host | `openclaw config get tools.exec.host` | `"gateway"` | r3-regression-tests.sh |
-| 11 | Exec `date` works | `openclaw agent -m "run date" --json --timeout 30 --local` | no "Approval required" | r3-regression-tests.sh |
-| 12 | Exec `whoami` works | `openclaw agent -m "run whoami" --json --timeout 30 --local` | output contains "node" | r3-regression-tests.sh |
-| 13 | LINE webhook route | POST `http://localhost:18789/line/webhook` | HTTP 200 (not 502/499) | r3-regression-tests.sh |
-| 14 | Nginx `/line/` → native | `nginx -T \| grep proxy_pass` on `/line/` | port 18789 | r3-regression-tests.sh |
-| 15 | Nginx `/line-bridge/` | `nginx -T \| grep proxy_pass` on `/line-bridge/` | port 5100 | r3-regression-tests.sh |
-| 16 | Sessions cleared | `find sessions/ -name 'line-*.jsonl' -size +50k` | 0 files | r3-regression-tests.sh |
-| 17 | Flask bridge alive | `curl http://localhost:5100/line/health` | HTTP 200 | r3-regression-tests.sh |
-| 18 | Volume mount correct | `docker inspect` mount at `/data/.openclaw` | mount exists | regression-tests.sh |
-| 19 | Config file persists | `test -f /data/.openclaw/openclaw.json` | file exists | regression-tests.sh |
-| 20 | Container TZ Bangkok | `date +%z` inside container | `+0700` | regression-tests.sh |
-| 21 | BRAVE_API_KEY set | `test -n "${BRAVE_API_KEY}"` | non-empty | regression-tests.sh |
-| 22 | No startup errors | `docker logs \| grep ERROR` | 0 matches | regression-tests.sh |
+| #   | Check                      | Method                                                       | Pass Criteria             | Workflow Step          |
+| --- | -------------------------- | ------------------------------------------------------------ | ------------------------- | ---------------------- |
+| 1   | Container running          | `docker inspect --format='{{.State.Running}}'`               | `true`                    | deploy.sh [3/4]        |
+| 2   | Gateway health (internal)  | `curl -sf http://localhost:18789/health`                     | HTTP 200 (8 retries, 40s) | deploy.sh [4/4]        |
+| 3   | HTTPS health (external)    | `curl https://openclaw.yahwan.biz/health`                    | HTTP 200 (5 retries, 50s) | deploy-vps.yml         |
+| 4   | Exec security config       | `openclaw config get tools.exec.security`                    | `"allowlist"`             | r3-regression-tests.sh |
+| 5   | Exec askFallback           | `openclaw config get tools.exec.askFallback`                 | `"allowlist"`             | r3-regression-tests.sh |
+| 6   | Exec safeBins has `date`   | `openclaw config get tools.exec.safeBins`                    | contains `date`           | r3-regression-tests.sh |
+| 7   | Exec safeBins has `jq`     | `openclaw config get tools.exec.safeBins`                    | contains `jq`             | r3-regression-tests.sh |
+| 8   | Exec safeBins has `whoami` | `openclaw config get tools.exec.safeBins`                    | contains `whoami`         | r3-regression-tests.sh |
+| 9   | Embeddings provider        | `openclaw config get agents.defaults.memorySearch.provider`  | `"openai"`                | r3-regression-tests.sh |
+| 10  | Exec host                  | `openclaw config get tools.exec.host`                        | `"gateway"`               | r3-regression-tests.sh |
+| 11  | Exec `date` works          | `openclaw agent -m "run date" --json --timeout 30 --local`   | no "Approval required"    | r3-regression-tests.sh |
+| 12  | Exec `whoami` works        | `openclaw agent -m "run whoami" --json --timeout 30 --local` | output contains "node"    | r3-regression-tests.sh |
+| 13  | LINE webhook route         | POST `http://localhost:18789/line/webhook`                   | HTTP 200 (not 502/499)    | r3-regression-tests.sh |
+| 14  | Nginx `/line/` → native    | `nginx -T \| grep proxy_pass` on `/line/`                    | port 18789                | r3-regression-tests.sh |
+| 15  | Nginx `/line-bridge/`      | `nginx -T \| grep proxy_pass` on `/line-bridge/`             | port 5100                 | r3-regression-tests.sh |
+| 16  | Sessions cleared           | `find sessions/ -name 'line-*.jsonl' -size +50k`             | 0 files                   | r3-regression-tests.sh |
+| 17  | Flask bridge alive         | `curl http://localhost:5100/line/health`                     | HTTP 200                  | r3-regression-tests.sh |
+| 18  | Volume mount correct       | `docker inspect` mount at `/data/.openclaw`                  | mount exists              | regression-tests.sh    |
+| 19  | Config file persists       | `test -f /data/.openclaw/openclaw.json`                      | file exists               | regression-tests.sh    |
+| 20  | Container TZ Bangkok       | `date +%z` inside container                                  | `+0700`                   | regression-tests.sh    |
+| 21  | BRAVE_API_KEY set          | `test -n "${BRAVE_API_KEY}"`                                 | non-empty                 | regression-tests.sh    |
+| 22  | No startup errors          | `docker logs \| grep ERROR`                                  | 0 matches                 | regression-tests.sh    |
 
 **If any check fails:** The `deploy-vps.yml` workflow exits with failure status (red ✗ in GitHub Actions). Test output is uploaded as a workflow artifact for debugging.
 
@@ -398,6 +419,7 @@ ssh -i "C:\Users\HP Probook 440 G8\.ssh\id_ed25519_hostinger" root@76.13.210.250
 Two test scripts are SCP'd to VPS and executed via SSH:
 
 **A. `tests/regression-tests.sh` (20+ checks)** — Original infrastructure tests:
+
 - Volume mount verification
 - Config persistence across restart
 - exec safeBins configuration
@@ -408,14 +430,14 @@ Two test scripts are SCP'd to VPS and executed via SSH:
 
 **B. `tests/r3-regression-tests.sh` (17+ checks)** — R3-specific tests:
 
-| Category | Tests | Method |
-|---|---|---|
-| **Config verification** | exec security, askFallback, safeBins, embeddings provider, exec host | `docker exec openclaw config get ...` — exact value match |
-| **Exec smoke tests** | `date` runs without approval, `whoami` returns "node" | `docker exec openclaw agent -m "..." --json --local` — parse JSON output, verify no "Approval required" |
-| **LINE webhook** | Native handler responds HTTP 200 | `curl -X POST http://localhost:18789/line/webhook` — HTTP status code check |
-| **Nginx routing** | `/line/` → port 18789, `/line-bridge/` → port 5100 | `nginx -T` grep — proxy_pass value match |
-| **Session cleanup** | No LINE session > 50KB | `find ... -size +50k -print` — count == 0 |
-| **Flask fallback** | Bridge health endpoint alive | `curl http://localhost:5100/line/health` — HTTP 200 |
+| Category                | Tests                                                                | Method                                                                                                  |
+| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Config verification** | exec security, askFallback, safeBins, embeddings provider, exec host | `docker exec openclaw config get ...` — exact value match                                               |
+| **Exec smoke tests**    | `date` runs without approval, `whoami` returns "node"                | `docker exec openclaw agent -m "..." --json --local` — parse JSON output, verify no "Approval required" |
+| **LINE webhook**        | Native handler responds HTTP 200                                     | `curl -X POST http://localhost:18789/line/webhook` — HTTP status code check                             |
+| **Nginx routing**       | `/line/` → port 18789, `/line-bridge/` → port 5100                   | `nginx -T` grep — proxy_pass value match                                                                |
+| **Session cleanup**     | No LINE session > 50KB                                               | `find ... -size +50k -print` — count == 0                                                               |
+| **Flask fallback**      | Bridge health endpoint alive                                         | `curl http://localhost:5100/line/health` — HTTP 200                                                     |
 
 **All tests are deterministic** — they check specific config values, HTTP status codes, command output, and file sizes. No LLM inference. No hallucination possible.
 
@@ -463,6 +485,7 @@ git push origin main
 **Required Question (Ask after every major release or failed pipeline):**
 
 > "Please summarize what happened in this CI/CD run:
+>
 > 1. **What worked smoothly?** (which steps need no changes)
 > 2. **What failed or was unclear?** (missing context, outdated paths, wrong commands)
 > 3. **What needs to be fixed** in this document for the next run to go more smoothly?
@@ -471,6 +494,7 @@ git push origin main
 **Gate Condition (Repeating Policy):**
 
 Repeat this step after every CI/CD pipeline execution until all of the following are true:
+
 - ✅ Steps 1-8 complete without needing SSH workarounds
 - ✅ GitHub Actions pipeline is green (all 22 checks pass)
 - ✅ No confusion about file paths or command syntax
@@ -525,19 +549,21 @@ Repeat this step after every CI/CD pipeline execution until all of the following
 
 **Container resource allocation** (set in `docker/docker-compose.prod.yml`):
 
-| Resource | Limit | Reservation | Purpose |
-|----------|-------|-------------|---------|
-| CPU | 4 | 1.0 | Allow burst to full VPS capability |
-| Memory | 16G | 1G | Allow large context windows + embeddings |
-| PIDs | 200 | — | Prevent fork bombs |
-| tmpfs | 100M | — | Scratch space in read-only container |
+| Resource | Limit | Reservation | Purpose                                  |
+| -------- | ----- | ----------- | ---------------------------------------- |
+| CPU      | 4     | 1.0         | Allow burst to full VPS capability       |
+| Memory   | 16G   | 1G          | Allow large context windows + embeddings |
+| PIDs     | 200   | —           | Prevent fork bombs                       |
+| tmpfs    | 100M  | —           | Scratch space in read-only container     |
 
 **When to scale:**
+
 - Monitor `docker stats openclaw-sgnl-openclaw-1` after deploy
 - If RSS stays above 12G (75%), consider reducing context window config
 - If OOM-killed (exit code 137), check `docker inspect` for memory stats
 
 **Verification (automated):**
+
 - Regression test checks `NanoCpus` = 4000000000 and `Memory` = 17179869184 bytes
 - Deploy script verifies limits after `docker compose up -d`
 
@@ -648,6 +674,7 @@ bash tests/r3-regression-tests.sh
 ### File Locations
 
 **Local (development):**
+
 - Config: `config/openclaw.prod.json5`
 - Docker Compose: `docker/docker-compose.prod.yml`
 - Nginx: `docker/nginx/openclaw.conf`
@@ -657,11 +684,13 @@ bash tests/r3-regression-tests.sh
 - R3 regression tests: `tests/r3-regression-tests.sh`
 
 **Workflows (GitHub Actions):**
+
 - Build & push: `.github/workflows/docker-build-push.yml`
 - Deploy to VPS: `.github/workflows/deploy-vps.yml`
 - CI checks: `.github/workflows/ci.yml`
 
 **VPS (production):**
+
 - App directory: `/docker/openclaw-sgnl`
 - Container: `openclaw-sgnl-openclaw-1`
 - Config: `/data/.openclaw/openclaw.json` (inside container)
@@ -703,6 +732,7 @@ bash tests/regression-tests.sh && bash tests/r3-regression-tests.sh
 ### Environment Variables (Hostinger UI)
 
 Required for production:
+
 - `OPENROUTER_API_KEY` - Primary LLM provider
 - `OPENAI_API_KEY` - Embeddings (text-embedding-ada-002)
 - `BRAVE_API_KEY` - Web search (code expects this exact name)
@@ -723,17 +753,17 @@ Required for production:
 
 ## Change Log
 
-| Date | Commit | Changes | Tag | Status |
-|------|--------|---------|-----|--------|
-| 2026-02-27 | `e8f5f37` | Naming conventions: aligned Git tag == image tag | `docs` | ✅ Merged |
-| 2026-02-27 | `cec2aac` | Config: wire Brave Search apiKey via env substitution | `config` | ✅ Deployed |
-| 2026-02-27 | `ab08d4b` | WS-2.2 fixes: Gemini Flash primary, fallback chain, Brave Search, maxTokens 16384 | `v2026.2.27-ws22` | ✅ Deployed |
-| 2026-02-27 | — | 7 production fixes (P0-P3), volume mount correction | `v2026.2.27-ws23` | ✅ Deployed |
-| 2026-02-28 | — | docs: add Pre-Deploy Debug Gate, Auto-Test Failure Protocol, Pre-Merge checklist | `docs` | ✅ Merged |
-| 2026-02-28 | `c5dd526` | R3 fix: GitHub Actions pipeline, native LINE handler, exec config, embeddings, 22-check automated tests | `v2026.2.28-r3fix` | ✅ Deployed |
-| 2026-02-28 | `da32e17` | docs: CI-CD workflow improvements from R3 deployment (PR creation options, completion verification) | `docs` | ✅ Merged |
-| 2026-03-01 | `b141323` | WS-2.4 CI/CD: token auto-read, autonomous no-prompt rules, pre-fix doc gate, resource scaling 4vCPU/16GB | `infra` | ✅ Deployed |
-| 2026-03-01 | `3599bb7` | fix(test): WS-2.4 regression tests — query runtime config, fix safe-bins detection | `test` | ✅ Deployed & ✅ Tests PASS (7 passed, 0 failed, 3 skipped) |
+| Date       | Commit    | Changes                                                                                                  | Tag                | Status                                                      |
+| ---------- | --------- | -------------------------------------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------- |
+| 2026-02-27 | `e8f5f37` | Naming conventions: aligned Git tag == image tag                                                         | `docs`             | ✅ Merged                                                   |
+| 2026-02-27 | `cec2aac` | Config: wire Brave Search apiKey via env substitution                                                    | `config`           | ✅ Deployed                                                 |
+| 2026-02-27 | `ab08d4b` | WS-2.2 fixes: Gemini Flash primary, fallback chain, Brave Search, maxTokens 16384                        | `v2026.2.27-ws22`  | ✅ Deployed                                                 |
+| 2026-02-27 | —         | 7 production fixes (P0-P3), volume mount correction                                                      | `v2026.2.27-ws23`  | ✅ Deployed                                                 |
+| 2026-02-28 | —         | docs: add Pre-Deploy Debug Gate, Auto-Test Failure Protocol, Pre-Merge checklist                         | `docs`             | ✅ Merged                                                   |
+| 2026-02-28 | `c5dd526` | R3 fix: GitHub Actions pipeline, native LINE handler, exec config, embeddings, 22-check automated tests  | `v2026.2.28-r3fix` | ✅ Deployed                                                 |
+| 2026-02-28 | `da32e17` | docs: CI-CD workflow improvements from R3 deployment (PR creation options, completion verification)      | `docs`             | ✅ Merged                                                   |
+| 2026-03-01 | `b141323` | WS-2.4 CI/CD: token auto-read, autonomous no-prompt rules, pre-fix doc gate, resource scaling 4vCPU/16GB | `infra`            | ✅ Deployed                                                 |
+| 2026-03-01 | `3599bb7` | fix(test): WS-2.4 regression tests — query runtime config, fix safe-bins detection                       | `test`             | ✅ Deployed & ✅ Tests PASS (7 passed, 0 failed, 3 skipped) |
 
 ---
 

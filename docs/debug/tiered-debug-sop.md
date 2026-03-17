@@ -3,7 +3,7 @@
 **Version:** 1.0.0  
 **Effective Date:** 2026-02-27  
 **Owner:** Platform / SRE  
-**Audience:** Junior Engineers, On-call Responders, AI Triage Agents  
+**Audience:** Junior Engineers, On-call Responders, AI Triage Agents
 
 ---
 
@@ -33,9 +33,9 @@ This SOP governs the complete debug lifecycle for the Openclaw AI agent platform
 
 ### 1.2 Two-Tier Architecture
 
-| Tier | Model Class | Role | Trigger |
-|------|-------------|------|---------|
-| **Tier-1** | Small / cheap (e.g., GPT-4o-mini, Claude Haiku) | Triage, classification, known-pattern resolution | All new issues |
+| Tier       | Model Class                                        | Role                                                     | Trigger                        |
+| ---------- | -------------------------------------------------- | -------------------------------------------------------- | ------------------------------ |
+| **Tier-1** | Small / cheap (e.g., GPT-4o-mini, Claude Haiku)    | Triage, classification, known-pattern resolution         | All new issues                 |
 | **Tier-2** | Large / capable (e.g., Claude Sonnet/Opus, GPT-4o) | Hypothesis validation, deep code analysis, complex fixes | Tier-1 escalation OR P0 issues |
 
 ### 1.3 Core Principle
@@ -94,13 +94,13 @@ flowchart TD
 
 #### When to trigger Tier-0 (automatic — no human decision required)
 
-| Condition | Trigger |
-|---|---|
-| Fix attempt is Round 2 or beyond | Always |
-| Operating in Plan Mode | Always |
-| Automated test returned FAILED | Always |
-| About to propose a fix without having read logs | Always |
-| P0/P1 severity | Always — skip directly to Tier-2 after snapshot |
+| Condition                                       | Trigger                                         |
+| ----------------------------------------------- | ----------------------------------------------- |
+| Fix attempt is Round 2 or beyond                | Always                                          |
+| Operating in Plan Mode                          | Always                                          |
+| Automated test returned FAILED                  | Always                                          |
+| About to propose a fix without having read logs | Always                                          |
+| P0/P1 severity                                  | Always — skip directly to Tier-2 after snapshot |
 
 #### Tier-0 Snapshot Commands (copy-paste ready)
 
@@ -134,12 +134,12 @@ A fix proposed without this declaration must not be executed.
 
 ### 1.6 Severity Classification
 
-| Severity | Label | Definition | Response SLA |
-|----------|-------|------------|--------------|
-| P0 | Critical | Service completely down; all users affected | 15 min |
-| P1 | High | Core feature broken; majority of users affected | 1 hour |
-| P2 | Medium | Feature degraded; subset of users affected | 4 hours |
-| P3 | Low | Minor issue; workaround available | Next business day |
+| Severity | Label    | Definition                                      | Response SLA      |
+| -------- | -------- | ----------------------------------------------- | ----------------- |
+| P0       | Critical | Service completely down; all users affected     | 15 min            |
+| P1       | High     | Core feature broken; majority of users affected | 1 hour            |
+| P2       | Medium   | Feature degraded; subset of users affected      | 4 hours           |
+| P3       | Low      | Minor issue; workaround available               | Next business day |
 
 ---
 
@@ -164,11 +164,13 @@ Execute in order. Stop at the first positive match and jump to the corresponding
 #### 2.2.1 Container Errors
 
 **Indicators:**
+
 - Container in `Exited`, `Restarting`, or `OOMKilled` state
 - `docker ps` shows unhealthy containers
 - Service unreachable on expected port
 
 **Diagnostic Commands:**
+
 ```bash
 # Check all container states
 docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -190,23 +192,25 @@ docker logs --tail=200 -t <container_name> 2>&1
 
 **Root Cause Lookup:**
 
-| Exit Code | Common Cause | Fix |
-|-----------|-------------|-----|
-| `1` | Application crash / unhandled exception | Check logs for stack trace |
-| `137` | OOM kill | Increase container memory limit |
-| `143` | SIGTERM (graceful shutdown) | Restart; check if intentional |
-| Non-zero | Startup failure | Check entrypoint/CMD logs |
+| Exit Code | Common Cause                            | Fix                             |
+| --------- | --------------------------------------- | ------------------------------- |
+| `1`       | Application crash / unhandled exception | Check logs for stack trace      |
+| `137`     | OOM kill                                | Increase container memory limit |
+| `143`     | SIGTERM (graceful shutdown)             | Restart; check if intentional   |
+| Non-zero  | Startup failure                         | Check entrypoint/CMD logs       |
 
 ---
 
 #### 2.2.2 API Integration Failures
 
 **Indicators:**
+
 - HTTP 4xx/5xx responses in logs
 - `connection refused` or `timeout` errors
 - Webhook payloads not being processed
 
 **Diagnostic Commands:**
+
 ```bash
 # Test LINE Messaging API connectivity
 curl -s -o /dev/null -w "%{http_code}" \
@@ -232,24 +236,26 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health
 
 **Root Cause Lookup:**
 
-| HTTP Code | Subsystem | Root Cause | Fix |
-|-----------|-----------|------------|-----|
-| `401` | LINE / OpenRouter | Invalid or expired API key | Rotate key, update env var |
-| `403` | LINE | Webhook not verified or wrong channel | Re-verify webhook URL |
-| `429` | OpenRouter | Quota exhausted | Check billing, rotate key |
-| `502` | Nginx | Upstream (Flask/gateway) not responding | Check upstream container |
-| `000` | Any | DNS resolution failure or network partition | Check Docker network |
+| HTTP Code | Subsystem         | Root Cause                                  | Fix                        |
+| --------- | ----------------- | ------------------------------------------- | -------------------------- |
+| `401`     | LINE / OpenRouter | Invalid or expired API key                  | Rotate key, update env var |
+| `403`     | LINE              | Webhook not verified or wrong channel       | Re-verify webhook URL      |
+| `429`     | OpenRouter        | Quota exhausted                             | Check billing, rotate key  |
+| `502`     | Nginx             | Upstream (Flask/gateway) not responding     | Check upstream container   |
+| `000`     | Any               | DNS resolution failure or network partition | Check Docker network       |
 
 ---
 
 #### 2.2.3 Webhook Issues
 
 **Indicators:**
+
 - LINE messages not triggering any action
 - `X-Line-Signature` verification failures in logs
 - `400 Bad Request` responses to LINE platform
 
 **Diagnostic Commands:**
+
 ```bash
 # Check Flask bridge logs for signature failures
 docker logs openclaw-flask-bridge 2>&1 | grep -i "signature\|webhook\|verify\|400" | tail -30
@@ -271,23 +277,25 @@ docker logs openclaw-nginx 2>&1 | grep "POST /webhook" | tail -20
 
 **Root Cause Lookup:**
 
-| Symptom | Root Cause | Fix |
-|---------|------------|-----|
-| Signature mismatch | `CHANNEL_SECRET` env var wrong/missing | Verify and update env var |
-| 404 on /webhook | Nginx not routing to Flask | Check nginx.conf `location /webhook` block |
-| 502 from Nginx | Flask bridge container down | Restart Flask bridge container |
-| Messages silently dropped | Session state corrupted | Clear session state, restart gateway |
+| Symptom                   | Root Cause                             | Fix                                        |
+| ------------------------- | -------------------------------------- | ------------------------------------------ |
+| Signature mismatch        | `CHANNEL_SECRET` env var wrong/missing | Verify and update env var                  |
+| 404 on /webhook           | Nginx not routing to Flask             | Check nginx.conf `location /webhook` block |
+| 502 from Nginx            | Flask bridge container down            | Restart Flask bridge container             |
+| Messages silently dropped | Session state corrupted                | Clear session state, restart gateway       |
 
 ---
 
 #### 2.2.4 Session / Auth Errors
 
 **Indicators:**
+
 - `Unknown sessionId` in logs
 - Users getting incorrect context or losing conversation history
 - Authentication loops
 
 **Diagnostic Commands:**
+
 ```bash
 # Search for session errors in gateway logs
 docker logs openclaw-gateway 2>&1 | grep -i "sessionId\|session\|unknown\|auth" | tail -50
@@ -304,22 +312,24 @@ cat ~/.openclaw/sessions/<session_id>.json 2>/dev/null | python3 -m json.tool
 
 **Root Cause Lookup:**
 
-| Symptom | Root Cause | Fix |
-|---------|------------|-----|
-| `Unknown sessionId` | Session file deleted / container restart | Session is stateless — re-initiate conversation |
-| Session not persisting | Volume not mounted | Check docker-compose volume mapping |
-| Auth loop | Token expired | Re-run `openclaw login` |
+| Symptom                | Root Cause                               | Fix                                             |
+| ---------------------- | ---------------------------------------- | ----------------------------------------------- |
+| `Unknown sessionId`    | Session file deleted / container restart | Session is stateless — re-initiate conversation |
+| Session not persisting | Volume not mounted                       | Check docker-compose volume mapping             |
+| Auth loop              | Token expired                            | Re-run `openclaw login`                         |
 
 ---
 
 #### 2.2.5 Pipeline Failures
 
 **Indicators:**
+
 - n8n workflow execution failures
 - Messages entering pipeline but no response generated
 - Partial pipeline execution (e.g., webhook received, but no LLM call)
 
 **Diagnostic Commands:**
+
 ```bash
 # Check n8n container logs
 docker logs openclaw-n8n 2>&1 | grep -i "error\|failed\|execution" | tail -50
@@ -340,11 +350,13 @@ docker logs openclaw-gateway 2>&1 | grep -i "queue\|pending\|backlog" | tail -20
 #### 2.2.6 Upstream Model Errors
 
 **Indicators:**
+
 - `upstream error` or `model unavailable` in logs
 - LLM responses never arriving
 - Timeouts after 30+ seconds
 
 **Diagnostic Commands:**
+
 ```bash
 # Test model endpoint directly via OpenRouter
 curl -s \
@@ -449,14 +461,14 @@ docker compose -f /path/to/docker-compose.yml up -d --force-recreate <service_na
 
 **Interpretation Guide:**
 
-| Output Pattern | Interpretation | Action |
-|----------------|---------------|--------|
-| `Up N hours (healthy)` | Container running normally | No action |
-| `Up N minutes (health: starting)` | Container starting up | Wait 60s, recheck |
-| `Up N minutes (unhealthy)` | Healthcheck failing | Check health endpoint and logs |
-| `Exited (0)` N ago | Clean exit (possibly stopped) | Restart if unexpected |
-| `Restarting (1) N seconds ago` | Crash loop | Check logs for panic/exception |
-| `OOMKilled` | Out of memory | Increase container memory limit |
+| Output Pattern                    | Interpretation                | Action                          |
+| --------------------------------- | ----------------------------- | ------------------------------- |
+| `Up N hours (healthy)`            | Container running normally    | No action                       |
+| `Up N minutes (health: starting)` | Container starting up         | Wait 60s, recheck               |
+| `Up N minutes (unhealthy)`        | Healthcheck failing           | Check health endpoint and logs  |
+| `Exited (0)` N ago                | Clean exit (possibly stopped) | Restart if unexpected           |
+| `Restarting (1) N seconds ago`    | Crash loop                    | Check logs for panic/exception  |
+| `OOMKilled`                       | Out of memory                 | Increase container memory limit |
 
 ---
 
@@ -1056,8 +1068,18 @@ Every Tier-1 investigation MUST produce a log conforming to this schema before c
       "memory_free_mb": 1840
     },
     "containers": [
-      { "name": "openclaw-gateway", "status": "running", "image": "openclaw:latest", "uptime": "2 days" },
-      { "name": "openclaw-flask-bridge", "status": "running", "image": "openclaw-flask:latest", "uptime": "2 days" },
+      {
+        "name": "openclaw-gateway",
+        "status": "running",
+        "image": "openclaw:latest",
+        "uptime": "2 days"
+      },
+      {
+        "name": "openclaw-flask-bridge",
+        "status": "running",
+        "image": "openclaw-flask:latest",
+        "uptime": "2 days"
+      },
       { "name": "openclaw-nginx", "status": "running", "image": "nginx:1.25", "uptime": "2 days" }
     ],
     "relevant_env_vars": {
@@ -1102,9 +1124,7 @@ Every Tier-1 investigation MUST produce a log conforming to this schema before c
     }
   ],
   "resolution_status": "resolved",
-  "relevant_file_paths": [
-    "/etc/openclaw/config.yaml"
-  ],
+  "relevant_file_paths": ["/etc/openclaw/config.yaml"],
   "relevant_log_snippets": [
     {
       "source": "openclaw-gateway (last 20 lines after fix)",
@@ -1144,9 +1164,24 @@ Every Tier-1 investigation MUST produce a log conforming to this schema before c
       "memory_free_mb": 640
     },
     "containers": [
-      { "name": "openclaw-gateway", "status": "running", "image": "openclaw:2026.2.27", "uptime": "49 minutes" },
-      { "name": "openclaw-flask-bridge", "status": "running", "image": "openclaw-flask:2026.2.27", "uptime": "49 minutes" },
-      { "name": "openclaw-n8n", "status": "running", "image": "n8nio/n8n:1.30.1", "uptime": "3 days" },
+      {
+        "name": "openclaw-gateway",
+        "status": "running",
+        "image": "openclaw:2026.2.27",
+        "uptime": "49 minutes"
+      },
+      {
+        "name": "openclaw-flask-bridge",
+        "status": "running",
+        "image": "openclaw-flask:2026.2.27",
+        "uptime": "49 minutes"
+      },
+      {
+        "name": "openclaw-n8n",
+        "status": "running",
+        "image": "n8nio/n8n:1.30.1",
+        "uptime": "3 days"
+      },
       { "name": "openclaw-nginx", "status": "running", "image": "nginx:1.25", "uptime": "3 days" }
     ],
     "relevant_env_vars": {
@@ -1236,37 +1271,37 @@ Every Tier-1 investigation MUST produce a log conforming to this schema before c
 
 Evaluate each trigger. If **ANY** answer is YES → escalate immediately. No partial escalations.
 
-| # | Trigger | Evaluation |
-|---|---------|------------|
-| T1 | Root cause not identified after all diagnostic steps completed | Yes / No |
-| T2 | Fix requires modifying application source code | Yes / No |
-| T3 | Multiple subsystems affected simultaneously | Yes / No |
-| T4 | Data integrity or data loss implications detected | Yes / No |
-| T5 | Security breach or unauthorized access suspected | Yes / No |
-| T6 | Issue pattern not found in Known Issues DB (§7) | Yes / No |
-| T7 | Confidence level is "low" after full Tier-1 investigation | Yes / No |
-| T8 | Tier-1 fix attempt made issue worse | Yes / No |
-| T9 | P0 severity regardless of all other criteria | Yes / No |
-| T10 | Issue recurred 3+ times in 24 hours despite fixes | Yes / No |
+| #   | Trigger                                                        | Evaluation |
+| --- | -------------------------------------------------------------- | ---------- |
+| T1  | Root cause not identified after all diagnostic steps completed | Yes / No   |
+| T2  | Fix requires modifying application source code                 | Yes / No   |
+| T3  | Multiple subsystems affected simultaneously                    | Yes / No   |
+| T4  | Data integrity or data loss implications detected              | Yes / No   |
+| T5  | Security breach or unauthorized access suspected               | Yes / No   |
+| T6  | Issue pattern not found in Known Issues DB (§7)                | Yes / No   |
+| T7  | Confidence level is "low" after full Tier-1 investigation      | Yes / No   |
+| T8  | Tier-1 fix attempt made issue worse                            | Yes / No   |
+| T9  | P0 severity regardless of all other criteria                   | Yes / No   |
+| T10 | Issue recurred 3+ times in 24 hours despite fixes              | Yes / No   |
 
 > **Procedure:** Check T9 first. If YES, skip triage and go directly to Tier-2.
 
 ### 5.2 Severity × Complexity Matrix
 
-| | **Config/Env Fix** | **Restart/Redeploy** | **Code Change Required** | **Unknown** |
-|---|---|---|---|---|
-| **P0 — Critical** | Tier-2 (speed) | Tier-2 (speed) | Tier-2 | Tier-2 |
-| **P1 — High** | Tier-1 | Tier-1 | Tier-2 | Tier-2 |
-| **P2 — Medium** | Tier-1 | Tier-1 | Tier-2 | Tier-1 → Escalate if no match |
-| **P3 — Low** | Tier-1 | Tier-1 | Tier-1 documents → Tier-2 schedules | Tier-1 monitors |
+|                   | **Config/Env Fix** | **Restart/Redeploy** | **Code Change Required**            | **Unknown**                   |
+| ----------------- | ------------------ | -------------------- | ----------------------------------- | ----------------------------- |
+| **P0 — Critical** | Tier-2 (speed)     | Tier-2 (speed)       | Tier-2                              | Tier-2                        |
+| **P1 — High**     | Tier-1             | Tier-1               | Tier-2                              | Tier-2                        |
+| **P2 — Medium**   | Tier-1             | Tier-1               | Tier-2                              | Tier-1 → Escalate if no match |
+| **P3 — Low**      | Tier-1             | Tier-1               | Tier-1 documents → Tier-2 schedules | Tier-1 monitors               |
 
 ### 5.3 Confidence Level Definitions
 
-| Confidence | Definition | Required Evidence |
-|------------|-----------|------------------|
-| **High** | Root cause confirmed by direct evidence | Log showing exact error, config value confirmed wrong/missing, command output directly demonstrating cause |
-| **Medium** | Root cause likely but not proven | Circumstantial log evidence, timing correlation, process of elimination |
-| **Low** | Speculative — multiple plausible causes | No direct evidence, only negative results from diagnostics |
+| Confidence | Definition                              | Required Evidence                                                                                          |
+| ---------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **High**   | Root cause confirmed by direct evidence | Log showing exact error, config value confirmed wrong/missing, command output directly demonstrating cause |
+| **Medium** | Root cause likely but not proven        | Circumstantial log evidence, timing correlation, process of elimination                                    |
+| **Low**    | Speculative — multiple plausible causes | No direct evidence, only negative results from diagnostics                                                 |
 
 **Rule:** If confidence is `low` after completing all applicable Tier-1 diagnostic steps → Escalate (trigger T7).
 
@@ -1277,10 +1312,12 @@ Evaluate each trigger. If **ANY** answer is YES → escalate immediately. No par
 ### 6.1 Input Contract
 
 Tier-2 MUST receive:
+
 - Complete Tier-1 investigation log (§4) in JSON format
 - Access to the `tier2_instructions` field for specific guidance
 
 Tier-2 MUST NOT:
+
 - Re-run any command listed in `diagnostic_steps_taken`
 - Re-check container health if already documented as healthy
 - Re-test API credentials already confirmed valid
@@ -1352,7 +1389,10 @@ Add the following fields to the Tier-1 investigation log JSON:
         "docker restart openclaw-gateway"
       ],
       "files_modified": [
-        { "path": "/etc/openclaw/config.yaml", "change": "changed model from gpt-4-turbo to gpt-4o" }
+        {
+          "path": "/etc/openclaw/config.yaml",
+          "change": "changed model from gpt-4-turbo to gpt-4o"
+        }
       ],
       "code_changes": null
     },
@@ -1409,16 +1449,16 @@ docker restart openclaw-gateway
 
 Each entry follows this structure:
 
-| Field | Description |
-|-------|-------------|
-| `KI-ID` | Unique known issue ID |
+| Field               | Description                                               |
+| ------------------- | --------------------------------------------------------- |
+| `KI-ID`             | Unique known issue ID                                     |
 | `Pattern Signature` | Log pattern or error signature that identifies this issue |
-| `Category` | Issue category (matches §2.2) |
-| `Root Cause` | Confirmed root cause |
-| `Fix Procedure` | Step-by-step fix that can be applied at Tier-1 |
-| `Verification` | Command to confirm fix worked |
-| `Prevention` | How to prevent recurrence |
-| `Tier-1 Resolvable` | Yes / No |
+| `Category`          | Issue category (matches §2.2)                             |
+| `Root Cause`        | Confirmed root cause                                      |
+| `Fix Procedure`     | Step-by-step fix that can be applied at Tier-1            |
+| `Verification`      | Command to confirm fix worked                             |
+| `Prevention`        | How to prevent recurrence                                 |
+| `Tier-1 Resolvable` | Yes / No                                                  |
 
 ---
 
@@ -1427,15 +1467,16 @@ Each entry follows this structure:
 <details>
 <summary>KI-001 — Unknown sessionId errors</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-001 |
-| **Pattern Signature** | `WARN Unknown sessionId: sid_` in gateway logs |
-| **Category** | `session_auth_error` |
-| **Root Cause** | Container restart clears in-memory sessions; session files deleted or not mounted; user re-initiated conversation with stale session ID |
-| **Tier-1 Resolvable** | Yes (if isolated to container restart); No (if persistent after restart / code change involved) |
+| Field                 | Value                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-001                                                                                                                                  |
+| **Pattern Signature** | `WARN Unknown sessionId: sid_` in gateway logs                                                                                          |
+| **Category**          | `session_auth_error`                                                                                                                    |
+| **Root Cause**        | Container restart clears in-memory sessions; session files deleted or not mounted; user re-initiated conversation with stale session ID |
+| **Tier-1 Resolvable** | Yes (if isolated to container restart); No (if persistent after restart / code change involved)                                         |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: Determine if container recently restarted
 docker inspect openclaw-gateway --format='{{.State.StartedAt}}'
@@ -1457,6 +1498,7 @@ docker restart openclaw-gateway
 ```
 
 **Verification:**
+
 ```bash
 # Monitor for 5 minutes — count should drop to 0 for new sessions
 watch -n 30 "docker logs --since=1m openclaw-gateway 2>&1 | grep -c 'Unknown sessionId'"
@@ -1471,15 +1513,16 @@ watch -n 30 "docker logs --since=1m openclaw-gateway 2>&1 | grep -c 'Unknown ses
 <details>
 <summary>KI-002 — Upstream model endpoint failures (503/502)</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-002 |
-| **Pattern Signature** | `upstream error` + model name + `503` or `502` in gateway logs |
-| **Category** | `upstream_model_error` |
-| **Root Cause** | Specific LLM model on OpenRouter is overloaded or temporarily unavailable |
-| **Tier-1 Resolvable** | Yes |
+| Field                 | Value                                                                     |
+| --------------------- | ------------------------------------------------------------------------- |
+| **KI-ID**             | KI-002                                                                    |
+| **Pattern Signature** | `upstream error` + model name + `503` or `502` in gateway logs            |
+| **Category**          | `upstream_model_error`                                                    |
+| **Root Cause**        | Specific LLM model on OpenRouter is overloaded or temporarily unavailable |
+| **Tier-1 Resolvable** | Yes                                                                       |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: Identify which model is failing
 docker logs --tail=100 openclaw-gateway 2>&1 | grep "upstream error" | grep -oP 'model:\s*\K\S+' | sort | uniq -c
@@ -1500,6 +1543,7 @@ docker restart openclaw-gateway
 ```
 
 **Verification:**
+
 ```bash
 docker logs --since=2m openclaw-gateway 2>&1 | grep -c "upstream error"
 # Expected: 0
@@ -1514,15 +1558,16 @@ docker logs --since=2m openclaw-gateway 2>&1 | grep -c "upstream error"
 <details>
 <summary>KI-003 — OpenRouter API key / quota exhaustion</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-003 |
+| Field                 | Value                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-003                                                                                                |
 | **Pattern Signature** | HTTP `429` responses in OpenRouter calls; `quota exceeded` or `insufficient credits` in error message |
-| **Category** | `api_integration_failure` |
-| **Root Cause** | Monthly quota exhausted or rate limit hit |
-| **Tier-1 Resolvable** | Yes (rotate key) / No (requires billing action) |
+| **Category**          | `api_integration_failure`                                                                             |
+| **Root Cause**        | Monthly quota exhausted or rate limit hit                                                             |
+| **Tier-1 Resolvable** | Yes (rotate key) / No (requires billing action)                                                       |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: Check current quota status
 curl -s \
@@ -1546,6 +1591,7 @@ docker restart openclaw-gateway
 ```
 
 **Verification:**
+
 ```bash
 curl -s -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   https://openrouter.ai/api/v1/auth/key | python3 -c "
@@ -1563,15 +1609,16 @@ print('OK' if d.get('usage',0) < (d.get('limit') or 9999) else 'QUOTA_EXHAUSTED'
 <details>
 <summary>KI-004 — LINE webhook signature verification failures</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-004 |
-| **Pattern Signature** | `Invalid signature` or `X-Line-Signature verification failed` in flask-bridge logs |
-| **Category** | `webhook_issue` |
-| **Root Cause** | `CHANNEL_SECRET` env var missing, wrong, or not matching LINE console; LINE platform sending to wrong endpoint |
-| **Tier-1 Resolvable** | Yes |
+| Field                 | Value                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-004                                                                                                         |
+| **Pattern Signature** | `Invalid signature` or `X-Line-Signature verification failed` in flask-bridge logs                             |
+| **Category**          | `webhook_issue`                                                                                                |
+| **Root Cause**        | `CHANNEL_SECRET` env var missing, wrong, or not matching LINE console; LINE platform sending to wrong endpoint |
+| **Tier-1 Resolvable** | Yes                                                                                                            |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: Confirm CHANNEL_SECRET is set in flask bridge
 docker inspect openclaw-flask-bridge \
@@ -1596,6 +1643,7 @@ curl -s \
 ```
 
 **Verification:**
+
 ```bash
 # Send a test webhook from LINE console (Developers Console → Messaging API → Webhook → Verify)
 # Check flask-bridge logs for 200 response
@@ -1611,15 +1659,16 @@ docker logs --since=1m openclaw-flask-bridge 2>&1 | grep "200"
 <details>
 <summary>KI-005 — Docker container networking / DNS resolution issues</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-005 |
-| **Pattern Signature** | `connection refused`, `no route to host`, or `Temporary failure in name resolution` between containers |
-| **Category** | `network_connectivity` |
-| **Root Cause** | Docker network not created; container name changed; containers on different networks; Docker daemon DNS issue |
-| **Tier-1 Resolvable** | Usually yes |
+| Field                 | Value                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-005                                                                                                        |
+| **Pattern Signature** | `connection refused`, `no route to host`, or `Temporary failure in name resolution` between containers        |
+| **Category**          | `network_connectivity`                                                                                        |
+| **Root Cause**        | Docker network not created; container name changed; containers on different networks; Docker daemon DNS issue |
+| **Tier-1 Resolvable** | Usually yes                                                                                                   |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: Inspect network membership
 docker network inspect bridge | python3 -m json.tool | grep -A5 "Containers"
@@ -1645,6 +1694,7 @@ docker compose up -d
 ```
 
 **Verification:**
+
 ```bash
 docker exec openclaw-flask-bridge curl -s -o /dev/null -w "%{http_code}" http://openclaw-gateway:18789/health
 # Expected: 200
@@ -1659,19 +1709,20 @@ docker exec openclaw-flask-bridge curl -s -o /dev/null -w "%{http_code}" http://
 <details>
 <summary>KI-006 — Gunicorn worker timeout on AI responses</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-006 |
-| **Pattern Signature** | `WORKER TIMEOUT` in flask-bridge logs; user receives no response after 30+ seconds |
-| **Category** | `pipeline_failure` |
-| **Root Cause** | Gunicorn default timeout (30s) exceeded by slow LLM API response; worker killed before response sent |
-| **Tier-1 Resolvable** | Yes (increase timeout) |
+| Field                 | Value                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-006                                                                                               |
+| **Pattern Signature** | `WORKER TIMEOUT` in flask-bridge logs; user receives no response after 30+ seconds                   |
+| **Category**          | `pipeline_failure`                                                                                   |
+| **Root Cause**        | Gunicorn default timeout (30s) exceeded by slow LLM API response; worker killed before response sent |
+| **Tier-1 Resolvable** | Yes (increase timeout)                                                                               |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: Confirm gunicorn timeout issue
 docker logs --tail=200 openclaw-flask-bridge 2>&1 | grep "WORKER TIMEOUT"
-# Expected in normal operation: no output  
+# Expected in normal operation: no output
 # If seeing this: proceed to fix
 
 # Step 2: Check current timeout setting
@@ -1693,6 +1744,7 @@ docker exec openclaw-flask-bridge ps aux | grep "timeout"
 ```
 
 **Verification:**
+
 ```bash
 docker logs --since=5m openclaw-flask-bridge 2>&1 | grep -c "WORKER TIMEOUT"
 # Expected: 0
@@ -1707,15 +1759,16 @@ docker logs --since=5m openclaw-flask-bridge 2>&1 | grep -c "WORKER TIMEOUT"
 <details>
 <summary>KI-007 — Docker exec failures in Flask bridge</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-007 |
-| **Pattern Signature** | `docker exec` commands failing; `Error response from daemon: No such container` in bridge logs |
-| **Category** | `container_error` |
-| **Root Cause** | Flask bridge hard-codes container name; gateway container name changed or not running; Docker socket not mounted |
-| **Tier-1 Resolvable** | Yes (if naming issue) / No (if code change required) |
+| Field                 | Value                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-007                                                                                                           |
+| **Pattern Signature** | `docker exec` commands failing; `Error response from daemon: No such container` in bridge logs                   |
+| **Category**          | `container_error`                                                                                                |
+| **Root Cause**        | Flask bridge hard-codes container name; gateway container name changed or not running; Docker socket not mounted |
+| **Tier-1 Resolvable** | Yes (if naming issue) / No (if code change required)                                                             |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: Verify Docker socket is mounted in Flask bridge
 docker inspect openclaw-flask-bridge --format='{{range .Mounts}}{{.Source}}{{println}}{{end}}' | grep docker.sock
@@ -1737,6 +1790,7 @@ docker compose up -d --force-recreate openclaw-flask-bridge
 ```
 
 **Verification:**
+
 ```bash
 docker exec openclaw-flask-bridge docker ps --filter name=openclaw-gateway --format "{{.Names}}"
 # Expected: openclaw-gateway
@@ -1751,15 +1805,16 @@ docker exec openclaw-flask-bridge docker ps --filter name=openclaw-gateway --for
 <details>
 <summary>KI-008 — Config key mismatches in containerized environments</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-008 |
-| **Pattern Signature** | `config key not found`, `undefined env var`, or service behaving as if unconfigured despite env vars being set |
-| **Category** | `configuration_error` |
-| **Root Cause** | Env var name changed in new code version; case sensitivity mismatch; config loaded from file instead of env; `.env` file not loaded in container context |
-| **Tier-1 Resolvable** | Usually yes |
+| Field                 | Value                                                                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-008                                                                                                                                                   |
+| **Pattern Signature** | `config key not found`, `undefined env var`, or service behaving as if unconfigured despite env vars being set                                           |
+| **Category**          | `configuration_error`                                                                                                                                    |
+| **Root Cause**        | Env var name changed in new code version; case sensitivity mismatch; config loaded from file instead of env; `.env` file not loaded in container context |
+| **Tier-1 Resolvable** | Usually yes                                                                                                                                              |
 
 **Fix Procedure:**
+
 ```bash
 # Step 1: List all env vars in container (redacting values)
 docker inspect openclaw-gateway \
@@ -1786,6 +1841,7 @@ docker exec openclaw-gateway openclaw config list 2>/dev/null
 ```
 
 **Verification:**
+
 ```bash
 # Test the specific feature that was failing with the config
 docker logs --since=2m openclaw-gateway 2>&1 | grep -c "ERROR\|config"
@@ -1800,14 +1856,14 @@ docker logs --since=2m openclaw-gateway 2>&1 | grep -c "ERROR\|config"
 <details>
 <summary>KI-009 — Docker volume mount path mismatch (config/sessions data loss)</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-009 |
+| Field                 | Value                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-009                                                                                                                                   |
 | **Pattern Signature** | Config disappears after `docker compose down` + `up`; API keys missing on restart; "Unknown sessionId" errors; `config set` changes lost |
-| **Category** | `configuration_error` |
-| **Root Cause** | Volume mounted to wrong path; config lives at `$HOME/.openclaw/` but volume mounted to `/data/openclaw/state/` (different directory) |
-| **Tier-1 Resolvable** | Yes (fix volume mount path) |
-| **Introduced In** | v2026.2.27-ws22 and earlier (fixed in v2026.2.27-ws23) |
+| **Category**          | `configuration_error`                                                                                                                    |
+| **Root Cause**        | Volume mounted to wrong path; config lives at `$HOME/.openclaw/` but volume mounted to `/data/openclaw/state/` (different directory)     |
+| **Tier-1 Resolvable** | Yes (fix volume mount path)                                                                                                              |
+| **Introduced In**     | v2026.2.27-ws22 and earlier (fixed in v2026.2.27-ws23)                                                                                   |
 
 **Root Cause Explanation:**
 
@@ -1868,13 +1924,13 @@ docker exec openclaw-sgnl-openclaw-1 find /data/.openclaw/agents/main/sessions -
 <details>
 <summary>KI-010 — Exec host mismatch in containerized deployments</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-010 |
-| **Pattern Signature** | `exec host not allowed` or `requested sandbox; configure tools.exec.host=gateway` in gateway logs; LLM cannot run shell commands |
-| **Category** | `tool_config` |
-| **Root Cause** | LLM requests `host=sandbox` in exec() call but VPS has no sandbox runtime; config has `host=sandbox` default but only `host=gateway` available |
-| **Tier-1 Resolvable** | Yes (set config to `host=gateway`) |
+| Field                 | Value                                                                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-010                                                                                                                                         |
+| **Pattern Signature** | `exec host not allowed` or `requested sandbox; configure tools.exec.host=gateway` in gateway logs; LLM cannot run shell commands               |
+| **Category**          | `tool_config`                                                                                                                                  |
+| **Root Cause**        | LLM requests `host=sandbox` in exec() call but VPS has no sandbox runtime; config has `host=sandbox` default but only `host=gateway` available |
+| **Tier-1 Resolvable** | Yes (set config to `host=gateway`)                                                                                                             |
 
 **Fix Procedure:**
 
@@ -1913,13 +1969,13 @@ docker logs --since=2m openclaw-sgnl-openclaw-1 2>&1 | grep -c "host not allowed
 <details>
 <summary>KI-011 — Browser service unavailable (Chromium not installed in Docker image)</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-011 |
-| **Pattern Signature** | `browser()` tool fails with `"Can't reach the OpenClaw browser control service"` timeout after 5 seconds |
-| **Category** | `container_infra` |
-| **Root Cause** | Docker image built WITHOUT `OPENCLAW_INSTALL_BROWSER=1` build arg; no Chromium binary in container; browser service can't start Chromium |
-| **Tier-1 Resolvable** | No (requires rebuild); Can be mitigated by disabling tool and using `web_search()` fallback |
+| Field                 | Value                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-011                                                                                                                                   |
+| **Pattern Signature** | `browser()` tool fails with `"Can't reach the OpenClaw browser control service"` timeout after 5 seconds                                 |
+| **Category**          | `container_infra`                                                                                                                        |
+| **Root Cause**        | Docker image built WITHOUT `OPENCLAW_INSTALL_BROWSER=1` build arg; no Chromium binary in container; browser service can't start Chromium |
+| **Tier-1 Resolvable** | No (requires rebuild); Can be mitigated by disabling tool and using `web_search()` fallback                                              |
 
 **Workaround (Tier-1):**
 
@@ -1985,13 +2041,13 @@ docker exec openclaw-sgnl-openclaw-1 ls -lh /home/node/.cache/ms-playwright/chro
 <details>
 <summary>KI-012 — MissingEnvVarError when config uses `${VAR}` references</summary>
 
-| Field | Value |
-|-------|-------|
-| **KI-ID** | KI-012 |
-| **Pattern Signature** | `MissingEnvVarError: ...${BRAVE_API_KEY}...` during config load; gateway fails to start; config load returns `valid: false` |
-| **Category** | `configuration_error` |
-| **Root Cause** | Config template uses `${ENV_VAR}` syntax but the env var is empty or unset at runtime; config loader throws error instead of silently skipping |
-| **Tier-1 Resolvable** | Yes (set the missing env var) |
+| Field                 | Value                                                                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **KI-ID**             | KI-012                                                                                                                                         |
+| **Pattern Signature** | `MissingEnvVarError: ...${BRAVE_API_KEY}...` during config load; gateway fails to start; config load returns `valid: false`                    |
+| **Category**          | `configuration_error`                                                                                                                          |
+| **Root Cause**        | Config template uses `${ENV_VAR}` syntax but the env var is empty or unset at runtime; config loader throws error instead of silently skipping |
+| **Tier-1 Resolvable** | Yes (set the missing env var)                                                                                                                  |
 
 **Why This Matters:**
 
@@ -2082,8 +2138,6 @@ Run test
 
 **Rule:** Never retry a failed test with the same fix logic. Always re-investigate logs first.
 
-
-
 ### 8.2 Known Issues DB Update Procedure
 
 When a new pattern is resolved and not already in §7:
@@ -2173,22 +2227,22 @@ for cat, count in cats.most_common():
 
 Update this document when:
 
-| Trigger | Update Required |
-|---------|----------------|
-| New recurring error pattern resolved | Add entry to §7 (Known Issues DB) |
-| Tier-1 consistently misses a diagnostic step | Add command to §3 (Diagnostic Reference) |
-| Escalation trigger T1-T10 fires for a preventable reason | Refine §2 (Triage Protocol) |
-| New subsystem added to Openclaw stack | Add section to §3; add category to §2.2 |
-| Tier-2 resolution tokens exceed budget threshold | Review §2.3 decision tree for earlier resolution |
-| Monthly Tier-1 resolution rate drops below 60% | Audit §7 for outdated/missing patterns |
+| Trigger                                                  | Update Required                                  |
+| -------------------------------------------------------- | ------------------------------------------------ |
+| New recurring error pattern resolved                     | Add entry to §7 (Known Issues DB)                |
+| Tier-1 consistently misses a diagnostic step             | Add command to §3 (Diagnostic Reference)         |
+| Escalation trigger T1-T10 fires for a preventable reason | Refine §2 (Triage Protocol)                      |
+| New subsystem added to Openclaw stack                    | Add section to §3; add category to §2.2          |
+| Tier-2 resolution tokens exceed budget threshold         | Review §2.3 decision tree for earlier resolution |
+| Monthly Tier-1 resolution rate drops below 60%           | Audit §7 for outdated/missing patterns           |
 
 ### 8.6 SOP Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0 | 2026-02-27 | Initial release — covers full debug lifecycle, 8 known issues, Tier-1/2 protocol |
-| 1.1.0 | 2026-02-28 | Added Tier-0 mandatory log snapshot (§1.5); Pre-Code-Review Gate; Test-Fail Loop (§8.1a); Tier-2 pre-code-review step (§6.2); updated Post-Resolution checklist with regression test requirement |
+| Version | Date       | Changes                                                                                                                                                                                          |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.0.0   | 2026-02-27 | Initial release — covers full debug lifecycle, 8 known issues, Tier-1/2 protocol                                                                                                                 |
+| 1.1.0   | 2026-02-28 | Added Tier-0 mandatory log snapshot (§1.5); Pre-Code-Review Gate; Test-Fail Loop (§8.1a); Tier-2 pre-code-review step (§6.2); updated Post-Resolution checklist with regression test requirement |
 
 ---
 
-*Document maintained in `docs/debug/tiered-debug-sop.md`. Raise improvements as GitHub issues with label `docs` + `debugging`.*
+_Document maintained in `docs/debug/tiered-debug-sop.md`. Raise improvements as GitHub issues with label `docs` + `debugging`._

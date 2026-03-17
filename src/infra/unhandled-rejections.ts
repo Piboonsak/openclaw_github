@@ -170,9 +170,7 @@ export function installUnhandledRejectionHandler(): void {
         "[openclaw] ❌ CONFIGURATION ERROR — requires fix:",
         formatUncaughtError(reason),
       );
-      console.error(
-        "[openclaw] ℹ️  User was NOT notified. Fix config and redeploy via CI/CD.",
-      );
+      console.error("[openclaw] ℹ️  User was NOT notified. Fix config and redeploy via CI/CD.");
       process.exit(1);
       return;
     }

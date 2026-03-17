@@ -12,79 +12,79 @@ services:
     # Use your Docker Hub image (update after pushing)
     image: ${DOCKER_IMAGE:-piboonsak/openclaw:latest}
     container_name: openclaw-sgnl-openclaw-1
-    
+
     # Security: Run as non-root user
     user: "1000:1000"
     working_dir: /app
-    
+
     # Security: Read-only root filesystem (except mounted volumes)
     read_only: true
-    
+
     # Security: Disable privilege escalation
     security_opt:
       - no-new-privileges:true
-    
+
     # Security: Drop all capabilities
     cap_drop:
       - ALL
-    
+
     # Ports: Bind to localhost only (127.0.0.1) for security
     # External access via Nginx reverse proxy on ports 80/443 with SSL
     # Backend app port 18789 MUST NOT be exposed to external network
     ports:
       - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
-    
+
     # Load environment variables from .env file (Issue #67: Dev workspace support)
     # Place .env next to docker-compose.prod.yml; copy from .env.example
     env_file:
       - .env
-    
+
     # Environment variables (DO NOT commit secrets here - use .env file)
     environment:
       # Gateway authentication (REQUIRED)
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
-      
+
       # AI Model providers (at least one required)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      
+
       # System environment
       NODE_ENV: production
       TERM: xterm-256color
-      
+
       # Timezone (override in .env; default UTC if unset)
       TZ: ${TZ:-Asia/Bangkok}
 
       # Security: Disable shell env loading
       OPENCLAW_LOAD_SHELL_ENV: "0"
-      
+
       # Optional: Tool API keys
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
       BRAVE_API_ANSWER_KEY: ${BRAVE_API_ANSWER_KEY:-}
       BRAVE_API_SEARCH_KEY: ${BRAVE_API_SEARCH_KEY:-}
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
-      
+
       # Channel API credentials (LINE, Discord, Telegram, etc.)
       LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN:-}
       LINE_CHANNEL_SECRET: ${LINE_CHANNEL_SECRET:-}
-      
+
       # Docker Hub (for image pulls)
       DOCKER_USERNAME: ${DOCKER_USERNAME:-}
       DOCKER_TOKEN: ${DOCKER_TOKEN:-}
-      
+
       # GitHub (for code operations, optional)
       GITHUB_USER: ${GITHUB_USER:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GH_TOKEN: ${GITHUB_TOKEN:-}
-      
+
       # Container home directory
       HOME: /app
       GITREPO_PATH: /app/gitrepo
-    
+
     # Persistent volumes
     volumes:
       # State directory (config, credentials, logs) — CRITICAL: must mount to /data/.openclaw (HOME path)
@@ -105,7 +105,7 @@ services:
       # tmpfs: Docker creates /tmp with mode 1777 by default
       # If job tmpfs needs custom size: docker run --tmpfs /tmp:size=100M,mode=1777
       - /tmp
-    
+
     # Resource limits — match VPS ceiling (4 vCPU, 16 GB RAM)
     # Monitor with: docker stats openclaw-sgnl-openclaw-1
     # If OOM-killed (exit 137): reduce context window config, not these limits
@@ -113,21 +113,21 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4'
+          cpus: "4"
           memory: 16G
           pids: 200
         reservations:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
-    
+
     # Alternative syntax for older Docker Compose versions:
     # cpus: 4
     # mem_limit: 16g
     # mem_reservation: 1g
-    
+
     # Auto-restart on failure
     restart: unless-stopped
-    
+
     # Health check (matches Dockerfile HEALTHCHECK)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
@@ -135,10 +135,10 @@ services:
       timeout: 10s
       start_period: 40s
       retries: 3
-    
+
     # Use init to handle zombie processes
     init: true
-    
+
     # Network configuration
     networks:
       - openclaw-net
@@ -182,4 +182,4 @@ volumes:
 networks:
   openclaw-net:
     driver: bridge
-    internal: false  # Set to true to disable all external network access (sandbox mode)
+    internal: false # Set to true to disable all external network access (sandbox mode)

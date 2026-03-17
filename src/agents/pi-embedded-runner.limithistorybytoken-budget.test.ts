@@ -1,6 +1,6 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import { describe, expect, it, vi } from "vitest";
-import { limitHistoryByTokenBudget } from "./pi-embedded-runner.js";
+import { describe, expect, it } from "vitest";
+import { limitHistoryByTokenBudget } from "./pi-embedded-runner/history.js";
 
 describe("limitHistoryByTokenBudget", () => {
   const mockUsage = {
@@ -21,14 +21,18 @@ describe("limitHistoryByTokenBudget", () => {
   const userMessage = (text: string, tokenCount: number = 10): AgentMessage =>
     ({
       role: "user",
-      content: [{ type: "text", text: text + "\n".repeat(Math.ceil((tokenCount * 4) / text.length)) }],
+      content: [
+        { type: "text", text: text + "\n".repeat(Math.ceil((tokenCount * 4) / text.length)) },
+      ],
       timestamp: Date.now(),
     }) as AgentMessage;
 
   const assistantMessage = (text: string, tokenCount: number = 10): AgentMessage =>
     ({
       role: "assistant",
-      content: [{ type: "text", text: text + "\n".repeat(Math.ceil((tokenCount * 4) / text.length)) }],
+      content: [
+        { type: "text", text: text + "\n".repeat(Math.ceil((tokenCount * 4) / text.length)) },
+      ],
       stopReason: "stop",
       api: "anthropic-messages",
       provider: "anthropic",
@@ -40,10 +44,14 @@ describe("limitHistoryByTokenBudget", () => {
   const toolResultMessage = (text: string, tokenCount: number = 100): AgentMessage =>
     ({
       role: "toolResult",
-      name: "exec",
-      content: [{ type: "text", text: text + "\n".repeat(Math.ceil((tokenCount * 4) / text.length)) }],
+      toolCallId: "tool-call-id",
+      toolName: "exec",
+      isError: false,
+      content: [
+        { type: "text", text: text + "\n".repeat(Math.ceil((tokenCount * 4) / text.length)) },
+      ],
       timestamp: Date.now(),
-    }) as AgentMessage;
+    }) as unknown as AgentMessage;
 
   it("returns all messages when budget is undefined", () => {
     const messages = [
@@ -58,10 +66,7 @@ describe("limitHistoryByTokenBudget", () => {
   });
 
   it("returns all messages when budget is 0 or negative", () => {
-    const messages = [
-      userMessage("hi", 50),
-      assistantMessage("hello", 50),
-    ];
+    const messages = [userMessage("hi", 50), assistantMessage("hello", 50)];
     expect(limitHistoryByTokenBudget(messages, 0)).toBe(messages);
     expect(limitHistoryByTokenBudget(messages, -100)).toBe(messages);
   });
@@ -85,23 +90,27 @@ describe("limitHistoryByTokenBudget", () => {
   it("removes oldest messages when exceeding budget", () => {
     // Create messages with controlled sizes
     const messages = [
-      userMessage("message1", 100),  // 100 tokens
-      assistantMessage("reply1", 100),  // 100 tokens
-      userMessage("message2", 100),  // 100 tokens
-      assistantMessage("reply2", 100),  // 100 tokens
-      userMessage("message3", 100),  // 100 tokens
+      userMessage("message1", 100), // 100 tokens
+      assistantMessage("reply1", 100), // 100 tokens
+      userMessage("message2", 100), // 100 tokens
+      assistantMessage("reply2", 100), // 100 tokens
+      userMessage("message3", 100), // 100 tokens
     ];
-    
+
     // Budget allows ~300 tokens, should keep last 3-4 messages
     const result = limitHistoryByTokenBudget(messages, 300);
-    
+
     // Result should prefer recent messages
     expect(result.length).toBeGreaterThan(0);
     expect(result.length).toBeLessThanOrEqual(messages.length);
-    
+
     // Should contain the last message
     if (result.length > 0) {
-      expect(result[result.length - 1].content).toEqual(messages[messages.length - 1].content);
+      const lastResult = result[result.length - 1];
+      const lastExpected = messages[messages.length - 1];
+      if ("content" in lastResult && "content" in lastExpected) {
+        expect(lastResult.content).toEqual(lastExpected.content);
+      }
     }
   });
 
@@ -111,13 +120,13 @@ describe("limitHistoryByTokenBudget", () => {
       assistantMessage("response", 50),
       userMessage("final", 10),
     ];
-    
+
     // TightBudget that definitely can't fit all messages
     const result = limitHistoryByTokenBudget(messages, 100);
-    
+
     // Should have at least one message
     expect(result.length).toBeGreaterThan(0);
-    
+
     // Should include the last message
     expect(result[result.length - 1]).toEqual(messages[messages.length - 1]);
   });
@@ -131,7 +140,7 @@ describe("limitHistoryByTokenBudget", () => {
       userMessage("msg3", 500),
       assistantMessage("resp3", 500),
     ];
-    
+
     // Default budget allows ~12k tokens, which should fit most of these messages
     const result = limitHistoryByTokenBudget(messages);
     expect(result.length).toBeGreaterThan(0);
@@ -146,17 +155,14 @@ describe("limitHistoryByTokenBudget", () => {
       assistantMessage("reply_middle", 50),
       userMessage("new", 50),
     ];
-    
+
     const result = limitHistoryByTokenBudget(messages, 200);
-    
+
     // Latest message should be at the end
     if (result.length > 1) {
-      const firstContent = (result[0].content as Array<{ text: string }>)[0]?.text;
-      const lastContent = (result[result.length - 1].content as Array<{ text: string }>)[0]?.text;
-      
       // The result should have messages in original order
       expect(Array.isArray(result)).toBe(true);
-      
+
       // Messages should be in chronological order (older to newer)
       for (let i = 1; i < result.length; i++) {
         expect(result[i].timestamp).toBeGreaterThanOrEqual(result[i - 1].timestamp);
@@ -172,10 +178,10 @@ describe("limitHistoryByTokenBudget", () => {
       userMessage("thanks", 10),
       assistantMessage("done", 10),
     ];
-    
+
     // Budget allows tool results
     const result = limitHistoryByTokenBudget(messages, 500);
-    
+
     // Should attempt to keep tool result if it fits
     expect(result.length).toBeGreaterThan(0);
   });
@@ -186,7 +192,7 @@ describe("limitHistoryByTokenBudget", () => {
       assistantMessage("reply", 100),
       userMessage("final", 50),
     ];
-    
+
     // Should not crash even with edge-case token counts
     const result = limitHistoryByTokenBudget(messages, 200);
     expect(result.length).toBeGreaterThan(0);

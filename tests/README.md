@@ -15,6 +15,7 @@ description: Quick reference for all regression test files
 
 **Purpose:** Complete step-by-step testing procedure  
 **Sections:**
+
 - Quick start (5-10 min overview)
 - Phase 1: Pre-deployment verification
 - Phase 2: Automated regression tests
@@ -30,6 +31,7 @@ description: Quick reference for all regression test files
 
 **Purpose:** Verify VPS is ready before running tests  
 **Checks (10 items):**
+
 1. Container running
 2. Volume mounts correct
 3. Config files exist
@@ -42,6 +44,7 @@ description: Quick reference for all regression test files
 10. Backup status
 
 **Usage:**
+
 ```bash
 bash tests/pre-test-checklist.sh
 ```
@@ -56,6 +59,7 @@ bash tests/pre-test-checklist.sh
 
 **Purpose:** Programmatically verify all 9 fixes  
 **Coverage:**
+
 - KI-009: Volume mount path (issues #1, #5, #6)
 - KI-002: exec safeBins (issue #2)
 - KI-010: exec host=gateway (issue #3)
@@ -68,11 +72,13 @@ bash tests/pre-test-checklist.sh
 - Persistence across restarts
 
 **Usage:**
+
 ```bash
 bash tests/regression-tests.sh
 ```
 
 **Expected output:**
+
 ```
 Passed: 20+ / 20+
 Failed: 0 / 20+
@@ -87,6 +93,7 @@ Failed: 0 / 20+
 
 **Purpose:** Test messages to send to LINE bot  
 **Groups (8 test groups):**
+
 1. session_status & persistence (issues #1, #5, #6)
 2. exec date approval (issue #2)
 3. exec host=gateway (issue #3)
@@ -97,6 +104,7 @@ Failed: 0 / 20+
 8. Combined workflow (all tools)
 
 **Test Messages (Thai):**
+
 - "ตอนนี้กี่โมงแล้วครับ" → time check (session_status)
 - "รันคำสั่ง date" → exec without approval
 - "แสดงผู้ใช้ปัจจุบัน" → whoami on gateway
@@ -113,6 +121,7 @@ Failed: 0 / 20+
 
 **Purpose:** Tool usage guide for workspace TOOLS.md  
 **Sections:**
+
 - session_status (works in LINE, use for time queries)
 - exec (allowlist mode, pre-approved safe commands)
 - browser (fallback to web_search)
@@ -122,6 +131,7 @@ Failed: 0 / 20+
 - Debugging checklist
 
 **Usage:** Append to `/data/.openclaw/workspace/TOOLS.md` during first deployment
+
 ```bash
 docker exec openclaw-sgnl-openclaw-1 cat /data/.openclaw/workspace/TOOLS.md \
   docs/workspace/TOOLS.md.additions.md > /tmp/TOOLS-new.md && \
@@ -180,58 +190,58 @@ Total Time: ~15-20 minutes
 
 ### Automated Tests (regression-tests.sh)
 
-| Component | Target | Expected |
-|-----------|--------|----------|
-| Pass Rate | 100% | 20+/20+ ✓ |
-| Failures | 0 | 0 ✓ |
-| KI-009 checks | 3/3 | ✓ ✓ ✓ |
-| Config valid | Yes | ✓ |
-| Timezone | +0700 | ✓ |
-| Environment | Complete | ✓ |
-| Health check | 200 | ✓ |
+| Component     | Target   | Expected  |
+| ------------- | -------- | --------- |
+| Pass Rate     | 100%     | 20+/20+ ✓ |
+| Failures      | 0        | 0 ✓       |
+| KI-009 checks | 3/3      | ✓ ✓ ✓     |
+| Config valid  | Yes      | ✓         |
+| Timezone      | +0700    | ✓         |
+| Environment   | Complete | ✓         |
+| Health check  | 200      | ✓         |
 
 ### Manual Tests (LINE messages)
 
-| Test Group | Messages | Status |
-|-----------|----------|--------|
-| #1 session_status | 2 | ✓ |
-| #2 exec date | 2 | ✓ |
-| #3 exec host | 2 | ✓ |
-| #4 browser/web_search | 2 | ✓ |
-| #5 API key | 2 | ✓ |
-| #6 persistence | 1 | ✓ |
-| #7 timezone | 1 | ✓ |
-| #8 combined | 1 | ✓ |
-| **Total** | **13 messages** | **✓** |
+| Test Group            | Messages        | Status |
+| --------------------- | --------------- | ------ |
+| #1 session_status     | 2               | ✓      |
+| #2 exec date          | 2               | ✓      |
+| #3 exec host          | 2               | ✓      |
+| #4 browser/web_search | 2               | ✓      |
+| #5 API key            | 2               | ✓      |
+| #6 persistence        | 1               | ✓      |
+| #7 timezone           | 1               | ✓      |
+| #8 combined           | 1               | ✓      |
+| **Total**             | **13 messages** | **✓**  |
 
 ---
 
 ## Common Test Failures & Fixes
 
-| Failure | Cause | Fix |
-|---------|-------|-----|
-| "Unknown sessionId" | Volume wrong | See REGRESSION-TESTING.md §Troubleshooting |
-| MissingEnvVarError | API key not set | `bash docker/scripts/check-env.sh` |
-| exec approval prompt | Command not in safeBins | Add to `tools.exec.safeBins` in config |
-| Browser timeout | Chromium not installed | Use web_search fallback (automatic) |
-| Config not persisting | Volume mount wrong | Verify line 75 in docker-compose.prod.yml |
-| Tests all failing | Container not running | `docker compose up -d` |
+| Failure               | Cause                   | Fix                                        |
+| --------------------- | ----------------------- | ------------------------------------------ |
+| "Unknown sessionId"   | Volume wrong            | See REGRESSION-TESTING.md §Troubleshooting |
+| MissingEnvVarError    | API key not set         | `bash docker/scripts/check-env.sh`         |
+| exec approval prompt  | Command not in safeBins | Add to `tools.exec.safeBins` in config     |
+| Browser timeout       | Chromium not installed  | Use web_search fallback (automatic)        |
+| Config not persisting | Volume mount wrong      | Verify line 75 in docker-compose.prod.yml  |
+| Tests all failing     | Container not running   | `docker compose up -d`                     |
 
 ---
 
 ## Key Issues Covered
 
-| Issue | Root Cause | Test Coverage | Status |
-|-------|-----------|---|--------|
-| #1 session_status Unknown sessionId | Volume path mismatch | KI-009 checks (3) | ✓ |
-| #2 exec date approval loop | date not in safeBins | KI-002 checks (5) | ✓ |
-| #3 exec host not allowed | host=sandbox requested | KI-010 checks (2) | ✓ |
-| #4 Browser service unreachable | OPENCLAW_INSTALL_BROWSER missing | KI-011 check (1) | ✓ |
-| #5 Brave API key disappears | Volume mount + env var | KI-012 checks (2) | ✓ |
-| #6 Embeddings lost | Volume mount wrong | KI-009 checks (3) | ✓ |
-| #7 Docker time sync | Intended timezone diff | KI-007 checks (2) | ✓ |
-| #8 Reply context | Architectural limit | P3 (deferred) | – |
-| #9 Auto memory | No skill available | P3 (deferred) | – |
+| Issue                               | Root Cause                       | Test Coverage     | Status |
+| ----------------------------------- | -------------------------------- | ----------------- | ------ |
+| #1 session_status Unknown sessionId | Volume path mismatch             | KI-009 checks (3) | ✓      |
+| #2 exec date approval loop          | date not in safeBins             | KI-002 checks (5) | ✓      |
+| #3 exec host not allowed            | host=sandbox requested           | KI-010 checks (2) | ✓      |
+| #4 Browser service unreachable      | OPENCLAW_INSTALL_BROWSER missing | KI-011 check (1)  | ✓      |
+| #5 Brave API key disappears         | Volume mount + env var           | KI-012 checks (2) | ✓      |
+| #6 Embeddings lost                  | Volume mount wrong               | KI-009 checks (3) | ✓      |
+| #7 Docker time sync                 | Intended timezone diff           | KI-007 checks (2) | ✓      |
+| #8 Reply context                    | Architectural limit              | P3 (deferred)     | –      |
+| #9 Auto memory                      | No skill available               | P3 (deferred)     | –      |
 
 ---
 

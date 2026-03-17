@@ -1,4 +1,5 @@
 ﻿# Production Deployment Guide: OpenClaw on Hostinger VPS
+
 ## Secure Docker Setup with HTTPS and Multi-Model AI Fallback
 
 **Last Updated:** February 23, 2026  
@@ -27,6 +28,7 @@
 ## Overview
 
 This guide walks through deploying OpenClaw on a Hostinger VPS using:
+
 - **Docker** for containerization
 - **GitHub Actions** for automated builds
 - **Docker Hub** for image registry
@@ -34,6 +36,7 @@ This guide walks through deploying OpenClaw on a Hostinger VPS using:
 - **Multi-model fallback** for AI resilience
 
 **Architecture Flow:**
+
 ```
 User → openclaw.yahwan.biz (Squarespace DNS)
   ↓
@@ -51,6 +54,7 @@ OpenClaw Gateway (Claude Opus → Haiku → Kimi fallback)
 ## Prerequisites
 
 ### Required Accounts
+
 - ✅ Hostinger VPS (KVM2+ plan with Docker support)
 - ✅ Docker Hub account (username: `piboonsak`)
 - ✅ GitHub account with repo access
@@ -58,6 +62,7 @@ OpenClaw Gateway (Claude Opus → Haiku → Kimi fallback)
 - ✅ Domain registered (openclaw.yahwan.biz via Squarespace)
 
 ### Required Credentials (Prepare These)
+
 - `DOCKER_USERNAME`: piboonsak
 - `DOCKER_TOKEN`: Docker Hub Personal Access Token
 - `OPENCLAW_GATEWAY_TOKEN`: 48-char hex (generate: `openssl rand -hex 24`)
@@ -65,6 +70,7 @@ OpenClaw Gateway (Claude Opus → Haiku → Kimi fallback)
 - `MOONSHOT_API_KEY`: sk-... (optional, from platform.moonshot.cn)
 
 ### Local Tools
+
 - Git client
 - Docker Desktop (for testing locally, optional)
 - SSH client (for VPS access, optional)
@@ -90,6 +96,7 @@ OpenClaw Gateway (Claude Opus → Haiku → Kimi fallback)
 5. Wait 15-30 minutes for DNS propagation
 
 **Verify DNS:**
+
 ```bash
 # Check DNS resolution
 nslookup openclaw.yahwan.biz
@@ -111,6 +118,7 @@ Expected: Should resolve to your Hostinger VPS IP address.
 6. Wait ~2 minutes for provisioning
 
 **Verify SSL:**
+
 ```bash
 # Test HTTPS endpoint (will fail until container deployed)
 curl -I https://openclaw.yahwan.biz/
@@ -141,12 +149,14 @@ Expected: SSL certificate valid, 503/502 (no service yet).
 4. Add each secret:
 
    **Secret 1:**
+
    ```
    Name:  DOCKER_USERNAME
    Value: piboonsak
    ```
 
    **Secret 2:**
+
    ```
    Name:  DOCKER_TOKEN
    Value: <paste-your-docker-hub-token>
@@ -155,6 +165,7 @@ Expected: SSL certificate valid, 503/502 (no service yet).
 5. Click **Add secret** for each
 
 **Verify:**
+
 - Secrets list should show: `DOCKER_USERNAME`, `DOCKER_TOKEN`
 - Values are masked (••••••)
 
@@ -218,6 +229,7 @@ Expected: All steps green, ~5-10 minutes total.
    - Optional: version tags if you tagged a release
 
 **Test pull locally (optional):**
+
 ```bash
 docker pull piboonsak/openclaw:latest
 docker inspect piboonsak/openclaw:latest
@@ -239,12 +251,14 @@ docker inspect piboonsak/openclaw:latest
 2. Fill form:
 
    **Basic Info:**
+
    ```
    Service Name: openclaw-gateway
    Image:        piboonsak/openclaw:latest
    ```
 
    **Port Mapping:**
+
    ```
    External: 18789
    Internal: 18789
@@ -275,6 +289,7 @@ OPENCLAW_LOAD_SHELL_ENV=0
 Click **Volumes** → **Add Volume**:
 
 **Volume 1: State Directory**
+
 ```
 Host Path:      /data/openclaw/state
 Container Path: /data/openclaw/state
@@ -282,6 +297,7 @@ Mode:           Read/Write
 ```
 
 **Volume 2: Workspace Directory**
+
 ```
 Host Path:      /data/openclaw/workspace
 Container Path: /data/openclaw/workspace
@@ -316,6 +332,7 @@ Health Check:    Enabled
 ### Step 6.1: Check Service Status
 
 **In Docker Manager:**
+
 1. Service status should show: **Running** (green)
 2. Click service → **Logs** tab
 3. Look for startup messages:
@@ -376,6 +393,7 @@ curl https://openclaw.yahwan.biz/health
 3. Monitor logs for successful restart
 
 **Manual pull:**
+
 ```bash
 # If you have SSH access
 ssh user@vps-ip
@@ -386,12 +404,14 @@ docker-compose -f /path/to/docker-compose.prod.yml up -d --force-recreate
 ### Rotating Secrets
 
 **Gateway Token:**
+
 1. Generate new token: `openssl rand -hex 24`
 2. Update in Hostinger Docker Manager → Environment Variables
 3. Restart service
 4. Update token in your password manager
 
 **API Keys:**
+
 1. Generate new key in provider console
 2. Update in Hostinger Docker Manager → Environment Variables
 3. Restart service (zero downtime with fallback models)
@@ -399,10 +419,12 @@ docker-compose -f /path/to/docker-compose.prod.yml up -d --force-recreate
 ### Viewing Logs
 
 **Hostinger Docker Manager:**
+
 - Click service → **Logs** tab
 - Real-time tail or download full log
 
 **SSH access:**
+
 ```bash
 docker logs openclaw-gateway -f --tail 100
 ```
@@ -410,11 +432,13 @@ docker logs openclaw-gateway -f --tail 100
 ### Backup Strategy
 
 **What to backup:**
+
 - `/data/openclaw/state` (config, credentials, sessions)
 - `/data/openclaw/workspace` (agent working files)
 - Environment variables (from Hostinger UI → export)
 
 **How:**
+
 - Hostinger Daily Backups (enabled during VPS purchase)
 - Manual: `docker run --rm -v openclaw-state:/data -v /backup:/backup busybox tar czf /backup/openclaw-state-$(date +%F).tar.gz /data`
 
@@ -425,10 +449,12 @@ docker logs openclaw-gateway -f --tail 100
 ### Issue: Service won't start
 
 **Symptoms:**
+
 - Docker Manager shows "Exited" or "Error"
 - Logs show startup errors
 
 **Resolution:**
+
 1. Check logs for specific error
 2. Common causes:
    - Missing `OPENCLAW_GATEWAY_TOKEN`
@@ -441,18 +467,21 @@ docker logs openclaw-gateway -f --tail 100
 ### Issue: Can't access https://openclaw.yahwan.biz/
 
 **Check DNS:**
+
 ```bash
 nslookup openclaw.yahwan.biz
 # Should resolve to VPS IP
 ```
 
 **Check SSL:**
+
 ```bash
 curl -I https://openclaw.yahwan.biz/
 # Should return 200 or valid SSL
 ```
 
 **Check Docker port:**
+
 ```bash
 # On VPS via SSH
 ss -ltnp | grep 18789
@@ -460,12 +489,14 @@ ss -ltnp | grep 18789
 ```
 
 **Check firewall:**
+
 - Hostinger usually opens ports automatically
 - Verify in hPanel → Firewall
 
 ### Issue: SSL certificate error
 
 **Resolution:**
+
 1. hPanel → SSL Certificates
 2. Verify cert installed for `openclaw.yahwan.biz`
 3. Check expiration date (Let's Encrypt = 90 days, auto-renews)
@@ -475,11 +506,13 @@ ss -ltnp | grep 18789
 ### Issue: Model returns errors
 
 **Symptoms:**
+
 - "API key invalid"
 - "Rate limit exceeded"
 - "Model not found"
 
 **Resolution:**
+
 1. Verify API key is correct in Hostinger env vars
 2. Check provider console for quota/balance
 3. Test API key with curl:
@@ -495,11 +528,13 @@ ss -ltnp | grep 18789
 ### Issue: High memory/CPU usage
 
 **Check resource usage:**
+
 ```bash
 docker stats openclaw-gateway
 ```
 
 **Resolution:**
+
 1. Increase limits in Hostinger Docker Manager
 2. Or upgrade VPS plan
 3. Check for memory leaks in logs
@@ -510,6 +545,7 @@ docker stats openclaw-gateway
 ## Security Hardening Checklist
 
 ### Container Security
+
 - [x] Non-root user (uid 1000)
 - [x] Read-only filesystem (except volumes)
 - [x] No new privileges flag
@@ -518,12 +554,14 @@ docker stats openclaw-gateway
 - [x] Health checks enabled
 
 ### Network Security
+
 - [x] HTTPS only (Let's Encrypt)
 - [x] Gateway auth required (token)
 - [x] Internal bridge network
 - [ ] Optional: Disable external network for sandbox
 
 ### Application Security
+
 - [x] DM policy: pairing (not open)
 - [x] Dangerous node commands denied
 - [x] Sandbox enabled with blocklist
@@ -531,6 +569,7 @@ docker stats openclaw-gateway
 - [x] Sensitive values redacted in logs
 
 ### Operational Security
+
 - [x] Daily backups enabled
 - [x] Credentials in password manager
 - [x] API keys rotated regularly
@@ -538,6 +577,7 @@ docker stats openclaw-gateway
 - [ ] Alerting configured (optional)
 
 ### Configuration Review
+
 - [ ] Run `openclaw doctor` (if supported via CLI)
 - [ ] Review security audit findings
 - [ ] No critical warnings present
@@ -550,6 +590,7 @@ docker stats openclaw-gateway
 If you have SSH access to your VPS and prefer docker-compose:
 
 ### Setup .env file:
+
 ```bash
 cd /opt/openclaw
 cp .env.example .env
@@ -557,16 +598,19 @@ nano .env  # Fill in your secrets
 ```
 
 ### Deploy:
+
 ```bash
 docker-compose -f docker/docker-compose.prod.yml up -d
 ```
 
 ### View logs:
+
 ```bash
 docker-compose -f docker/docker-compose.prod.yml logs -f
 ```
 
 ### Update:
+
 ```bash
 docker-compose -f docker/docker-compose.prod.yml pull
 docker-compose -f docker/docker-compose.prod.yml up -d --force-recreate

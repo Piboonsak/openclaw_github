@@ -3,20 +3,22 @@
   "comment": "Production exec approvals for OpenClaw VPS deployment",
   "comment_security": "LLM agents can ONLY run pre-approved commands. This prevents: shell injection, data exfiltration, container escape, privilege escalation.",
   "comment_usage": "Mount at: /data/.openclaw/exec-approvals.json inside container. Or use 'openclaw config set' CLI to modify.",
-  
+
   "defaults": {
     "security": "allowlist",
     "comment_security_mode": "allowlist = only approved commands run; ask = prompt user; askFallback = deny if no UI (LINE has no UI, so defaults to deny)",
     "ask": "on-miss",
-    "askFallback": "deny"
+    "askFallback": "deny",
+    "autoAllowSkills": true
   },
 
   "agents": {
     "main": {
       "security": "allowlist",
       "ask": "on-miss",
+      "autoAllowSkills": true,
       "comment_note": "LINE channel has no approval UI, so ask='on-miss' + askFallback='deny' means: unapproved commands are silently denied",
-      
+
       "allowlist": [
         {
           "comment": "Safe system info commands (read-only, no side effects)",

@@ -9,6 +9,7 @@ import { registerPluginHttpRoute } from "../plugins/http-registry.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { deliverLineAutoReply } from "./auto-reply-delivery.js";
 import { createLineBot } from "./bot.js";
+import { LineExecApprovalHandler } from "./exec-approvals.js";
 import { processLineMessage } from "./markdown-to-line.js";
 import { sendLineReplyChunks } from "./reply-chunks.js";
 import {
@@ -24,7 +25,6 @@ import {
   createImageMessage,
   createLocationMessage,
 } from "./send.js";
-import { LineExecApprovalHandler } from "./exec-approvals.js";
 import { buildTemplateMessageFromPayload } from "./template-messages.js";
 import type { LineChannelData, ResolvedLineAccount } from "./types.js";
 import { createLineNodeWebhookHandler } from "./webhook-node.js";
@@ -314,7 +314,7 @@ export async function monitorLineProvider(
   const stopHandler = () => {
     logVerbose(`line: stopping provider for account ${resolvedAccountId}`);
     unregisterHttp();
-    execApprovalHandler.stop();
+    void execApprovalHandler.stop();
     recordChannelRuntimeState({
       channel: "line",
       accountId: resolvedAccountId,

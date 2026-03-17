@@ -1,4 +1,5 @@
 ﻿# OpenClaw Gateway Infrastructure Setup — Production Grade
+
 ## Hostinger VPS Deployment with DNS Migration, Docker, Nginx Reverse Proxy, SSL/TLS, and Firewall Hardening
 
 **Document Version:** 1.0  
@@ -81,18 +82,18 @@ Docker Container (piboonsak/openclaw:latest)
 
 ### Key Infrastructure Details
 
-| Component | Value | Notes |
-|-----------|-------|-------|
-| **Provider** | Hostinger VPS | Cloud infrastructure |
-| **Hostname** | srv1414058.hstgr.cloud | VPS identifier |
-| **Public IPv4** | 76.13.210.250 | External IP (OpenClaw.yahwan.biz) |
-| **OS** | Ubuntu 24.04 LTS | Long-term support |
-| **SSH User** | root | Administrative access |
-| **Docker Image** | piboonsak/openclaw:latest | Container registry |
-| **Container Port** | 18789 | Internal (NOT exposed externally) |
-| **Reverse Proxy** | Nginx | HTTP/HTTPS termination |
-| **SSL Provider** | Let's Encrypt | Free, auto-renewable certificates |
-| **Firewall** | Hostinger Cloud Firewall | Network perimeter security |
+| Component          | Value                     | Notes                             |
+| ------------------ | ------------------------- | --------------------------------- |
+| **Provider**       | Hostinger VPS             | Cloud infrastructure              |
+| **Hostname**       | srv1414058.hstgr.cloud    | VPS identifier                    |
+| **Public IPv4**    | 76.13.210.250             | External IP (OpenClaw.yahwan.biz) |
+| **OS**             | Ubuntu 24.04 LTS          | Long-term support                 |
+| **SSH User**       | root                      | Administrative access             |
+| **Docker Image**   | piboonsak/openclaw:latest | Container registry                |
+| **Container Port** | 18789                     | Internal (NOT exposed externally) |
+| **Reverse Proxy**  | Nginx                     | HTTP/HTTPS termination            |
+| **SSL Provider**   | Let's Encrypt             | Free, auto-renewable certificates |
+| **Firewall**       | Hostinger Cloud Firewall  | Network perimeter security        |
 
 ### Dependencies and Deployment Order
 
@@ -107,6 +108,7 @@ Docker Container (piboonsak/openclaw:latest)
 7. **Firewall Rules** (network isolation)
 
 **Why this order?**
+
 - DNS must resolve before Certbot can validate domain ownership
 - Docker provides container isolation before exposing via Nginx
 - Nginx acts as HTTPS terminator, protecting Docker app
@@ -855,6 +857,7 @@ proxy_set_header Connection "upgrade";
 ```
 
 **These headers enable:**
+
 - HTTP to WebSocket protocol upgrade
 - Connection persistence (prevents connection timeout)
 - Proper Upgrade negotiations
@@ -939,12 +942,14 @@ curl -s http://127.0.0.1:18789/health | jq .
 ### Issue 1: DNS Propagation Delay
 
 **Symptoms:**
+
 ```
 curl: (6) Could not resolve host: openclaw.yahwan.biz
 nslookup openclaw.yahwan.biz: SERVFAIL
 ```
 
 **Root Cause:**
+
 - DNS nameservers not fully propagated after switching from Squarespace to Hostinger
 - Nameserver change can take up to 48 hours for global propagation
 - Local DNS cache may have stale records
@@ -974,10 +979,12 @@ dig openclaw.yahwan.biz @ns1.hostinger.com +short
 ```
 
 **Prevention:**
+
 - TTL on root A record set to 50 seconds (fast updates)
 - TTL on subdomain A record set to 14400 seconds (balances stability after propagation)
 
 **Timeline:**
+
 - Nameserver change: Immediate
 - Global DNS propagation: 15-30 minutes (typical), up to 48 hours (worst case)
 
@@ -986,18 +993,21 @@ dig openclaw.yahwan.biz @ns1.hostinger.com +short
 ### Issue 2: 502 Bad Gateway (Nginx → Docker)
 
 **Symptoms:**
+
 ```
 HTTP/1.1 502 Bad Gateway
 nginx/1.18.0 (Ubuntu)
 ```
 
 **Browser error:**
+
 ```
 502 Bad Gateway
 The server encountered a temporary error and could not complete your request.
 ```
 
 **Root Cause:**
+
 - Nginx reverse proxy misconfiguration (missing WebSocket headers)
 - Docker container not listening on configured port
 - Firewall blocking localhost:18789 access
@@ -1085,17 +1095,20 @@ curl -v https://openclaw.yahwan.biz/
 ### Issue 3: WebSocket Connection Drops (1006 Code)
 
 **Symptoms:**
+
 ```
 WebSocket connection closed with code 1006 (abnormal closure)
 Browser console: "WebSocket error: Failed to connect"
 ```
 
 **JavaScript console errors:**
+
 ```javascript
 WebSocket is closed before the connection is established
 ```
 
 **Root Cause:**
+
 - Nginx missing Upgrade/Connection headers (cannot negotiate WebSocket protocol upgrade)
 - Incorrect proxy configuration causing connection termination
 - Nginx timeout settings too aggressive
@@ -1154,6 +1167,7 @@ wscat -c wss://openclaw.yahwan.biz/ --handshake -v
 **Step 4: Browser DevTools inspection**
 
 In Chrome DevTools:
+
 1. Open **Network** tab
 2. Filter by type: **WS** (WebSocket)
 3. Look for connection to `wss://openclaw.yahwan.biz`
@@ -1167,12 +1181,14 @@ In Chrome DevTools:
 ### Issue 4: HTTPS Certificate Not Valid
 
 **Symptoms:**
+
 ```
 curl: (60) SSL certificate problem: unable to get local issuer certificate
 Browser: "Your connection is not secure"
 ```
 
 **Root Cause:**
+
 - Certbot not installed or failed to provision certificate
 - Nginx still using old/self-signed certificate
 - Certificate expired (unlikely for new installs, but possible for renewals)
@@ -1250,6 +1266,7 @@ curl -I https://openclaw.yahwan.biz/
 ### Issue 5: Backend Port 18789 Publicly Accessible (SECURITY ISSUE)
 
 **Symptoms:**
+
 ```
 # From external machine:
 curl http://76.13.210.250:18789/health
@@ -1262,11 +1279,13 @@ nmap 76.13.210.250 | grep 18789
 ```
 
 **Root Cause:**
+
 - Docker container port mapped to `0.0.0.0:18789` instead of `127.0.0.1:18789`
 - Firewall rule for port 18789 is ACCEPT instead of DROP
 - Container ran with `--network host` flag
 
 **Critical Security Impact:**
+
 - Backend service exposed without HTTPS
 - Backend authentication (if any) bypassed
 - Enables direct attacks on application
@@ -1334,6 +1353,7 @@ Rule #  Action  Protocol  Port    Source  Direction
 Use this checklist to verify all infrastructure components are correctly deployed:
 
 ### DNS and Domain
+
 - [ ] DNS nameservers changed from Squarespace to Hostinger
 - [ ] DNS A record for `@` (root) points to 76.13.210.250 with TTL 50s
 - [ ] DNS A record for `openclaw` points to 76.13.210.250 with TTL 14400s
@@ -1342,6 +1362,7 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] `nslookup openclaw.yahwan.biz` returns 76.13.210.250
 
 ### VPS and System
+
 - [ ] SSH access confirmed: `ssh root@76.13.210.250`
 - [ ] OS is Ubuntu 24.04 LTS: `cat /etc/issue`
 - [ ] Hostname is srv1414058.hstgr.cloud: `hostname`
@@ -1351,6 +1372,7 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] Memory available: `free -h` shows >1GB free
 
 ### Docker Deployment
+
 - [ ] Docker daemon running: `systemctl status docker`
 - [ ] OpenClaw image pulled: `docker images | grep piboonsak/openclaw`
 - [ ] Container running: `docker ps | grep openclaw-sgnl-openclaw-1`
@@ -1359,6 +1381,7 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] Backend port NOT public: `ss -tlnp | grep 18789` shows 127.0.0.1 only
 
 ### Nginx Reverse Proxy
+
 - [ ] Nginx installed: `nginx -v`
 - [ ] Config file created: `/etc/nginx/sites-available/openclaw` exists
 - [ ] Config symlinked: `/etc/nginx/sites-enabled/openclaw` exists
@@ -1370,6 +1393,7 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] Default site disabled: No `/etc/nginx/sites-enabled/default`
 
 ### SSL/TLS Configuration
+
 - [ ] Certbot installed: `certbot --version`
 - [ ] Certbot Nginx plugin available: `certbot plugins`
 - [ ] Certificate issued: `certbot certificates | grep openclaw.yahwan.biz`
@@ -1380,6 +1404,7 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] Renewal timer active: `systemctl list-timers | grep certbot`
 
 ### Firewall Configuration
+
 - [ ] Hostinger Cloud Firewall active: Check hPanel → Firewall
 - [ ] Rule 1 (Allow HTTP 80): Configured and enabled
 - [ ] Rule 2 (Allow HTTPS 443): Configured and enabled
@@ -1389,6 +1414,7 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] UFW disabled: `ufw status` shows "inactive"
 
 ### HTTPS and WebSocket
+
 - [ ] HTTPS works: `curl -I https://openclaw.yahwan.biz/` returns 200
 - [ ] Certificate valid in browser: No certificate warnings
 - [ ] HTTP redirects to HTTPS: `curl -I http://openclaw.yahwan.biz/` returns 301
@@ -1397,6 +1423,7 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] TLS 1.2+: `echo | openssl s_client ... | grep Protocol` shows TLSv1.2+
 
 ### Security Verification
+
 - [ ] Backend port blocked: `timeout 5 bash -c '</dev/tcp/76.13.210.250/18789'` returns error
 - [ ] Only ports 22, 80, 443 accessible externally
 - [ ] Nginx logs show no 502 errors: `grep -c "502 Bad Gateway" /var/log/nginx/access.log` returns 0
@@ -1404,13 +1431,14 @@ Use this checklist to verify all infrastructure components are correctly deploye
 - [ ] No unencrypted traffic to backend: All external traffic via HTTPS
 
 ### Operations and Monitoring
+
 - [ ] Nginx can auto-start: `systemctl enable nginx`
 - [ ] Docker container auto-restart enabled: `docker inspect openclaw-sgnl-openclaw-1 | grep "RestartPolicy" -A3`
 - [ ] Log rotation configured for Nginx: `/etc/logrotate.d/nginx` exists
 - [ ] Certificate renewal automated: Certbot systemd timer enabled
 
 **Total Checklist Items:** 60  
-**Items Checked:** ___/60
+**Items Checked:** \_\_\_/60
 
 **Status Passing:** ✅ If >58/60 items checked
 
@@ -1512,18 +1540,18 @@ Squarespace Config:
                 ns4.hostinger.com
 
 Hostinger DNS Zone:
-  
+
   Record 1:  Type=A   Host=@          Points=76.13.210.250   TTL=50s
              └─ Root domain resolution
-  
+
   Record 2:  Type=A   Host=openclaw   Points=76.13.210.250   TTL=14400s
              └─ Subdomain resolution (OpenClaw app)
-  
+
   Record 3:  Type=CNAME  Host=www     Points=yahwan.biz      TTL=300s
              └─ WWW subdomain aliasing
 
 DNS Query Resolution:
-  
+
   Query: openclaw.yahwan.biz
     ├─ Resolver asks ns1.hostinger.com
     ├─ Returns A record: 76.13.210.250
@@ -1705,17 +1733,20 @@ timeout 5 bash -c '</dev/tcp/76.13.210.250/18789' 2>&1  # Should FAIL from exter
 ### Routine Operations Schedule
 
 #### Daily
+
 - [ ] Monitor container health: `docker ps`
 - [ ] Check Nginx error logs: `tail /var/log/nginx/error.log`
 - [ ] Monitor application logs: `docker logs openclaw-sgnl-openclaw-1`
 
 #### Weekly
+
 - [ ] Review access logs: `tail -100 /var/log/nginx/access.log`
 - [ ] Check disk usage: `df -h`
 - [ ] Check memory usage: `free -h`
 - [ ] Verify SSL certificate status: `certbot certificates`
 
 #### Monthly
+
 - [ ] Security audit (Nginx config, Firewall rules)
 - [ ] Backup configuration files:
   ```bash
@@ -1727,6 +1758,7 @@ timeout 5 bash -c '</dev/tcp/76.13.210.250/18789' 2>&1  # Should FAIL from exter
 - [ ] Review container resource usage: `docker stats`
 
 #### Annually or As-Needed
+
 - [ ] Full security audit of infrastructure
 - [ ] Update Docker image versions
 - [ ] Review and update SSL/TLS cipher suites
@@ -1850,6 +1882,7 @@ tar -xzf /backup/openclaw/nginx-config-YYYYMMDD-HHMMSS.tar.gz -C /
 ```
 
 **Permissions:**
+
 ```bash
 ls -l /etc/letsencrypt/live/openclaw.yahwan.biz/
 lrwxrwxrwx root root privkey.pem -> ../../archive/openclaw.yahwan.biz/privkey1.pem
@@ -1862,17 +1895,17 @@ lrwxrwxrwx root root fullchain.pem -> ../../archive/openclaw.yahwan.biz/fullchai
 
 ## Appendix B: Required Ports Reference
 
-| Port | Protocol | Purpose | Firewall | External | Notes |
-|------|----------|---------|----------|----------|-------|
-| 20 | TCP | FTP Data | N/A | No | Not used |
-| 22 | TCP | SSH | ACCEPT | ✅ | Admin access |
-| 53 | UDP | DNS | N/A | No | Not used (Hostinger DNS) |
-| 80 | TCP | HTTP | ACCEPT | ✅ | Redirects to HTTPS |
-| 443 | TCP | HTTPS | ACCEPT | ✅ | Primary app access |
-| 3000 | TCP | Node.js | N/A | No | Not used |
-| 8080 | TCP | Alt HTTP | N/A | No | Not used |
-| 18789 | TCP | App | DROP | ❌ | Backend (localhost only) |
-| Others | ANY | - | DROP | ❌ | Default deny all |
+| Port   | Protocol | Purpose  | Firewall | External | Notes                    |
+| ------ | -------- | -------- | -------- | -------- | ------------------------ |
+| 20     | TCP      | FTP Data | N/A      | No       | Not used                 |
+| 22     | TCP      | SSH      | ACCEPT   | ✅       | Admin access             |
+| 53     | UDP      | DNS      | N/A      | No       | Not used (Hostinger DNS) |
+| 80     | TCP      | HTTP     | ACCEPT   | ✅       | Redirects to HTTPS       |
+| 443    | TCP      | HTTPS    | ACCEPT   | ✅       | Primary app access       |
+| 3000   | TCP      | Node.js  | N/A      | No       | Not used                 |
+| 8080   | TCP      | Alt HTTP | N/A      | No       | Not used                 |
+| 18789  | TCP      | App      | DROP     | ❌       | Backend (localhost only) |
+| Others | ANY      | -        | DROP     | ❌       | Default deny all         |
 
 ---
 
@@ -1880,11 +1913,11 @@ lrwxrwxrwx root root fullchain.pem -> ../../archive/openclaw.yahwan.biz/fullchai
 
 **TTL (Time To Live):** Seconds a DNS record is cached before re-querying
 
-| Record | TTL | Reasoning |
-|--------|-----|-----------|
-| @ (root) | 50s | Root A record: minimize cache to enable fast propagation after nameserver change |
-| openclaw | 14400s | Subdomain A record: standard TTL, balanced for stability vs. update speed |
-| www | 300s | CNAME: short TTL for flexible aliasing |
+| Record   | TTL    | Reasoning                                                                        |
+| -------- | ------ | -------------------------------------------------------------------------------- |
+| @ (root) | 50s    | Root A record: minimize cache to enable fast propagation after nameserver change |
+| openclaw | 14400s | Subdomain A record: standard TTL, balanced for stability vs. update speed        |
+| www      | 300s   | CNAME: short TTL for flexible aliasing                                           |
 
 **Impact:**
 
@@ -1944,9 +1977,9 @@ apt update && apt upgrade -y
 
 ## Document Log
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | Feb 23, 2026 | DevOps Team | Initial production deployment guide |
+| Version | Date         | Author      | Changes                             |
+| ------- | ------------ | ----------- | ----------------------------------- |
+| 1.0     | Feb 23, 2026 | DevOps Team | Initial production deployment guide |
 
 **Status:** ✅ Production Ready  
 **Last Reviewed:** February 23, 2026  
