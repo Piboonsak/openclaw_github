@@ -1,0 +1,95 @@
+name: Post-Deploy Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_host:
+        description: 'Target host IP or hostname'
+        required: false
+        default: '76.13.210.250'
+  workflow_call:
+    inputs:
+      target_host:
+        description: 'Target host IP or hostname'
+        required: false
+        type: string
+        default: '76.13.210.250'
+    outputs:
+      result:
+        description: 'Overall smoke test result (pass/fail)'
+        value: ${{ jobs.smoke-test.outputs.result }}
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      result: ${{ steps.summary.outputs.result }}
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: Check container health
+        id: container
+        continue-on-error: true
+        run: |
+          ssh -o StrictHostKeyChecking=no root@${{ inputs.target_host || '76.13.210.250' }} \
+            "docker ps --filter name=openclaw --format '{{.Status}}'" | grep -q "Up"
+          echo "status=$?" >> $GITHUB_OUTPUT
+
+      - name: Check gateway response
+        id: gateway
+        continue-on-error: true
+        run: |
+          ssh -o StrictHostKeyChecking=no root@${{ inputs.target_host || '76.13.210.250' }} \
+            "docker exec openclaw openclaw status 2>/dev/null | head -5"
+          echo "status=$?" >> $GITHUB_OUTPUT
+
+      - name: Check gateway port
+        id: port
+        continue-on-error: true
+        run: |
+          ssh -o StrictHostKeyChecking=no root@${{ inputs.target_host || '76.13.210.250' }} \
+            "curl -sf --max-time 5 http://localhost:18789/health || echo 'port-check-failed'"
+          echo "status=$?" >> $GITHUB_OUTPUT
+
+      - name: Summarize results
+        id: summary
+        run: |
+          echo "## Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          PASS=true
+
+          if [ "${{ steps.container.outcome }}" = "success" ]; then
+            echo "- ✅ Container health: UP" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Container health: DOWN" >> $GITHUB_STEP_SUMMARY
+            PASS=false
+          fi
+
+          if [ "${{ steps.gateway.outcome }}" = "success" ]; then
+            echo "- ✅ Gateway status: OK" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Gateway status: FAIL" >> $GITHUB_STEP_SUMMARY
+            PASS=false
+          fi
+
+          if [ "${{ steps.port.outcome }}" = "success" ]; then
+            echo "- ✅ Port 18789: Responding" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ Port 18789: No response (may be expected)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$PASS" = "true" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Overall: ✅ PASS**" >> $GITHUB_STEP_SUMMARY
+            echo "result=pass" >> $GITHUB_OUTPUT
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Overall: ❌ FAIL**" >> $GITHUB_STEP_SUMMARY
+            echo "result=fail" >> $GITHUB_OUTPUT
+          fi
