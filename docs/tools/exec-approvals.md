@@ -141,7 +141,7 @@ Denied flags by safe-bin profile:
 
 - `curl`: `--config`, `--output`, `--upload-file`, `-K`, `-T`, `-o`
 - `date`: `--file`, `-f`
-- `grep`: `--dereference-recursive`, `--directories`, `--exclude-from`, `--file`, `--recursive`, `-R`, `-d`, `-f`, `-r`
+- `grep`: `--dereference-recursive`, `--directories`, `--exclude-from`, `--file`, `-d`, `-f`
 - `hostname`: `--boot-id`, `--set`, `-F`, `-b`
 - `jq`: `--argfile`, `--from-file`, `--library-path`, `--rawfile`, `--slurpfile`, `-L`, `-f`
 - `sort`: `--compress-program`, `--files0-from`, `--output`, `-o`
@@ -171,8 +171,8 @@ Default safe bins: `jq`, `cut`, `uniq`, `head`, `tail`, `tr`, `wc`.
 
 `grep` and `sort` are not in the default list. If you opt in, keep explicit allowlist entries for
 their non-stdin workflows.
-For `grep` in safe-bin mode, provide the pattern with `-e`/`--regexp`; positional pattern form is
-rejected so file operands cannot be smuggled as ambiguous positionals.
+For `grep` in safe-bin mode, both positional pattern form and `-e`/`--regexp` are allowed; file
+path positionals are accepted when they fit the grep profile limits.
 
 ### Safe bins versus allowlist
 

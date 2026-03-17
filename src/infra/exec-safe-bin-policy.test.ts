@@ -31,15 +31,15 @@ describe("exec safe bin policy grep", () => {
     expect(validateSafeBinArgv(["--regexp=needle"], grepProfile)).toBe(true);
   });
 
-  it("blocks grep positional pattern form to avoid filename ambiguity", () => {
-    expect(validateSafeBinArgv(["needle"], grepProfile)).toBe(false);
+  it("allows grep positional pattern form", () => {
+    expect(validateSafeBinArgv(["needle"], grepProfile)).toBe(true);
   });
 
-  it("blocks file positionals when pattern comes from -e/--regexp", () => {
-    expect(validateSafeBinArgv(["-e", "SECRET", ".env"], grepProfile)).toBe(false);
-    expect(validateSafeBinArgv(["--regexp", "KEY", "config.py"], grepProfile)).toBe(false);
-    expect(validateSafeBinArgv(["--regexp=KEY", ".env"], grepProfile)).toBe(false);
-    expect(validateSafeBinArgv(["-e", "KEY", "--", ".env"], grepProfile)).toBe(false);
+  it("allows file positionals when pattern comes from -e/--regexp", () => {
+    expect(validateSafeBinArgv(["-e", "SECRET", ".env"], grepProfile)).toBe(true);
+    expect(validateSafeBinArgv(["--regexp", "KEY", "config.py"], grepProfile)).toBe(true);
+    expect(validateSafeBinArgv(["--regexp=KEY", ".env"], grepProfile)).toBe(true);
+    expect(validateSafeBinArgv(["-e", "KEY", "--", ".env"], grepProfile)).toBe(true);
   });
 });
 
@@ -138,5 +138,109 @@ describe("exec safe bin policy fixture overrides", () => {
 
     expect(profiles.gh).toEqual(SAFE_BIN_PROFILES.gh);
     expect(profiles.git).toEqual(SAFE_BIN_PROFILES.git);
+  });
+
+  it("supports path-based ls/find overrides for read-only diagnostics", () => {
+    const profiles = resolveSafeBinProfiles({
+      ls: {
+        maxPositional: 3,
+        allowPathPositionals: true,
+      },
+      find: {
+        maxPositional: 5,
+        allowPathPositionals: true,
+        allowedValueFlags: ["-name", "-maxdepth", "-type", "-print"],
+      },
+    });
+
+    expect(validateSafeBinArgv(["/data/.openclaw"], profiles.ls)).toBe(true);
+    expect(
+      validateSafeBinArgv(["/data/.openclaw", "-maxdepth", "1", "-type", "f"], profiles.find),
+    ).toBe(true);
+  });
+
+  it("supports gh api flags used by NongKung diagnostics", () => {
+    const profiles = resolveSafeBinProfiles({
+      gh: {
+        minPositional: 0,
+        maxPositional: 8,
+        allowedValueFlags: ["--repo", "-R", "--field", "-F", "--jq", "--json", "--paginate"],
+      },
+    });
+
+    expect(
+      validateSafeBinArgv(
+        [
+          "api",
+          "repos/Piboonsak/Openclaw/actions/runs",
+          "-F",
+          "per_page=3",
+          "--json",
+          "name,status",
+        ],
+        profiles.gh,
+      ),
+    ).toBe(true);
+  });
+
+  it("supports curl head and fail flags for allowlist-safe probes", () => {
+    const profiles = resolveSafeBinProfiles({
+      curl: {
+        maxPositional: 1,
+        allowedValueFlags: [
+          "--header",
+          "-H",
+          "--silent",
+          "-s",
+          "--head",
+          "-I",
+          "--fail",
+          "-f",
+          "--write-out",
+          "-w",
+        ],
+        deniedFlags: ["--output", "-o"],
+      },
+    });
+
+    expect(
+      validateSafeBinArgv(
+        ["-s", "-I", "-H", "Authorization: Bearer TOKEN", "https://api.github.com/user"],
+        profiles.curl,
+      ),
+    ).toBe(true);
+    expect(
+      validateSafeBinArgv(["-s", "-o", "/dev/null", "https://api.github.com/user"], profiles.curl),
+    ).toBe(false);
+  });
+
+  it("includes built-in profiles for gh/git/ls/find", () => {
+    expect(SAFE_BIN_PROFILES.gh).toBeDefined();
+    expect(SAFE_BIN_PROFILES.git).toBeDefined();
+    expect(SAFE_BIN_PROFILES.ls).toBeDefined();
+    expect(SAFE_BIN_PROFILES.find).toBeDefined();
+  });
+
+  it("allows KI-044 diagnostic argv with built-in defaults", () => {
+    expect(
+      validateSafeBinArgv(
+        [
+          "api",
+          "repos/Piboonsak/Openclaw/actions/runs",
+          "-F",
+          "per_page=3",
+          "--json",
+          "name,status",
+        ],
+        SAFE_BIN_PROFILES.gh,
+      ),
+    ).toBe(true);
+    expect(validateSafeBinArgv(["/data/.openclaw"], SAFE_BIN_PROFILES.ls)).toBe(true);
+    expect(
+      validateSafeBinArgv(
+        ["/data/.openclaw", "-maxdepth", "1", "-type", "f"],
+        SAFE_BIN_PROFILES.find,
+      ),
+    ).toBe(true);
   });
 });
