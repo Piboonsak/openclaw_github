@@ -28,6 +28,14 @@ if [ "${#files[@]}" -eq 0 ]; then
   exit 0
 fi
 
+for file in "${files[@]}"; do
+  if [[ "$file" == .github/workflows/* ]] && [[ "$file" != .github/workflows/.gitkeep ]]; then
+    echo "Blocked by repository policy: workflow files are not allowed in openclaw_github." >&2
+    echo "Move all CI/CD workflows to Piboonsak/Openclaw." >&2
+    exit 1
+  fi
+done
+
 lint_files=()
 while IFS= read -r -d '' file; do
   lint_files+=("$file")

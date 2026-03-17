@@ -145,6 +145,7 @@
 
 ## Agent-Specific Notes
 
+- Workflow hard block: do not create or reintroduce any file under `.github/workflows/` in `openclaw_github`. All workflows live in `Piboonsak/Openclaw`; this repo is source-only. The guard script `scripts/guard-no-workflows.mjs` and `git-hooks/pre-commit` enforce this policy.
 - Vocabulary: "makeup" = "mac app".
 - Never edit `node_modules` (global/Homebrew/npm/git installs too). Updates overwrite. Skill notes go in `tools.md` or `AGENTS.md`.
 - When adding a new `AGENTS.md` anywhere in the repo, also add a `CLAUDE.md` symlink pointing to it (example: `ln -s AGENTS.md CLAUDE.md`).
