@@ -26,7 +26,7 @@ on:
 
 concurrency:
   group: deploy-vps-${{ github.ref }}
-  cancel-in-progress: false   # never cancel an in-flight deploy
+  cancel-in-progress: false # never cancel an in-flight deploy
 
 jobs:
   deploy:
@@ -45,7 +45,6 @@ jobs:
         with:
           repository: Piboonsak/Openclaw
           path: openclaw-docs
-          token: ${{ secrets.GH_TOKEN }}
 
       # ── Create deployment log directory ────────────────────────────────────
       - name: Create deployment log directory
@@ -497,11 +496,11 @@ jobs:
           DEPLOY_NUM=${{ github.run_number }}
           LOG_DIR="operations/deployments/deploy-${DEPLOY_NUM}/logs"
           mkdir -p "$LOG_DIR"
-          
+
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             'bash /tmp/regression-tests.sh' | tee "$LOG_DIR/regression-tests-output.txt"
-          
+
           # Also copy to /tmp for artifact upload (backward compatible)
           cp "$LOG_DIR/regression-tests-output.txt" /tmp/regression-tests-output.txt
 
@@ -511,11 +510,11 @@ jobs:
           DEPLOY_NUM=${{ github.run_number }}
           LOG_DIR="operations/deployments/deploy-${DEPLOY_NUM}/logs"
           mkdir -p "$LOG_DIR"
-          
+
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             'bash /tmp/r3-regression-tests.sh' | tee "$LOG_DIR/r3-regression-tests-output.txt"
-          
+
           cp "$LOG_DIR/r3-regression-tests-output.txt" /tmp/r3-regression-tests-output.txt
 
       - name: Run WS-2.4 regression tests (session + context + exec + resources)
@@ -524,11 +523,11 @@ jobs:
           DEPLOY_NUM=${{ github.run_number }}
           LOG_DIR="operations/deployments/deploy-${DEPLOY_NUM}/logs"
           mkdir -p "$LOG_DIR"
-          
+
           ssh -i ~/.ssh/id_ed25519_hostinger -o StrictHostKeyChecking=no \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             'bash /tmp/ws24-regression-tests.sh' | tee "$LOG_DIR/ws24-regression-tests-output.txt"
-          
+
           cp "$LOG_DIR/ws24-regression-tests-output.txt" /tmp/ws24-regression-tests-output.txt
 
       # ── On failure: capture diagnostic logs ──────────────────────────────
@@ -538,7 +537,7 @@ jobs:
           DEPLOY_NUM=${{ github.run_number }}
           LOG_DIR="operations/deployments/deploy-${DEPLOY_NUM}/logs"
           mkdir -p "$LOG_DIR"
-          
+
           {
             echo "=== Container logs (last 200 lines, errors only) ==="
             timeout 45 ssh -i ~/.ssh/id_ed25519_hostinger \
@@ -569,7 +568,7 @@ jobs:
               "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
               'nginx -t 2>&1' || true
           } > "$LOG_DIR/diagnostic-logs.txt" 2>&1
-          
+
           # Also copy to /tmp for artifact upload
           cp "$LOG_DIR/diagnostic-logs.txt" /tmp/diagnostic-logs.txt
           cat "$LOG_DIR/diagnostic-logs.txt"
@@ -593,7 +592,7 @@ jobs:
         run: |
           git config --local user.email "ci@openclaw.dev"
           git config --local user.name "OpenClaw CI"
-          
+
           DEPLOY_DIR="operations/deployments/deploy-${{ github.run_number }}"
           if [ -d "$DEPLOY_DIR/logs" ]; then
             git add "$DEPLOY_DIR/" 2>/dev/null || true
