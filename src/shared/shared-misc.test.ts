@@ -23,6 +23,26 @@ describe("extractTextFromChatContent", () => {
     ).toBe("hello world");
   });
 
+  it("extracts mixed OpenAI-compatible text node variants across multiple blocks", () => {
+    expect(
+      extractTextFromChatContent([
+        { type: "text", text: "First" },
+        { type: "thinking", thinking: "hidden" },
+        { type: "output_text", text: " second" },
+        { type: "text", text: { value: " third" } },
+      ]),
+    ).toBe("First second third");
+  });
+
+  it("supports input_text fallback fields in multi-node arrays", () => {
+    expect(
+      extractTextFromChatContent([
+        { type: "input_text", input_text: "hello" },
+        { type: "output_text", output_text: " world" },
+      ]),
+    ).toBe("hello world");
+  });
+
   it("applies sanitizer when provided", () => {
     expect(
       extractTextFromChatContent("Here [Tool Call: foo (ID: 1)] ok", {

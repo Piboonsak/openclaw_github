@@ -100,17 +100,28 @@ function extractTextContent(content: unknown): string {
         if (!part || typeof part !== "object") {
           return "";
         }
-        const type = (part as { type?: unknown }).type;
-        const text = (part as { text?: unknown }).text;
-        const inputText = (part as { input_text?: unknown }).input_text;
-        if (type === "text" && typeof text === "string") {
+        const record = part as Record<string, unknown>;
+        const type = record.type;
+        const text = record.text;
+        if (
+          (type === "text" || type === "input_text" || type === "output_text") &&
+          typeof text === "string"
+        ) {
           return text;
         }
-        if (type === "input_text" && typeof text === "string") {
-          return text;
+        if (
+          (type === "text" || type === "input_text" || type === "output_text") &&
+          text &&
+          typeof text === "object" &&
+          typeof (text as { value?: unknown }).value === "string"
+        ) {
+          return (text as { value: string }).value;
         }
-        if (typeof inputText === "string") {
-          return inputText;
+        if (typeof record.input_text === "string") {
+          return record.input_text;
+        }
+        if (typeof record.output_text === "string") {
+          return record.output_text;
         }
         return "";
       })

@@ -1,3 +1,29 @@
+function resolveTextLikeBlockValue(block: Record<string, unknown>): string | null {
+  const directText = block.text;
+  if (typeof directText === "string") {
+    return directText;
+  }
+
+  if (directText && typeof directText === "object") {
+    const nestedValue = (directText as { value?: unknown }).value;
+    if (typeof nestedValue === "string") {
+      return nestedValue;
+    }
+  }
+
+  const inputText = block.input_text;
+  if (typeof inputText === "string") {
+    return inputText;
+  }
+
+  const outputText = block.output_text;
+  if (typeof outputText === "string") {
+    return outputText;
+  }
+
+  return null;
+}
+
 export function extractTextFromChatContent(
   content: unknown,
   opts?: {
@@ -24,10 +50,12 @@ export function extractTextFromChatContent(
     if (!block || typeof block !== "object") {
       continue;
     }
-    if ((block as { type?: unknown }).type !== "text") {
+    const record = block as Record<string, unknown>;
+    const type = record.type;
+    if (type !== "text" && type !== "input_text" && type !== "output_text") {
       continue;
     }
-    const text = (block as { text?: unknown }).text;
+    const text = resolveTextLikeBlockValue(record);
     if (typeof text !== "string") {
       continue;
     }
