@@ -32,6 +32,7 @@ function createContext(
       warn: vi.fn(),
     },
     flushBlockReplyBuffer: vi.fn(),
+    emitBlockChunk: vi.fn(),
     resolveCompactionRetry: vi.fn(),
     maybeResolveCompactionWait: vi.fn(),
   } as unknown as EmbeddedPiSubscribeContext;
@@ -72,5 +73,26 @@ describe("handleAgentEnd", () => {
 
     expect(ctx.log.warn).not.toHaveBeenCalled();
     expect(ctx.log.debug).toHaveBeenCalledWith("embedded run agent end: runId=run-1 isError=false");
+  });
+
+  it("logs warning and appends truncation notice when stopReason is length", () => {
+    const ctx = createContext({
+      role: "assistant",
+      stopReason: "length",
+      model: "minimax/minimax-m2.5",
+      content: [{ type: "text", text: "partial answer..." }],
+    });
+
+    handleAgentEnd(ctx);
+
+    const warn = vi.mocked(ctx.log.warn);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain("stopReason=length");
+    expect(warn.mock.calls[0]?.[0]).toContain("minimax/minimax-m2.5");
+    const emitBlockChunk = vi.mocked(
+      (ctx as unknown as { emitBlockChunk: ReturnType<typeof vi.fn> }).emitBlockChunk,
+    );
+    expect(emitBlockChunk).toHaveBeenCalledTimes(1);
+    expect(emitBlockChunk.mock.calls[0]?.[0]).toContain("\u26a0\ufe0f");
   });
 });

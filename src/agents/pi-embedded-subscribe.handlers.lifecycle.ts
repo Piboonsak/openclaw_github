@@ -28,6 +28,15 @@ export function handleAgentStart(ctx: EmbeddedPiSubscribeContext) {
 export function handleAgentEnd(ctx: EmbeddedPiSubscribeContext) {
   const lastAssistant = ctx.state.lastAssistant;
   const isError = isAssistantMessage(lastAssistant) && lastAssistant.stopReason === "error";
+  const isTruncated = isAssistantMessage(lastAssistant) && lastAssistant.stopReason === "length";
+
+  if (isTruncated && lastAssistant) {
+    ctx.log.warn(
+      `embedded run agent end: runId=${ctx.params.runId} stopReason=length model=${lastAssistant.model} — response truncated due to max token limit`,
+    );
+    // Append a visible truncation notice so the user knows the answer may be incomplete
+    ctx.emitBlockChunk("\n\n⚠️ คำตอบอาจไม่สมบูรณ์เนื่องจากข้อจำกัดของจำนวน Token");
+  }
 
   if (isError && lastAssistant) {
     const friendlyError = formatAssistantErrorText(lastAssistant, {

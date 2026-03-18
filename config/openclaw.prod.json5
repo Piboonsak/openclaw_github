@@ -78,7 +78,7 @@
         fallbacks: [
           "anthropic/claude-sonnet-4-6",
           "anthropic/claude-opus-4-6",
-          "anthropic/claude-3-5-haiku",
+          "anthropic/claude-haiku-4-5-20251001",
         ],
       },
 
@@ -93,8 +93,8 @@
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus (Analyst/Fallback)",
         },
-        "anthropic/claude-3-5-haiku": {
-          alias: "Claude 3.5 Haiku (Fallback)",
+        "anthropic/claude-haiku-4-5-20251001": {
+          alias: "Claude Haiku 4.5 (Fallback)",
         },
       },
 
@@ -127,7 +127,7 @@
           fallbacks: [
             "anthropic/claude-sonnet-4-6",
             "anthropic/claude-opus-4-6",
-            "anthropic/claude-3-5-haiku",
+            "anthropic/claude-haiku-4-5-20251001",
           ],
         },
       },
@@ -135,25 +135,25 @@
         // Analyst keeps Opus as primary — needs high reasoning capability
         model: {
           primary: "anthropic/claude-opus-4-6",
-          fallbacks: ["anthropic/claude-sonnet-4-6", "anthropic/claude-3-5-haiku"],
+          fallbacks: ["anthropic/claude-sonnet-4-6", "anthropic/claude-haiku-4-5-20251001"],
         },
       },
       "gold-checker": {
         model: {
           primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["anthropic/claude-3-5-haiku"],
+          fallbacks: ["anthropic/claude-haiku-4-5-20251001"],
         },
       },
       scheduler: {
         model: {
-          primary: "anthropic/claude-3-5-haiku",
+          primary: "anthropic/claude-haiku-4-5-20251001",
           fallbacks: ["anthropic/claude-sonnet-4-6"],
         },
       },
       worker: {
         model: {
           primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["anthropic/claude-3-5-haiku"],
+          fallbacks: ["anthropic/claude-haiku-4-5-20251001"],
         },
       },
     },
@@ -174,7 +174,7 @@
             input: ["text"],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: 128000,
-            maxTokens: 16384,
+            maxTokens: 65536,
           },
         ],
       },
@@ -202,11 +202,11 @@
             maxTokens: 16000,
           },
           {
-            id: "claude-3-5-haiku",
-            name: "Claude 3.5 Haiku",
+            id: "claude-haiku-4-5-20251001",
+            name: "Claude Haiku 4.5",
             reasoning: false,
             input: ["text"],
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            cost: { input: 0.8, output: 4, cacheRead: 0.08, cacheWrite: 1 },
             contextWindow: 200000,
             maxTokens: 8192,
           },
