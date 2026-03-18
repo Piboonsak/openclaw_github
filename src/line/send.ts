@@ -24,10 +24,10 @@ const userProfileCache = new Map<
   { displayName: string; pictureUrl?: string; fetchedAt: number }
 >();
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const LINE_RETRY_ATTEMPTS = 4;
+const LINE_RETRY_ATTEMPTS = 7;
 const LINE_RETRY_MIN_DELAY_MS = 300;
-const LINE_RETRY_MAX_DELAY_MS = 5000;
-const LINE_RETRY_JITTER = 0.2;
+const LINE_RETRY_MAX_DELAY_MS = 30_000;
+const LINE_RETRY_JITTER = 0.3;
 
 // Serialize outbound sends per LINE account to reduce short burst collisions.
 const lineOutboundChains = new Map<string, Promise<void>>();
@@ -182,21 +182,42 @@ function resolveRetryAfterMs(err: unknown): number | undefined {
   if (!err || typeof err !== "object") {
     return undefined;
   }
-  const response = (err as { response?: { headers?: unknown } }).response;
-  const headers = response?.headers;
-  if (!headers || typeof headers !== "object") {
+  const getRetryAfter = (headers: unknown): number | undefined => {
+    if (!headers || typeof headers !== "object") {
+      return undefined;
+    }
+    const retryAfterRaw = (headers as Record<string, unknown>)["retry-after"];
+    if (typeof retryAfterRaw === "number" && Number.isFinite(retryAfterRaw)) {
+      return Math.max(0, retryAfterRaw * 1000);
+    }
+    if (typeof retryAfterRaw === "string") {
+      const parsed = Number(retryAfterRaw);
+      if (Number.isFinite(parsed)) {
+        return Math.max(0, parsed * 1000);
+      }
+    }
     return undefined;
+  };
+
+  const response = (err as { response?: { headers?: unknown } }).response;
+  const fromResponseHeaders = getRetryAfter(response?.headers);
+  if (fromResponseHeaders !== undefined) {
+    return fromResponseHeaders;
   }
-  const retryAfterRaw = (headers as Record<string, unknown>)["retry-after"];
-  if (typeof retryAfterRaw === "number" && Number.isFinite(retryAfterRaw)) {
-    return Math.max(0, retryAfterRaw * 1000);
+
+  const fromTopLevelHeaders = getRetryAfter((err as { headers?: unknown }).headers);
+  if (fromTopLevelHeaders !== undefined) {
+    return fromTopLevelHeaders;
   }
-  if (typeof retryAfterRaw === "string") {
-    const parsed = Number(retryAfterRaw);
-    if (Number.isFinite(parsed)) {
-      return Math.max(0, parsed * 1000);
+
+  const body = (err as { body?: unknown }).body;
+  if (typeof body === "string") {
+    const match = body.match(/"retry-after"\s*:\s*"?(\d+)"?/i);
+    if (match) {
+      return Math.max(0, Number(match[1]) * 1000);
     }
   }
+
   return undefined;
 }
 
