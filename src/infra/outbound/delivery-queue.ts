@@ -10,6 +10,10 @@ const QUEUE_DIRNAME = "delivery-queue";
 const FAILED_DIRNAME = "failed";
 const MAX_RETRIES = 5;
 const DEFAULT_MAX_RECOVERY_MS = 300_000; // 5m: prevents large backlog deferral after restarts.
+const RECOVERY_FAST_DRAIN_THRESHOLD = 50;
+const RECOVERY_BACKOFF_CAP_MS = 2_000;
+/** Purge delivery entries older than this age (ms) on recovery to prevent retry storms. */
+const MAX_ENTRY_AGE_MS = 2 * 60 * 60 * 1000; // 2h
 
 /** Backoff delays in milliseconds indexed by retry count (1-based). */
 const BACKOFF_MS: readonly number[] = [
@@ -230,6 +234,32 @@ export async function recoverPendingDeliveries(opts: {
   // Process oldest first.
   pending.sort((a, b) => a.enqueuedAt - b.enqueuedAt);
 
+  // Purge stale entries before recovery to prevent retry storms from old backlog.
+  const purgeNow = Date.now();
+  let purgeIdx = 0;
+  while (purgeIdx < pending.length && purgeNow - pending[purgeIdx].enqueuedAt > MAX_ENTRY_AGE_MS) {
+    purgeIdx++;
+  }
+  if (purgeIdx > 0) {
+    const staleEntries = pending.splice(0, purgeIdx);
+    let purged = 0;
+    for (const entry of staleEntries) {
+      try {
+        await moveToFailed(entry.id, opts.stateDir);
+        purged++;
+      } catch {
+        // Best effort — entry may already be moved or deleted.
+      }
+    }
+    opts.log.info(
+      `Purged ${purged} stale delivery entries (age > ${MAX_ENTRY_AGE_MS / 60_000}m)`,
+    );
+  }
+
+  if (pending.length === 0) {
+    return { recovered: 0, failed: 0, skipped: purgeIdx };
+  }
+
   opts.log.info(`Found ${pending.length} pending delivery entries — starting recovery`);
 
   const delayFn = opts.delay ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -238,11 +268,21 @@ export async function recoverPendingDeliveries(opts: {
   let recovered = 0;
   let failed = 0;
   let skipped = 0;
+  let deferred = 0;
+  const fastDrainMode = pending.length >= RECOVERY_FAST_DRAIN_THRESHOLD;
 
-  for (const entry of pending) {
+  if (fastDrainMode) {
+    opts.log.info(
+      `Recovery fast-drain mode enabled for ${pending.length} entries (startup backlog)` +
+        ` — per-entry backoff waits are skipped`,
+    );
+  }
+
+  for (let idx = 0; idx < pending.length; idx += 1) {
+    const entry = pending[idx];
     const now = Date.now();
     if (now >= deadline) {
-      const deferred = pending.length - recovered - failed - skipped;
+      deferred = pending.length - idx;
       opts.log.warn(`Recovery time budget exceeded — ${deferred} entries deferred to next restart`);
       break;
     }
@@ -260,16 +300,17 @@ export async function recoverPendingDeliveries(opts: {
     }
 
     const backoff = computeBackoffMs(entry.retryCount + 1);
-    if (backoff > 0) {
-      if (now + backoff >= deadline) {
-        const deferred = pending.length - recovered - failed - skipped;
+    const cappedBackoff = fastDrainMode ? 0 : Math.min(backoff, RECOVERY_BACKOFF_CAP_MS);
+    if (cappedBackoff > 0) {
+      if (now + cappedBackoff >= deadline) {
+        deferred = pending.length - idx;
         opts.log.warn(
           `Recovery time budget exceeded — ${deferred} entries deferred to next restart`,
         );
         break;
       }
-      opts.log.info(`Waiting ${backoff}ms before retrying delivery ${entry.id}`);
-      await delayFn(backoff);
+      opts.log.info(`Waiting ${cappedBackoff}ms before retrying delivery ${entry.id}`);
+      await delayFn(cappedBackoff);
     }
 
     try {
@@ -308,7 +349,7 @@ export async function recoverPendingDeliveries(opts: {
   }
 
   opts.log.info(
-    `Delivery recovery complete: ${recovered} recovered, ${failed} failed, ${skipped} skipped (max retries)`,
+    `Delivery recovery complete: ${recovered} recovered, ${failed} failed, ${skipped} skipped (max retries), ${deferred} deferred`,
   );
   return { recovered, failed, skipped };
 }

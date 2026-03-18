@@ -218,20 +218,21 @@ export async function monitorLineProvider(
           cfg: config,
           dispatcherOptions: {
             ...prefixOptions,
-            deliver: async (payload, _info) => {
+            deliver: async (payload, info) => {
               const lineData = (payload.channelData?.line as LineChannelData | undefined) ?? {};
 
-              // Show loading animation before each delivery (non-blocking)
-              if (ctx.userId && !ctx.isGroup) {
-                void showLoadingAnimation(ctx.userId, { accountId: ctx.accountId }).catch(() => {});
-              }
+              // Reserve the one-time reply token for the final reply — intermediate
+              // messages (tool results, block chunks) fall back to push API only.
+              // This prevents tool-status messages from consuming the free reply token
+              // when push API quota is exhausted (LINE free plan 429).
+              const isIntermediate = info.kind === "tool" || info.kind === "block";
 
               const { replyTokenUsed: nextReplyTokenUsed } = await deliverLineAutoReply({
                 payload,
                 lineData,
                 to: ctxPayload.From,
-                replyToken,
-                replyTokenUsed,
+                replyToken: isIntermediate ? null : replyToken,
+                replyTokenUsed: isIntermediate ? true : replyTokenUsed,
                 accountId: ctx.accountId,
                 textLimit,
                 deps: {
@@ -255,7 +256,9 @@ export async function monitorLineProvider(
                   },
                 },
               });
-              replyTokenUsed = nextReplyTokenUsed;
+              if (!isIntermediate) {
+                replyTokenUsed = nextReplyTokenUsed;
+              }
 
               recordChannelRuntimeState({
                 channel: "line",
