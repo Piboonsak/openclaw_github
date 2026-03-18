@@ -146,6 +146,7 @@ export async function deliverLineAutoReply(params: {
       replyTokenUsed,
       accountId,
       replyMessageLine: deps.replyMessageLine,
+      pushMessagesLine: deps.pushMessagesLine,
       pushMessageLine: deps.pushMessageLine,
       pushTextMessageWithQuickReplies: deps.pushTextMessageWithQuickReplies,
       createTextMessageWithQuickReplies: deps.createTextMessageWithQuickReplies,

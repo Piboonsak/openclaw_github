@@ -14,6 +14,11 @@ export type SendLineReplyChunksParams = {
     messages: messagingApi.Message[],
     opts?: { accountId?: string },
   ) => Promise<unknown>;
+  pushMessagesLine: (
+    to: string,
+    messages: messagingApi.Message[],
+    opts?: { accountId?: string },
+  ) => Promise<unknown>;
   pushMessageLine: (to: string, text: string, opts?: { accountId?: string }) => Promise<unknown>;
   pushTextMessageWithQuickReplies: (
     to: string,
@@ -30,6 +35,51 @@ export async function sendLineReplyChunks(
 ): Promise<{ replyTokenUsed: boolean }> {
   const hasQuickReplies = Boolean(params.quickReplies?.length);
   let replyTokenUsed = Boolean(params.replyTokenUsed);
+
+  const pushChunkBatch = async (chunks: string[]): Promise<void> => {
+    if (chunks.length === 0) {
+      return;
+    }
+    const messages = chunks.map((chunk) => ({
+      type: "text" as const,
+      text: chunk,
+    }));
+    await params.pushMessagesLine(params.to, messages, {
+      accountId: params.accountId,
+    });
+  };
+
+  const pushRemainingChunks = async (chunks: string[]): Promise<void> => {
+    if (chunks.length === 0) {
+      return;
+    }
+
+    const lastIndex = chunks.length - 1;
+    const quickReplyBatchStart = hasQuickReplies ? Math.max(0, lastIndex - 4) : chunks.length;
+
+    for (let i = 0; i < quickReplyBatchStart; i += 5) {
+      await pushChunkBatch(chunks.slice(i, Math.min(i + 5, quickReplyBatchStart)));
+    }
+
+    if (!hasQuickReplies) {
+      await pushChunkBatch(chunks.slice(quickReplyBatchStart));
+      return;
+    }
+
+    const finalBatch = chunks.slice(quickReplyBatchStart).map((chunk) => ({
+      type: "text" as const,
+      text: chunk,
+    }));
+    if (finalBatch.length > 0) {
+      finalBatch[finalBatch.length - 1] = params.createTextMessageWithQuickReplies(
+        chunks[lastIndex],
+        params.quickReplies!,
+      );
+      await params.pushMessagesLine(params.to, finalBatch, {
+        accountId: params.accountId,
+      });
+    }
+  };
 
   if (params.chunks.length === 0) {
     return { replyTokenUsed };
@@ -58,21 +108,7 @@ export async function sendLineReplyChunks(
       });
       replyTokenUsed = true;
 
-      for (let i = 0; i < remaining.length; i += 1) {
-        const isLastChunk = i === remaining.length - 1;
-        if (isLastChunk && hasQuickReplies) {
-          await params.pushTextMessageWithQuickReplies(
-            params.to,
-            remaining[i],
-            params.quickReplies!,
-            { accountId: params.accountId },
-          );
-        } else {
-          await params.pushMessageLine(params.to, remaining[i], {
-            accountId: params.accountId,
-          });
-        }
-      }
+      await pushRemainingChunks(remaining);
 
       return { replyTokenUsed };
     } catch (err) {
@@ -81,21 +117,7 @@ export async function sendLineReplyChunks(
     }
   }
 
-  for (let i = 0; i < params.chunks.length; i += 1) {
-    const isLastChunk = i === params.chunks.length - 1;
-    if (isLastChunk && hasQuickReplies) {
-      await params.pushTextMessageWithQuickReplies(
-        params.to,
-        params.chunks[i],
-        params.quickReplies!,
-        { accountId: params.accountId },
-      );
-    } else {
-      await params.pushMessageLine(params.to, params.chunks[i], {
-        accountId: params.accountId,
-      });
-    }
-  }
+  await pushRemainingChunks(params.chunks);
 
   return { replyTokenUsed };
 }
