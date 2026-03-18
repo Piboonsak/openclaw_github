@@ -227,37 +227,48 @@ export async function monitorLineProvider(
               // when push API quota is exhausted (LINE free plan 429).
               const isIntermediate = info.kind === "tool" || info.kind === "block";
 
-              const { replyTokenUsed: nextReplyTokenUsed } = await deliverLineAutoReply({
-                payload,
-                lineData,
-                to: ctxPayload.From,
-                replyToken: isIntermediate ? null : replyToken,
-                replyTokenUsed: isIntermediate ? true : replyTokenUsed,
-                accountId: ctx.accountId,
-                textLimit,
-                deps: {
-                  buildTemplateMessageFromPayload,
-                  processLineMessage,
-                  chunkMarkdownText,
-                  sendLineReplyChunks,
-                  replyMessageLine,
-                  pushMessageLine,
-                  pushTextMessageWithQuickReplies,
-                  createQuickReplyItems,
-                  createTextMessageWithQuickReplies,
-                  pushMessagesLine,
-                  createFlexMessage,
-                  createImageMessage,
-                  createLocationMessage,
-                  onReplyError: (replyErr) => {
-                    logVerbose(
-                      `line: reply token failed, falling back to push: ${String(replyErr)}`,
-                    );
+              try {
+                const { replyTokenUsed: nextReplyTokenUsed } = await deliverLineAutoReply({
+                  payload,
+                  lineData,
+                  to: ctxPayload.From,
+                  replyToken: isIntermediate ? null : replyToken,
+                  replyTokenUsed: isIntermediate ? true : replyTokenUsed,
+                  accountId: ctx.accountId,
+                  textLimit,
+                  deps: {
+                    buildTemplateMessageFromPayload,
+                    processLineMessage,
+                    chunkMarkdownText,
+                    sendLineReplyChunks,
+                    replyMessageLine,
+                    pushMessageLine,
+                    pushTextMessageWithQuickReplies,
+                    createQuickReplyItems,
+                    createTextMessageWithQuickReplies,
+                    pushMessagesLine,
+                    createFlexMessage,
+                    createImageMessage,
+                    createLocationMessage,
+                    onReplyError: (replyErr) => {
+                      logVerbose(
+                        `line: reply token failed, falling back to push: ${String(replyErr)}`,
+                      );
+                    },
                   },
-                },
-              });
-              if (!isIntermediate) {
-                replyTokenUsed = nextReplyTokenUsed;
+                });
+                if (!isIntermediate) {
+                  replyTokenUsed = nextReplyTokenUsed;
+                }
+              } catch (err) {
+                // On LINE free plan with exhausted push quota, intermediate messages
+                // will always fail via push API. Don't re-throw so the pipeline
+                // continues to the final reply which can use the reserved replyToken.
+                if (!isIntermediate) {
+                  throw err;
+                }
+                logVerbose(`line: ${info.kind} delivery skipped (push failed): ${String(err)}`);
+                return;
               }
 
               recordChannelRuntimeState({

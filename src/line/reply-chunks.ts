@@ -86,34 +86,47 @@ export async function sendLineReplyChunks(
   }
 
   if (params.replyToken && !replyTokenUsed) {
+    const replyBatch = params.chunks.slice(0, 5);
+    const remaining = params.chunks.slice(replyBatch.length);
+
+    const replyMessages: LineReplyMessage[] = replyBatch.map((chunk) => ({
+      type: "text",
+      text: chunk,
+    }));
+
+    if (hasQuickReplies && remaining.length === 0 && replyMessages.length > 0) {
+      const lastIndex = replyMessages.length - 1;
+      replyMessages[lastIndex] = params.createTextMessageWithQuickReplies(
+        replyBatch[lastIndex],
+        params.quickReplies!,
+      );
+    }
+
+    let replySucceeded = false;
     try {
-      const replyBatch = params.chunks.slice(0, 5);
-      const remaining = params.chunks.slice(replyBatch.length);
-
-      const replyMessages: LineReplyMessage[] = replyBatch.map((chunk) => ({
-        type: "text",
-        text: chunk,
-      }));
-
-      if (hasQuickReplies && remaining.length === 0 && replyMessages.length > 0) {
-        const lastIndex = replyMessages.length - 1;
-        replyMessages[lastIndex] = params.createTextMessageWithQuickReplies(
-          replyBatch[lastIndex],
-          params.quickReplies!,
-        );
-      }
-
       await params.replyMessageLine(params.replyToken, replyMessages, {
         accountId: params.accountId,
       });
+      replySucceeded = true;
       replyTokenUsed = true;
-
-      await pushRemainingChunks(remaining);
-
-      return { replyTokenUsed };
     } catch (err) {
+      // Reply API failed (token expired or invalid) — fall through to push all chunks
       params.onReplyError?.(err);
       replyTokenUsed = true;
+    }
+
+    if (replySucceeded) {
+      // Reply API delivered first batch — push remaining if any, but tolerate
+      // push failures since the user already received the first batch.
+      if (remaining.length > 0) {
+        try {
+          await pushRemainingChunks(remaining);
+        } catch {
+          // Push API failed (likely 429 quota exhausted) — first batch was
+          // already delivered via reply API so we avoid re-throwing.
+        }
+      }
+      return { replyTokenUsed };
     }
   }
 

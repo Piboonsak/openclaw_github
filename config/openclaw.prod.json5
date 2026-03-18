@@ -283,6 +283,7 @@
         "wget",
         "git",
         "gh",
+        "node",
         "openclaw",
       ],
 
@@ -399,6 +400,71 @@
         echo: {
           maxPositional: 8,
         },
+        sort: {
+          maxPositional: 4,
+          allowPathPositionals: true,
+          allowedValueFlags: ["-k", "--key", "-t", "--field-separator", "-o", "--output"],
+        },
+        jq: {
+          minPositional: 1,
+          maxPositional: 4,
+          allowPathPositionals: true,
+          allowedValueFlags: ["--arg", "--argjson", "--slurpfile", "--rawfile", "--indent", "--tab"],
+        },
+        cut: {
+          maxPositional: 2,
+          allowPathPositionals: true,
+          allowedValueFlags: ["-d", "--delimiter", "-f", "--fields", "-c", "--characters", "-b", "--bytes"],
+        },
+        uniq: {
+          maxPositional: 2,
+          allowPathPositionals: true,
+          allowedValueFlags: ["-f", "--skip-fields", "-s", "--skip-chars", "-w", "--check-chars"],
+        },
+        tr: {
+          minPositional: 1,
+          maxPositional: 2,
+        },
+        wc: {
+          maxPositional: 4,
+          allowPathPositionals: true,
+        },
+        date: {
+          maxPositional: 1,
+          allowedValueFlags: ["-d", "--date", "--rfc-3339", "--iso-8601"],
+        },
+        uptime: {
+          maxPositional: 0,
+        },
+        whoami: {
+          maxPositional: 0,
+        },
+        hostname: {
+          maxPositional: 0,
+        },
+        ps: {
+          maxPositional: 0,
+          allowedValueFlags: ["-p", "--pid", "-u", "--user", "-o", "--format"],
+        },
+        wget: {
+          maxPositional: 1,
+          allowedValueFlags: [
+            "--header",
+            "--user-agent", "-U",
+            "--max-redirect",
+            "--timeout", "-T",
+            "--tries", "-t",
+            "--quiet", "-q",
+            "--output-document", "-O",
+          ],
+          deniedFlags: ["--execute", "-e", "--post-data", "--post-file"],
+        },
+        node: {
+          maxPositional: 2,
+          allowPathPositionals: true,
+          allowedValueFlags: ["--eval", "-e", "--print", "-p", "--check", "-c"],
+          deniedFlags: ["--inspect", "--inspect-brk"],
+        },
         git: {
           minPositional: 0,
           maxPositional: 10,
@@ -415,9 +481,8 @@
         gh: {
           minPositional: 0,
           maxPositional: 12,
+          allowPathPositionals: true,
           allowedValueFlags: [
-            "--help",
-            "--version",
             "--repo",
             "-R",
             "--field",
@@ -426,14 +491,12 @@
             "-X",
             "--hostname",
             "-H",
-            "--paginate",
             "--jq",
             "-q",
             "--json",
             "-J",
             "--template",
             "-t",
-            "--comments",
             "--limit",
             "-L",
             "--search",
@@ -449,7 +512,11 @@
             "--milestone",
             "--base",
             "--head",
-            "--web",
+            "--body",
+            "-b",
+            "--title",
+            "--sort",
+            "--order",
           ],
           deniedFlags: [],
         },
