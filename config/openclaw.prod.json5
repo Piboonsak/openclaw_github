@@ -1,4 +1,5 @@
 ﻿{
+  "models": {},
   "agents": {
     "defaults": {
       "model": {
@@ -7,7 +8,12 @@
           "anthropic/claude-opus-4-6",
           "anthropic/claude-sonnet-4-6"
         ]
-      }
+      },
+      "models": {},
+      "contextTokens": 200000,
+      "bootstrapMaxChars": 20000,
+      "bootstrapTotalMaxChars": 150000,
+      "promptTokenBudget": 12000
     }
   },
   "channels": {
