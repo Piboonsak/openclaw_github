@@ -1,36 +1,15 @@
 ﻿{
-  "models": {
-    "providers": {
-      "openrouter": {
-        "apiKey": "${OPENROUTER_API_KEY}",
-        "models": [
-          {
-            "id": "openrouter/minimax/minimax-m2.5",
-            "maxTokens": 8192
-          }
-        ]
-      },
-      "anthropic": { /* existing block */ }
-    }
-  },
   "agents": {
     "defaults": {
       "model": {
-        "primary": "openrouter/minimax/minimax-m2.5"
-      }
-    },
-    "list": {
-      "main": {
-        "model": {
-          "primary": "openrouter/minimax/minimax-m2.5"
-        }
+        "primary": "openrouter/minimax/minimax-m2.5",
+        "fallbacks": [
+          "anthropic/claude-opus-4-6",
+          "anthropic/claude-sonnet-4-6"
+        ]
       }
     }
   },
-  "fallbacks": [
-    "anthropic/claude-opus-4-6",
-    "anthropic/claude-sonnet-4-6"
-  ],
   "channels": {
     "discord": {
       "enabled": true,
