@@ -74,9 +74,9 @@
       // Model configuration
       // Cost-optimized default routing for NongKung operations via OpenRouter plan.
       model: {
-        primary: "openrouter/minimax/minimax-m2.5",
+        primary: "anthropic/claude-sonnet-4-6",
         fallbacks: [
-          "anthropic/claude-sonnet-4-6",
+          "openrouter/minimax/minimax-m2.5",
           "anthropic/claude-opus-4-6",
           "anthropic/claude-haiku-4-5-20251001",
         ],
@@ -84,11 +84,11 @@
 
       // Model aliases (friendly names in UI)
       models: {
-        "openrouter/minimax/minimax-m2.5": {
-          alias: "MiniMax M2.5 via OpenRouter (Primary)",
-        },
         "anthropic/claude-sonnet-4-6": {
-          alias: "Claude Sonnet 4.6 (Fallback)",
+          alias: "Claude Sonnet 4.6 (Primary)",
+        },
+        "openrouter/minimax/minimax-m2.5": {
+          alias: "MiniMax M2.5 via OpenRouter (Fallback)",
         },
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus (Analyst/Fallback)",
@@ -123,9 +123,9 @@
     list: {
       main: {
         model: {
-          primary: "openrouter/minimax/minimax-m2.5",
+          primary: "anthropic/claude-sonnet-4-6",
           fallbacks: [
-            "anthropic/claude-sonnet-4-6",
+            "openrouter/minimax/minimax-m2.5",
             "anthropic/claude-opus-4-6",
             "anthropic/claude-haiku-4-5-20251001",
           ],
@@ -409,7 +409,9 @@
           minPositional: 1,
           maxPositional: 4,
           allowPathPositionals: true,
-          allowedValueFlags: ["--arg", "--argjson", "--slurpfile", "--rawfile", "--indent", "--tab"],
+          allowBracketPositionals: true,
+          allowedValueFlags: ["--arg", "--argjson", "--argstr", "--indent", "--tab"],
+          deniedFlags: ["--argfile", "--rawfile", "--slurpfile", "--from-file", "--library-path", "-L", "-f"],
         },
         cut: {
           maxPositional: 2,
@@ -454,10 +456,8 @@
             "--max-redirect",
             "--timeout", "-T",
             "--tries", "-t",
-            "--quiet", "-q",
-            "--output-document", "-O",
           ],
-          deniedFlags: ["--execute", "-e", "--post-data", "--post-file"],
+          deniedFlags: ["--config", "--input-file", "-i", "--output-document", "-O", "--execute", "-e", "--post-data", "--post-file"],
         },
         node: {
           maxPositional: 2,
@@ -466,17 +466,32 @@
           deniedFlags: ["--inspect", "--inspect-brk"],
         },
         git: {
-          minPositional: 0,
+          minPositional: 1,
           maxPositional: 10,
           allowedValueFlags: [
+            "-C",
+            "--git-dir",
+            "--work-tree",
+            "--since",
+            "--until",
+            "--author",
+            "--grep",
+            "--max-count",
+            "-n",
+            "--format",
+            "--pretty",
+            "--name-only",
+            "--name-status",
+            "--stat",
+            "--shortstat",
+            "--decorate",
+            "--abbrev-commit",
+            "--oneline",
+            "--no-pager",
             "--branch",
             "--depth",
-            "--single-branch",
-            "--no-single-branch",
-            "--help",
-            "--version",
           ],
-          deniedFlags: ["--force-with-lease", "-f"],
+          deniedFlags: ["--force", "-f", "--force-with-lease"],
         },
         gh: {
           minPositional: 0,
