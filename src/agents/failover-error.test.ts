@@ -24,6 +24,15 @@ describe("failover-error", () => {
     ).toBe("format");
   });
 
+  it("treats selected-model provider allowlist 404s as model_not_found", () => {
+    expect(
+      resolveFailoverReasonFromError({
+        status: 404,
+        message: "404 No allowed providers are available for the selected model.",
+      }),
+    ).toBe("model_not_found");
+  });
+
   it("infers timeout from common node error codes", () => {
     expect(resolveFailoverReasonFromError({ code: "ETIMEDOUT" })).toBe("timeout");
     expect(resolveFailoverReasonFromError({ code: "ECONNRESET" })).toBe("timeout");
@@ -64,6 +73,23 @@ describe("failover-error", () => {
     });
     expect(err?.reason).toBe("format");
     expect(err?.status).toBe(400);
+  });
+
+  it("coerces selected-model provider allowlist 404s into model_not_found failover errors", () => {
+    const err = coerceToFailoverError(
+      {
+        status: 404,
+        message: "404 No allowed providers are available for the selected model.",
+      },
+      {
+        provider: "openrouter",
+        model: "qwen/qwen3.5-122b-a10b",
+      },
+    );
+    expect(err?.reason).toBe("model_not_found");
+    expect(err?.status).toBe(404);
+    expect(err?.provider).toBe("openrouter");
+    expect(err?.model).toBe("qwen/qwen3.5-122b-a10b");
   });
 
   it("describes non-Error values consistently", () => {
