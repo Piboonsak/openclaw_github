@@ -1,4 +1,4 @@
-{
+﻿{
   "models": {
     "providers": {
       "openrouter": {
@@ -30,5 +30,18 @@
   "fallbacks": [
     "anthropic/claude-opus-4-6",
     "anthropic/claude-sonnet-4-6"
-  ]
+  ],
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "dmPolicy": "pairing",
+      "groupPolicy": "allowlist",
+      "guilds": {
+        "1484074676245499936": {
+          "requireMention": false,
+          "users": ["482725865986326528"]
+        }
+      }
+    }
+  }
 }
