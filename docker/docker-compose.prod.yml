@@ -71,6 +71,7 @@ services:
       # Channel API credentials (LINE, Discord, Telegram, etc.)
       LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN:-}
       LINE_CHANNEL_SECRET: ${LINE_CHANNEL_SECRET:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
 
       # Docker Hub (for image pulls)
       DOCKER_USERNAME: ${DOCKER_USERNAME:-}

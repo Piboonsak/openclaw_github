@@ -781,6 +781,19 @@
       // botToken: "${TELEGRAM_BOT_TOKEN}",
       dmPolicy: "pairing",
     },
+
+    discord: {
+      enabled: true,
+      // token read from DISCORD_BOT_TOKEN env var
+      dmPolicy: "pairing",
+      groupPolicy: "allowlist",
+      guilds: {
+        "1484074676245499936": {
+          requireMention: false,
+          users: ["482725865986326528"],
+        },
+      },
+    },
   },
 
   // Logging configuration
