@@ -357,6 +357,33 @@ describe("delivery-queue", () => {
       expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("deferred to next restart"));
     });
 
+    it("aborts recovery and defers remaining entries on a 429 rate-limit error", async () => {
+      // Enqueue 3 entries — first will rate-limit; the other two should be deferred.
+      await enqueueCrashRecoveryEntries(); // adds 2 entries
+      await enqueueDelivery({ channel: "telegram", to: "3", payloads: [{ text: "c" }] }, tmpDir);
+
+      const deliver = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("429 - Too Many Requests"))
+        .mockResolvedValue([]);
+
+      const { result, log } = await runRecovery({ deliver });
+
+      // Only the first entry should have been attempted before aborting.
+      expect(deliver).toHaveBeenCalledTimes(1);
+      expect(result.failed).toBe(1);
+      expect(result.recovered).toBe(0);
+      expect(result.skipped).toBe(0);
+
+      // All 3 entries remain in queue (1 with incremented retryCount, 2 untouched).
+      const remaining = await loadPendingDeliveries(tmpDir);
+      expect(remaining).toHaveLength(3);
+
+      // Should have logged warning about rate limit and deferral.
+      expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("Rate-limited (429)"));
+      expect(log.warn).toHaveBeenCalledWith(expect.stringContaining("deferring 2 remaining"));
+    });
+
     it("returns zeros when queue is empty", async () => {
       const deliver = vi.fn();
       const { result } = await runRecovery({ deliver });

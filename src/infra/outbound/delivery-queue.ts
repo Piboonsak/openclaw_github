@@ -238,11 +238,13 @@ export async function recoverPendingDeliveries(opts: {
   let recovered = 0;
   let failed = 0;
   let skipped = 0;
+  let deferred = 0;
 
-  for (const entry of pending) {
+  for (let idx = 0; idx < pending.length; idx += 1) {
+    const entry = pending[idx];
     const now = Date.now();
     if (now >= deadline) {
-      const deferred = pending.length - recovered - failed - skipped;
+      deferred = pending.length - recovered - failed - skipped;
       opts.log.warn(`Recovery time budget exceeded — ${deferred} entries deferred to next restart`);
       break;
     }
@@ -262,7 +264,7 @@ export async function recoverPendingDeliveries(opts: {
     const backoff = computeBackoffMs(entry.retryCount + 1);
     if (backoff > 0) {
       if (now + backoff >= deadline) {
-        const deferred = pending.length - recovered - failed - skipped;
+        deferred = pending.length - recovered - failed - skipped;
         opts.log.warn(
           `Recovery time budget exceeded — ${deferred} entries deferred to next restart`,
         );
@@ -291,24 +293,30 @@ export async function recoverPendingDeliveries(opts: {
       recovered += 1;
       opts.log.info(`Recovered delivery ${entry.id} to ${entry.channel}:${entry.to}`);
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       try {
-        await failDelivery(
-          entry.id,
-          err instanceof Error ? err.message : String(err),
-          opts.stateDir,
-        );
+        await failDelivery(entry.id, errMsg, opts.stateDir);
       } catch {
         // Best-effort update.
       }
       failed += 1;
-      opts.log.warn(
-        `Retry failed for delivery ${entry.id}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      opts.log.warn(`Retry failed for delivery ${entry.id}: ${errMsg}`);
+      // Abort remaining recovery if channel is rate-limited (429) to prevent
+      // the startup burst from blocking live message delivery in the same window.
+      if (errMsg.includes("429")) {
+        deferred = pending.length - idx - 1;
+        if (deferred > 0) {
+          opts.log.warn(
+            `Rate-limited (429) during recovery — deferring ${deferred} remaining entries to next restart.`,
+          );
+        }
+        break;
+      }
     }
   }
 
   opts.log.info(
-    `Delivery recovery complete: ${recovered} recovered, ${failed} failed, ${skipped} skipped (max retries)`,
+    `Delivery recovery complete: ${recovered} recovered, ${failed} failed, ${skipped} skipped (max retries), ${deferred} deferred`,
   );
   return { recovered, failed, skipped };
 }

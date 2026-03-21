@@ -1,47 +1,417 @@
-﻿{
-  "models": {
-    "providers": {
-      "openrouter": {
-        "apiKey": "${OPENROUTER_API_KEY}",
-        "models": [
-          {
-            "id": "openrouter/minimax/minimax-m2.5",
-            "maxTokens": 8192
-          }
-        ]
-      },
-      "anthropic": { /* existing block */ }
-    }
-  },
-  "agents": {
-    "defaults": {
-      "model": {
-        "primary": "openrouter/minimax/minimax-m2.5"
-      }
+﻿// OpenClaw Production Configuration Template
+// Secure defaults for Hostinger VPS deployment
+//
+// Location: Copy to ~/.openclaw/openclaw.json on your server
+// Or mount as volume: -v $(pwd)/openclaw.prod.json5:/home/node/.openclaw/openclaw.json:ro
+//
+// IMPORTANT: DO NOT commit real secrets to git!
+// Use environment variables for sensitive values.
+
+{
+  // Gateway configuration
+  gateway: {
+    // Bind to all interfaces inside container (Nginx reverse proxy handles external access)
+    bind: "lan",
+    port: 18789,
+
+    // Authentication (set via env var OPENCLAW_GATEWAY_TOKEN)
+    auth: {
+      // Token will be read from OPENCLAW_GATEWAY_TOKEN env var
+      // Generate with: openssl rand -hex 24
+      // token: "${OPENCLAW_GATEWAY_TOKEN}"
     },
-    "list": {
-      "main": {
-        "model": {
-          "primary": "openrouter/minimax/minimax-m2.5"
-        }
-      }
-    }
+
+    // Require HTTPS in production (Hostinger provides via Let's Encrypt)
+    requireHttps: false, // Set true if behind reverse proxy with X-Forwarded-Proto
+
+    // Trust Hostinger's proxy headers
+    trustedProxies: ["127.0.0.1", "::1"],
+
+    // Node command security policy
+    nodes: {
+      // Dangerous commands to deny (privacy/security risk)
+      denyCommands: [
+        "camera.snap",
+        "camera.clip",
+        "screen.record",
+        "calendar.add",
+        "contacts.add",
+        "reminders.add",
+        "sms.send",
+      ],
+      // Explicitly allowed commands (empty = use platform defaults)
+      allowCommands: [],
+    },
   },
-  "fallbacks": [
-    "anthropic/claude-opus-4-6",
-    "anthropic/claude-sonnet-4-6"
-  ],
-  "channels": {
-    "discord": {
-      "enabled": true,
-      "dmPolicy": "pairing",
-      "groupPolicy": "allowlist",
-      "guilds": {
+
+  // Session configuration
+  session: {
+    reset: {
+      // Idle timeout: reset session after 30 minutes of inactivity
+      // LINE OA users benefit from persistent context during active conversations
+      // while reclaiming resources for idle sessions
+      idleMinutes: 30,
+    },
+  },
+
+  // Agent configuration
+  agents: {
+    defaults: {
+      // Workspace directory
+      workspace: "/data/openclaw/workspace",
+
+      // Context controls (Sprint 1.5): keep prompt size bounded to control cost/latency
+      // The previous 5x expansion inflated prompts significantly in long-running sessions.
+      bootstrapMaxChars: 12000, // per-file bootstrap cap
+      bootstrapTotalMaxChars: 60000, // total bootstrap cap across all injected files
+      contextTokens: 128000, // strict context ceiling for runtime estimates/status
+      promptTokenBudget: 10000, // hard history budget before each API call
+
+      // Issue #64: Enable deep reasoning by default for development-heavy workflows
+      // Valid levels: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+      thinkingDefault: "high",
+
+      // Model configuration
+      // Revert to Anthropic-first routing due OpenRouter billing instability.
+      model: {
+        primary: "anthropic/claude-sonnet-4-6",
+        fallbacks: [
+          "anthropic/claude-opus-4-6",
+          "anthropic/claude-3-5-haiku",
+        ],
+      },
+
+      // Model aliases (friendly names in UI)
+      models: {
+        "anthropic/claude-sonnet-4-6": {
+          alias: "Claude Sonnet 4.6 (Primary)",
+        },
+        "anthropic/claude-opus-4-6": {
+          alias: "Claude Opus (Analyst/Fallback)",
+        },
+        "anthropic/claude-3-5-haiku": {
+          alias: "Claude 3.5 Haiku (Fallback)",
+        },
+      },
+
+      // Tool access policy (least privilege)
+      tools: {
+        profile: "balanced", // balanced | minimal | unrestricted
+
+        // Disable dangerous tools by default
+        deny: [
+          "shell", // Direct shell access
+          "fs.write", // Unrestricted file writes
+          "network.raw", // Raw network sockets
+        ],
+      },
+
+      // Memory search / embeddings configuration
+      // Required for context recall and conversation memory features
+      memorySearch: {
+        provider: "openai", // Uses text-embedding-ada-002 via OPENAI_API_KEY env var
+        sources: ["memory"],
+        fallback: "none", // No fallback ? fail gracefully if embeddings unavailable
+      },
+    },
+
+    // Per-role model overrides (Sprint 1.5)
+    list: {
+      main: {
+        model: {
+          primary: "anthropic/claude-sonnet-4-6",
+          fallbacks: ["anthropic/claude-opus-4-6", "anthropic/claude-3-5-haiku"],
+        },
+      },
+      analyst: {
+        // Analyst keeps Opus as primary ? needs high reasoning capability
+        model: {
+          primary: "anthropic/claude-opus-4-6",
+          fallbacks: ["anthropic/claude-sonnet-4-6", "anthropic/claude-3-5-haiku"],
+        },
+      },
+      "gold-checker": {
+        model: {
+          primary: "anthropic/claude-sonnet-4-6",
+          fallbacks: ["anthropic/claude-3-5-haiku"],
+        },
+      },
+      scheduler: {
+        model: {
+          primary: "anthropic/claude-3-5-haiku",
+          fallbacks: ["anthropic/claude-sonnet-4-6"],
+        },
+      },
+      worker: {
+        model: {
+          primary: "anthropic/claude-sonnet-4-6",
+          fallbacks: ["anthropic/claude-3-5-haiku"],
+        },
+      },
+    },
+  },
+
+  // Tool configuration
+  tools: {
+    web: {
+      search: {
+        provider: "brave",
+        apiKey: "${BRAVE_API_KEY}",
+      },
+    },
+
+    // Exec tool security configuration (command execution)
+    exec: {
+      // Security mode: "deny" | "allowlist" | "full"
+      // - deny: all exec denied (safe default)
+      // - allowlist: only pre-approved commands allowed
+      // - full: all commands allowed (dangerous, not recommended)
+      security: "allowlist",
+
+      // Approval behavior: "off" | "on-miss" | "always"
+      // - off: no prompts at all
+      // - on-miss: prompt only if command not in allowlist
+      // - always: prompt every time
+      // Hotfix: disable approvals for LINE to avoid approval-template rate-limit storms.
+      ask: "off",
+
+      // Fallback when no UI available (LINE has no approval UI)
+      // - deny: silently deny unapproved commands
+      // - allowlist: treat as approved if in allowlist
+      // - full: allow everything (dangerous)
+      // NOTE: LINE OA has no approval UI, so "deny" blocks ALL exec commands.
+      // Using "allowlist" allows safeBins commands to run without approval prompt.
+      askFallback: "allowlist",
+
+      // Host to use: "sandbox" (isolated VM, not available here) or "gateway" (container native execution)
+      host: "gateway",
+
+      // Expanded safe bins (auto-approved, no prompt needed)
+      // Issue #63: git and gh added for agent self-development capability
+      safeBins: [
+        "ls",
+        "pwd",
+        "find",
+        "grep",
+        "sed",
+        "awk",
+        "sort",
+        "id",
+        "stat",
+        "jq",
+        "cut",
+        "uniq",
+        "head",
+        "tail",
+        "tr",
+        "wc",
+        "date",
+        "uptime",
+        "whoami",
+        "hostname",
+        "ps",
+        "tree",
+        "cat",
+        "echo",
+        "curl",
+        "wget",
+        "git",
+        "gh",
+      ],
+
+      // Safe bin profile definitions
+      // Sprint 1.8 WS-B: Define profiles for expensive tools (git, gh) to avoid blocking on validation
+      // KI-002: Added profiles for ls, pwd, find, sed, awk, id, stat (previously ignored as unprofiled)
+      safeBinProfiles: {
+        ls: {
+          maxPositional: 3,
+        },
+        pwd: {
+          maxPositional: 0,
+        },
+        find: {
+          maxPositional: 5,
+          allowedValueFlags: [
+            "-name", "-iname", "-type", "-mtime", "-mmin",
+            "-maxdepth", "-mindepth", "-size", "-user",
+            "-group", "-perm", "-newer", "-path", "-ipath",
+            "-print", "-print0",
+          ],
+          deniedFlags: ["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprint0"],
+        },
+        sed: {
+          maxPositional: 1,
+          allowedValueFlags: ["-e", "-n", "-r", "-E"],
+          deniedFlags: ["-i", "--in-place"],
+        },
+        awk: {
+          minPositional: 1,
+          maxPositional: 1,
+          allowedValueFlags: ["-F", "--field-separator", "-v", "--assign"],
+        },
+        id: {
+          maxPositional: 1,
+        },
+        stat: {
+          maxPositional: 3,
+          allowedValueFlags: ["-c", "--format", "-L", "--dereference", "-f", "--file-system"],
+        },
+        cat: {
+          maxPositional: 2,
+        },
+        echo: {
+          maxPositional: 8,
+        },
+        git: {
+          minPositional: 0,
+          maxPositional: 10,
+          allowedValueFlags: [
+            "--branch",
+            "--depth",
+            "--single-branch",
+            "--no-single-branch",
+            "--help",
+            "--version",
+          ],
+          deniedFlags: ["--force-with-lease", "-f"],
+        },
+        gh: {
+          minPositional: 0,
+          maxPositional: 5,
+          allowedValueFlags: [
+            "--help",
+            "--version",
+            "--repo",
+            "-R",
+            "--jq",
+            "-q",
+            "--json",
+            "-J",
+            "--template",
+            "-t",
+          ],
+          deniedFlags: [],
+        },
+      },
+    },
+  },
+
+  // Sandbox configuration (defense in depth)
+  sandbox: {
+    enabled: true,
+
+    // Docker sandbox settings
+    docker: {
+      // Network isolation (none = no external network)
+      network_mode: "bridge", // or "none" for full isolation
+
+      // Resource limits
+      memory: "1024m",
+      cpus: 2,
+    },
+
+    // Command blocklist (regex patterns)
+    // These are defense-in-depth; sandboxing is the primary security boundary
+    blocklist: [
+      // Destructive file operations
+      "rm\\s+-rf",
+      "rm\\s+--recursive",
+      "mkfs",
+      "dd\\s+if=",
+
+      // Privilege escalation
+      "sudo",
+      "su\\s+",
+      "chmod\\s+777",
+      "chown\\s+-R",
+
+      // Code injection via command substitution
+      "curl.*\\$\\(",
+      "wget.*\\$\\(",
+      ">\\|.*(bash|sh)\\s+-c",
+
+      // Dangerous git operations
+      "git\\s+push\\s+--force",
+      "git\\s+push\\s+-f",
+
+      // Container escape attempts
+      "docker\\s+run",
+      "docker\\s+exec",
+      "/proc/self/",
+
+      // Network scanning
+      "nmap",
+      "masscan",
+    ],
+  },
+
+  // Security policies
+  security: {
+    // DM (Direct Message) policy
+    // pairing = users must be explicitly approved
+    // allowlist = only pre-approved user IDs
+    // open = anyone can message (NOT RECOMMENDED for production)
+    dmPolicy: "pairing",
+
+    // Restrict AI agents from messaging each other
+    restrictedFromAiAgents: true,
+  },
+
+  // Channel configuration (example for LINE)
+  channels: {
+    // LINE Official Account
+    line: {
+      enabled: false, // Set true after obtaining credentials
+      // channelAccessToken: "${LINE_CHANNEL_ACCESS_TOKEN}",  // From env var
+      // channelSecret: "${LINE_CHANNEL_SECRET}",  // From env var
+
+      // DM policy for LINE channel:
+      //   "pairing" = users must be explicitly approved (safe default for private bots)
+      //   "allowlist" = only pre-approved user IDs in allowFrom[]
+      //   "open" = anyone can message (required for public-facing LINE OA)
+      // KI-013: If LINE OA is public-facing, use "open". "pairing" blocks ALL new users.
+      dmPolicy: "open",
+
+      // Allowlist (LINE user IDs that can interact)
+      allowFrom: [
+        // "U1234567890abcdef1234567890abcdef",  // Add your LINE user ID
+      ],
+    },
+
+    // Telegram (example, disabled by default)
+    telegram: {
+      enabled: false,
+      // botToken: "${TELEGRAM_BOT_TOKEN}",
+      dmPolicy: "pairing",
+    },
+
+    // Discord
+    discord: {
+      enabled: true,
+      dmPolicy: "pairing",
+      groupPolicy: "allowlist",
+      guilds: {
         "1484074676245499936": {
-          "requireMention": false,
-          "users": ["482725865986326528"]
-        }
-      }
-    }
-  }
+          requireMention: false,
+          users: ["482725865986326528"],
+        },
+      },
+    },
+  },
+
+  // Logging configuration
+  logging: {
+    level: "info", // debug | info | warn | error
+    retention: "30d", // Keep logs for 30 days
+    redactSensitive: true, // Auto-redact API keys and tokens
+  },
+
+  // Monitoring and health
+  monitoring: {
+    enabled: true,
+    healthCheck: {
+      enabled: true,
+      path: "/health",
+    },
+  },
 }
