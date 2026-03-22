@@ -28,11 +28,25 @@ if [ "${#files[@]}" -eq 0 ]; then
   exit 0
 fi
 
+allowed_workflows=(
+  ".github/workflows/.gitkeep"
+  ".github/workflows/deploy-openclaw-github-private-secrets.yml"
+)
+
 for file in "${files[@]}"; do
-  if [[ "$file" == .github/workflows/* ]] && [[ "$file" != .github/workflows/.gitkeep ]]; then
-    echo "Blocked by repository policy: workflow files are not allowed in openclaw_github." >&2
-    echo "Move all CI/CD workflows to Piboonsak/Openclaw." >&2
-    exit 1
+  if [[ "$file" == .github/workflows/* ]]; then
+    allowed=false
+    for allowed_file in "${allowed_workflows[@]}"; do
+      if [[ "$file" == "$allowed_file" ]]; then
+        allowed=true
+        break
+      fi
+    done
+    if [[ "$allowed" == false ]]; then
+      echo "Blocked by repository policy: workflow files are not allowed in openclaw_github." >&2
+      echo "Move all CI/CD workflows to Piboonsak/Openclaw." >&2
+      exit 1
+    fi
   fi
 done
 
