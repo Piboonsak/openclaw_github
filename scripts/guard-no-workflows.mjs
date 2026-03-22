@@ -4,7 +4,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 const workflowsDir = path.resolve(process.cwd(), ".github", "workflows");
-const allowedFiles = new Set([".gitkeep"]);
+const allowedFiles = new Set([".gitkeep", "deploy-openclaw-github-private-secrets.yml"]);
 
 async function main() {
   let entries;
