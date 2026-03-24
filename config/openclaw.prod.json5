@@ -72,35 +72,32 @@
       thinkingDefault: "high",
 
       // Model configuration
-      // Anthropic-first routing with OpenRouter fallbacks (Sprint 2.5 tested).
-      // deepseek-v3.2: GPT-5 class at $0.26/$0.38, passed truncation test 2026-03-24
+      // OpenRouter-first routing (Anthropic credits exhausted 2026-03-24).
+      // All models routed through OpenRouter with openrouter/ prefix.
       // gemini-2.5-flash-lite: ultra-fast at $0.10/$0.40, passed truncation test 2026-03-24
+      // deepseek-v3.2: GPT-5 class at $0.26/$0.38, passed truncation test 2026-03-24
       model: {
-        primary: "anthropic/claude-sonnet-4-6",
+        primary: "openrouter/google/gemini-2.5-flash-lite",
         fallbacks: [
-          "anthropic/claude-opus-4-6",
-          "deepseek/deepseek-v3.2",
-          "anthropic/claude-3-5-haiku",
-          "google/gemini-2.5-flash-lite",
+          "openrouter/deepseek/deepseek-v3.2",
+          "openrouter/anthropic/claude-sonnet-4-6",
+          "openrouter/anthropic/claude-3-5-haiku",
         ],
       },
 
       // Model aliases (friendly names in UI)
       models: {
-        "anthropic/claude-sonnet-4-6": {
-          alias: "Claude Sonnet 4.6 (Primary)",
+        "openrouter/google/gemini-2.5-flash-lite": {
+          alias: "Gemini 2.5 Flash Lite (Primary)",
         },
-        "anthropic/claude-opus-4-6": {
-          alias: "Claude Opus (Analyst/Fallback)",
+        "openrouter/deepseek/deepseek-v3.2": {
+          alias: "DeepSeek V3.2 (Fallback)",
         },
-        "deepseek/deepseek-v3.2": {
-          alias: "DeepSeek V3.2 (OpenRouter Fallback)",
+        "openrouter/anthropic/claude-sonnet-4-6": {
+          alias: "Claude Sonnet 4.6 (Fallback)",
         },
-        "anthropic/claude-3-5-haiku": {
-          alias: "Claude 3.5 Haiku (Scheduler)",
-        },
-        "google/gemini-2.5-flash-lite": {
-          alias: "Gemini 2.5 Flash Lite (Fast Fallback)",
+        "openrouter/anthropic/claude-3-5-haiku": {
+          alias: "Claude 3.5 Haiku (Fallback)",
         },
       },
 
@@ -129,34 +126,34 @@
     list: {
       main: {
         model: {
-          primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["anthropic/claude-opus-4-6", "deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
+          primary: "openrouter/google/gemini-2.5-flash-lite",
+          fallbacks: ["openrouter/deepseek/deepseek-v3.2", "openrouter/anthropic/claude-sonnet-4-6"],
         },
       },
       analyst: {
-        // Analyst keeps Opus as primary → needs high reasoning capability
+        // Analyst: DeepSeek primary for reasoning capability
         model: {
-          primary: "anthropic/claude-opus-4-6",
-          fallbacks: ["anthropic/claude-sonnet-4-6", "deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
+          primary: "openrouter/deepseek/deepseek-v3.2",
+          fallbacks: ["openrouter/google/gemini-2.5-flash-lite", "openrouter/anthropic/claude-sonnet-4-6"],
         },
       },
       "gold-checker": {
         model: {
-          primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
+          primary: "openrouter/google/gemini-2.5-flash-lite",
+          fallbacks: ["openrouter/deepseek/deepseek-v3.2"],
         },
       },
       scheduler: {
-        // Scheduler: Haiku primary, Gemini Flash Lite as cheap+fast fallback
+        // Scheduler: Gemini Flash Lite primary (fast + cheap)
         model: {
-          primary: "anthropic/claude-3-5-haiku",
-          fallbacks: ["google/gemini-2.5-flash-lite", "anthropic/claude-sonnet-4-6"],
+          primary: "openrouter/google/gemini-2.5-flash-lite",
+          fallbacks: ["openrouter/deepseek/deepseek-v3.2"],
         },
       },
       worker: {
         model: {
-          primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
+          primary: "openrouter/google/gemini-2.5-flash-lite",
+          fallbacks: ["openrouter/deepseek/deepseek-v3.2", "openrouter/anthropic/claude-3-5-haiku"],
         },
       },
     },
