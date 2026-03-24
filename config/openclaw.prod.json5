@@ -72,12 +72,16 @@
       thinkingDefault: "high",
 
       // Model configuration
-      // Revert to Anthropic-first routing due OpenRouter billing instability.
+      // Anthropic-first routing with OpenRouter fallbacks (Sprint 2.5 tested).
+      // deepseek-v3.2: GPT-5 class at $0.26/$0.38, passed truncation test 2026-03-24
+      // gemini-2.5-flash-lite: ultra-fast at $0.10/$0.40, passed truncation test 2026-03-24
       model: {
         primary: "anthropic/claude-sonnet-4-6",
         fallbacks: [
           "anthropic/claude-opus-4-6",
+          "deepseek/deepseek-v3.2",
           "anthropic/claude-3-5-haiku",
+          "google/gemini-2.5-flash-lite",
         ],
       },
 
@@ -89,8 +93,14 @@
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus (Analyst/Fallback)",
         },
+        "deepseek/deepseek-v3.2": {
+          alias: "DeepSeek V3.2 (OpenRouter Fallback)",
+        },
         "anthropic/claude-3-5-haiku": {
-          alias: "Claude 3.5 Haiku (Fallback)",
+          alias: "Claude 3.5 Haiku (Scheduler)",
+        },
+        "google/gemini-2.5-flash-lite": {
+          alias: "Gemini 2.5 Flash Lite (Fast Fallback)",
         },
       },
 
@@ -120,32 +130,33 @@
       main: {
         model: {
           primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["anthropic/claude-opus-4-6", "anthropic/claude-3-5-haiku"],
+          fallbacks: ["anthropic/claude-opus-4-6", "deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
         },
       },
       analyst: {
-        // Analyst keeps Opus as primary ? needs high reasoning capability
+        // Analyst keeps Opus as primary → needs high reasoning capability
         model: {
           primary: "anthropic/claude-opus-4-6",
-          fallbacks: ["anthropic/claude-sonnet-4-6", "anthropic/claude-3-5-haiku"],
+          fallbacks: ["anthropic/claude-sonnet-4-6", "deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
         },
       },
       "gold-checker": {
         model: {
           primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["anthropic/claude-3-5-haiku"],
+          fallbacks: ["deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
         },
       },
       scheduler: {
+        // Scheduler: Haiku primary, Gemini Flash Lite as cheap+fast fallback
         model: {
           primary: "anthropic/claude-3-5-haiku",
-          fallbacks: ["anthropic/claude-sonnet-4-6"],
+          fallbacks: ["google/gemini-2.5-flash-lite", "anthropic/claude-sonnet-4-6"],
         },
       },
       worker: {
         model: {
           primary: "anthropic/claude-sonnet-4-6",
-          fallbacks: ["anthropic/claude-3-5-haiku"],
+          fallbacks: ["deepseek/deepseek-v3.2", "anthropic/claude-3-5-haiku"],
         },
       },
     },
