@@ -284,12 +284,22 @@
         },
         gh: {
           minPositional: 0,
-          maxPositional: 5,
+          maxPositional: 10,
+          // Allow [] in positionals (GraphQL queries contain array syntax like ["id"]).
+          // KI-057b: -f/-F values become positionals; brackets must not be treated as globs.
+          allowBracketPositionals: true,
           // Only VALUE flags here (flags that consume the next argument).
           // Boolean flags (--help, --version, --web, --draft, --merge, --paginate,
           // --include, --comments, --patch, --checks, --ready-for-review, --request-review)
           // must NOT be listed — the validator treats allowedValueFlags entries as
           // "expects a following value"; standalone boolean usage fails validation.
+          //
+          // KI-057b: -f/--field/-F REMOVED from allowedValueFlags.
+          // Reason: GraphQL query values like -f query='mutation{...["id"]...}'
+          // contain [] brackets which isSafeLiteralToken rejects as glob chars.
+          // With -f/-F not listed, their values become positionals and
+          // allowBracketPositionals: true permits the brackets safely.
+          // Also removed --jq/-q: jq expressions like .[].title contain brackets.
           allowedValueFlags: [
             // Common value flags
             "--repo",
@@ -299,8 +309,6 @@
             // List/view/search value flags
             "--search",
             "--limit",
-            "--jq",
-            "-q",
             "--json",
             "-J",
             "--template",
@@ -316,8 +324,6 @@
             "-a",
             "--milestone",
             "-m",
-            "--field",
-            "-f",
             "-X",
             "--input",
             "--head",
@@ -327,7 +333,6 @@
             "-L",
             // GraphQL API value flags
             "--method",
-            "-F",
             "-H",
             "--header",
             // Run/list value flags
