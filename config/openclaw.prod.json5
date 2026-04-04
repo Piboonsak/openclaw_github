@@ -273,28 +273,30 @@
         git: {
           minPositional: 0,
           maxPositional: 10,
+          // Only VALUE flags here (flags that consume the next argument).
+          // Boolean flags (--help, --version, --single-branch, --no-single-branch)
+          // must NOT be listed — they are auto-accepted as boolean.
           allowedValueFlags: [
             "--branch",
             "--depth",
-            "--single-branch",
-            "--no-single-branch",
-            "--help",
-            "--version",
           ],
           deniedFlags: ["--force-with-lease", "-f"],
         },
         gh: {
           minPositional: 0,
           maxPositional: 5,
+          // Only VALUE flags here (flags that consume the next argument).
+          // Boolean flags (--help, --version, --web, --draft, --merge, --paginate,
+          // --include, --comments, --patch, --checks, --ready-for-review, --request-review)
+          // must NOT be listed — the validator treats allowedValueFlags entries as
+          // "expects a following value"; standalone boolean usage fails validation.
           allowedValueFlags: [
-            // Common flags
-            "--help",
-            "--version",
+            // Common value flags
             "--repo",
             "-R",
             "--repo-owner",
             "--cache",
-            // List/view/search flags
+            // List/view/search value flags
             "--search",
             "--limit",
             "--jq",
@@ -303,7 +305,7 @@
             "-J",
             "--template",
             "-t",
-            // Issue/PR flags
+            // Issue/PR value flags
             "--title",
             "--body",
             "-b",
@@ -314,7 +316,6 @@
             "-a",
             "--milestone",
             "-m",
-            "--web",
             "--field",
             "-f",
             "-X",
@@ -322,23 +323,14 @@
             "--head",
             "--base",
             "--state",
-            "--merge",
-            "--draft",
             "--workflow",
             "-L",
-            // GraphQL API flags (for `gh api graphql`)
+            // GraphQL API value flags
             "--method",
             "-F",
             "-H",
             "--header",
-            "-i",
-            "--include",
-            "-p",
-            "--paginate",
-            // Issue view flags
-            "--comments",
-            "--patch",
-            // Run list flags
+            // Run/list value flags
             "--created",
             "--user",
             "--actor",
@@ -346,15 +338,10 @@
             "--name",
             "--branch",
             "--event",
-            // PR flags
-            "--draft",
-            "--ready-for-review",
+            // PR value flags
             "--reviewers",
             "--team-reviewers",
-            "--request-review",
             "--author",
-            "--checks",
-            "-q",
           ],
           deniedFlags: [],
         },
