@@ -21,7 +21,9 @@ import { resolveHookConfig } from "../../config.js";
 import type { HookHandler } from "../../hooks.js";
 import { generateSlugViaLLM } from "../../llm-slug-generator.js";
 
-// In-memory counter for auto-save: tracks number of messages per session key since last save.
+// In-memory counter for auto-save: tracks message count per session key since last save.
+// Node.js is single-threaded; the gateway serialises execution per session lane, so this
+// map does not need a mutex or atomic operations.
 const autoSaveCounters = new Map<string, number>();
 
 /** @internal For testing only. Resets all auto-save counters. */
@@ -274,6 +276,24 @@ async function saveMemoryEntry(params: SaveSessionMemoryParams): Promise<void> {
 }
 
 /**
+ * Resolve an absolute session file path from a potentially relative path stored in the
+ * session store. When sessions are written by older versions the path may be relative to
+ * the agent's sessions directory.
+ */
+function resolveAbsoluteSessionFile(sessionFile: string, agentId: string): string {
+  if (path.isAbsolute(sessionFile)) {
+    return sessionFile;
+  }
+  const sessionsDir = path.join(
+    resolveStateDir(process.env, os.homedir),
+    "agents",
+    agentId,
+    "sessions",
+  );
+  return path.join(sessionsDir, sessionFile);
+}
+
+/**
  * Resolve session file and cfg for a session key by loading the session store.
  * Used by the auto-save path where context does not carry these values.
  */
@@ -287,6 +307,9 @@ function resolveSessionFileFromStore(sessionKey: string): {
   const storePath = resolveStorePath(cfg.session?.store, { agentId });
   const store = loadSessionStore(storePath);
   const entry = store[sessionKey.toLowerCase()] ?? store[sessionKey];
+  if (!entry) {
+    log.debug("Session entry not found in store for auto-save", { sessionKey, storePath });
+  }
   return {
     cfg,
     sessionFile: entry?.sessionFile,
@@ -333,8 +356,8 @@ async function handleAutoSave(event: Parameters<HookHandler>[0]): Promise<void> 
     return;
   }
 
-  // Threshold reached — reset counter and run save.
-  autoSaveCounters.set(sessionKey, 0);
+  // Threshold reached — delete key (avoids accumulating stale entries) and run save.
+  autoSaveCounters.delete(sessionKey);
 
   log.debug("Auto-save threshold reached", { sessionKey, every: everyMessages });
 
@@ -346,21 +369,12 @@ async function handleAutoSave(event: Parameters<HookHandler>[0]): Promise<void> 
   let sessionId: string;
   try {
     const resolved = resolveSessionFileFromStore(sessionKey);
-    sessionFile = resolved.sessionFile;
+    sessionFile = resolved.sessionFile
+      ? resolveAbsoluteSessionFile(resolved.sessionFile, agentId)
+      : undefined;
     sessionId = resolved.sessionId ?? "unknown";
   } catch {
     sessionId = "unknown";
-  }
-
-  // Resolve absolute path when sessionFile is stored as a relative path.
-  if (sessionFile && !path.isAbsolute(sessionFile)) {
-    const sessionsDir = path.join(
-      resolveStateDir(process.env, os.homedir),
-      "agents",
-      agentId,
-      "sessions",
-    );
-    sessionFile = path.join(sessionsDir, sessionFile);
   }
 
   await saveMemoryEntry({

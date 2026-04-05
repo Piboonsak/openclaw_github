@@ -84,7 +84,7 @@ Example configuration:
 
 ### Auto-save behaviour
 
-When `every` is set to a positive integer, the hook listens to `message:sent` events and increments a per-session counter. Once the counter reaches the configured value, a memory snapshot is written (tagged `source: auto-save`) and the counter resets to zero. The counter is in-memory only, so it resets when the gateway restarts — this is intentional; it avoids saving duplicate snapshots across restarts.
+When `every` is set to a positive integer, the hook listens to `message:sent` events and increments a per-session counter. Once the counter reaches the configured value, a memory snapshot is written (tagged `source: auto-save`) and the counter is cleared. The counter is in-memory only, so it resets when the gateway restarts — this prevents a burst of saves immediately after restart (the first N messages after a restart will rebuild the counter before any auto-save fires).
 
 Auto-save is **disabled by default** (`every: 0`). Set it to a positive number to enable it:
 
