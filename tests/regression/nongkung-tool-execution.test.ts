@@ -20,6 +20,13 @@ describe("NongKung regression — tool execution (safe-bin policy)", () => {
       expect(validateSafeBinArgv(["https://api.example.com/search"], curlProfile)).toBe(true);
     });
 
+    it("rejects URLs containing glob characters (e.g. query string with ?)", () => {
+      // The safe-bin policy treats ? as a glob token to prevent glob-expansion attacks.
+      expect(validateSafeBinArgv(["https://api.example.com/search?q=gold"], curlProfile)).toBe(
+        false,
+      );
+    });
+
     it("allows curl with silent and fail flags (standard probe pattern)", () => {
       expect(
         validateSafeBinArgv(["-s", "-f", "-S", "https://api.example.com/health"], curlProfile),

@@ -53,7 +53,7 @@ describe("NongKung regression — model fallback when primary fails", () => {
     expect(result.nextState.activeModel).toContain(FALLBACK_MODEL);
   });
 
-  it("summarises fallback reason from the attempt", () => {
+  it("summarizes fallback reason from the attempt", () => {
     const result = resolveFallbackTransition({
       selectedProvider: PRIMARY_PROVIDER,
       selectedModel: PRIMARY_MODEL,
