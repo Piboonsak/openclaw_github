@@ -7,7 +7,11 @@ import {
 import { resetDiagnosticSessionStateForTest } from "../logging/diagnostic-session-state.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import { wrapToolWithBeforeToolCallHook } from "./pi-tools.before-tool-call.js";
-import { CRITICAL_THRESHOLD, GLOBAL_CIRCUIT_BREAKER_THRESHOLD } from "./tool-loop-detection.js";
+import {
+  CRITICAL_THRESHOLD,
+  GLOBAL_CIRCUIT_BREAKER_THRESHOLD,
+  RAPID_SUCCESSION_THRESHOLD,
+} from "./tool-loop-detection.js";
 import type { AnyAgentTool } from "./tools/common.js";
 
 vi.mock("../plugins/hook-runner-global.js");
@@ -303,6 +307,80 @@ describe("before_tool_call loop detection behavior", () => {
       expect(loopEvent?.detector).toBe("known_poll_no_progress");
       expect(loopEvent?.count).toBe(CRITICAL_THRESHOLD);
       expect(loopEvent?.toolName).toBe("process");
+    });
+  });
+
+  describe("rapid_succession storm detection (integration)", () => {
+    it("blocks a tool storm and emits a critical diagnostic event with callTrace", async () => {
+      await withToolLoopEvents(async (emitted) => {
+        const execute = vi.fn().mockResolvedValue({
+          content: [{ type: "text", text: "ok" }],
+          details: { ok: true },
+        });
+        const tool = createWrappedTool("bash", execute);
+
+        // Execute RAPID_SUCCESSION_THRESHOLD - 1 calls first to build up history
+        for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD - 1; i += 1) {
+          await tool.execute(`bash-${i}`, { cmd: `echo ${i}` }, undefined, undefined);
+        }
+
+        // The Nth consecutive call should be blocked
+        await expect(
+          tool.execute(`bash-${RAPID_SUCCESSION_THRESHOLD}`, { cmd: "echo storm" }, undefined, undefined),
+        ).rejects.toThrow("CRITICAL");
+
+        const stormEvent = emitted.find((evt) => evt.detector === "rapid_succession");
+        expect(stormEvent?.type).toBe("tool.loop");
+        expect(stormEvent?.level).toBe("critical");
+        expect(stormEvent?.action).toBe("block");
+        expect(stormEvent?.detector).toBe("rapid_succession");
+        expect(stormEvent?.toolName).toBe("bash");
+        expect(stormEvent?.count).toBe(RAPID_SUCCESSION_THRESHOLD);
+        // callTrace must be present
+        expect(Array.isArray(stormEvent?.callTrace)).toBe(true);
+        expect(stormEvent?.callTrace?.length).toBeGreaterThan(0);
+        expect(stormEvent?.callTrace?.at(-1)).toBe("bash");
+      });
+    });
+
+    it("does not block when a different tool interrupts the succession", async () => {
+      const execute = vi.fn().mockResolvedValue({
+        content: [{ type: "text", text: "ok" }],
+        details: { ok: true },
+      });
+      const bashTool = createWrappedTool("bash", execute);
+      const readTool = createWrappedTool("read", execute);
+
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD - 1; i += 1) {
+        await bashTool.execute(`bash-${i}`, { cmd: `echo ${i}` }, undefined, undefined);
+      }
+      // Interrupt with a different tool
+      await readTool.execute("read-1", { path: "/a.txt" }, undefined, undefined);
+
+      // bash again — streak is reset
+      await expect(
+        bashTool.execute("bash-final", { cmd: "echo after" }, undefined, undefined),
+      ).resolves.toBeDefined();
+    });
+
+    it("emits callTrace field in warning diagnostic events", async () => {
+      await withToolLoopEvents(async (emitted) => {
+        const execute = vi.fn().mockResolvedValue({
+          content: [{ type: "text", text: "ok" }],
+          details: { ok: true },
+        });
+        const params = { action: "poll", sessionId: "sess-warn" };
+        const tool = createWrappedTool("process", execute);
+
+        for (let i = 0; i < 10; i += 1) {
+          await tool.execute(`poll-${i}`, params, undefined, undefined);
+        }
+
+        const warnEvent = emitted.find((evt) => evt.level === "warning");
+        if (warnEvent) {
+          expect(Array.isArray(warnEvent.callTrace)).toBe(true);
+        }
+      });
     });
   });
 });

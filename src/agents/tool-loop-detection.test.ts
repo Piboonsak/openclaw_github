@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
 import type { SessionState } from "../logging/diagnostic-session-state.js";
 import {
+  CALL_TRACE_SIZE,
   CRITICAL_THRESHOLD,
   GLOBAL_CIRCUIT_BREAKER_THRESHOLD,
+  RAPID_SUCCESSION_THRESHOLD,
   TOOL_CALL_HISTORY_SIZE,
   WARNING_THRESHOLD,
+  buildCallTrace,
   detectToolCallLoop,
   getToolCallStats,
   hashToolCall,
@@ -535,6 +538,217 @@ describe("tool-loop-detection", () => {
       const stats = getToolCallStats(state);
       expect(stats.mostFrequent?.toolName).toBe("read");
       expect(stats.mostFrequent?.count).toBe(7);
+    });
+  });
+
+  describe("rapid_succession detector", () => {
+    it("is disabled by default when loop detection is disabled", () => {
+      const state = createState();
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD + 5; i += 1) {
+        recordToolCall(state, "bash", { cmd: `echo ${i}` }, `bash-${i}`);
+        const result = detectToolCallLoop(state, "bash", { cmd: `echo ${i + 1}` });
+        expect(result.stuck).toBe(false);
+      }
+    });
+
+    it("does not trigger below the rapid succession threshold", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD - 2; i += 1) {
+        recordToolCall(state, "bash", { cmd: `echo ${i}` }, `bash-${i}`);
+      }
+      const result = detectToolCallLoop(state, "bash", { cmd: "echo final" }, config);
+      expect(result.stuck).toBe(false);
+    });
+
+    it("blocks at the rapid succession threshold", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      // Record RAPID_SUCCESSION_THRESHOLD - 1 consecutive calls to "bash"
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD - 1; i += 1) {
+        recordToolCall(state, "bash", { cmd: `echo ${i}` }, `bash-${i}`);
+      }
+      // The next call (which would be the Nth consecutive) should trigger the detector
+      const result = detectToolCallLoop(state, "bash", { cmd: "echo storm" }, config);
+      expect(result.stuck).toBe(true);
+      if (!result.stuck) return;
+      expect(result.level).toBe("critical");
+      expect(result.detector).toBe("rapid_succession");
+      expect(result.count).toBe(RAPID_SUCCESSION_THRESHOLD);
+      expect(result.message).toContain("CRITICAL");
+      expect(result.message).toContain("rapid succession");
+    });
+
+    it("resets consecutive count when a different tool is called in between", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      // Call bash many times
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD - 1; i += 1) {
+        recordToolCall(state, "bash", { cmd: `echo ${i}` }, `bash-${i}`);
+      }
+      // Interleave a different tool — resets the streak
+      recordToolCall(state, "read", { path: "/file.txt" }, "read-1");
+      // Now bash again: streak is only 1, should not block
+      const result = detectToolCallLoop(state, "bash", { cmd: "echo after" }, config);
+      expect(result.stuck).toBe(false);
+    });
+
+    it("fires even with varying args (any-args storm)", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD - 1; i += 1) {
+        // All different args — but same tool name
+        recordToolCall(state, "bash", { cmd: `unique_command_${i}` }, `bash-${i}`);
+      }
+      const result = detectToolCallLoop(state, "bash", { cmd: "unique_command_final" }, config);
+      expect(result.stuck).toBe(true);
+      if (!result.stuck) return;
+      expect(result.detector).toBe("rapid_succession");
+    });
+
+    it("respects custom rapidSuccessionThreshold", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true, rapidSuccessionThreshold: 5 };
+      // 4 consecutive bash calls recorded
+      for (let i = 0; i < 4; i += 1) {
+        recordToolCall(state, "bash", { cmd: `echo ${i}` }, `bash-${i}`);
+      }
+      const result = detectToolCallLoop(state, "bash", { cmd: "echo 5th" }, config);
+      expect(result.stuck).toBe(true);
+      if (!result.stuck) return;
+      expect(result.detector).toBe("rapid_succession");
+      expect(result.count).toBe(5);
+    });
+
+    it("can be disabled via detectors.rapidSuccession = false", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = {
+        enabled: true,
+        detectors: { rapidSuccession: false },
+      };
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD + 5; i += 1) {
+        recordToolCall(state, "bash", { cmd: `echo ${i}` }, `bash-${i}`);
+      }
+      const result = detectToolCallLoop(state, "bash", { cmd: "echo more" }, config);
+      // Should not be blocked by rapid_succession (may still warn via other detectors)
+      if (result.stuck) {
+        expect(result.detector).not.toBe("rapid_succession");
+      }
+    });
+
+    it("includes callTrace in the result", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      for (let i = 0; i < RAPID_SUCCESSION_THRESHOLD - 1; i += 1) {
+        recordToolCall(state, "bash", { cmd: `echo ${i}` }, `bash-${i}`);
+      }
+      const result = detectToolCallLoop(state, "bash", { cmd: "echo storm" }, config);
+      expect(result.stuck).toBe(true);
+      if (!result.stuck) return;
+      expect(Array.isArray(result.callTrace)).toBe(true);
+      expect(result.callTrace?.length).toBeGreaterThan(0);
+      expect(result.callTrace?.length).toBeLessThanOrEqual(CALL_TRACE_SIZE);
+      // Last entry should be the triggering tool
+      expect(result.callTrace?.at(-1)).toBe("bash");
+    });
+  });
+
+  describe("buildCallTrace", () => {
+    it("returns just the current call for empty history", () => {
+      const trace = buildCallTrace([], "bash");
+      expect(trace).toEqual(["bash"]);
+    });
+
+    it("includes recent history entries plus current call", () => {
+      const history = [
+        { toolName: "read" },
+        { toolName: "write" },
+        { toolName: "read" },
+      ];
+      const trace = buildCallTrace(history, "bash");
+      expect(trace).toEqual(["read", "write", "read", "bash"]);
+    });
+
+    it("is capped at maxSize entries", () => {
+      const history = Array.from({ length: 20 }, (_, i) => ({ toolName: `tool-${i}` }));
+      const trace = buildCallTrace(history, "bash", CALL_TRACE_SIZE);
+      expect(trace.length).toBe(CALL_TRACE_SIZE);
+      expect(trace.at(-1)).toBe("bash");
+    });
+
+    it("uses CALL_TRACE_SIZE as default cap", () => {
+      const history = Array.from({ length: 50 }, () => ({ toolName: "read" }));
+      const trace = buildCallTrace(history, "bash");
+      expect(trace.length).toBe(CALL_TRACE_SIZE);
+    });
+  });
+
+  describe("callTrace in all detectors", () => {
+    it("includes callTrace in global_circuit_breaker result", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      const params = { action: "poll", sessionId: "s1" };
+      for (let i = 0; i < GLOBAL_CIRCUIT_BREAKER_THRESHOLD; i += 1) {
+        const id = `cb-${i}`;
+        recordToolCall(state, "process", params, id);
+        recordToolCallOutcome(state, {
+          toolName: "process",
+          toolParams: params,
+          toolCallId: id,
+          result: {
+            content: [{ type: "text", text: "still running" }],
+            details: { status: "running", aggregated: "steady" },
+          },
+        });
+      }
+      const result = detectToolCallLoop(state, "process", params, config);
+      expect(result.stuck).toBe(true);
+      if (!result.stuck) return;
+      expect(result.detector).toBe("global_circuit_breaker");
+      expect(Array.isArray(result.callTrace)).toBe(true);
+      expect(result.callTrace?.at(-1)).toBe("process");
+    });
+
+    it("includes callTrace in known_poll_no_progress critical result", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      const params = { action: "poll", sessionId: "s2" };
+      for (let i = 0; i < CRITICAL_THRESHOLD; i += 1) {
+        const id = `poll-${i}`;
+        recordToolCall(state, "process", params, id);
+        recordToolCallOutcome(state, {
+          toolName: "process",
+          toolParams: params,
+          toolCallId: id,
+          result: {
+            content: [{ type: "text", text: "no change" }],
+            details: { status: "running", aggregated: "same" },
+          },
+        });
+      }
+      const result = detectToolCallLoop(state, "process", params, config);
+      expect(result.stuck).toBe(true);
+      if (!result.stuck) return;
+      expect(result.detector).toBe("known_poll_no_progress");
+      expect(Array.isArray(result.callTrace)).toBe(true);
+    });
+
+    it("includes callTrace in generic_repeat warning result", () => {
+      const state = createState();
+      const config: ToolLoopDetectionConfig = { enabled: true };
+      const params = { path: "/a.txt" };
+      // Use a high enough rapidSuccessionThreshold so generic repeat fires first
+      for (let i = 0; i < WARNING_THRESHOLD; i += 1) {
+        recordToolCall(state, "read", params, `read-${i}`);
+      }
+      const result = detectToolCallLoop(state, "read", params, {
+        ...config,
+        rapidSuccessionThreshold: WARNING_THRESHOLD + RAPID_SUCCESSION_THRESHOLD + 10,
+      });
+      expect(result.stuck).toBe(true);
+      if (!result.stuck) return;
+      // Could be generic_repeat or rapid_succession depending on what fires first
+      expect(Array.isArray(result.callTrace)).toBe(true);
     });
   });
 });

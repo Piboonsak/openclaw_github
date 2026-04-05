@@ -105,6 +105,7 @@ export async function runBeforeToolCallHook(args: {
           count: loopResult.count,
           message: loopResult.message,
           pairedToolName: loopResult.pairedToolName,
+          callTrace: loopResult.callTrace,
         });
         return {
           blocked: true,
@@ -124,6 +125,7 @@ export async function runBeforeToolCallHook(args: {
             count: loopResult.count,
             message: loopResult.message,
             pairedToolName: loopResult.pairedToolName,
+            callTrace: loopResult.callTrace,
           });
         }
       }
