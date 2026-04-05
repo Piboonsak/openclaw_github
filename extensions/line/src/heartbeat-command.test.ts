@@ -6,15 +6,12 @@ import { setLineRuntime } from "./runtime.js";
 type CommandHandler = NonNullable<Parameters<OpenClawPluginApi["registerCommand"]>[0]["handler"]>;
 type CommandContext = Parameters<CommandHandler>[0];
 
-function makeConfig(
-  heartbeat?: OpenClawConfig["agents"] extends infer A
-    ? A extends { defaults?: infer D }
-      ? D extends { heartbeat?: infer H }
-        ? H
-        : never
-      : never
-    : never,
-): OpenClawConfig {
+/** Heartbeat config sub-type extracted from OpenClawConfig. */
+type HeartbeatConfig = NonNullable<
+  NonNullable<NonNullable<OpenClawConfig["agents"]>["defaults"]>["heartbeat"]
+>;
+
+function makeConfig(heartbeat?: HeartbeatConfig): OpenClawConfig {
   return {
     agents: {
       defaults: {
@@ -24,16 +21,7 @@ function makeConfig(
   } as unknown as OpenClawConfig;
 }
 
-function makeCtx(
-  args: string,
-  heartbeat?: ReturnType<typeof makeConfig>["agents"] extends infer A
-    ? A extends { defaults?: infer D }
-      ? D extends { heartbeat?: infer H }
-        ? H
-        : never
-      : never
-    : never,
-): CommandContext {
+function makeCtx(args: string, heartbeat?: HeartbeatConfig): CommandContext {
   return {
     args,
     config: makeConfig(heartbeat),

@@ -165,10 +165,11 @@ export function registerLineHeartbeatCommand(api: OpenClawPluginApi): void {
       if (!config.agents.defaults.heartbeat) {
         config.agents.defaults.heartbeat = {};
       }
-      // Persist using the original (non-lowercased) arg to preserve user intent
-      config.agents.defaults.heartbeat.every = ctx.args?.trim() ?? firstArg;
+      // Persist the original (trimmed) arg to preserve user intent (casing, e.g. "30m" not "30M")
+      const originalArg = argsStr;
+      config.agents.defaults.heartbeat.every = originalArg;
       await runtime.config.writeConfigFile(config);
-      return { text: `✅ Heartbeat interval updated: ${ctx.args?.trim() ?? firstArg}` };
+      return { text: `✅ Heartbeat interval updated: ${originalArg}` };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { text: `❌ Failed to update heartbeat interval: ${message}` };

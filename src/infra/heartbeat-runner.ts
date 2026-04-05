@@ -75,6 +75,12 @@ export type HeartbeatDeps = OutboundSendDeps &
 const log = createSubsystemLogger("gateway/heartbeat");
 let heartbeatsEnabled = true;
 
+/**
+ * Default multiplier cap for auto-adjust backoff when no maxEvery is configured.
+ * The stressed interval will not exceed (base intervalMs * this multiplier).
+ */
+const AUTO_ADJUST_DEFAULT_MAX_MULTIPLIER = 8;
+
 export function setHeartbeatsEnabled(enabled: boolean) {
   heartbeatsEnabled = enabled;
 }
@@ -1213,7 +1219,7 @@ export function startHeartbeatRunner(opts: {
           const maxEveryMs = agent.heartbeat.maxEvery
             ? resolveHeartbeatIntervalMs(state.cfg, agent.heartbeat.maxEvery)
             : null;
-          const backoffCap = maxEveryMs ?? agent.intervalMs * 8;
+          const backoffCap = maxEveryMs ?? agent.intervalMs * AUTO_ADJUST_DEFAULT_MAX_MULTIPLIER;
           const current = agent.stressBackoffMs ?? 0;
           // Double the backoff each time, starting at one base interval.
           const next = current === 0 ? agent.intervalMs : Math.min(current * 2, backoffCap);
