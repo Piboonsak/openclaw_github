@@ -672,6 +672,26 @@ export const OpenClawSchema = z
       })
       .strict()
       .optional(),
+    rateLimit: z
+      .object({
+        perUser: z.number().int().positive().optional(),
+        global: z.number().int().positive().optional(),
+        windowMs: z.number().int().positive().optional(),
+        channelOverrides: z
+          .record(
+            z.string(),
+            z
+              .object({
+                perUser: z.number().int().positive().optional(),
+                global: z.number().int().positive().optional(),
+                windowMs: z.number().int().positive().optional(),
+              })
+              .strict(),
+          )
+          .optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((cfg, ctx) => {

@@ -135,14 +135,20 @@
       main: {
         model: {
           primary: "openrouter/google/gemini-2.5-flash-lite",
-          fallbacks: ["openrouter/deepseek/deepseek-v3.2", "openrouter/anthropic/claude-sonnet-4-6"],
+          fallbacks: [
+            "openrouter/deepseek/deepseek-v3.2",
+            "openrouter/anthropic/claude-sonnet-4-6",
+          ],
         },
       },
       analyst: {
         // Analyst: DeepSeek primary for reasoning capability
         model: {
           primary: "openrouter/deepseek/deepseek-v3.2",
-          fallbacks: ["openrouter/google/gemini-2.5-flash-lite", "openrouter/anthropic/claude-sonnet-4-6"],
+          fallbacks: [
+            "openrouter/google/gemini-2.5-flash-lite",
+            "openrouter/anthropic/claude-sonnet-4-6",
+          ],
         },
       },
       "gold-checker": {
@@ -248,10 +254,22 @@
         find: {
           maxPositional: 5,
           allowedValueFlags: [
-            "-name", "-iname", "-type", "-mtime", "-mmin",
-            "-maxdepth", "-mindepth", "-size", "-user",
-            "-group", "-perm", "-newer", "-path", "-ipath",
-            "-print", "-print0",
+            "-name",
+            "-iname",
+            "-type",
+            "-mtime",
+            "-mmin",
+            "-maxdepth",
+            "-mindepth",
+            "-size",
+            "-user",
+            "-group",
+            "-perm",
+            "-newer",
+            "-path",
+            "-ipath",
+            "-print",
+            "-print0",
           ],
           deniedFlags: ["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprint0"],
         },
@@ -284,10 +302,7 @@
           // Only VALUE flags here (flags that consume the next argument).
           // Boolean flags (--help, --version, --single-branch, --no-single-branch)
           // must NOT be listed — they are auto-accepted as boolean.
-          allowedValueFlags: [
-            "--branch",
-            "--depth",
-          ],
+          allowedValueFlags: ["--branch", "--depth"],
           deniedFlags: ["--force-with-lease", "-f"],
         },
         gh: {

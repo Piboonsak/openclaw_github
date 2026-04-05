@@ -9,7 +9,11 @@ vi.mock("./auth-profiles.js", () => ({
   resolveAuthProfileOrder: vi.fn(),
 }));
 
-import { ensureAuthProfileStore, isProfileInCooldown, resolveAuthProfileOrder } from "./auth-profiles.js";
+import {
+  ensureAuthProfileStore,
+  isProfileInCooldown,
+  resolveAuthProfileOrder,
+} from "./auth-profiles.js";
 import { runWithModelFallback } from "./model-fallback.js";
 
 const mockedEnsureAuthProfileStore = vi.mocked(ensureAuthProfileStore);

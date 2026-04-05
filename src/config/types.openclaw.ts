@@ -25,6 +25,41 @@ import type { PluginsConfig } from "./types.plugins.js";
 import type { SkillsConfig } from "./types.skills.js";
 import type { ToolsConfig } from "./types.tools.js";
 
+/**
+ * Per-channel rate limit overrides. When set, these values take precedence
+ * over the top-level `perUser`, `global`, and `windowMs` fields for the
+ * named channel.
+ */
+export type RateLimitChannelOverride = {
+  /** Max messages a single user may send per window on this channel. */
+  perUser?: number;
+  /** Max messages across all users per window on this channel. */
+  global?: number;
+  /** Sliding-window duration in milliseconds for this channel. */
+  windowMs?: number;
+};
+
+/**
+ * Message-level rate limiting for the routing layer.
+ *
+ * Config keys (from the issue spec):
+ *   rateLimit.perUser   — per-user message quota per window (default: 60)
+ *   rateLimit.global    — global message quota per window  (default: 600)
+ *   rateLimit.windowMs  — window duration in ms            (default: 60000)
+ *
+ * Channel-aware overrides are provided via `channelOverrides.<channelId>`.
+ */
+export type RateLimitConfig = {
+  /** Max messages a single user may send per `windowMs`. @default 60 */
+  perUser?: number;
+  /** Max messages across all users per `windowMs`. @default 600 */
+  global?: number;
+  /** Sliding-window duration in milliseconds. @default 60000 (1 min) */
+  windowMs?: number;
+  /** Per-channel overrides that take precedence over the top-level values. */
+  channelOverrides?: Record<string, RateLimitChannelOverride>;
+};
+
 export type OpenClawConfig = {
   meta?: {
     /** Last OpenClaw version that wrote this config. */
@@ -97,6 +132,8 @@ export type OpenClawConfig = {
   talk?: TalkConfig;
   gateway?: GatewayConfig;
   memory?: MemoryConfig;
+  /** Message-level rate limiting for per-user and global quotas. */
+  rateLimit?: RateLimitConfig;
 };
 
 export type ConfigValidationIssue = {
