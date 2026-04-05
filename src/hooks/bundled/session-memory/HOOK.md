@@ -1,13 +1,13 @@
 ---
 name: session-memory
-description: "Save session context to memory when /new or /reset command is issued"
+description: "Save session context to memory when /new or /reset command is issued, or automatically after every N messages"
 homepage: https://docs.openclaw.ai/automation/hooks#session-memory
 metadata:
   {
     "openclaw":
       {
         "emoji": "💾",
-        "events": ["command:new", "command:reset"],
+        "events": ["command:new", "command:reset", "message:sent"],
         "requires": { "config": ["workspace.dir"] },
         "install": [{ "id": "bundled", "kind": "bundled", "label": "Bundled with OpenClaw" }],
       },
@@ -16,11 +16,11 @@ metadata:
 
 # Session Memory Hook
 
-Automatically saves session context to your workspace memory when you issue `/new` or `/reset`.
+Automatically saves session context to your workspace memory when you issue `/new` or `/reset`, or after every N sent messages when `every` is configured.
 
 ## What It Does
 
-When you run `/new` or `/reset` to start a fresh session:
+When you run `/new` or `/reset` to start a fresh session, or when the auto-save threshold is reached:
 
 1. **Finds the previous session** - Uses the pre-reset session entry to locate the correct transcript
 2. **Extracts conversation** - Reads the last N user/assistant messages from the session (default: 15, configurable)
@@ -59,9 +59,10 @@ The hook uses your configured LLM provider to generate slugs, so it works with a
 
 The hook supports optional configuration:
 
-| Option     | Type   | Default | Description                                                     |
-| ---------- | ------ | ------- | --------------------------------------------------------------- |
-| `messages` | number | 15      | Number of user/assistant messages to include in the memory file |
+| Option     | Type   | Default | Description                                                                          |
+| ---------- | ------ | ------- | ------------------------------------------------------------------------------------ |
+| `messages` | number | 15      | Number of user/assistant messages to include in the memory file                      |
+| `every`    | number | 0       | Auto-save after every N sent messages (0 = disabled; requires `message:sent` events) |
 
 Example configuration:
 
@@ -72,12 +73,23 @@ Example configuration:
       "entries": {
         "session-memory": {
           "enabled": true,
-          "messages": 25
+          "messages": 25,
+          "every": 10
         }
       }
     }
   }
 }
+```
+
+### Auto-save behaviour
+
+When `every` is set to a positive integer, the hook listens to `message:sent` events and increments a per-session counter. Once the counter reaches the configured value, a memory snapshot is written (tagged `source: auto-save`) and the counter resets to zero. The counter is in-memory only, so it resets when the gateway restarts — this is intentional; it avoids saving duplicate snapshots across restarts.
+
+Auto-save is **disabled by default** (`every: 0`). Set it to a positive number to enable it:
+
+```json
+{ "every": 10 }
 ```
 
 The hook automatically:
