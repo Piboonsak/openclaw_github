@@ -304,14 +304,14 @@ bash scripts/check-bot.sh
 
 Checks performed:
 
-| # | Check | What it verifies |
-|---|-------|-----------------|
-| 1 | **container_status** | Docker container is in `running` state |
-| 2 | **port_binding** | Gateway port (default `18789`) is bound |
-| 3 | **health_endpoint** | `GET /health` returns HTTP 200 |
-| 4 | **gateway_process** | `node … gateway` process is alive inside the container |
-| 5 | **resources** | Container CPU and memory usage |
-| 6 | **log_tail** | Last 10 lines of gateway logs |
+| #   | Check                | What it verifies                                       |
+| --- | -------------------- | ------------------------------------------------------ |
+| 1   | **container_status** | Docker container is in `running` state                 |
+| 2   | **port_binding**     | Gateway port (default `18789`) is bound                |
+| 3   | **health_endpoint**  | `GET /health` returns HTTP 200                         |
+| 4   | **gateway_process**  | `node … gateway` process is alive inside the container |
+| 5   | **resources**        | Container CPU and memory usage                         |
+| 6   | **log_tail**         | Last 10 lines of gateway logs                          |
 
 Each check prints a clear `PASS` / `FAIL` indicator. Exit code is `0` when all checks pass, `1` otherwise.
 
