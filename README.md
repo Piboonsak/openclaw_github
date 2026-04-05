@@ -294,6 +294,45 @@ It’s perfectly fine to run the Gateway on a small Linux instance. Clients (mac
 
 Details: [Remote access](https://docs.openclaw.ai/gateway/remote) · [Nodes](https://docs.openclaw.ai/nodes) · [Security](https://docs.openclaw.ai/gateway/security)
 
+## Bot Health Check
+
+Use `scripts/check-bot.sh` to run a one-shot health check of a Docker-based OpenClaw deployment:
+
+```bash
+bash scripts/check-bot.sh
+```
+
+Checks performed:
+
+| # | Check | What it verifies |
+|---|-------|-----------------|
+| 1 | **container_status** | Docker container is in `running` state |
+| 2 | **port_binding** | Gateway port (default `18789`) is bound |
+| 3 | **health_endpoint** | `GET /health` returns HTTP 200 |
+| 4 | **gateway_process** | `node … gateway` process is alive inside the container |
+| 5 | **resources** | Container CPU and memory usage |
+| 6 | **log_tail** | Last 10 lines of gateway logs |
+
+Each check prints a clear `PASS` / `FAIL` indicator. Exit code is `0` when all checks pass, `1` otherwise.
+
+**Options:**
+
+```
+--json              Machine-readable JSON output
+--container NAME    Docker container name (default: openclaw-sgnl-openclaw-1)
+--port PORT         Gateway port to probe  (default: 18789)
+--host HOST         Gateway host           (default: localhost)
+```
+
+**Example — machine-readable output:**
+
+```bash
+bash scripts/check-bot.sh --json | jq .overall
+# "pass"
+```
+
+Details: [Health checks](https://docs.openclaw.ai/gateway/health)
+
 ## macOS permissions via the Gateway protocol
 
 The macOS app can run in **node mode** and advertises its capabilities + permission map over the Gateway WebSocket (`node.list` / `node.describe`). Clients can then execute local actions via `node.invoke`:
