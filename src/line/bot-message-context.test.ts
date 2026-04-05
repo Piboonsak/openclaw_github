@@ -110,4 +110,117 @@ describe("buildLineMessageContext", () => {
     expect(context?.ctxPayload.OriginatingTo).toBe("line:room:room-1");
     expect(context?.ctxPayload.To).toBe("line:room:room-1");
   });
+
+  describe("reply message context awareness", () => {
+    it("sets ReplyToId and includes reply annotation in Body when text message has quotedMessageId", async () => {
+      const event = createMessageEvent(
+        { type: "user", userId: "user-1" },
+        {
+          message: {
+            id: "msg-2",
+            type: "text",
+            text: "what did you mean?",
+            quoteToken: "qt-abc",
+            quotedMessageId: "msg-1",
+          } as MessageEvent["message"],
+        },
+      );
+
+      const context = await buildLineMessageContext({
+        event,
+        allMedia: [],
+        cfg,
+        account,
+      });
+
+      expect(context).not.toBeNull();
+      if (!context) {
+        throw new Error("context missing");
+      }
+
+      expect(context.ctxPayload.ReplyToId).toBe("msg-1");
+      expect(context.ctxPayload.Body).toContain("[Replying to message id:msg-1]");
+      // BodyForAgent should remain the raw text without the suffix
+      expect(context.ctxPayload.BodyForAgent).toBe("what did you mean?");
+    });
+
+    it("sets ReplyToId and includes reply annotation when sticker message has quotedMessageId", async () => {
+      const event = createMessageEvent(
+        { type: "user", userId: "user-1" },
+        {
+          message: {
+            id: "msg-3",
+            type: "sticker",
+            packageId: "1",
+            stickerId: "1",
+            stickerResourceType: "STATIC",
+            quoteToken: "qt-xyz",
+            quotedMessageId: "msg-2",
+          } as MessageEvent["message"],
+        },
+      );
+
+      const context = await buildLineMessageContext({
+        event,
+        allMedia: [],
+        cfg,
+        account,
+      });
+
+      expect(context).not.toBeNull();
+      if (!context) {
+        throw new Error("context missing");
+      }
+
+      expect(context.ctxPayload.ReplyToId).toBe("msg-2");
+      expect(context.ctxPayload.Body).toContain("[Replying to message id:msg-2]");
+    });
+
+    it("does not set ReplyToId when text message has no quotedMessageId", async () => {
+      const event = createMessageEvent({ type: "user", userId: "user-1" });
+
+      const context = await buildLineMessageContext({
+        event,
+        allMedia: [],
+        cfg,
+        account,
+      });
+
+      expect(context).not.toBeNull();
+      if (!context) {
+        throw new Error("context missing");
+      }
+
+      expect(context.ctxPayload.ReplyToId).toBeUndefined();
+      expect(context.ctxPayload.Body).not.toContain("[Replying to message id:");
+    });
+
+    it("does not set ReplyToId for image messages (no quotedMessageId support)", async () => {
+      const event = createMessageEvent(
+        { type: "user", userId: "user-1" },
+        {
+          message: {
+            id: "msg-4",
+            type: "image",
+            quoteToken: "qt-img",
+            contentProvider: { type: "line" },
+          } as MessageEvent["message"],
+        },
+      );
+
+      const context = await buildLineMessageContext({
+        event,
+        allMedia: [{ path: "/tmp/img.jpg", contentType: "image/jpeg" }],
+        cfg,
+        account,
+      });
+
+      expect(context).not.toBeNull();
+      if (!context) {
+        throw new Error("context missing");
+      }
+
+      expect(context.ctxPayload.ReplyToId).toBeUndefined();
+    });
+  });
 });

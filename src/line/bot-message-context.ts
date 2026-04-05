@@ -171,6 +171,17 @@ function extractMediaPlaceholder(message: MessageEvent["message"]): string {
   }
 }
 
+/**
+ * Extracts the quoted message ID from a LINE message when the user replies to a past message.
+ * Only text and sticker messages carry `quotedMessageId` in the LINE webhook event.
+ */
+function extractLineQuotedMessageId(message: MessageEvent["message"]): string | undefined {
+  if (message.type === "text" || message.type === "sticker") {
+    return (message as { quotedMessageId?: string }).quotedMessageId;
+  }
+  return undefined;
+}
+
 type LineRouteInfo = ReturnType<typeof resolveAgentRoute>;
 type LineSourceInfoWithPeerId = LineSourceInfo & { peerId: string };
 
@@ -225,6 +236,8 @@ async function finalizeLineInboundContext(params: {
   };
   locationContext?: ReturnType<typeof toLocationContext>;
   verboseLog: { kind: "inbound" | "postback"; mediaCount?: number };
+  /** Quoted/replied-to message ID from the LINE webhook event, if present. */
+  quotedMessageId?: string;
 }) {
   const { fromAddress, toAddress, originatingTo } = resolveLineAddresses({
     isGroup: params.source.isGroup,
@@ -252,11 +265,17 @@ async function finalizeLineInboundContext(params: {
     sessionKey: params.route.sessionKey,
   });
 
+  // Append reply annotation when the user is replying to a past LINE message.
+  // LINE webhooks only include the quoted message's ID, not its content.
+  const replySuffix = params.quotedMessageId
+    ? `\n\n[Replying to message id:${params.quotedMessageId}]`
+    : "";
+
   const body = formatInboundEnvelope({
     channel: "LINE",
     from: conversationLabel,
     timestamp: params.timestamp,
-    body: params.rawBody,
+    body: `${params.rawBody}${replySuffix}`,
     chatType: params.source.isGroup ? "group" : "direct",
     sender: {
       id: senderId,
@@ -283,6 +302,7 @@ async function finalizeLineInboundContext(params: {
     Provider: "line",
     Surface: "line",
     MessageSid: params.messageSid,
+    ReplyToId: params.quotedMessageId,
     Timestamp: params.timestamp,
     MediaPath: params.media.firstPath,
     MediaType: params.media.firstContentType,
@@ -326,6 +346,9 @@ async function finalizeLineInboundContext(params: {
     logVerbose(
       `${label}: from=${ctxPayload.From} len=${body.length}${mediaInfo} preview="${preview}"`,
     );
+    if (params.quotedMessageId) {
+      logVerbose(`line reply-context: quotedMessageId=${params.quotedMessageId}`);
+    }
   }
 
   return { ctxPayload, replyToken: (params.event as { replyToken: string }).replyToken };
@@ -389,6 +412,7 @@ export async function buildLineMessageContext(params: BuildLineMessageContextPar
     },
     locationContext,
     verboseLog: { kind: "inbound", mediaCount: allMedia.length },
+    quotedMessageId: extractLineQuotedMessageId(message),
   });
 
   return {
