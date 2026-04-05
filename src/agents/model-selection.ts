@@ -516,10 +516,10 @@ export function resolveThinkingDefault(params: {
   const candidate = params.catalog?.find(
     (entry) => entry.provider === params.provider && entry.id === params.model,
   );
-  if (candidate?.reasoning) {
-    return "low";
+  if (candidate && !candidate.reasoning) {
+    return "off";
   }
-  return "off";
+  return "low";
 }
 
 /**
