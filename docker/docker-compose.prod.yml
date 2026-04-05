@@ -34,6 +34,18 @@ services:
     ports:
       - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
 
+    # Gateway startup command: bind to all container interfaces (0.0.0.0) so Docker
+    # port forwarding can reach the app from the host-side 127.0.0.1:18789 binding above.
+    # Without --bind lan the gateway defaults to container loopback (127.0.0.1) which
+    # Docker cannot reach through its bridge NAT.
+    command:
+      - "node"
+      - "openclaw.mjs"
+      - "gateway"
+      - "--allow-unconfigured"
+      - "--bind"
+      - "lan"
+
     # Load environment variables from .env file (Issue #67: Dev workspace support)
     # Place .env next to docker-compose.prod.yml; copy from .env.example
     env_file:

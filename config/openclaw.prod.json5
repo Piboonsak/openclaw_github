@@ -14,6 +14,14 @@
     bind: "lan",
     port: 18789,
 
+    // Control UI (WebChat browser interface)
+    // Served at /chat so the URL is openclaw.yahwan.biz/chat
+    // Nginx routes /chat → gateway port 18789 (see docker/nginx/openclaw.conf)
+    controlUi: {
+      enabled: true,
+      basePath: "/chat",
+    },
+
     // Authentication (set via env var OPENCLAW_GATEWAY_TOKEN)
     auth: {
       // Token will be read from OPENCLAW_GATEWAY_TOKEN env var
