@@ -261,17 +261,20 @@ export function logToolLoopAction(
     toolName: string;
     level: "warning" | "critical";
     action: "warn" | "block";
-    detector: "generic_repeat" | "known_poll_no_progress" | "global_circuit_breaker" | "ping_pong";
+    detector: "generic_repeat" | "known_poll_no_progress" | "global_circuit_breaker" | "ping_pong" | "rapid_succession";
     count: number;
     message: string;
     pairedToolName?: string;
+    callTrace?: string[];
   },
 ) {
   const payload = `tool loop: sessionId=${params.sessionId ?? "unknown"} sessionKey=${
     params.sessionKey ?? "unknown"
   } tool=${params.toolName} level=${params.level} action=${params.action} detector=${
     params.detector
-  } count=${params.count}${params.pairedToolName ? ` pairedTool=${params.pairedToolName}` : ""} message="${params.message}"`;
+  } count=${params.count}${params.pairedToolName ? ` pairedTool=${params.pairedToolName}` : ""}${
+    params.callTrace ? ` trace=[${params.callTrace.join(",")}]` : ""
+  } message="${params.message}"`;
   if (params.level === "critical") {
     diag.error(payload);
   } else {
@@ -288,6 +291,7 @@ export function logToolLoopAction(
     count: params.count,
     message: params.message,
     pairedToolName: params.pairedToolName,
+    callTrace: params.callTrace,
   });
   markActivity();
 }

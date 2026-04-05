@@ -82,11 +82,15 @@ export const FIELD_HELP: Record<string, string> = {
     "Critical threshold for repetitive patterns when detector is enabled (default: 20).",
   "tools.loopDetection.globalCircuitBreakerThreshold":
     "Global no-progress breaker threshold (default: 30).",
+  "tools.loopDetection.rapidSuccessionThreshold":
+    "Number of consecutive calls to the same tool (any args) before the rapid-succession storm circuit breaker fires (default: 15).",
   "tools.loopDetection.detectors.genericRepeat":
     "Enable generic repeated same-tool/same-params loop detection (default: true).",
   "tools.loopDetection.detectors.knownPollNoProgress":
     "Enable known poll tool no-progress loop detection (default: true).",
   "tools.loopDetection.detectors.pingPong": "Enable ping-pong loop detection (default: true).",
+  "tools.loopDetection.detectors.rapidSuccession":
+    "Enable rapid-succession storm detection: blocks when the same tool is called consecutively N times (default: true).",
   "tools.exec.notifyOnExit":
     "When true (default), backgrounded exec sessions on exit and node exec lifecycle events enqueue a system event and request a heartbeat.",
   "tools.exec.notifyOnExitEmptySuccess":

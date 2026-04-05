@@ -10,7 +10,8 @@ export type LoopDetectorKind =
   | "generic_repeat"
   | "known_poll_no_progress"
   | "global_circuit_breaker"
-  | "ping_pong";
+  | "ping_pong"
+  | "rapid_succession";
 
 export type LoopDetectionResult =
   | { stuck: false }
@@ -22,22 +23,28 @@ export type LoopDetectionResult =
       message: string;
       pairedToolName?: string;
       warningKey?: string;
+      callTrace?: string[];
     };
 
 export const TOOL_CALL_HISTORY_SIZE = 30;
 export const WARNING_THRESHOLD = 10;
 export const CRITICAL_THRESHOLD = 20;
 export const GLOBAL_CIRCUIT_BREAKER_THRESHOLD = 30;
+export const RAPID_SUCCESSION_THRESHOLD = 15;
+/** Maximum number of recent tool call names included in a callTrace for diagnostics. */
+export const CALL_TRACE_SIZE = 10;
 const DEFAULT_LOOP_DETECTION_CONFIG = {
   enabled: false,
   historySize: TOOL_CALL_HISTORY_SIZE,
   warningThreshold: WARNING_THRESHOLD,
   criticalThreshold: CRITICAL_THRESHOLD,
   globalCircuitBreakerThreshold: GLOBAL_CIRCUIT_BREAKER_THRESHOLD,
+  rapidSuccessionThreshold: RAPID_SUCCESSION_THRESHOLD,
   detectors: {
     genericRepeat: true,
     knownPollNoProgress: true,
     pingPong: true,
+    rapidSuccession: true,
   },
 };
 
@@ -47,10 +54,12 @@ type ResolvedLoopDetectionConfig = {
   warningThreshold: number;
   criticalThreshold: number;
   globalCircuitBreakerThreshold: number;
+  rapidSuccessionThreshold: number;
   detectors: {
     genericRepeat: boolean;
     knownPollNoProgress: boolean;
     pingPong: boolean;
+    rapidSuccession: boolean;
   };
 };
 
@@ -88,6 +97,10 @@ function resolveLoopDetectionConfig(config?: ToolLoopDetectionConfig): ResolvedL
     warningThreshold,
     criticalThreshold,
     globalCircuitBreakerThreshold,
+    rapidSuccessionThreshold: asPositiveInt(
+      config?.rapidSuccessionThreshold,
+      DEFAULT_LOOP_DETECTION_CONFIG.rapidSuccessionThreshold,
+    ),
     detectors: {
       genericRepeat:
         config?.detectors?.genericRepeat ?? DEFAULT_LOOP_DETECTION_CONFIG.detectors.genericRepeat,
@@ -95,6 +108,9 @@ function resolveLoopDetectionConfig(config?: ToolLoopDetectionConfig): ResolvedL
         config?.detectors?.knownPollNoProgress ??
         DEFAULT_LOOP_DETECTION_CONFIG.detectors.knownPollNoProgress,
       pingPong: config?.detectors?.pingPong ?? DEFAULT_LOOP_DETECTION_CONFIG.detectors.pingPong,
+      rapidSuccession:
+        config?.detectors?.rapidSuccession ??
+        DEFAULT_LOOP_DETECTION_CONFIG.detectors.rapidSuccession,
     },
   };
 }
@@ -153,6 +169,41 @@ function isKnownPollToolCall(toolName: string, params: unknown): boolean {
   }
   const action = params.action;
   return action === "poll" || action === "log";
+}
+
+/**
+ * Count consecutive calls to the same tool name at the tail of the history.
+ * Unlike other detectors, this ignores args — any call to the same tool counts.
+ * This detects tool storms: the model calling the same tool N times in a row
+ * without giving the previous results a chance to influence behaviour.
+ */
+function getRapidSuccessionCount(
+  history: Array<{ toolName: string }>,
+  toolName: string,
+): number {
+  let count = 0;
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    if (history[i]?.toolName !== toolName) {
+      break;
+    }
+    count += 1;
+  }
+  // +1 for the current (not-yet-recorded) call
+  return count + 1;
+}
+
+/**
+ * Build a compact call trace (tool names only) from the tail of the history.
+ * Used to include recent context in diagnostic events for easier debugging.
+ */
+export function buildCallTrace(
+  history: Array<{ toolName: string }>,
+  toolName: string,
+  maxSize = CALL_TRACE_SIZE,
+): string[] {
+  const tail = history.slice(-Math.max(0, maxSize - 1)).map((h) => h.toolName);
+  tail.push(toolName);
+  return tail;
 }
 
 function extractTextContent(result: unknown): string {
@@ -385,6 +436,28 @@ export function detectToolCallLoop(
   const noProgressStreak = noProgress.count;
   const knownPollTool = isKnownPollToolCall(toolName, params);
   const pingPong = getPingPongStreak(history, currentHash);
+  const callTrace = buildCallTrace(history, toolName);
+
+  // Rapid-succession storm detector: same tool called N times consecutively (any args).
+  // This catches nested-agent tool storms before outcome data is available.
+  const rapidCount = getRapidSuccessionCount(history, toolName);
+  if (
+    resolvedConfig.detectors.rapidSuccession &&
+    rapidCount >= resolvedConfig.rapidSuccessionThreshold
+  ) {
+    log.error(
+      `Tool storm (rapid succession) detected: ${toolName} called ${rapidCount} times in a row`,
+    );
+    return {
+      stuck: true,
+      level: "critical",
+      detector: "rapid_succession",
+      count: rapidCount,
+      message: `CRITICAL: ${toolName} has been called ${rapidCount} times in rapid succession without interruption. Session execution blocked to prevent a tool storm and credit burn.`,
+      warningKey: `rapid:${toolName}`,
+      callTrace,
+    };
+  }
 
   if (noProgressStreak >= resolvedConfig.globalCircuitBreakerThreshold) {
     log.error(
@@ -397,6 +470,7 @@ export function detectToolCallLoop(
       count: noProgressStreak,
       message: `CRITICAL: ${toolName} has repeated identical no-progress outcomes ${noProgressStreak} times. Session execution blocked by global circuit breaker to prevent runaway loops.`,
       warningKey: `global:${toolName}:${currentHash}:${noProgress.latestResultHash ?? "none"}`,
+      callTrace,
     };
   }
 
@@ -413,6 +487,7 @@ export function detectToolCallLoop(
       count: noProgressStreak,
       message: `CRITICAL: Called ${toolName} with identical arguments and no progress ${noProgressStreak} times. This appears to be a stuck polling loop. Session execution blocked to prevent resource waste.`,
       warningKey: `poll:${toolName}:${currentHash}:${noProgress.latestResultHash ?? "none"}`,
+      callTrace,
     };
   }
 
@@ -429,6 +504,7 @@ export function detectToolCallLoop(
       count: noProgressStreak,
       message: `WARNING: You have called ${toolName} ${noProgressStreak} times with identical arguments and no progress. Stop polling and either (1) increase wait time between checks, or (2) report the task as failed if the process is stuck.`,
       warningKey: `poll:${toolName}:${currentHash}:${noProgress.latestResultHash ?? "none"}`,
+      callTrace,
     };
   }
 
@@ -452,6 +528,7 @@ export function detectToolCallLoop(
       message: `CRITICAL: You are alternating between repeated tool-call patterns (${pingPong.count} consecutive calls) with no progress. This appears to be a stuck ping-pong loop. Session execution blocked to prevent resource waste.`,
       pairedToolName: pingPong.pairedToolName,
       warningKey: pingPongWarningKey,
+      callTrace,
     };
   }
 
@@ -467,6 +544,7 @@ export function detectToolCallLoop(
       message: `WARNING: You are alternating between repeated tool-call patterns (${pingPong.count} consecutive calls). This looks like a ping-pong loop; stop retrying and report the task as failed.`,
       pairedToolName: pingPong.pairedToolName,
       warningKey: pingPongWarningKey,
+      callTrace,
     };
   }
 
@@ -488,6 +566,7 @@ export function detectToolCallLoop(
       count: recentCount,
       message: `WARNING: You have called ${toolName} ${recentCount} times with identical arguments. If this is not making progress, stop retrying and report the task as failed.`,
       warningKey: `generic:${toolName}:${currentHash}`,
+      callTrace,
     };
   }
 

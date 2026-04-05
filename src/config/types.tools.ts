@@ -137,6 +137,8 @@ export type ToolLoopDetectionDetectorConfig = {
   knownPollNoProgress?: boolean;
   /** Enable warning/blocking for no-progress ping-pong alternating patterns. */
   pingPong?: boolean;
+  /** Enable blocking for rapid successive calls to the same tool (tool storm). */
+  rapidSuccession?: boolean;
 };
 
 export type ToolLoopDetectionConfig = {
@@ -150,6 +152,8 @@ export type ToolLoopDetectionConfig = {
   criticalThreshold?: number;
   /** Global no-progress breaker threshold (default: 30). */
   globalCircuitBreakerThreshold?: number;
+  /** Rapid-succession storm threshold: consecutive same-tool calls to block (default: 15). */
+  rapidSuccessionThreshold?: number;
   /** Detector toggles. */
   detectors?: ToolLoopDetectionDetectorConfig;
 };
