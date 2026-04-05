@@ -236,6 +236,23 @@ export type AgentDefaultsConfig = {
      * Default: false (only the final heartbeat payload is delivered).
      */
     includeReasoning?: boolean;
+    /**
+     * Enable dynamic interval auto-adjustment based on agent health.
+     * When enabled, the interval is increased (up to maxEvery) if the agent is stressed
+     * (requests in flight), and resets to the configured every when healthy.
+     * Default: false.
+     */
+    autoAdjust?: boolean;
+    /**
+     * Minimum heartbeat interval bound (duration string, default unit: minutes; default: 5m).
+     * Used to validate /heartbeat command input and as a lower limit for auto-adjust.
+     */
+    minEvery?: string;
+    /**
+     * Maximum heartbeat interval bound (duration string, default unit: minutes; default: 24h).
+     * Used to validate /heartbeat command input and as an upper cap for auto-adjust backoff.
+     */
+    maxEvery?: string;
   };
   /** Max concurrent agent runs across all conversations. Default: 1 (sequential). */
   maxConcurrent?: number;

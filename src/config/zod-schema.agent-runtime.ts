@@ -30,21 +30,30 @@ export const HeartbeatSchema = z
     prompt: z.string().optional(),
     ackMaxChars: z.number().int().nonnegative().optional(),
     suppressToolErrorWarnings: z.boolean().optional(),
+    autoAdjust: z.boolean().optional(),
+    minEvery: z.string().optional(),
+    maxEvery: z.string().optional(),
   })
   .strict()
   .superRefine((val, ctx) => {
-    if (!val.every) {
-      return;
-    }
-    try {
-      parseDurationMs(val.every, { defaultUnit: "m" });
-    } catch {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["every"],
-        message: "invalid duration (use ms, s, m, h)",
-      });
-    }
+    const validateDuration = (raw: string | undefined, field: string) => {
+      if (!raw) {
+        return;
+      }
+      try {
+        parseDurationMs(raw, { defaultUnit: "m" });
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: "invalid duration (use ms, s, m, h)",
+        });
+      }
+    };
+
+    validateDuration(val.every, "every");
+    validateDuration(val.minEvery, "minEvery");
+    validateDuration(val.maxEvery, "maxEvery");
 
     const active = val.activeHours;
     if (!active) {

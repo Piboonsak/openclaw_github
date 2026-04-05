@@ -75,6 +75,12 @@ export type HeartbeatDeps = OutboundSendDeps &
 const log = createSubsystemLogger("gateway/heartbeat");
 let heartbeatsEnabled = true;
 
+/**
+ * Default multiplier cap for auto-adjust backoff when no maxEvery is configured.
+ * The stressed interval will not exceed (base intervalMs * this multiplier).
+ */
+const AUTO_ADJUST_DEFAULT_MAX_MULTIPLIER = 8;
+
 export function setHeartbeatsEnabled(enabled: boolean) {
   heartbeatsEnabled = enabled;
 }
@@ -160,6 +166,8 @@ type HeartbeatAgentState = {
   intervalMs: number;
   lastRunMs?: number;
   nextDueMs: number;
+  /** Current stress backoff in ms (0 when healthy). Only used when autoAdjust is enabled. */
+  stressBackoffMs?: number;
 };
 
 export type HeartbeatRunner = {
@@ -1205,11 +1213,31 @@ export function startHeartbeatRunner(opts: {
         continue;
       }
       if (res.status === "skipped" && res.reason === "requests-in-flight") {
-        advanceAgentSchedule(agent, now);
+        if (agent.heartbeat?.autoAdjust) {
+          // Auto-adjust: back off exponentially when the agent is stressed.
+          // Cap at maxEvery (default: 8x base interval).
+          const maxEveryMs = agent.heartbeat.maxEvery
+            ? resolveHeartbeatIntervalMs(state.cfg, agent.heartbeat.maxEvery)
+            : null;
+          const backoffCap = maxEveryMs ?? agent.intervalMs * AUTO_ADJUST_DEFAULT_MAX_MULTIPLIER;
+          const current = agent.stressBackoffMs ?? 0;
+          // Double the backoff each time, starting at one base interval.
+          const next = current === 0 ? agent.intervalMs : Math.min(current * 2, backoffCap);
+          agent.stressBackoffMs = next;
+          agent.nextDueMs = now + next;
+          log.debug(`heartbeat: auto-adjust backoff for ${agent.agentId}: ${next}ms`, {
+            agentId: agent.agentId,
+            backoffMs: next,
+          });
+        } else {
+          advanceAgentSchedule(agent, now);
+        }
         scheduleNext();
         return res;
       }
       if (res.status !== "skipped" || res.reason !== "disabled") {
+        // Successful or non-disabled skip: reset stress backoff.
+        agent.stressBackoffMs = 0;
         advanceAgentSchedule(agent, now);
       }
       if (res.status === "ran") {
