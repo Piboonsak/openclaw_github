@@ -62,6 +62,12 @@ EXPOSE 18789
 # This reduces the attack surface by preventing container escape via root privileges
 USER node
 
+# Health check: verify the gateway is running and responsive.
+# Requires the gateway to be bound to loopback with auth set.
+# Override with HEALTHCHECK NONE in docker-compose if not needed.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:18789/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 # Start gateway server with default config.
 # Binds to loopback (127.0.0.1) by default for security.
 #
