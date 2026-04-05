@@ -48,9 +48,10 @@ describe("NongKung regression — model fallback when primary fails", () => {
       state: {},
     });
 
-    // nextState stores full provider/model refs (e.g. "openrouter/anthropic/claude-opus-4").
-    expect(result.nextState.selectedModel).toContain(PRIMARY_MODEL);
-    expect(result.nextState.activeModel).toContain(FALLBACK_MODEL);
+    // nextState stores full provider/model refs formatted as "provider/model".
+    // e.g. "openrouter" + "anthropic/claude-opus-4" → "openrouter/anthropic/claude-opus-4"
+    expect(result.nextState.selectedModel).toBe(`${PRIMARY_PROVIDER}/${PRIMARY_MODEL}`);
+    expect(result.nextState.activeModel).toBe(`${FALLBACK_PROVIDER}/${FALLBACK_MODEL}`);
   });
 
   it("summarizes fallback reason from the attempt", () => {

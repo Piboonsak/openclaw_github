@@ -34,7 +34,7 @@ fi
 
 EXTRA_ARGS=("$@")
 
-echo "[regression-check] Running: vitest run --config vitest.regression.config.ts ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+echo "[regression-check] Running: vitest run --config vitest.regression.config.ts${EXTRA_ARGS[@]+ "${EXTRA_ARGS[@]}"}"
 echo ""
 
 START_TIME="$SECONDS"
