@@ -130,10 +130,21 @@ function resolveChannelLimits(
  * process and reuse it.
  */
 export function createMessageRateLimiter(cfg: OpenClawConfig): MessageRateLimiter {
-  // We lazily create per-channel sliding windows so we can honour per-channel
-  // limits without building all windows upfront.
+  const base = cfg.rateLimit;
+
+  // Per-user windows — keyed by channel so each channel gets its own limits.
   const perUserWindows = new Map<string, ReturnType<typeof createSlidingWindow>>();
-  const globalWindows = new Map<string, ReturnType<typeof createSlidingWindow>>();
+
+  // Single shared global window (all channels combined) for API cost protection.
+  const sharedGlobal = createSlidingWindow(
+    base?.global ?? DEFAULT_GLOBAL,
+    base?.windowMs ?? DEFAULT_WINDOW_MS,
+  );
+
+  // Per-channel global windows — only created for channels that have a
+  // channelOverrides.global value, which overrides (rather than adds to) the
+  // shared global limit for that specific channel.
+  const channelGlobalWindows = new Map<string, ReturnType<typeof createSlidingWindow>>();
 
   const pruneTimer = setInterval(() => prune(), PRUNE_INTERVAL_MS);
   if (pruneTimer.unref) {
@@ -157,13 +168,18 @@ export function createMessageRateLimiter(cfg: OpenClawConfig): MessageRateLimite
     channel: string,
     limits: ReturnType<typeof resolveChannelLimits>,
   ): ReturnType<typeof createSlidingWindow> {
-    const existing = globalWindows.get(channel);
-    if (existing) {
-      return existing;
+    // If there's a channel-specific global override, use a separate window for
+    // that channel rather than the shared one.
+    if (base?.channelOverrides?.[channel]?.global !== undefined) {
+      const existing = channelGlobalWindows.get(channel);
+      if (existing) {
+        return existing;
+      }
+      const w = createSlidingWindow(limits.global, limits.windowMs);
+      channelGlobalWindows.set(channel, w);
+      return w;
     }
-    const w = createSlidingWindow(limits.global, limits.windowMs);
-    globalWindows.set(channel, w);
-    return w;
+    return sharedGlobal;
   }
 
   function check(channel: string, accountId: string): MessageRateLimitResult {
@@ -214,7 +230,8 @@ export function createMessageRateLimiter(cfg: OpenClawConfig): MessageRateLimite
     for (const w of perUserWindows.values()) {
       w.prune();
     }
-    for (const w of globalWindows.values()) {
+    sharedGlobal.prune();
+    for (const w of channelGlobalWindows.values()) {
       w.prune();
     }
   }
@@ -222,7 +239,7 @@ export function createMessageRateLimiter(cfg: OpenClawConfig): MessageRateLimite
   function dispose(): void {
     clearInterval(pruneTimer);
     perUserWindows.clear();
-    globalWindows.clear();
+    channelGlobalWindows.clear();
   }
 
   return { check, prune, dispose };

@@ -6,7 +6,7 @@ import { createMessageRateLimiter } from "./rate-limiter.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeConfig(overrides: OpenClawConfig["rateLimit"]): OpenClawConfig {
+function makeConfig(overrides: OpenClawConfig["rateLimit"]): Pick<OpenClawConfig, "rateLimit"> {
   return { rateLimit: overrides };
 }
 
@@ -108,6 +108,41 @@ describe("createMessageRateLimiter", () => {
     expect(limiter.check("discord", "alice").allowed).toBe(true);
     expect(limiter.check("discord", "alice").allowed).toBe(false);
     // Slack still uses the base limit of 100.
+    expect(limiter.check("slack", "alice").allowed).toBe(true);
+    limiter.dispose();
+  });
+
+  it("global limit is shared across channels (API cost protection)", () => {
+    // Global limit of 2 should count messages from all channels combined.
+    const limiter = createMessageRateLimiter(
+      makeConfig({ perUser: 100, global: 2, windowMs: 60_000 }),
+    );
+    // First message on slack — allowed, counts toward global quota.
+    expect(limiter.check("slack", "alice").allowed).toBe(true);
+    // First message on telegram — allowed, counts toward same global quota.
+    expect(limiter.check("telegram", "bob").allowed).toBe(true);
+    // Third message (different channel, different user) — global is exhausted.
+    const result = limiter.check("discord", "carol");
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toMatch(/capacity/i);
+    limiter.dispose();
+  });
+
+  it("channel override for global creates an independent per-channel quota", () => {
+    const limiter = createMessageRateLimiter(
+      makeConfig({
+        perUser: 100,
+        global: 100,
+        windowMs: 60_000,
+        channelOverrides: {
+          whatsapp: { global: 1 },
+        },
+      }),
+    );
+    // whatsapp channel has its own global limit of 1.
+    expect(limiter.check("whatsapp", "alice").allowed).toBe(true);
+    expect(limiter.check("whatsapp", "bob").allowed).toBe(false);
+    // slack uses the shared global of 100 — not affected by whatsapp channel.
     expect(limiter.check("slack", "alice").allowed).toBe(true);
     limiter.dispose();
   });
