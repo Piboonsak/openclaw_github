@@ -91,6 +91,7 @@ export { emptyPluginConfigSchema } from "../plugins/config-schema.js";
 export type { OpenClawConfig } from "../config/config.js";
 /** @deprecated Use OpenClawConfig instead */
 export type { OpenClawConfig as ClawdbotConfig } from "../config/config.js";
+export { loadConfig } from "../config/config.js";
 
 export type { FileLockHandle, FileLockOptions } from "./file-lock.js";
 export { acquireFileLock, withFileLock } from "./file-lock.js";
@@ -501,3 +502,74 @@ export type { ProcessedLineMessage } from "../line/markdown-to-line.js";
 
 // Media utilities
 export { loadWebMedia, type WebMediaResult } from "../web/media.js";
+
+// Inbound envelope / formatting (used by LINE and other channel extensions)
+export { formatInboundEnvelope, resolveEnvelopeFormatOptions } from "../auto-reply/envelope.js";
+export type { EnvelopeFormatOptions } from "../auto-reply/envelope.js";
+export { finalizeInboundContext } from "../auto-reply/reply/inbound-context.js";
+
+// Session helpers (used by channel extension inbound context builders)
+export {
+  readSessionUpdatedAt,
+  recordSessionMetaFromInbound,
+  updateLastRoute,
+} from "../config/sessions/store.js";
+export { resolveStorePath } from "../config/sessions/paths.js";
+
+// Verbose logging (used by channel extension inbound context builders)
+export { logVerbose, shouldLogVerbose } from "../globals.js";
+
+// Channel activity recording
+export { recordChannelActivity } from "../infra/channel-activity.js";
+
+// Agent routing
+export { resolveAgentRoute } from "../routing/resolve-route.js";
+
+// Retry utility
+export { retryAsync } from "../infra/retry.js";
+
+// Gateway client and connection (used by LINE exec-approvals)
+export { buildGatewayConnectionDetails } from "../gateway/call.js";
+export { GatewayClient } from "../gateway/client.js";
+export type { EventFrame } from "../gateway/protocol/index.js";
+
+// Exec approval types and utilities (used by LINE exec-approvals)
+export type {
+  ExecApprovalDecision,
+  ExecApprovalRequest,
+  ExecApprovalResolved,
+} from "../infra/exec-approvals.js";
+export { resolveApprovalTarget } from "../infra/exec-approval-utils.js";
+
+// Subsystem logger (used by channel extension subsystems)
+export { createSubsystemLogger } from "../logging/subsystem.js";
+export type { SubsystemLogger } from "../logging/subsystem.js";
+
+// Gateway client naming/modes (used by channel extension gateway clients)
+export {
+  normalizeMessageChannel,
+  GATEWAY_CLIENT_MODES,
+  GATEWAY_CLIENT_NAMES,
+} from "../utils/message-channel.js";
+
+// Pairing helpers (used by LINE and other channel extensions)
+export { resolvePairingIdLabel } from "../pairing/pairing-labels.js";
+export { buildPairingReply } from "../pairing/pairing-messages.js";
+export {
+  readChannelAllowFromStore,
+  upsertChannelPairingRequest,
+} from "../pairing/pairing-store.js";
+
+// Bot-access helpers (used by LINE bot-handlers)
+export { danger } from "../globals.js";
+export { firstDefined, isSenderIdAllowed, mergeAllowFromSources } from "../channels/allow-from.js";
+
+// Command detection (used by bot-handlers)
+export { hasControlCommand } from "../auto-reply/command-detection.js";
+
+// Mention detection (used by bot-handlers)
+export { buildMentionRegexes, matchesMentionPatterns } from "../auto-reply/reply/mentions.js";
+
+// Auto-reply dispatch (used by channel extension monitors)
+export { chunkMarkdownText } from "../auto-reply/chunk.js";
+export { dispatchReplyWithBufferedBlockDispatcher } from "../auto-reply/reply/provider-dispatcher.js";
