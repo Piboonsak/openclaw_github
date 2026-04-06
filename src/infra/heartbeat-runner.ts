@@ -86,6 +86,15 @@ export function setHeartbeatsEnabled(enabled: boolean) {
 }
 
 /**
+ * Per-agent 429 suppression state. Maps agentId to the timestamp (ms) when the backoff expires.
+ * Exported via _heartbeat429Internals for testing.
+ */
+const heartbeat429Suppression = new Map<string, number>();
+
+/** @internal Test-only: exposes 429 suppression internals for resetting state between tests. */
+export const _heartbeat429Internals = { heartbeat429Suppression };
+
+/**
  * Retry helper with exponential backoff + jitter.
  * Retries up to maxAttempts times, with delays following: delay = baseDelayMs * (2 ^ attempt) + random jitter.
  * Only retries on transient errors (429, 5xx, network timeouts).
@@ -647,6 +656,12 @@ export async function runHeartbeatOnce(opts: {
     return { status: "skipped", reason: "requests-in-flight" };
   }
 
+  // Skip if a previous 429 rate-limit is still in its backoff window.
+  const suppressUntil = heartbeat429Suppression.get(agentId) ?? 0;
+  if (suppressUntil > startedAt) {
+    return { status: "skipped", reason: "line-429-backoff" };
+  }
+
   // Preflight centralizes trigger classification, event inspection, and HEARTBEAT.md gating.
   const preflight = await resolveHeartbeatPreflight({
     cfg,
@@ -1009,6 +1024,26 @@ export async function runHeartbeatOnce(opts: {
     return { status: "ran", durationMs: Date.now() - startedAt };
   } catch (err) {
     const reason = formatErrorMessage(err);
+    // Detect 429 rate-limit errors; suppress subsequent runs until the backoff window expires.
+    if (/\b429\b/.test(reason)) {
+      const retryAfterMatch = /retry-after[:\s]+(\d+)/i.exec(reason);
+      const retryAfterSecs = retryAfterMatch ? parseInt(retryAfterMatch[1], 10) : 60;
+      heartbeat429Suppression.set(agentId, Date.now() + retryAfterSecs * 1000);
+      const backoffReason = `line-429-backoff: ${reason}`;
+      emitHeartbeatEvent({
+        status: "failed",
+        reason: backoffReason,
+        durationMs: Date.now() - startedAt,
+        channel: delivery.channel !== "none" ? delivery.channel : undefined,
+        accountId: delivery.accountId,
+        indicatorType: visibility.useIndicator ? resolveIndicatorType("failed") : undefined,
+      });
+      log.warn(`heartbeat 429 backoff for ${agentId}: ${retryAfterSecs}s`, {
+        agentId,
+        retryAfterSecs,
+      });
+      return { status: "failed", reason: backoffReason };
+    }
     emitHeartbeatEvent({
       status: "failed",
       reason,
