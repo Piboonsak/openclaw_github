@@ -11,13 +11,10 @@ title: "OpenRouter"
 OpenRouter provides a **unified API** that routes requests to many models behind a single
 endpoint and API key. It is OpenAI-compatible, so most OpenAI SDKs work by switching the base URL.
 
-In OpenClaw, the source of truth for model selection is `agents.defaults.model.primary`
-(or `agents.list[].model.primary` for per-agent overrides).
-
 ## CLI setup
 
 ```bash
-openclaw onboard --auth-choice apiKey --token-provider openrouter --token "$OPENROUTER_API_KEY"
+openclaw onboard --auth-choice openrouter-api-key
 ```
 
 ## Config snippet
@@ -27,7 +24,7 @@ openclaw onboard --auth-choice apiKey --token-provider openrouter --token "$OPEN
   env: { OPENROUTER_API_KEY: "sk-or-..." },
   agents: {
     defaults: {
-      model: { primary: "openrouter/anthropic/claude-sonnet-4-6" },
+      model: { primary: "openrouter/auto" },
     },
   },
 }
@@ -36,7 +33,27 @@ openclaw onboard --auth-choice apiKey --token-provider openrouter --token "$OPEN
 ## Notes
 
 - Model refs are `openrouter/<provider>/<model>`.
-- OpenClaw onboarding defaults OpenRouter to `openrouter/anthropic/claude-sonnet-4-6` to avoid implicit router drift.
-- `openrouter/auto` is supported as an explicit opt-in when you intentionally want OpenRouter to pick the runtime provider/model.
+- Onboarding defaults to `openrouter/auto`. Switch to a concrete model later with
+  `openclaw models set openrouter/<provider>/<model>`.
 - For more model/provider options, see [/concepts/model-providers](/concepts/model-providers).
 - OpenRouter uses a Bearer token with your API key under the hood.
+- On real OpenRouter requests (`https://openrouter.ai/api/v1`), OpenClaw also
+  adds OpenRouter's documented app-attribution headers:
+  `HTTP-Referer: https://openclaw.ai`, `X-OpenRouter-Title: OpenClaw`, and
+  `X-OpenRouter-Categories: cli-agent`.
+- On verified OpenRouter routes, Anthropic model refs also keep the
+  OpenRouter-specific Anthropic `cache_control` markers that OpenClaw uses for
+  better prompt-cache reuse on system/developer prompt blocks.
+- If you repoint the OpenRouter provider at some other proxy/base URL, OpenClaw
+  does not inject those OpenRouter-specific headers or Anthropic cache markers.
+- OpenRouter still runs through the proxy-style OpenAI-compatible path, so
+  native OpenAI-only request shaping such as `serviceTier`, Responses `store`,
+  OpenAI reasoning-compat payloads, and prompt-cache hints is not forwarded.
+- Gemini-backed OpenRouter refs stay on the proxy-Gemini path: OpenClaw keeps
+  Gemini thought-signature sanitation there, but does not enable native Gemini
+  replay validation or bootstrap rewrites.
+- On supported non-`auto` routes, OpenClaw maps the selected thinking level to
+  OpenRouter proxy reasoning payloads. Unsupported model hints and
+  `openrouter/auto` skip that reasoning injection.
+- If you pass OpenRouter provider routing under model params, OpenClaw forwards
+  it as OpenRouter routing metadata before the shared stream wrappers run.

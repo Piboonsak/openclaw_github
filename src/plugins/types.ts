@@ -544,11 +544,21 @@ export type PluginHookSessionStartEvent = {
   resumedFrom?: string;
 };
 
+export type PluginHookSessionEndReason =
+  | "new"
+  | "reset"
+  | "idle"
+  | "daily"
+  | "compaction"
+  | "deleted"
+  | "unknown";
+
 // session_end hook
 export type PluginHookSessionEndEvent = {
   sessionId: string;
   messageCount: number;
   durationMs?: number;
+  reason?: PluginHookSessionEndReason;
 };
 
 // Subagent context
