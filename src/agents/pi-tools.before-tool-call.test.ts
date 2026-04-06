@@ -29,6 +29,15 @@ describe("before_tool_call loop detection behavior", () => {
     loopDetection: { enabled: true },
   };
 
+  // Context that disables rapid_succession so tests for other detectors
+  // (known_poll, generic_repeat, global_circuit_breaker) are not blocked early
+  // by RAPID_SUCCESSION_THRESHOLD consecutive same-tool-name calls.
+  const noRapidSuccessionContext = {
+    agentId: "main",
+    sessionKey: "main",
+    loopDetection: { enabled: true, detectors: { rapidSuccession: false } },
+  };
+
   const disabledLoopDetectionContext = {
     agentId: "main",
     sessionKey: "main",
@@ -114,13 +123,13 @@ describe("before_tool_call loop detection behavior", () => {
     }
   }
 
-  function createGenericReadRepeatFixture() {
+  function createGenericReadRepeatFixture(context = noRapidSuccessionContext) {
     const execute = vi.fn().mockResolvedValue({
       content: [{ type: "text", text: "same output" }],
       details: { ok: true },
     });
     return {
-      tool: createWrappedTool("read", execute),
+      tool: createWrappedTool("read", execute, context),
       params: { path: "/tmp/file" },
     };
   }
@@ -130,7 +139,8 @@ describe("before_tool_call loop detection behavior", () => {
       content: [{ type: "text", text: "(no new output)\n\nProcess still running." }],
       details: { status: "running", aggregated: "steady" },
     });
-    const tool = createWrappedTool("process", execute);
+    // Disable rapid_succession so known_poll_no_progress detector can fire at CRITICAL_THRESHOLD.
+    const tool = createWrappedTool("process", execute, noRapidSuccessionContext);
     const params = { action: "poll", sessionId: "sess-1" };
 
     for (let i = 0; i < CRITICAL_THRESHOLD; i += 1) {
@@ -165,7 +175,9 @@ describe("before_tool_call loop detection behavior", () => {
         details: { status: "running", aggregated: `output ${toolCallId}` },
       };
     });
-    const tool = createWrappedTool("process", execute);
+    // Disable rapid_succession so that CRITICAL_THRESHOLD + 5 consecutive calls
+    // don't block; only known_poll with progressing output would (which should pass).
+    const tool = createWrappedTool("process", execute, noRapidSuccessionContext);
     const params = { action: "poll", sessionId: "sess-2" };
 
     for (let i = 0; i < CRITICAL_THRESHOLD + 5; i += 1) {
@@ -289,7 +301,8 @@ describe("before_tool_call loop detection behavior", () => {
         content: [{ type: "text", text: "(no new output)\n\nProcess still running." }],
         details: { status: "running", aggregated: "steady" },
       });
-      const tool = createWrappedTool("process", execute);
+      // Disable rapid_succession so known_poll_no_progress fires at CRITICAL_THRESHOLD.
+      const tool = createWrappedTool("process", execute, noRapidSuccessionContext);
       const params = { action: "poll", sessionId: "sess-crit" };
 
       for (let i = 0; i < CRITICAL_THRESHOLD; i += 1) {
@@ -326,7 +339,12 @@ describe("before_tool_call loop detection behavior", () => {
 
         // The Nth consecutive call should be blocked
         await expect(
-          tool.execute(`bash-${RAPID_SUCCESSION_THRESHOLD}`, { cmd: "echo storm" }, undefined, undefined),
+          tool.execute(
+            `bash-${RAPID_SUCCESSION_THRESHOLD}`,
+            { cmd: "echo storm" },
+            undefined,
+            undefined,
+          ),
         ).rejects.toThrow("CRITICAL");
 
         const stormEvent = emitted.find((evt) => evt.detector === "rapid_succession");
@@ -334,12 +352,12 @@ describe("before_tool_call loop detection behavior", () => {
         expect(stormEvent?.level).toBe("critical");
         expect(stormEvent?.action).toBe("block");
         expect(stormEvent?.detector).toBe("rapid_succession");
-        expect(stormEvent?.toolName).toBe("bash");
+        expect(stormEvent?.toolName).toBe("exec"); // "bash" normalizes to "exec" via TOOL_NAME_ALIASES
         expect(stormEvent?.count).toBe(RAPID_SUCCESSION_THRESHOLD);
         // callTrace must be present
         expect(Array.isArray(stormEvent?.callTrace)).toBe(true);
         expect(stormEvent?.callTrace?.length).toBeGreaterThan(0);
-        expect(stormEvent?.callTrace?.at(-1)).toBe("bash");
+        expect(stormEvent?.callTrace?.at(-1)).toBe("exec"); // normalized alias
       });
     });
 

@@ -16,6 +16,13 @@ import {
   recordToolCallOutcome,
 } from "./tool-loop-detection.js";
 
+// Config variant that disables rapid_succession so other detectors can be tested
+// without interference from consecutive same-tool-name triggering.
+const noRapidSuccessionConfig: ToolLoopDetectionConfig = {
+  enabled: true,
+  detectors: { rapidSuccession: false },
+};
+
 function createState(): SessionState {
   return {
     lastActivity: Date.now(),
@@ -198,11 +205,14 @@ describe("tool-loop-detection", () => {
         recordToolCall(state, "read", { path: `/file${i}.txt` }, `call-${i}`);
       }
 
+      // Use noRapidSuccessionConfig: 15 consecutive "read" calls would otherwise
+      // trigger rapid_succession (same tool name, any args), which is not what
+      // this test is checking.
       const result = detectToolCallLoop(
         state,
         "read",
         { path: "/new-file.txt" },
-        enabledLoopDetectionConfig,
+        noRapidSuccessionConfig,
       );
       expect(result.stuck).toBe(false);
     });
@@ -242,7 +252,9 @@ describe("tool-loop-detection", () => {
         recordSuccessfulCall(state, "read", params, result, i);
       }
 
-      const loopResult = detectToolCallLoop(state, "read", params, enabledLoopDetectionConfig);
+      // Disable rapid_succession: CRITICAL_THRESHOLD (20) consecutive "read" calls
+      // would otherwise trigger it before the generic_repeat warning detector fires.
+      const loopResult = detectToolCallLoop(state, "read", params, noRapidSuccessionConfig);
       expect(loopResult.stuck).toBe(true);
       if (loopResult.stuck) {
         expect(loopResult.level).toBe("warning");
@@ -299,6 +311,9 @@ describe("tool-loop-detection", () => {
           genericRepeat: false,
           knownPollNoProgress: false,
           pingPong: false,
+          // Also disable rapid_succession so that CRITICAL_THRESHOLD consecutive
+          // calls do not trigger it instead of the (disabled) other detectors.
+          rapidSuccession: false,
         },
       };
 
@@ -343,7 +358,8 @@ describe("tool-loop-detection", () => {
         recordSuccessfulCall(state, "process", params, result, i);
       }
 
-      const loopResult = detectToolCallLoop(state, "process", params, enabledLoopDetectionConfig);
+      // Disable rapid_succession so the known_poll_no_progress detector can fire.
+      const loopResult = detectToolCallLoop(state, "process", params, noRapidSuccessionConfig);
       expect(loopResult.stuck).toBe(true);
       if (loopResult.stuck) {
         expect(loopResult.level).toBe("critical");
@@ -364,7 +380,9 @@ describe("tool-loop-detection", () => {
         recordSuccessfulCall(state, "process", params, result, i);
       }
 
-      const loopResult = detectToolCallLoop(state, "process", params, enabledLoopDetectionConfig);
+      // Disable rapid_succession: CRITICAL_THRESHOLD + 5 consecutive "process"
+      // calls would otherwise block regardless of progressing output.
+      const loopResult = detectToolCallLoop(state, "process", params, noRapidSuccessionConfig);
       expect(loopResult.stuck).toBe(false);
     });
 
@@ -380,7 +398,8 @@ describe("tool-loop-detection", () => {
         recordSuccessfulCall(state, "read", params, result, i);
       }
 
-      const loopResult = detectToolCallLoop(state, "read", params, enabledLoopDetectionConfig);
+      // Disable rapid_succession so global_circuit_breaker fires at 30 instead.
+      const loopResult = detectToolCallLoop(state, "read", params, noRapidSuccessionConfig);
       expect(loopResult.stuck).toBe(true);
       if (loopResult.stuck) {
         expect(loopResult.level).toBe("critical");
@@ -571,7 +590,9 @@ describe("tool-loop-detection", () => {
       // The next call (which would be the Nth consecutive) should trigger the detector
       const result = detectToolCallLoop(state, "bash", { cmd: "echo storm" }, config);
       expect(result.stuck).toBe(true);
-      if (!result.stuck) return;
+      if (!result.stuck) {
+        return;
+      }
       expect(result.level).toBe("critical");
       expect(result.detector).toBe("rapid_succession");
       expect(result.count).toBe(RAPID_SUCCESSION_THRESHOLD);
@@ -602,7 +623,9 @@ describe("tool-loop-detection", () => {
       }
       const result = detectToolCallLoop(state, "bash", { cmd: "unique_command_final" }, config);
       expect(result.stuck).toBe(true);
-      if (!result.stuck) return;
+      if (!result.stuck) {
+        return;
+      }
       expect(result.detector).toBe("rapid_succession");
     });
 
@@ -615,7 +638,9 @@ describe("tool-loop-detection", () => {
       }
       const result = detectToolCallLoop(state, "bash", { cmd: "echo 5th" }, config);
       expect(result.stuck).toBe(true);
-      if (!result.stuck) return;
+      if (!result.stuck) {
+        return;
+      }
       expect(result.detector).toBe("rapid_succession");
       expect(result.count).toBe(5);
     });
@@ -644,7 +669,9 @@ describe("tool-loop-detection", () => {
       }
       const result = detectToolCallLoop(state, "bash", { cmd: "echo storm" }, config);
       expect(result.stuck).toBe(true);
-      if (!result.stuck) return;
+      if (!result.stuck) {
+        return;
+      }
       expect(Array.isArray(result.callTrace)).toBe(true);
       expect(result.callTrace?.length).toBeGreaterThan(0);
       expect(result.callTrace?.length).toBeLessThanOrEqual(CALL_TRACE_SIZE);
@@ -660,11 +687,7 @@ describe("tool-loop-detection", () => {
     });
 
     it("includes recent history entries plus current call", () => {
-      const history = [
-        { toolName: "read" },
-        { toolName: "write" },
-        { toolName: "read" },
-      ];
+      const history = [{ toolName: "read" }, { toolName: "write" }, { toolName: "read" }];
       const trace = buildCallTrace(history, "bash");
       expect(trace).toEqual(["read", "write", "read", "bash"]);
     });
@@ -686,7 +709,11 @@ describe("tool-loop-detection", () => {
   describe("callTrace in all detectors", () => {
     it("includes callTrace in global_circuit_breaker result", () => {
       const state = createState();
-      const config: ToolLoopDetectionConfig = { enabled: true };
+      // Disable rapid_succession so global_circuit_breaker fires at 30 instead.
+      const config: ToolLoopDetectionConfig = {
+        enabled: true,
+        detectors: { rapidSuccession: false },
+      };
       const params = { action: "poll", sessionId: "s1" };
       for (let i = 0; i < GLOBAL_CIRCUIT_BREAKER_THRESHOLD; i += 1) {
         const id = `cb-${i}`;
@@ -703,7 +730,9 @@ describe("tool-loop-detection", () => {
       }
       const result = detectToolCallLoop(state, "process", params, config);
       expect(result.stuck).toBe(true);
-      if (!result.stuck) return;
+      if (!result.stuck) {
+        return;
+      }
       expect(result.detector).toBe("global_circuit_breaker");
       expect(Array.isArray(result.callTrace)).toBe(true);
       expect(result.callTrace?.at(-1)).toBe("process");
@@ -711,7 +740,11 @@ describe("tool-loop-detection", () => {
 
     it("includes callTrace in known_poll_no_progress critical result", () => {
       const state = createState();
-      const config: ToolLoopDetectionConfig = { enabled: true };
+      // Disable rapid_succession so known_poll_no_progress fires at CRITICAL_THRESHOLD.
+      const config: ToolLoopDetectionConfig = {
+        enabled: true,
+        detectors: { rapidSuccession: false },
+      };
       const params = { action: "poll", sessionId: "s2" };
       for (let i = 0; i < CRITICAL_THRESHOLD; i += 1) {
         const id = `poll-${i}`;
@@ -728,7 +761,9 @@ describe("tool-loop-detection", () => {
       }
       const result = detectToolCallLoop(state, "process", params, config);
       expect(result.stuck).toBe(true);
-      if (!result.stuck) return;
+      if (!result.stuck) {
+        return;
+      }
       expect(result.detector).toBe("known_poll_no_progress");
       expect(Array.isArray(result.callTrace)).toBe(true);
     });
@@ -746,7 +781,9 @@ describe("tool-loop-detection", () => {
         rapidSuccessionThreshold: WARNING_THRESHOLD + RAPID_SUCCESSION_THRESHOLD + 10,
       });
       expect(result.stuck).toBe(true);
-      if (!result.stuck) return;
+      if (!result.stuck) {
+        return;
+      }
       // Could be generic_repeat or rapid_succession depending on what fires first
       expect(Array.isArray(result.callTrace)).toBe(true);
     });
