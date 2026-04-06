@@ -7,19 +7,23 @@ read_when:
 title: LINE
 ---
 
-# LINE (plugin)
+# LINE
 
 LINE connects to OpenClaw via the LINE Messaging API. The plugin runs as a webhook
 receiver on the gateway and uses your channel access token + channel secret for
 authentication.
 
-Status: supported via plugin. Direct messages, group chats, media, locations, Flex
+Status: bundled plugin. Direct messages, group chats, media, locations, Flex
 messages, template messages, and quick replies are supported. Reactions and threads
 are not supported.
 
-## Plugin required
+## Bundled plugin
 
-Install the LINE plugin:
+LINE ships as a bundled plugin in current OpenClaw releases, so normal
+packaged builds do not need a separate install.
+
+If you are on an older build or a custom install that excludes LINE, install it
+manually:
 
 ```bash
 openclaw plugins install @openclaw/line
@@ -28,7 +32,7 @@ openclaw plugins install @openclaw/line
 Local checkout (when running from a git repo):
 
 ```bash
-openclaw plugins install ./extensions/line
+openclaw plugins install ./path/to/local/line-plugin
 ```
 
 ## Setup
@@ -47,6 +51,11 @@ https://gateway-host/line/webhook
 The gateway responds to LINE’s webhook verification (GET) and inbound events (POST).
 If you need a custom path, set `channels.line.webhookPath` or
 `channels.line.accounts.<id>.webhookPath` and update the URL accordingly.
+
+Security note:
+
+- LINE signature verification is body-dependent (HMAC over the raw body), so OpenClaw applies strict pre-auth body limits and timeout before verification.
+- OpenClaw processes webhook events from the verified raw request bytes. Upstream middleware-transformed `req.body` values are ignored for signature-integrity safety.
 
 ## Configure
 
@@ -82,6 +91,8 @@ Token/secret files:
   },
 }
 ```
+
+`tokenFile` and `secretFile` must point to regular files. Symlinks are rejected.
 
 Multiple accounts:
 
@@ -177,16 +188,24 @@ The LINE plugin also ships a `/card` command for Flex message presets:
 /card info "Welcome" "Thanks for joining!"
 ```
 
-It also includes reasoning-depth commands:
+## ACP support
 
-```text
-/thinking            # Show current reasoning mode
-/thinking high       # Set default reasoning to high
-/think high          # Alias of /thinking high
-/think help          # Show usage and valid levels
-```
+LINE supports ACP (Agent Communication Protocol) conversation bindings:
 
-Reasoning levels: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
+- `/acp spawn <agent> --bind here` binds the current LINE chat to an ACP session without creating a child thread.
+- Configured ACP bindings and active conversation-bound ACP sessions work on LINE like other conversation channels.
+
+See [ACP agents](/tools/acp-agents) for details.
+
+## Outbound media
+
+The LINE plugin supports sending images, videos, and audio files through the agent message tool. Media is sent via the LINE-specific delivery path with appropriate preview and tracking handling:
+
+- **Images**: sent as LINE image messages with automatic preview generation.
+- **Videos**: sent with explicit preview and content-type handling.
+- **Audio**: sent as LINE audio messages.
+
+Generic media sends fall back to the existing image-only route when a LINE-specific path is not available.
 
 ## Troubleshooting
 
@@ -196,3 +215,11 @@ Reasoning levels: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
   and that the gateway is reachable from LINE.
 - **Media download errors:** raise `channels.line.mediaMaxMb` if media exceeds the
   default limit.
+
+## Related
+
+- [Channels Overview](/channels) — all supported channels
+- [Pairing](/channels/pairing) — DM authentication and pairing flow
+- [Groups](/channels/groups) — group chat behavior and mention gating
+- [Channel Routing](/channels/channel-routing) — session routing for messages
+- [Security](/gateway/security) — access model and hardening
