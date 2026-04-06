@@ -275,7 +275,7 @@ const saveSessionToMemory: HookHandler = async (event) => {
     const context = event.context || {};
     const cfg = context.cfg as OpenClawConfig | undefined;
     const contextWorkspaceDir =
-      typeof context.workspaceDir === "string" && context.workspaceDir.trim().length > 0
+      typeof context.workspaceDir === "string" && context.workspaceDir.trim()
         ? context.workspaceDir
         : undefined;
     const agentId = resolveAgentIdFromSessionKey(event.sessionKey);
