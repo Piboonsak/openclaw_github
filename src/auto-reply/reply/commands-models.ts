@@ -1,18 +1,24 @@
 import { resolveAgentDir, resolveSessionAgentId } from "../../agents/agent-scope.js";
+import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../../agents/defaults.js";
 import { resolveModelAuthLabel } from "../../agents/model-auth-label.js";
 import { loadModelCatalog } from "../../agents/model-catalog.js";
 import {
   buildAllowedModelSet,
   buildModelAliasIndex,
   normalizeProviderId,
-  resolveDefaultModelForAgent,
+  resolveConfiguredModelRef,
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
-import { getChannelPlugin } from "../../channels/plugins/index.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { SessionEntry } from "../../config/sessions.js";
+import {
+  buildModelsKeyboard,
+  buildProviderKeyboard,
+  calculateTotalPages,
+  getModelsPageSize,
+  type ProviderInfo,
+} from "../../telegram/model-buttons.js";
 import type { ReplyPayload } from "../types.js";
-import { rejectUnauthorizedCommand } from "./command-gates.js";
 import type { CommandHandler } from "./commands-types.js";
 
 const PAGE_SIZE_DEFAULT = 20;
@@ -22,21 +28,100 @@ export type ModelsProviderData = {
   byProvider: Map<string, Set<string>>;
   providers: string[];
   resolvedDefault: { provider: string; model: string };
-  /** Map from provider/model to human-readable display name (when different from model ID). */
-  modelNames: Map<string, string>;
 };
+
+const MODEL_COMMAND_ALIASES = ["/models", "/model", "/modle"] as const;
+
+function resolveCommandToken(body: string): string | undefined {
+  const match = body
+    .trim()
+    .toLowerCase()
+    .match(/^\/[\w-]+/);
+  return match?.[0];
+}
+
+function computeEditDistance(a: string, b: string): number {
+  if (a === b) {
+    return 0;
+  }
+  if (!a.length) {
+    return b.length;
+  }
+  if (!b.length) {
+    return a.length;
+  }
+
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const dp: number[][] = Array.from({ length: rows }, (_, row) => {
+    const values = Array.from({ length: cols }, () => 0);
+    values[0] = row;
+    return values;
+  });
+  for (let col = 0; col < cols; col += 1) {
+    dp[0][col] = col;
+  }
+
+  for (let row = 1; row < rows; row += 1) {
+    for (let col = 1; col < cols; col += 1) {
+      const cost = a[row - 1] === b[col - 1] ? 0 : 1;
+      dp[row][col] = Math.min(
+        dp[row - 1][col] + 1,
+        dp[row][col - 1] + 1,
+        dp[row - 1][col - 1] + cost,
+      );
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function recommendModelAlias(token: string): string {
+  let best: string = MODEL_COMMAND_ALIASES[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const alias of MODEL_COMMAND_ALIASES) {
+    const distance = computeEditDistance(token, alias);
+    if (distance < bestDistance) {
+      best = alias;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function resolveModelCommandSpellingError(body: string): ReplyPayload | null {
+  const token = resolveCommandToken(body);
+  if (!token) {
+    return null;
+  }
+  if (MODEL_COMMAND_ALIASES.includes(token as (typeof MODEL_COMMAND_ALIASES)[number])) {
+    return null;
+  }
+
+  const closestDistance = Math.min(
+    ...MODEL_COMMAND_ALIASES.map((alias) => computeEditDistance(token, alias)),
+  );
+  if (closestDistance > 2) {
+    return null;
+  }
+
+  const recommended = recommendModelAlias(token);
+  const lines = [
+    `Unknown model command: ${token}`,
+    `Did you mean: ${recommended}`,
+    "Allowed aliases: /models, /model, /modle",
+  ];
+  return { text: lines.join("\n") };
+}
 
 /**
  * Build provider/model data from config and catalog.
  * Exported for reuse by callback handlers.
  */
-export async function buildModelsProviderData(
-  cfg: OpenClawConfig,
-  agentId?: string,
-): Promise<ModelsProviderData> {
-  const resolvedDefault = resolveDefaultModelForAgent({
+export async function buildModelsProviderData(cfg: OpenClawConfig): Promise<ModelsProviderData> {
+  const resolvedDefault = resolveConfiguredModelRef({
     cfg,
-    agentId,
+    defaultProvider: DEFAULT_PROVIDER,
+    defaultModel: DEFAULT_MODEL,
   });
 
   const catalog = await loadModelCatalog({ config: cfg });
@@ -45,7 +130,6 @@ export async function buildModelsProviderData(
     catalog,
     defaultProvider: resolvedDefault.provider,
     defaultModel: resolvedDefault.model,
-    agentId,
   });
 
   const aliasIndex = buildModelAliasIndex({
@@ -115,16 +199,7 @@ export async function buildModelsProviderData(
 
   const providers = [...byProvider.keys()].toSorted();
 
-  // Build a provider-scoped model display-name map so surfaces can show
-  // human-readable names without colliding across providers that share IDs.
-  const modelNames = new Map<string, string>();
-  for (const entry of catalog) {
-    if (entry.name && entry.name !== entry.id) {
-      modelNames.set(`${normalizeProviderId(entry.provider)}/${entry.id}`, entry.name);
-    }
-  }
-
-  return { byProvider, providers, resolvedDefault, modelNames };
+  return { byProvider, providers, resolvedDefault };
 }
 
 function formatProviderLine(params: { provider: string; count: number }): string {
@@ -227,7 +302,6 @@ export async function resolveModelsCommandReply(params: {
   commandBodyNormalized: string;
   surface?: string;
   currentModel?: string;
-  agentId?: string;
   agentDir?: string;
   sessionEntry?: SessionEntry;
 }): Promise<ReplyPayload | null> {
@@ -239,28 +313,26 @@ export async function resolveModelsCommandReply(params: {
   const argText = body.replace(/^\/models\b/i, "").trim();
   const { provider, page, pageSize, all } = parseModelsArgs(argText);
 
-  const { byProvider, providers, modelNames } = await buildModelsProviderData(
-    params.cfg,
-    params.agentId,
-  );
-  const commandPlugin = params.surface ? getChannelPlugin(params.surface) : null;
+  const { byProvider, providers } = await buildModelsProviderData(params.cfg);
+  const isTelegram = params.surface === "telegram";
 
   // Provider list (no provider specified)
   if (!provider) {
-    const providerInfos = providers.map((p) => ({
-      id: p,
-      count: byProvider.get(p)?.size ?? 0,
-    }));
-    const channelData = commandPlugin?.commands?.buildModelsProviderChannelData?.({
-      providers: providerInfos,
-    });
-    if (channelData) {
+    // For Telegram: show buttons if there are providers
+    if (isTelegram && providers.length > 0) {
+      const providerInfos: ProviderInfo[] = providers.map((p) => ({
+        id: p,
+        count: byProvider.get(p)?.size ?? 0,
+      }));
+      const buttons = buildProviderKeyboard(providerInfos);
+      const text = "Select a provider:";
       return {
-        text: "Select a provider:",
-        channelData,
+        text,
+        channelData: { telegram: { buttons } },
       };
     }
 
+    // Text fallback for non-Telegram surfaces
     const lines: string[] = [
       "Providers:",
       ...providers.map((p) =>
@@ -304,19 +376,21 @@ export async function resolveModelsCommandReply(params: {
     return { text: lines.join("\n") };
   }
 
-  const interactivePageSize = 8;
-  const interactiveTotalPages = Math.max(1, Math.ceil(total / interactivePageSize));
-  const interactivePage = Math.max(1, Math.min(page, interactiveTotalPages));
-  const interactiveChannelData = commandPlugin?.commands?.buildModelsListChannelData?.({
-    provider,
-    models,
-    currentModel: params.currentModel,
-    currentPage: interactivePage,
-    totalPages: interactiveTotalPages,
-    pageSize: interactivePageSize,
-    modelNames,
-  });
-  if (interactiveChannelData) {
+  // For Telegram: use button-based model list with inline keyboard pagination
+  if (isTelegram) {
+    const telegramPageSize = getModelsPageSize();
+    const totalPages = calculateTotalPages(total, telegramPageSize);
+    const safePage = Math.max(1, Math.min(page, totalPages));
+
+    const buttons = buildModelsKeyboard({
+      provider,
+      models,
+      currentModel: params.currentModel,
+      currentPage: safePage,
+      totalPages,
+      pageSize: telegramPageSize,
+    });
+
     const text = formatModelsAvailableHeader({
       provider,
       total,
@@ -326,10 +400,11 @@ export async function resolveModelsCommandReply(params: {
     });
     return {
       text,
-      channelData: interactiveChannelData,
+      channelData: { telegram: { buttons } },
     };
   }
 
+  // Text fallback for non-Telegram surfaces
   const effectivePageSize = all ? total : pageSize;
   const pageCount = effectivePageSize > 0 ? Math.ceil(total / effectivePageSize) : 1;
   const safePage = all ? 1 : Math.max(1, Math.min(page, pageCount));
@@ -371,14 +446,6 @@ export const handleModelsCommand: CommandHandler = async (params, allowTextComma
   if (!allowTextCommands) {
     return null;
   }
-  const commandBodyNormalized = params.command.commandBodyNormalized.trim();
-  if (!commandBodyNormalized.startsWith("/models")) {
-    return null;
-  }
-  const unauthorized = rejectUnauthorizedCommand(params, "/models");
-  if (unauthorized) {
-    return unauthorized;
-  }
 
   const modelsAgentId =
     params.agentId ??
@@ -390,13 +457,26 @@ export const handleModelsCommand: CommandHandler = async (params, allowTextComma
 
   const reply = await resolveModelsCommandReply({
     cfg: params.cfg,
-    commandBodyNormalized,
+    commandBodyNormalized: params.command.commandBodyNormalized,
     surface: params.ctx.Surface,
     currentModel: params.model ? `${params.provider}/${params.model}` : undefined,
-    agentId: modelsAgentId,
     agentDir: modelsAgentDir,
     sessionEntry: params.sessionEntry,
   });
+  if (!reply) {
+    return null;
+  }
+  return { reply, shouldContinue: false };
+};
+
+export const handleModelCommandSpellingGuard: CommandHandler = async (
+  params,
+  allowTextCommands,
+) => {
+  if (!allowTextCommands) {
+    return null;
+  }
+  const reply = resolveModelCommandSpellingError(params.command.commandBodyNormalized);
   if (!reply) {
     return null;
   }
