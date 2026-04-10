@@ -41,7 +41,7 @@ const exportedNames = exportMatch[1]
 
 const exportSet = new Set(exportedNames);
 
-const requiredRuntimeShimEntries = ["compat.js", "root-alias.cjs"];
+const requiredRuntimeShimEntries = ["root-alias.cjs"];
 
 // The root plugin-sdk entry intentionally stays tiny. Keep this list aligned
 // with src/plugin-sdk/index.ts runtime exports.
