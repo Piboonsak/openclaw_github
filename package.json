@@ -1168,10 +1168,10 @@
     "@homebridge/ciao": "^1.3.6",
     "@line/bot-sdk": "^10.6.0",
     "@lydell/node-pty": "1.2.0-beta.3",
-    "@mariozechner/pi-agent-core": "0.65.0",
-    "@mariozechner/pi-ai": "0.65.0",
-    "@mariozechner/pi-coding-agent": "0.65.0",
-    "@mariozechner/pi-tui": "0.65.0",
+    "@mariozechner/pi-agent-core": "0.54.0",
+    "@mariozechner/pi-ai": "0.54.0",
+    "@mariozechner/pi-coding-agent": "0.54.0",
+    "@mariozechner/pi-tui": "0.54.0",
     "@matrix-org/matrix-sdk-crypto-wasm": "18.0.0",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@mozilla/readability": "^0.6.0",
@@ -1260,7 +1260,6 @@
   "packageManager": "pnpm@10.32.1",
   "pnpm": {
     "overrides": {
-      "@anthropic-ai/sdk": "0.81.0",
       "hono": "4.12.10",
       "@hono/node-server": "1.19.10",
       "axios": "1.13.6",
@@ -1305,3 +1304,4 @@
     }
   }
 }
+
