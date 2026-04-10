@@ -262,6 +262,19 @@ for i in $(seq 1 8); do
 done
 
 echo ""
+echo "[Post-deploy] Writing API key curl config files for /copilot-credit skill..."
+docker exec "$CONTAINER_NAME" sh -c '
+  mkdir -p /home/node/.openclaw/keys
+  chmod 700 /home/node/.openclaw/keys
+  printf "header = \"Authorization: Bearer %s\"\nsilent\nshow-error\n" "$OPENROUTER_API_KEY" \
+    > /home/node/.openclaw/keys/openrouter-curl.cfg
+  printf "header = \"x-api-key: %s\"\nheader = \"anthropic-version: 2023-06-01\"\nsilent\nshow-error\n" "$ANTHROPIC_API_KEY" \
+    > /home/node/.openclaw/keys/anthropic-curl.cfg
+  chmod 600 /home/node/.openclaw/keys/openrouter-curl.cfg \
+            /home/node/.openclaw/keys/anthropic-curl.cfg
+  echo "  Key files written: openrouter-curl.cfg, anthropic-curl.cfg"
+' 2>/dev/null || echo "  WARNING: Failed to write API key files (OPENROUTER_API_KEY/ANTHROPIC_API_KEY may not be set)"
+
 echo "Deploy complete: $DOCKER_IMAGE → $CONTAINER_NAME"
 docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 REMOTE_EOF
