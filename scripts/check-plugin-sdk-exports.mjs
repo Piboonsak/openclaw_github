@@ -48,8 +48,6 @@ const requiredRuntimeShimEntries = ["root-alias.cjs"];
 const requiredExports = [
   "emptyPluginConfigSchema",
   "onDiagnosticEvent",
-  "registerContextEngine",
-  "delegateCompactionToRuntime",
 ];
 
 let missing = 0;
