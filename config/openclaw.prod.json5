@@ -80,32 +80,31 @@
       thinkingDefault: "high",
 
       // Model configuration
-      // OpenRouter-first routing (Anthropic credits exhausted 2026-03-24).
-      // All models routed through OpenRouter with openrouter/ prefix.
-      // gemini-2.5-flash-lite: ultra-fast at $0.10/$0.40, passed truncation test 2026-03-24
-      // deepseek-v3.2: GPT-5 class at $0.26/$0.38, passed truncation test 2026-03-24
+      // Anthropic-first routing: direct Anthropic API for primary quality.
+      // claude-sonnet-4-6: primary — best quality/cost balance for NongKung.
+      // claude-opus-4-6: available for manual /model switch (higher quality, higher cost).
+      // Fallback to OpenRouter when Anthropic credits are low or exhausted.
       model: {
-        primary: "openrouter/google/gemini-2.5-flash-lite",
+        primary: "anthropic/claude-sonnet-4-6",
         fallbacks: [
-          "openrouter/deepseek/deepseek-v3.2",
           "openrouter/anthropic/claude-sonnet-4-6",
-          "openrouter/anthropic/claude-3-5-haiku",
+          "openrouter/google/gemini-2.5-flash-lite",
         ],
       },
 
       // Model aliases (friendly names in UI)
       models: {
-        "openrouter/google/gemini-2.5-flash-lite": {
-          alias: "Gemini 2.5 Flash Lite (Primary)",
+        "anthropic/claude-sonnet-4-6": {
+          alias: "Claude Sonnet 4.6 (Primary)",
         },
-        "openrouter/deepseek/deepseek-v3.2": {
-          alias: "DeepSeek V3.2 (Fallback)",
+        "anthropic/claude-opus-4-6": {
+          alias: "Claude Opus 4.6",
         },
         "openrouter/anthropic/claude-sonnet-4-6": {
-          alias: "Claude Sonnet 4.6 (Fallback)",
+          alias: "Claude Sonnet 4.6 via OpenRouter (Fallback)",
         },
-        "openrouter/anthropic/claude-3-5-haiku": {
-          alias: "Claude 3.5 Haiku (Fallback)",
+        "openrouter/google/gemini-2.5-flash-lite": {
+          alias: "Gemini 2.5 Flash Lite (Fallback)",
         },
       },
 
@@ -134,20 +133,20 @@
     list: {
       main: {
         model: {
-          primary: "openrouter/google/gemini-2.5-flash-lite",
+          primary: "anthropic/claude-sonnet-4-6",
           fallbacks: [
-            "openrouter/deepseek/deepseek-v3.2",
             "openrouter/anthropic/claude-sonnet-4-6",
+            "openrouter/google/gemini-2.5-flash-lite",
           ],
         },
       },
       analyst: {
-        // Analyst: DeepSeek primary for reasoning capability
+        // Analyst: Anthropic Sonnet primary (quality reasoning)
         model: {
-          primary: "openrouter/deepseek/deepseek-v3.2",
+          primary: "anthropic/claude-sonnet-4-6",
           fallbacks: [
-            "openrouter/google/gemini-2.5-flash-lite",
             "openrouter/anthropic/claude-sonnet-4-6",
+            "openrouter/google/gemini-2.5-flash-lite",
           ],
         },
       },
@@ -167,7 +166,7 @@
       worker: {
         model: {
           primary: "openrouter/google/gemini-2.5-flash-lite",
-          fallbacks: ["openrouter/deepseek/deepseek-v3.2", "openrouter/anthropic/claude-3-5-haiku"],
+          fallbacks: ["openrouter/anthropic/claude-sonnet-4-6"],
         },
       },
     },
