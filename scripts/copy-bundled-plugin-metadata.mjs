@@ -20,9 +20,11 @@ export function rewritePackageExtensions(entries) {
   return entries
     .filter((entry) => typeof entry === "string" && entry.trim().length > 0)
     .map((entry) => {
+      // Preserve original file extension — our fork keeps extensions as .ts
+      // source files rather than compiling them to .js. The runtime loads them
+      // via jiti, so the .ts paths must remain intact.
       const normalized = entry.replace(/^\.\//, "");
-      const rewritten = normalized.replace(/\.[^.]+$/u, ".js");
-      return `./${rewritten}`;
+      return `./${normalized}`;
     });
 }
 
@@ -70,9 +72,9 @@ function rewritePackageEntry(entry) {
   if (typeof entry !== "string" || entry.trim().length === 0) {
     return undefined;
   }
+  // Preserve original file extension (same rationale as rewritePackageExtensions)
   const normalized = entry.replace(/^\.\//, "");
-  const rewritten = normalized.replace(/\.[^.]+$/u, ".js");
-  return `./${rewritten}`;
+  return `./${normalized}`;
 }
 
 function ensurePathInsideRoot(rootDir, rawPath) {
@@ -291,6 +293,20 @@ export function copyBundledPluginMetadata(params = {}) {
     }
 
     writeTextFileIfChanged(distPackageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+
+    // Copy entry .ts files so the runtime path-inside-realpath check can resolve them.
+    // Our fork keeps extensions as TypeScript source rather than compiling to JS.
+    if (packageJson.openclaw && Array.isArray(packageJson.openclaw.extensions)) {
+      for (const entry of packageJson.openclaw.extensions) {
+        if (typeof entry !== "string") continue;
+        const srcEntry = path.join(pluginDir, entry.replace(/^\.\//, ""));
+        const destEntry = path.join(distPluginDir, entry.replace(/^\.\//, ""));
+        if (fs.existsSync(srcEntry)) {
+          fs.mkdirSync(path.dirname(destEntry), { recursive: true });
+          fs.copyFileSync(srcEntry, destEntry);
+        }
+      }
+    }
   }
 
   if (!fs.existsSync(distExtensionsRoot)) {
