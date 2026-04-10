@@ -45,10 +45,7 @@ const requiredRuntimeShimEntries = ["root-alias.cjs"];
 
 // The root plugin-sdk entry intentionally stays tiny. Keep this list aligned
 // with src/plugin-sdk/index.ts runtime exports.
-const requiredExports = [
-  "emptyPluginConfigSchema",
-  "onDiagnosticEvent",
-];
+const requiredExports = ["emptyPluginConfigSchema", "onDiagnosticEvent"];
 
 let missing = 0;
 for (const name of requiredExports) {

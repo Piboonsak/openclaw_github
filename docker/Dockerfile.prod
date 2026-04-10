@@ -28,6 +28,11 @@ COPY . .
 # Build application
 RUN pnpm build
 
+# Remove metadata-only dist/extensions/ so runtime discovers source extensions/ instead.
+# The build creates dist/extensions/ with only package.json/manifest but no actual source,
+# which causes plugin loading failures when resolveBundledPluginsDir() finds it first.
+RUN rm -rf dist/extensions
+
 # Build UI (force pnpm for compatibility)
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
