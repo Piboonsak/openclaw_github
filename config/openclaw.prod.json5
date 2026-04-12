@@ -295,6 +295,25 @@
         echo: {
           maxPositional: 8,
         },
+        curl: {
+          // KI-065: Allow curl -K for pre-populated config files (credit checks, API calls)
+          // Flags: -K (config file), -H (header), -X (method), -d (data), -o (output)
+          // Boolean flags (-s, -S, -f, -L, -v, -I) auto-accepted (not listed)
+          minPositional: 0,
+          maxPositional: 3,
+          allowedValueFlags: [
+            "-K", "--config",
+            "-H", "--header",
+            "-X", "--request",
+            "-d", "--data", "--data-raw", "--data-binary",
+            "-o", "--output",
+            "-u", "--user",
+            "-A", "--user-agent",
+            "--connect-timeout",
+            "--max-time",
+          ],
+          deniedFlags: [],
+        },
         git: {
           minPositional: 0,
           maxPositional: 10,
