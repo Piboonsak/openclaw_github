@@ -246,12 +246,14 @@
       safeBinProfiles: {
         ls: {
           maxPositional: 3,
+          allowPathPositionals: true,
         },
         pwd: {
           maxPositional: 0,
         },
         find: {
           maxPositional: 5,
+          allowPathPositionals: true,
           allowedValueFlags: [
             "-name",
             "-iname",
@@ -287,10 +289,12 @@
         },
         stat: {
           maxPositional: 3,
+          allowPathPositionals: true,
           allowedValueFlags: ["-c", "--format", "-L", "--dereference", "-f", "--file-system"],
         },
         cat: {
           maxPositional: 2,
+          allowPathPositionals: true,
         },
         echo: {
           maxPositional: 8,
