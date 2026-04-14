@@ -87,7 +87,7 @@
       model: {
         primary: "anthropic/claude-sonnet-4-6",
         fallbacks: [
-          "openrouter/anthropic/claude-sonnet-4-6",
+          "openrouter/anthropic/claude-sonnet-4.6",
           "openrouter/google/gemini-2.5-flash-lite",
         ],
       },
@@ -100,7 +100,7 @@
         "anthropic/claude-opus-4-6": {
           alias: "Claude Opus 4.6",
         },
-        "openrouter/anthropic/claude-sonnet-4-6": {
+        "openrouter/anthropic/claude-sonnet-4.6": {
           alias: "Claude Sonnet 4.6 via OpenRouter (Fallback)",
         },
         "openrouter/google/gemini-2.5-flash-lite": {
@@ -135,7 +135,7 @@
         model: {
           primary: "anthropic/claude-sonnet-4-6",
           fallbacks: [
-            "openrouter/anthropic/claude-sonnet-4-6",
+            "openrouter/anthropic/claude-sonnet-4.6",
             "openrouter/google/gemini-2.5-flash-lite",
           ],
         },
@@ -145,7 +145,7 @@
         model: {
           primary: "anthropic/claude-sonnet-4-6",
           fallbacks: [
-            "openrouter/anthropic/claude-sonnet-4-6",
+            "openrouter/anthropic/claude-sonnet-4.6",
             "openrouter/google/gemini-2.5-flash-lite",
           ],
         },
@@ -166,7 +166,7 @@
       worker: {
         model: {
           primary: "openrouter/google/gemini-2.5-flash-lite",
-          fallbacks: ["openrouter/anthropic/claude-sonnet-4-6"],
+          fallbacks: ["openrouter/anthropic/claude-sonnet-4.6"],
         },
       },
     },
