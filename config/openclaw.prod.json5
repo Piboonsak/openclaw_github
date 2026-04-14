@@ -318,6 +318,26 @@
           ],
           deniedFlags: [],
         },
+        // KI-068: tree and wget profiles (previously unprofiled → silently excluded from allowlist)
+        tree: {
+          maxPositional: 3,
+          allowPathPositionals: true,
+          allowedValueFlags: ["-L", "--filelimit", "-P", "-I", "--charset"],
+        },
+        wget: {
+          maxPositional: 3,
+          allowedValueFlags: [
+            "-O", "--output-document",
+            "-o", "--output-file",
+            "-q", "--quiet",
+            "--header",
+            "--max-redirect",
+            "--timeout",
+            "--tries",
+            "-t",
+          ],
+          deniedFlags: ["--execute", "-e"],
+        },
         git: {
           minPositional: 0,
           maxPositional: 10,
