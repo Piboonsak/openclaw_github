@@ -4,6 +4,24 @@
 > It is an orchestration platform, not a chatbot wrapper.
 > Every suggestion must be production-grade, security-conscious, and aligned with the architecture below.
 > For repo structure, build commands, commit conventions, and ops — see `AGENTS.md` (loaded alongside this file).
+> **📍 Path Resolution:** `D:\01_gitrepo\...` paths are laptop-only. On VPS/container, use `gh api` or repo-relative paths. See `Piboonsak/Openclaw` → `data/orchestration/repo-path-map.json` for full mapping.
+
+---
+
+## ⛔ CI/CD Process Compliance (Non-Negotiable)
+
+ALL AI agents (including NongKung, Copilot, Claude) MUST follow the CI/CD process defined in `D:\01_gitrepo\Openclaw\docs\cicd\README.md`.
+
+**Hard Rules:**
+
+- Read `D:\01_gitrepo\Openclaw\docs\cicd\README.md` before any deploy, fix, or debug task
+- Never skip procedure steps — follow checklists IN ORDER
+- **Never stop mid-procedure** — complete the full procedure in one session. If blocked, escalate clearly but do NOT abandon
+- Never modify production VPS directly — all changes via Git + GitHub Actions
+- Every procedure MUST end with: Feedback Report + Procedure Completion Audit
+- Check Known Issues DB (`docs/cicd/12-known-issues-db.md`) before any fix
+
+**NongKung Orchestrator Rule:** When NongKung (น้องกุ้ง) starts a CI/CD procedure or sprint, she MUST complete ALL steps (including deploy, verify, feedback report, and audit) before declaring done. Merge PR ≠ Sprint done. Must go: Merge → Deploy → Verify → Feedback → KI DB.
 
 ---
 
