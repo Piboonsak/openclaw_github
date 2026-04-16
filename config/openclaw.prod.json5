@@ -70,7 +70,7 @@
 
       // Context controls (Sprint 1.5): keep prompt size bounded to control cost/latency
       // The previous 5x expansion inflated prompts significantly in long-running sessions.
-      bootstrapMaxChars: 12000, // per-file bootstrap cap
+      bootstrapMaxChars: 15000, // per-file bootstrap cap (increased from 12000 for BOOTSTRAP.md)
       bootstrapTotalMaxChars: 60000, // total bootstrap cap across all injected files
       contextTokens: 128000, // strict context ceiling for runtime estimates/status
       promptTokenBudget: 10000, // hard history budget before each API call
