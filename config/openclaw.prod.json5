@@ -68,10 +68,12 @@
       // Workspace directory
       workspace: "/data/openclaw/workspace",
 
-      // Context controls (Sprint 1.5): keep prompt size bounded to control cost/latency
-      // The previous 5x expansion inflated prompts significantly in long-running sessions.
-      bootstrapMaxChars: 15000, // per-file bootstrap cap (increased from 12000 for BOOTSTRAP.md)
-      bootstrapTotalMaxChars: 60000, // total bootstrap cap across all injected files
+      // Context controls: keep prompt size bounded to control cost/latency.
+      // Bootstrap files trimmed to <7K each (total ~19K) — caps set accordingly.
+      // Skills budget reduced: 8 core skills total ~22K, budget allows top 6.
+      bootstrapMaxChars: 8000, // per-file bootstrap cap (trimmed files all <7K)
+      bootstrapTotalMaxChars: 25000, // total bootstrap cap (9 files total ~19K)
+      maxSkillsPromptChars: 18000, // skills budget (was 30K default; top 6 of 8 fit)
       contextTokens: 128000, // strict context ceiling for runtime estimates/status
       promptTokenBudget: 10000, // hard history budget before each API call
 
