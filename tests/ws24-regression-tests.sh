@@ -45,8 +45,8 @@ if docker ps --format '{{.Names}}' | grep -q "$CONTAINER_NAME"; then
       fail "$LABEL = $VAL (expected $EXPECTED)"
     fi
   }
-  check_config_val "agents.defaults.bootstrapMaxChars" "15000" "I2.1 bootstrapMaxChars"
-  check_config_val "agents.defaults.bootstrapTotalMaxChars" "60000" "I2.2 bootstrapTotalMaxChars"
+  check_config_val "agents.defaults.bootstrapMaxChars" "8000" "I2.1 bootstrapMaxChars"
+  check_config_val "agents.defaults.bootstrapTotalMaxChars" "25000" "I2.2 bootstrapTotalMaxChars"
   check_config_val "agents.defaults.contextTokens" "128000" "I2.3 contextTokens"
 else
   skip "I2 Container $CONTAINER_NAME not running"
