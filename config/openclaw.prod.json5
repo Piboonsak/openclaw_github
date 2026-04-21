@@ -110,6 +110,14 @@
         },
       },
 
+      // Heartbeat model override — use cheap Gemini instead of default Claude Sonnet.
+      // Without this, idle 30-min heartbeat polls run against anthropic/claude-sonnet-4-6
+      // ($0.015/1K tokens × 19K prompt × 48 calls/day ≈ $7/day idle cost).
+      // Gemini 2.5 Flash Lite is ~150x cheaper and sufficient for HEARTBEAT_OK checks.
+      heartbeat: {
+        model: "openrouter/google/gemini-2.5-flash-lite",
+      },
+
       // Tool access policy (least privilege)
       tools: {
         profile: "balanced", // balanced | minimal | unrestricted
