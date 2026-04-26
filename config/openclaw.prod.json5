@@ -311,10 +311,12 @@
         },
         curl: {
           // KI-065: Allow curl -K for pre-populated config files (credit checks, API calls)
+          // KI-074: allowPathPositionals required so URL positionals (https://...) are accepted
           // Flags: -K (config file), -H (header), -X (method), -d (data), -o (output)
           // Boolean flags (-s, -S, -f, -L, -v, -I) auto-accepted (not listed)
           minPositional: 0,
           maxPositional: 3,
+          allowPathPositionals: true,
           allowedValueFlags: [
             "-K", "--config",
             "-H", "--header",
