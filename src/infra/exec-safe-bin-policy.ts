@@ -544,6 +544,20 @@ function isInvalidValueToken(value: string | undefined): boolean {
   return !value || !isSafeLiteralToken(value);
 }
 
+/** Like isSafeLiteralToken but respects allowPathPositionals for value-flag values. */
+function isSafeValueFlagToken(value: string, allowPathPositionals: boolean): boolean {
+  if (!value || value === "-") {
+    return true;
+  }
+  if (hasGlobToken(value)) {
+    return false;
+  }
+  if (allowPathPositionals) {
+    return true;
+  }
+  return !isPathLikeToken(value);
+}
+
 function consumeLongOptionToken(
   args: string[],
   index: number,
@@ -551,17 +565,22 @@ function consumeLongOptionToken(
   inlineValue: string | undefined,
   allowedValueFlags: ReadonlySet<string>,
   deniedFlags: ReadonlySet<string>,
+  allowPathPositionals: boolean,
 ): number {
   if (deniedFlags.has(flag)) {
     return -1;
   }
   if (inlineValue !== undefined) {
-    return isSafeLiteralToken(inlineValue) ? index + 1 : -1;
+    return isSafeValueFlagToken(inlineValue, allowPathPositionals) ? index + 1 : -1;
   }
   if (!allowedValueFlags.has(flag)) {
     return index + 1;
   }
-  return isInvalidValueToken(args[index + 1]) ? -1 : index + 2;
+  const nextToken = args[index + 1];
+  if (!nextToken) {
+    return -1;
+  }
+  return isSafeValueFlagToken(nextToken, allowPathPositionals) ? index + 2 : -1;
 }
 
 function consumeShortOptionClusterToken(
@@ -572,6 +591,7 @@ function consumeShortOptionClusterToken(
   flags: string[],
   allowedValueFlags: ReadonlySet<string>,
   deniedFlags: ReadonlySet<string>,
+  allowPathPositionals: boolean,
 ): number {
   for (let j = 0; j < flags.length; j += 1) {
     const flag = flags[j];
@@ -583,9 +603,13 @@ function consumeShortOptionClusterToken(
     }
     const inlineValue = cluster.slice(j + 1);
     if (inlineValue) {
-      return isSafeLiteralToken(inlineValue) ? index + 1 : -1;
+      return isSafeValueFlagToken(inlineValue, allowPathPositionals) ? index + 1 : -1;
     }
-    return isInvalidValueToken(args[index + 1]) ? -1 : index + 2;
+    const nextToken = args[index + 1];
+    if (!nextToken) {
+      return -1;
+    }
+    return isSafeValueFlagToken(nextToken, allowPathPositionals) ? index + 2 : -1;
   }
   return hasGlobToken(raw) ? -1 : index + 1;
 }
@@ -632,6 +656,7 @@ function validatePositionalCount(positional: string[], profile: SafeBinProfile):
 export function validateSafeBinArgv(args: string[], profile: SafeBinProfile): boolean {
   const allowedValueFlags = profile.allowedValueFlags ?? NO_FLAGS;
   const deniedFlags = profile.deniedFlags ?? NO_FLAGS;
+  const allowPathPositionals = profile.allowPathPositionals ?? false;
   const positional: string[] = [];
   let i = 0;
   while (i < args.length) {
@@ -672,6 +697,7 @@ export function validateSafeBinArgv(args: string[], profile: SafeBinProfile): bo
         token.inlineValue,
         allowedValueFlags,
         deniedFlags,
+        allowPathPositionals,
       );
       if (nextIndex < 0) {
         return false;
@@ -688,6 +714,7 @@ export function validateSafeBinArgv(args: string[], profile: SafeBinProfile): bo
       token.flags,
       allowedValueFlags,
       deniedFlags,
+      allowPathPositionals,
     );
     if (nextIndex < 0) {
       return false;
