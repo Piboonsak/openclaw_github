@@ -1,0 +1,60 @@
+# .graphifyignore — canonical template for the Openclaw workspace
+# See: docs/architecture/graphify-knowledge-graph.md §6 (Security)
+# Same syntax as .gitignore. Copy this file to the repo root as `.graphifyignore`.
+
+# === Secrets / credentials (never index) ===
+.env
+.env.*
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# === Workspace AI rules (don't index our own instructions as "knowledge") ===
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.github/copilot-instructions.md
+.github/instructions/
+.cursor/
+.gemini/
+.opencode/
+.codex/
+.kiro/
+.agents/
+
+# === Connection / infra docs (avoid leaking host details to LLM) ===
+docs/connection.md
+docs/cicd/_backup/
+
+# === Generated / vendored code ===
+node_modules/
+dist/
+build/
+out/
+.next/
+.turbo/
+.cache/
+coverage/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+
+# === Lockfiles and large binary blobs ===
+*.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.log
+*.zip
+*.tar.gz
+*.pdf
+
+# === Translations / generated docs ===
+docs/translations/
+
+# === graphify's own outputs ===
+graphify-out/
