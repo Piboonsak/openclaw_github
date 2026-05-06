@@ -1,0 +1,829 @@
+﻿{
+  "nodes": [
+    {
+      "id": "repo_openclaw",
+      "label": "OpenClaw",
+      "type": "document",
+      "description": "Personal AI assistant TypeScript monorepo (v2026.4.5). Multi-channel gateway connecting users to AI models via WhatsApp, Telegram, Slack, Discord, LINE, iMessage, Signal, and more.",
+      "file": "README.md"
+    },
+    {
+      "id": "gateway_server",
+      "label": "GatewayServer",
+      "type": "component",
+      "description": "Central HTTP/WebSocket control-plane server. Handles channel routing, auth, config reload, agent dispatch, and control UI. Exposes OpenAI-compatible endpoints.",
+      "file": "src/gateway/server.ts"
+    },
+    {
+      "id": "gateway_protocol",
+      "label": "GatewayProtocol",
+      "type": "component",
+      "description": "Typed wire protocol for Gateway control-plane and node communication. Defines schema for Gatewayâ†”client messages.",
+      "file": "src/gateway/protocol/"
+    },
+    {
+      "id": "agents_system",
+      "label": "AgentsSystem",
+      "type": "component",
+      "description": "Core AI inference subsystem containing the pi-embedded runner, sub-agent orchestration, tool policy pipeline, system prompt construction, and model catalog.",
+      "file": "src/agents/"
+    },
+    {
+      "id": "pi_embedded_runner",
+      "label": "PiEmbeddedRunner",
+      "type": "component",
+      "description": "Primary AI inference loop that executes model calls, handles streaming replies, compaction, tool-call dispatch, and session lifecycle for each conversation turn.",
+      "file": "src/agents/pi-embedded-runner.ts"
+    },
+    {
+      "id": "subagent_system",
+      "label": "SubAgentSystem",
+      "type": "component",
+      "description": "Orchestrates spawning, lifecycle, registry, and depth-limiting of parallel sub-agents within a session. Enables multi-agent task delegation.",
+      "file": "src/agents/subagent-registry.ts"
+    },
+    {
+      "id": "skills_system",
+      "label": "SkillsSystem",
+      "type": "component",
+      "description": "Loads, installs, and injects skill definitions (SKILL.md files) into the agent system prompt. Supports workspace skills, bundled skills, and contrib skills.",
+      "file": "src/agents/skills.ts"
+    },
+    {
+      "id": "tools_system",
+      "label": "ToolsSystem",
+      "type": "component",
+      "description": "Manages tool definitions, exec approvals (SafeBin), bash process registry, tool policy pipeline, and tool-loop detection for agent tool use.",
+      "file": "src/agents/bash-tools.ts"
+    },
+    {
+      "id": "model_catalog",
+      "label": "ModelCatalog",
+      "type": "component",
+      "description": "Discovers, validates, and caches available models across all providers. Handles model aliases, fallback chains, auth profiles, and provider-specific model IDs.",
+      "file": "src/agents/model-catalog.ts"
+    },
+    {
+      "id": "channels_layer",
+      "label": "ChannelsLayer",
+      "type": "component",
+      "description": "Shared channel abstractions: config, session management, reply prefixes, allowlists, draft-stream controls, mention gating, and channel plugin registry.",
+      "file": "src/channels/"
+    },
+    {
+      "id": "channel_line",
+      "label": "LINEChannel",
+      "type": "component",
+      "description": "LINE Messaging API integration: webhook handler, bot message processing, Flex templates, rich menus, reply chunking, and exec approval flow specific to LINE.",
+      "file": "src/line/"
+    },
+    {
+      "id": "channel_discord",
+      "label": "DiscordChannel",
+      "type": "component",
+      "description": "Discord bot integration: guild and DM message handling, component registry, voice messages, slash commands, draft streaming, and Pluralkit support.",
+      "file": "src/discord/"
+    },
+    {
+      "id": "channel_telegram",
+      "label": "TelegramChannel",
+      "type": "component",
+      "description": "Telegram Bot API integration: polling and webhook modes, inline buttons, model selection buttons, voice, group access policy, and native command menu.",
+      "file": "src/telegram/"
+    },
+    {
+      "id": "channel_whatsapp",
+      "label": "WhatsAppChannel",
+      "type": "component",
+      "description": "WhatsApp channel integration: outbound target resolution, message normalization. Uses web provider plugin for actual WhatsApp connectivity.",
+      "file": "src/whatsapp/"
+    },
+    {
+      "id": "channel_slack",
+      "label": "SlackChannel",
+      "type": "component",
+      "description": "Slack integration: Block Kit message formatting, threading, OAuth token handling, modal metadata, and streaming mode for long responses.",
+      "file": "src/slack/"
+    },
+    {
+      "id": "channel_signal",
+      "label": "SignalChannel",
+      "type": "component",
+      "description": "Signal messenger integration for private, end-to-end encrypted messaging channel support.",
+      "file": "src/signal/"
+    },
+    {
+      "id": "channel_imessage",
+      "label": "iMessageChannel",
+      "type": "component",
+      "description": "iMessage integration for macOS/iOS-native messaging via BlueBubbles or direct AppleScript bridge.",
+      "file": "src/imessage/"
+    },
+    {
+      "id": "channel_web",
+      "label": "WebChatChannel",
+      "type": "component",
+      "description": "Built-in WebChat channel providing a browser-based chat UI served by the gateway. Supports streaming and authentication.",
+      "file": "src/channel-web.ts"
+    },
+    {
+      "id": "mcp_system",
+      "label": "MCPSystem",
+      "type": "component",
+      "description": "Model Context Protocol server integration: channel bridge, tool dispatch, and channel-aware MCP server for exposing OpenClaw tools to external MCP clients.",
+      "file": "src/mcp/"
+    },
+    {
+      "id": "plugins_system",
+      "label": "PluginsSystem",
+      "type": "component",
+      "description": "Plugin discovery, manifest validation, registry, lifecycle hooks, and dynamic loader. Enables first-party and third-party channel/provider extension via openclaw.plugin.json.",
+      "file": "src/plugins/"
+    },
+    {
+      "id": "plugin_sdk",
+      "label": "PluginSDK",
+      "type": "component",
+      "description": "Public plugin contract surface exported as openclaw/plugin-sdk. Defines channel contracts, provider entry points, sandbox, and core types for third-party plugins.",
+      "file": "src/plugin-sdk/"
+    },
+    {
+      "id": "memory_system",
+      "label": "MemorySystem",
+      "type": "component",
+      "description": "Vector embedding store using SQLite-vec. Supports semantic search, hybrid search with MMR, temporal decay, workspace file indexing, and multi-backend embeddings (OpenAI, Voyage, Gemini).",
+      "file": "src/memory/"
+    },
+    {
+      "id": "routing_system",
+      "label": "RoutingSystem",
+      "type": "component",
+      "description": "Session key derivation, account-to-agent binding, and inbound message routing logic that maps channel messages to the correct agent session.",
+      "file": "src/routing/"
+    },
+    {
+      "id": "sessions_system",
+      "label": "SessionsSystem",
+      "type": "component",
+      "description": "Session storage, transcript management, file repair, write-locking, session slug generation, and session-level config patching.",
+      "file": "src/sessions/"
+    },
+    {
+      "id": "config_system",
+      "label": "ConfigSystem",
+      "type": "component",
+      "description": "Full configuration load, merge, legacy migration, env variable substitution, includes scanning, runtime overrides, and write-back. Central source of truth for all runtime settings.",
+      "file": "src/config/config.ts"
+    },
+    {
+      "id": "config_types",
+      "label": "ConfigTypes",
+      "type": "config",
+      "description": "Comprehensive TypeScript type definitions for all config keys: channels, agents, models, hooks, sandbox, skills, tools, providers, and more.",
+      "file": "src/config/types.ts"
+    },
+    {
+      "id": "zod_schemas",
+      "label": "ZodSchemas",
+      "type": "config",
+      "description": "Zod validation schemas for all configuration domains. Used to validate user-provided config and generate schema help text.",
+      "file": "src/config/zod-schema.ts"
+    },
+    {
+      "id": "config_file_prod",
+      "label": "openclaw.prod.json5",
+      "type": "config",
+      "description": "Production configuration file for the deployed OpenClaw instance. Contains channel credentials, agent defaults, model settings, and SafeBin exec profiles.",
+      "file": "config/openclaw.prod.json5"
+    },
+    {
+      "id": "exec_approvals_prod",
+      "label": "exec-approvals.prod.json",
+      "type": "config",
+      "description": "Production exec approval list mapping pre-approved safe commands for agent bash tool use without interactive confirmation.",
+      "file": "config/exec-approvals.prod.json"
+    },
+    {
+      "id": "security_layer",
+      "label": "SecurityLayer",
+      "type": "component",
+      "description": "Audit logging, DM policy enforcement, dangerous tool detection, external content scanning, SafeBin exec policy, skill scanner, and Windows ACL checks.",
+      "file": "src/security/"
+    },
+    {
+      "id": "providers_layer",
+      "label": "ProvidersLayer",
+      "type": "component",
+      "description": "Provider-specific auth helpers: GitHub Copilot token exchange, Google Gemini shared utilities, Qwen portal OAuth. Consumed by the model auth system in agents.",
+      "file": "src/providers/"
+    },
+    {
+      "id": "anthropic_provider",
+      "label": "AnthropicProvider",
+      "type": "component",
+      "description": "Anthropic Claude integration via the pi-embedded SDK. Handles Claude API calls, streaming, token usage, prompt cache stability, and auth profile rotation.",
+      "file": "src/agents/pi-embedded.ts"
+    },
+    {
+      "id": "openai_provider",
+      "label": "OpenAIProvider",
+      "type": "component",
+      "description": "OpenAI-compatible HTTP endpoint and responses API implementation. Supports OpenAI models and acts as a compatibility layer for third-party OpenAI-API-compatible providers.",
+      "file": "src/gateway/openai-http.ts"
+    },
+    {
+      "id": "tts_system",
+      "label": "TTSSystem",
+      "type": "component",
+      "description": "Text-to-speech pipeline for voice output across channels. Supports multiple TTS backends for macOS, iOS, and cloud-based speech synthesis.",
+      "file": "src/tts/"
+    },
+    {
+      "id": "media_system",
+      "label": "MediaSystem",
+      "type": "component",
+      "description": "Media processing pipeline: image/audio/video downloads, attachment handling, media understanding, and link understanding for enriching agent context.",
+      "file": "src/media/"
+    },
+    {
+      "id": "browser_tools",
+      "label": "BrowserTools",
+      "type": "component",
+      "description": "Headless browser integration for web scraping, screenshot, and page interaction tools available to the agent via the tools system.",
+      "file": "src/browser/"
+    },
+    {
+      "id": "canvas_host",
+      "label": "CanvasHost",
+      "type": "component",
+      "description": "Live Canvas rendering host that serves a controllable interactive canvas surface connected to the agent session for rich visual output.",
+      "file": "src/canvas-host/"
+    },
+    {
+      "id": "auto_reply",
+      "label": "AutoReply",
+      "type": "component",
+      "description": "Auto-reply engine with templating support for generating automated responses based on config-defined rules and templates.",
+      "file": "src/auto-reply/"
+    },
+    {
+      "id": "hooks_system",
+      "label": "HooksSystem",
+      "type": "component",
+      "description": "Event hook pipeline allowing plugins and config to register callbacks on lifecycle events: agent start, message, tool call, compaction, session, and LLM events.",
+      "file": "src/hooks/"
+    },
+    {
+      "id": "cron_system",
+      "label": "CronSystem",
+      "type": "component",
+      "description": "Scheduled task runner for periodic operations such as memory sync, session cleanup, and channel health checks driven by cron expressions in config.",
+      "file": "src/cron/"
+    },
+    {
+      "id": "cli_system",
+      "label": "CLISystem",
+      "type": "component",
+      "description": "Command-line interface built with the program builder. Provides commands for gateway management, onboarding, session control, config editing, and diagnostics.",
+      "file": "src/cli/"
+    },
+    {
+      "id": "wizard_onboarding",
+      "label": "OnboardingWizard",
+      "type": "component",
+      "description": "Interactive terminal wizard (openclaw onboard) guiding new users through gateway setup, channel configuration, model selection, and workspace initialization.",
+      "file": "src/wizard/"
+    },
+    {
+      "id": "infra_layer",
+      "label": "InfraLayer",
+      "type": "component",
+      "description": "Infrastructure utilities: dotenv loading, port management, binary ensurance, runtime version guard, error formatting, and path environment setup.",
+      "file": "src/infra/"
+    },
+    {
+      "id": "auth_system",
+      "label": "AuthSystem",
+      "type": "component",
+      "description": "Gateway authentication: device auth, connection auth, startup auth, HTTP auth helpers, rate limiting, and role/method scope policy enforcement.",
+      "file": "src/gateway/auth.ts"
+    },
+    {
+      "id": "control_ui",
+      "label": "ControlUI",
+      "type": "component",
+      "description": "Web-based control plane UI served by the gateway. Provides real-time config editing, session management, channel status, and model switching.",
+      "file": "src/gateway/control-ui.ts"
+    },
+    {
+      "id": "sandbox_system",
+      "label": "SandboxSystem",
+      "type": "component",
+      "description": "Execution sandbox for agent tool calls: path safety, Docker exec args, sandbox config merging, workspace path resolution, and policy enforcement.",
+      "file": "src/agents/sandbox.ts"
+    },
+    {
+      "id": "shared_utils",
+      "label": "SharedUtils",
+      "type": "component",
+      "description": "Shared utility library providing text chunking, webhook path helpers, JSON store, file locking, temp paths, and status helpers used across all modules.",
+      "file": "src/shared/"
+    },
+    {
+      "id": "types_layer",
+      "label": "TypeDeclarations",
+      "type": "component",
+      "description": "TypeScript ambient type declarations for third-party packages lacking types: node-pty, napi-rs-canvas, node-llama-cpp, osc-progress, and others.",
+      "file": "src/types/"
+    },
+    {
+      "id": "acp_layer",
+      "label": "ACPLayer",
+      "type": "component",
+      "description": "Anthropic Claude Platform integration layer for advanced provider features and token exchange flows specific to Anthropic's hosted services.",
+      "file": "src/acp/"
+    },
+    {
+      "id": "pairing_system",
+      "label": "PairingSystem",
+      "type": "component",
+      "description": "Mobile device pairing over WebSocket for iOS/Android client connections to the gateway, supporting both LAN ws:// and Tailscale wss:// transports.",
+      "file": "src/pairing/"
+    },
+    {
+      "id": "line_api",
+      "label": "LINE API",
+      "type": "concept",
+      "description": "External LINE Messaging API used by channel_line for webhook verification, message sending, rich menus, and Flex message templates.",
+      "file": "src/line/webhook.ts"
+    },
+    {
+      "id": "discord_api",
+      "label": "Discord API",
+      "type": "concept",
+      "description": "External Discord REST and Gateway API used by channel_discord for bot connectivity, guild management, and real-time message events.",
+      "file": "src/discord/api.ts"
+    },
+    {
+      "id": "telegram_api",
+      "label": "Telegram Bot API",
+      "type": "concept",
+      "description": "External Telegram Bot API used by channel_telegram for polling/webhook message delivery, media downloads, and native command registration.",
+      "file": "src/telegram/fetch.ts"
+    }
+  ],
+  "edges": [
+    {
+      "source": "repo_openclaw",
+      "target": "gateway_server",
+      "relation": "contains",
+      "context": "Gateway is the primary runtime entry point and control plane"
+    },
+    {
+      "source": "repo_openclaw",
+      "target": "agents_system",
+      "relation": "contains",
+      "context": "Agent system drives all AI inference"
+    },
+    {
+      "source": "repo_openclaw",
+      "target": "channels_layer",
+      "relation": "contains",
+      "context": "Channel layer provides messaging abstraction over all integrations"
+    },
+    {
+      "source": "repo_openclaw",
+      "target": "config_system",
+      "relation": "contains",
+      "context": "Config system manages all runtime settings"
+    },
+    {
+      "source": "repo_openclaw",
+      "target": "plugins_system",
+      "relation": "contains",
+      "context": "Plugin system enables extensibility"
+    },
+    {
+      "source": "repo_openclaw",
+      "target": "memory_system",
+      "relation": "contains",
+      "context": "Memory system provides semantic search and context persistence"
+    },
+    {
+      "source": "repo_openclaw",
+      "target": "security_layer",
+      "relation": "contains",
+      "context": "Security layer enforces policies and audit across the system"
+    },
+    {
+      "source": "gateway_server",
+      "target": "auth_system",
+      "relation": "uses",
+      "context": "All HTTP/WS requests pass through gateway auth"
+    },
+    {
+      "source": "gateway_server",
+      "target": "control_ui",
+      "relation": "contains",
+      "context": "Control UI is served by gateway HTTP server"
+    },
+    {
+      "source": "gateway_server",
+      "target": "agents_system",
+      "relation": "calls",
+      "context": "Gateway dispatches messages to agents for inference"
+    },
+    {
+      "source": "gateway_server",
+      "target": "channels_layer",
+      "relation": "uses",
+      "context": "Gateway manages channel session lifecycles"
+    },
+    {
+      "source": "gateway_server",
+      "target": "routing_system",
+      "relation": "uses",
+      "context": "Gateway uses routing to map messages to agent sessions"
+    },
+    {
+      "source": "gateway_server",
+      "target": "sessions_system",
+      "relation": "uses",
+      "context": "Gateway reads/writes session transcripts"
+    },
+    {
+      "source": "gateway_server",
+      "target": "plugins_system",
+      "relation": "uses",
+      "context": "Gateway loads and manages plugin lifecycle"
+    },
+    {
+      "source": "gateway_server",
+      "target": "hooks_system",
+      "relation": "uses",
+      "context": "Gateway fires lifecycle hooks on message and session events"
+    },
+    {
+      "source": "gateway_server",
+      "target": "cron_system",
+      "relation": "contains",
+      "context": "Cron jobs are started and managed within the gateway process"
+    },
+    {
+      "source": "gateway_server",
+      "target": "gateway_protocol",
+      "relation": "implements",
+      "context": "Gateway server implements the typed wire protocol schema"
+    },
+    {
+      "source": "gateway_server",
+      "target": "openai_provider",
+      "relation": "implements",
+      "context": "Gateway exposes OpenAI-compatible HTTP endpoints"
+    },
+    {
+      "source": "agents_system",
+      "target": "pi_embedded_runner",
+      "relation": "contains",
+      "context": "Pi-embedded runner is the core inference loop within agents"
+    },
+    {
+      "source": "agents_system",
+      "target": "subagent_system",
+      "relation": "contains",
+      "context": "Sub-agent orchestration is part of the agents subsystem"
+    },
+    {
+      "source": "agents_system",
+      "target": "skills_system",
+      "relation": "contains",
+      "context": "Skills injection is managed within the agents system"
+    },
+    {
+      "source": "agents_system",
+      "target": "tools_system",
+      "relation": "contains",
+      "context": "Tool execution and policy is part of the agents subsystem"
+    },
+    {
+      "source": "agents_system",
+      "target": "model_catalog",
+      "relation": "contains",
+      "context": "Model catalog lives in agents and resolves which model to use"
+    },
+    {
+      "source": "agents_system",
+      "target": "sandbox_system",
+      "relation": "uses",
+      "context": "Agents execute tool calls within the sandbox"
+    },
+    {
+      "source": "pi_embedded_runner",
+      "target": "anthropic_provider",
+      "relation": "uses",
+      "context": "Pi-embedded runner calls Anthropic Claude API for inference"
+    },
+    {
+      "source": "pi_embedded_runner",
+      "target": "memory_system",
+      "relation": "uses",
+      "context": "Runner queries memory for relevant context before inference"
+    },
+    {
+      "source": "pi_embedded_runner",
+      "target": "skills_system",
+      "relation": "uses",
+      "context": "Runner injects skill prompts into system prompt"
+    },
+    {
+      "source": "pi_embedded_runner",
+      "target": "tools_system",
+      "relation": "calls",
+      "context": "Runner dispatches tool calls to tool execution layer"
+    },
+    {
+      "source": "subagent_system",
+      "target": "pi_embedded_runner",
+      "relation": "uses",
+      "context": "Each sub-agent spawns its own embedded runner instance"
+    },
+    {
+      "source": "tools_system",
+      "target": "sandbox_system",
+      "relation": "uses",
+      "context": "Bash exec tools run within sandbox path and policy checks"
+    },
+    {
+      "source": "tools_system",
+      "target": "security_layer",
+      "relation": "uses",
+      "context": "SafeBin exec policy is enforced by security layer"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_line",
+      "relation": "contains",
+      "context": "LINE is a channel integration under the channels umbrella"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_discord",
+      "relation": "contains",
+      "context": "Discord is a channel integration"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_telegram",
+      "relation": "contains",
+      "context": "Telegram is a channel integration"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_whatsapp",
+      "relation": "contains",
+      "context": "WhatsApp is a channel integration"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_slack",
+      "relation": "contains",
+      "context": "Slack is a channel integration"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_signal",
+      "relation": "contains",
+      "context": "Signal is a channel integration"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_imessage",
+      "relation": "contains",
+      "context": "iMessage is a channel integration"
+    },
+    {
+      "source": "channels_layer",
+      "target": "channel_web",
+      "relation": "contains",
+      "context": "WebChat is a built-in channel integration"
+    },
+    {
+      "source": "channel_line",
+      "target": "line_api",
+      "relation": "uses",
+      "context": "LINE channel makes outbound calls to LINE Messaging API"
+    },
+    {
+      "source": "channel_discord",
+      "target": "discord_api",
+      "relation": "uses",
+      "context": "Discord channel connects to Discord bot API"
+    },
+    {
+      "source": "channel_telegram",
+      "target": "telegram_api",
+      "relation": "uses",
+      "context": "Telegram channel uses Bot API for polling and webhooks"
+    },
+    {
+      "source": "plugins_system",
+      "target": "plugin_sdk",
+      "relation": "uses",
+      "context": "Plugin loader validates and loads plugins against SDK contracts"
+    },
+    {
+      "source": "plugins_system",
+      "target": "hooks_system",
+      "relation": "uses",
+      "context": "Plugins register hooks via the plugin manifest and hook runner"
+    },
+    {
+      "source": "plugins_system",
+      "target": "providers_layer",
+      "relation": "uses",
+      "context": "Plugin system loads provider plugins for AI model access"
+    },
+    {
+      "source": "plugin_sdk",
+      "target": "channels_layer",
+      "relation": "references",
+      "context": "SDK defines channel contract types consumed by channel plugins"
+    },
+    {
+      "source": "config_system",
+      "target": "config_types",
+      "relation": "uses",
+      "context": "Config loader deserializes into typed TypeScript config interfaces"
+    },
+    {
+      "source": "config_system",
+      "target": "zod_schemas",
+      "relation": "uses",
+      "context": "Config validation uses Zod schemas at load time"
+    },
+    {
+      "source": "config_system",
+      "target": "config_file_prod",
+      "relation": "configures",
+      "context": "Production deployments read from openclaw.prod.json5"
+    },
+    {
+      "source": "config_system",
+      "target": "exec_approvals_prod",
+      "relation": "configures",
+      "context": "Exec approval lists are loaded as part of config"
+    },
+    {
+      "source": "security_layer",
+      "target": "tools_system",
+      "relation": "configures",
+      "context": "Security layer enforces SafeBin profiles on tool exec policy"
+    },
+    {
+      "source": "security_layer",
+      "target": "channels_layer",
+      "relation": "references",
+      "context": "DM policy and audit are applied per-channel message"
+    },
+    {
+      "source": "memory_system",
+      "target": "agents_system",
+      "relation": "references",
+      "context": "Memory search results are injected into agent context window"
+    },
+    {
+      "source": "mcp_system",
+      "target": "agents_system",
+      "relation": "uses",
+      "context": "MCP channel bridge exposes agent tools to external MCP clients"
+    },
+    {
+      "source": "mcp_system",
+      "target": "channels_layer",
+      "relation": "uses",
+      "context": "MCP server routes messages through channel abstractions"
+    },
+    {
+      "source": "routing_system",
+      "target": "sessions_system",
+      "relation": "uses",
+      "context": "Routing derives session keys and maps them to stored session files"
+    },
+    {
+      "source": "routing_system",
+      "target": "channels_layer",
+      "relation": "uses",
+      "context": "Route resolution is channel-aware for account binding"
+    },
+    {
+      "source": "providers_layer",
+      "target": "model_catalog",
+      "relation": "references",
+      "context": "Provider auth helpers are used during model catalog discovery"
+    },
+    {
+      "source": "anthropic_provider",
+      "target": "model_catalog",
+      "relation": "references",
+      "context": "Anthropic model IDs and auth profiles are resolved via catalog"
+    },
+    {
+      "source": "openai_provider",
+      "target": "model_catalog",
+      "relation": "references",
+      "context": "OpenAI-compatible provider models are discovered via catalog"
+    },
+    {
+      "source": "tts_system",
+      "target": "channels_layer",
+      "relation": "references",
+      "context": "TTS output is delivered through channel send pipelines"
+    },
+    {
+      "source": "media_system",
+      "target": "agents_system",
+      "relation": "references",
+      "context": "Media attachments are processed and injected into agent messages"
+    },
+    {
+      "source": "browser_tools",
+      "target": "tools_system",
+      "relation": "implements",
+      "context": "Browser is a tool available to agents via tool dispatch"
+    },
+    {
+      "source": "canvas_host",
+      "target": "gateway_server",
+      "relation": "uses",
+      "context": "Canvas UI is served and authenticated by the gateway"
+    },
+    {
+      "source": "auto_reply",
+      "target": "channels_layer",
+      "relation": "uses",
+      "context": "Auto-reply delivers templated messages via channel send"
+    },
+    {
+      "source": "cli_system",
+      "target": "gateway_server",
+      "relation": "calls",
+      "context": "CLI commands start and manage the gateway server process"
+    },
+    {
+      "source": "cli_system",
+      "target": "config_system",
+      "relation": "uses",
+      "context": "CLI reads and writes config for setup and editing commands"
+    },
+    {
+      "source": "wizard_onboarding",
+      "target": "cli_system",
+      "relation": "uses",
+      "context": "Wizard is an interactive CLI command for initial setup"
+    },
+    {
+      "source": "wizard_onboarding",
+      "target": "config_system",
+      "relation": "configures",
+      "context": "Wizard writes initial config file entries"
+    },
+    {
+      "source": "infra_layer",
+      "target": "gateway_server",
+      "relation": "references",
+      "context": "Port management, runtime guard, and binary checks run at gateway startup"
+    },
+    {
+      "source": "pairing_system",
+      "target": "gateway_server",
+      "relation": "uses",
+      "context": "Mobile pairing WebSocket endpoint is handled by the gateway"
+    },
+    {
+      "source": "acp_layer",
+      "target": "anthropic_provider",
+      "relation": "extends",
+      "context": "ACP provides additional Anthropic platform token/auth capabilities"
+    },
+    {
+      "source": "shared_utils",
+      "target": "channels_layer",
+      "relation": "references",
+      "context": "Shared text chunking and webhook utilities are used by channel integrations"
+    },
+    {
+      "source": "types_layer",
+      "target": "agents_system",
+      "relation": "references",
+      "context": "Ambient type declarations support agent-side native module usage"
+    },
+    {
+      "source": "hooks_system",
+      "target": "agents_system",
+      "relation": "references",
+      "context": "Agent lifecycle hooks fire on model calls, tool use, and compaction"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
