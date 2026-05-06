@@ -57,6 +57,20 @@ Notes:
 - `tools.exec.safeBins`: stdin-only safe binaries that can run without explicit allowlist entries. For behavior details, see [Safe bins](/tools/exec-approvals#safe-bins-stdin-only).
 - `tools.exec.safeBinProfiles`: optional custom argv policy per safe bin (`minPositional`, `maxPositional`, `allowedValueFlags`, `deniedFlags`).
 
+### KI-067 regression guard
+
+Path-oriented safe bins must keep `allowPathPositionals: true` in `safeBinProfiles` to avoid accidental allowlist misses for common commands with file/URL arguments.
+
+Required bins in production profile:
+
+- `ls`
+- `find`
+- `cat`
+- `stat`
+- `curl`
+
+CI regression test: `src/config/openclaw-prod-safebin-regression.test.ts`.
+
 Example:
 
 ```json5
