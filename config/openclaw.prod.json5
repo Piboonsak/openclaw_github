@@ -429,6 +429,21 @@
         },
       },
     },
+
+    // Image/media processing configuration
+    // Enables Discord image attachments to be processed by the agent
+    // Refs: Piboonsak/Openclaw#506 (bug: NongKung ไม่เห็นรูปภาพที่แนบใน Discord message)
+    media: {
+      image: {
+        enabled: true,
+        maxBytes: 10485760, // 10 MB per image
+        timeoutSeconds: 30,
+        attachments: {
+          mode: "all",       // "all" = process all attached images
+          maxAttachments: 5, // max images per message
+        },
+      },
+    },
   },
 
   // Sandbox configuration (defense in depth)
