@@ -1,0 +1,41 @@
+{
+  "name": "ai-accounting-copilot",
+  "version": "0.1.0",
+  "description": "Human-in-the-Loop AI platform for pre-accounting document processing (OCR + LLM extraction)",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "echo 'Run Python backend: python -m uvicorn app.main:app --reload' && echo 'Run frontend: cd src/frontend && npm run dev'",
+    "build": "echo 'Build backend: python setup.py build' && echo 'Build frontend: cd src/frontend && npm run build'",
+    "test": "pytest tests/ --cov",
+    "lint": "ruff check src/ && mypy src/",
+    "format": "ruff format src/",
+    "docker:dev": "docker-compose -f docker/docker-compose.dev.yml up",
+    "docker:prod": "docker-compose -f docker/docker-compose.prod.yml up -d"
+  },
+  "keywords": [
+    "OCR",
+    "LLM",
+    "accounting",
+    "document-processing",
+    "AI",
+    "invoice",
+    "automation"
+  ],
+  "authors": [
+    "YAHWAN SHOP",
+    "Piboonsak/Openclaw"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YAHWAN-SHOP/ai-accounting-copilot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YAHWAN-SHOP/ai-accounting-copilot/issues"
+  },
+  "homepage": "https://github.com/YAHWAN-SHOP/ai-accounting-copilot#readme"
+}
