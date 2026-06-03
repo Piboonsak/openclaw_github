@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Pre-Accounting Copilot</title>
+    <meta
+      name="description"
+      content="Human-in-the-loop AI platform for pre-accounting document processing"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="ambient-glow" aria-hidden="true"></div>
+
+    <header class="top-nav container">
+      <a class="brand" href="#">AICopilot</a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#workflow">Workflow</a>
+        <a href="#review">Review</a>
+        <a href="#export">Export</a>
+      </nav>
+      <button class="btn btn-ghost">Book Demo</button>
+    </header>
+
+    <main>
+      <section class="hero container reveal">
+        <div class="hero-copy">
+          <p class="kicker">AI PRE-ACCOUNTING PLATFORM</p>
+          <h1>Turn document chaos into auditable accounting flow.</h1>
+          <p class="subtitle">
+            OCR + LLM extraction, confidence scoring, and human approval in one
+            focused workspace.
+          </p>
+          <div class="hero-actions">
+            <button class="btn btn-primary">Start Free Pilot</button>
+            <button class="btn btn-ghost">See Accuracy Report</button>
+          </div>
+          <div class="hero-metrics">
+            <article>
+              <h3>92%</h3>
+              <p>Avg extraction accuracy</p>
+            </article>
+            <article>
+              <h3>65%</h3>
+              <p>Time saved for reviewers</p>
+            </article>
+            <article>
+              <h3>500+</h3>
+              <p>Documents per day</p>
+            </article>
+          </div>
+        </div>
+
+        <aside class="hero-panel float-card">
+          <div class="panel-head">
+            <span class="dot"></span>
+            <span>Live Intake Queue</span>
+          </div>
+          <ul class="file-list" id="fileList">
+            <li>
+              <span class="file-name">invoice_2026_05_14.pdf</span>
+              <span class="chip success">Classified</span>
+            </li>
+            <li>
+              <span class="file-name">supplier_bill_1182.jpg</span>
+              <span class="chip warning">Needs Review</span>
+            </li>
+            <li>
+              <span class="file-name">receipt_warehouse.png</span>
+              <span class="chip muted">Extracting</span>
+            </li>
+          </ul>
+          <div class="progress-wrap" aria-label="Current model confidence">
+            <div class="progress-label">
+              <span>Model confidence</span>
+              <strong id="confidenceValue">86%</strong>
+            </div>
+            <div class="progress-track">
+              <span class="progress-bar" id="progressBar"></span>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section id="workflow" class="container workflow reveal stagger">
+        <article class="flow-card">
+          <h2>1. Upload & classify</h2>
+          <p>
+            Drag and drop PDF/image batches. The classifier separates invoice,
+            receipt, and payment bill instantly.
+          </p>
+        </article>
+        <article class="flow-card">
+          <h2>2. Extract & validate</h2>
+          <p>
+            Structured extraction with field rules: required checks, totals,
+            VAT, date format, and vendor matching.
+          </p>
+        </article>
+        <article class="flow-card">
+          <h2>3. Human review gate</h2>
+          <p>
+            Low-confidence fields are highlighted for one-click approve/edit
+            before export.
+          </p>
+        </article>
+        <article class="flow-card">
+          <h2>4. Export & audit</h2>
+          <p>
+            Push clean data to Excel with full trace of who changed what and
+            when.
+          </p>
+        </article>
+      </section>
+
+      <section id="review" class="container review-grid reveal stagger">
+        <article class="review-card large">
+          <header>
+            <h2>Human Review Workspace</h2>
+            <p>Focus mode for low-confidence fields</p>
+          </header>
+          <div class="field-grid">
+            <div>
+              <label>Vendor Name</label>
+              <input value="Siam Office Supply Co., Ltd" />
+            </div>
+            <div>
+              <label>Invoice Date</label>
+              <input value="2026-05-21" />
+            </div>
+            <div>
+              <label>Total Amount</label>
+              <input value="19,260.00" />
+            </div>
+            <div>
+              <label>VAT 7%</label>
+              <input value="1,260.00" />
+            </div>
+          </div>
+          <div class="field-actions">
+            <button class="btn btn-ghost">Request Clarification</button>
+            <button class="btn btn-primary">Approve Document</button>
+          </div>
+        </article>
+
+        <article class="review-card">
+          <h3>Risk Indicators</h3>
+          <ul class="risk-list">
+            <li><span class="badge high">HIGH</span>Total mismatch detected</li>
+            <li><span class="badge medium">MEDIUM</span>Missing branch code</li>
+            <li><span class="badge low">LOW</span>Vendor spelling variance</li>
+          </ul>
+        </article>
+
+        <article id="export" class="review-card">
+          <h3>Export Readiness</h3>
+          <p class="export-copy">
+            184 documents approved. 12 pending review. 0 blocked by validation.
+          </p>
+          <button class="btn btn-primary full">Export to Excel</button>
+        </article>
+      </section>
+    </main>
+
+    <script src="./main.js"></script>
+  </body>
+</html>

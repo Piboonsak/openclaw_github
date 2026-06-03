@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>LedgerFlow — AI Pre-Accounting Copilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./ux-ui-prototype.css" />
+</head>
+<body>
+
+  <!-- ═══ TOP BAR ═══ -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect width="28" height="28" rx="6" fill="var(--accent)"/>
+        <path d="M8 20V8h4l4 6 4-6h4v12h-3v-8l-3.5 5h-3L11 12v8H8z" fill="var(--bg)"/>
+      </svg>
+      <span class="topbar-title">LedgerFlow</span>
+    </div>
+
+    <nav class="stepper" aria-label="Process steps">
+      <ol>
+        <li class="step-item active" data-step="1"><span class="step-num">1</span><span class="step-label">Upload</span></li>
+        <li class="step-item" data-step="2"><span class="step-num">2</span><span class="step-label">Select</span></li>
+        <li class="step-item" data-step="3"><span class="step-num">3</span><span class="step-label">Process</span></li>
+        <li class="step-item" data-step="4"><span class="step-num">4</span><span class="step-label">Scan Review</span></li>
+        <li class="step-item" data-step="5"><span class="step-num">5</span><span class="step-label">Map Review</span></li>
+        <li class="step-item" data-step="6"><span class="step-num">6</span><span class="step-label">Export</span></li>
+      </ol>
+    </nav>
+
+    <div class="topbar-actions">
+      <button type="button" class="topbar-icon-btn" id="settingsBtn" aria-label="Settings" title="Company &amp; COA Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <span class="avatar">AP</span>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="main">
+
+    <!-- ──────── STEP 1: UPLOAD ──────── -->
+    <section class="step-panel" id="step-1" aria-labelledby="step1-heading">
+      <h2 id="step1-heading" class="step-heading">Upload Documents</h2>
+      <p class="step-desc">Select a company first, then drop PDF or image scans. The system pre-checks Tax ID on every file.</p>
+
+      <div class="company-selector-block">
+        <label class="field-label" for="companySelect">Processing for Company <span class="required-mark">*</span></label>
+        <select class="field-select" id="companySelect" aria-required="true">
+          <option value="">— Select company before uploading —</option>
+          <option value="co-1" data-taxid="0105559123456">บริษัท ยะวัน เทค จำกัด (Tax ID: 0105559123456)</option>
+          <option value="co-2" data-taxid="0105559654321">บริษัท ยะวัน เทรดดิ้ง จำกัด (Tax ID: 0105559654321)</option>
+        </select>
+        <span class="field-hint" id="companyHint" aria-live="polite"></span>
+      </div>
+
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop files here or click to browse" aria-disabled="true" data-disabled="true">
+        <svg class="dropzone-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="dropzone-text" id="dropzoneText">Select a company above to enable upload</p>
+        <p class="dropzone-sub" id="dropzoneSub">Folder upload is supported</p>
+        <p class="dropzone-formats">PDF, JPG, PNG — up to 50 MB per file</p>
+        <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png" hidden />
+      </div>
+
+      <ul class="file-list" id="fileList" aria-live="polite"></ul>
+    </section>
+
+    <!-- ──────── STEP 2: SELECT ──────── -->
+    <section class="step-panel hidden" id="step-2" aria-labelledby="step2-heading">
+      <h2 id="step2-heading" class="step-heading">Confirm File Queue</h2>
+      <p class="step-desc">Review the files staged for processing. Mismatched Tax IDs are flagged — acknowledge or remove before continuing.</p>
+
+      <div class="select-toolbar">
+        <label class="check-label">
+          <input type="checkbox" id="selectAll" checked />
+          <span>Select all</span>
+        </label>
+        <span class="select-count" id="selectCount">0 files selected</span>
+        <span class="mismatch-badge" id="mismatchAlert" style="display:none"></span>
+      </div>
+
+      <div class="folder-tree" id="folderTree"></div>
+
+      <div class="selection-summary">
+        <span id="summaryText">0 files · 0 MB</span>
+        <span class="warn-chip" id="warnChip" style="display:none"></span>
+      </div>
+    </section>
+
+    <!-- ──────── STEP 3: PROCESSING ──────── -->
+    <section class="step-panel hidden" id="step-3" aria-labelledby="step3-heading">
+      <h2 id="step3-heading" class="step-heading">Processing Documents</h2>
+      <p class="step-desc">OCR extraction, classification, field validation, and COA mapping recommendation.</p>
+
+      <div class="process-summary-bar" id="processSummaryBar" aria-live="polite">
+        <span id="processProgress">Preparing…</span>
+      </div>
+
+      <div class="process-table-wrap">
+        <table class="process-table" aria-label="Processing status per file">
+          <thead>
+            <tr>
+              <th class="col-name">File</th>
+              <th class="col-stage">OCR</th>
+              <th class="col-stage">Classify</th>
+              <th class="col-stage">Extract</th>
+              <th class="col-stage">Map COA</th>
+              <th class="col-status">Status</th>
+            </tr>
+          </thead>
+          <tbody id="processTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ──────── STEP 4: REVIEW SCAN ──────── -->
+    <section class="step-panel hidden" id="step-4" aria-labelledby="step4-heading">
+      <h2 id="step4-heading" class="step-heading">Review Scan Results</h2>
+      <p class="step-desc">Verify extracted header fields. Edit any incorrect values, then approve each document.</p>
+
+      <div class="review-split" id="reviewScanSplit">
+
+        <div class="doc-list-panel">
+          <div class="doc-list-toolbar">
+            <span class="doc-list-count" id="scanDocCount">12 documents</span>
+            <button type="button" class="btn-sm btn-ghost" id="approveAllScan">Approve All</button>
+          </div>
+          <ul class="doc-nav-list" id="docNavList" role="listbox" aria-label="Documents"></ul>
+        </div>
+
+        <div class="scan-detail-panel" id="scanDetailPanel">
+          <div class="pdf-viewer" id="pdfViewer" aria-label="Document preview">
+            <div class="pdf-header">
+              <span class="pdf-filename" id="pdfFilename">INV-Metro-Electric-001.pdf</span>
+              <div class="pdf-nav">
+                <button type="button" class="btn-icon" id="pdfPrev" aria-label="Previous document">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span class="pdf-page-indicator" id="pdfPageIndicator">1 / 12</span>
+                <button type="button" class="btn-icon" id="pdfNext" aria-label="Next document">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="pdf-canvas" id="pdfCanvas">
+              <div class="invoice-sim" id="invoiceSim"></div>
+            </div>
+          </div>
+
+          <form class="scan-form" id="scanForm" novalidate>
+            <div class="scan-form-header">
+              <span class="scan-doc-type" id="scanDocType">Invoice</span>
+              <span class="scan-confidence" id="scanConfidence"></span>
+            </div>
+
+            <div class="field-grid-2">
+              <div class="field-group">
+                <label class="field-label" for="scanInvDate">Invoice Date</label>
+                <input type="date" class="field-input mono" id="scanInvDate" />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanInvNo">Invoice / Voucher No</label>
+                <input type="text" class="field-input mono" id="scanInvNo" placeholder="INV-2605-001" />
+              </div>
+            </div>
+
+            <div class="field-grid-2">
+              <div class="field-group">
+                <label class="field-label" for="scanSellerTax">Seller Tax ID</label>
+                <input type="text" class="field-input mono" id="scanSellerTax" maxlength="13" placeholder="0000000000000" />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanSellerName">Seller Name</label>
+                <input type="text" class="field-input" id="scanSellerName" />
+              </div>
+            </div>
+
+            <div class="field-grid-2">
+              <div class="field-group">
+                <label class="field-label" for="scanBuyerTax">Buyer Tax ID</label>
+                <input type="text" class="field-input mono" id="scanBuyerTax" maxlength="13" placeholder="0000000000000" />
+                <span class="taxid-status" id="scanBuyerTaxStatus" aria-live="polite"></span>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanBuyerName">Buyer Name</label>
+                <input type="text" class="field-input" id="scanBuyerName" />
+              </div>
+            </div>
+
+            <div class="amounts-grid">
+              <div class="field-group">
+                <label class="field-label" for="scanNet">Net Amount (฿)</label>
+                <input type="text" class="field-input mono text-right" id="scanNet" />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanVat">VAT 7% (฿)</label>
+                <input type="text" class="field-input mono text-right" id="scanVat" />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanWhtRate">WHT Rate</label>
+                <select class="field-select mono" id="scanWhtRate">
+                  <option value="0">None</option>
+                  <option value="1">1%</option>
+                  <option value="3">3%</option>
+                  <option value="5">5%</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanWht">WHT Amount (฿)</label>
+                <input type="text" class="field-input mono text-right" id="scanWht" readonly />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanDiscount">Discount (฿)</label>
+                <input type="text" class="field-input mono text-right" id="scanDiscount" value="0.00" />
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="scanGross">Gross Amount (฿)</label>
+                <input type="text" class="field-input mono text-right" id="scanGross" readonly />
+              </div>
+            </div>
+
+            <div class="scan-form-actions">
+              <button type="button" class="btn btn-primary" id="approveHeaderBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Approve Header
+              </button>
+              <button type="button" class="btn btn-ghost" id="scanNextBtn">Next →</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="bulk-bar hidden" id="scanBulkBar">
+        <span id="scanBulkCount">0 selected</span>
+        <button type="button" class="btn btn-primary btn-sm" id="bulkApproveBtn">Approve Selected</button>
+      </div>
+    </section>
+
+    <!-- ──────── STEP 5: REVIEW MAPPING ──────── -->
+    <section class="step-panel hidden" id="step-5" aria-labelledby="step5-heading">
+      <h2 id="step5-heading" class="step-heading">Review COA Mapping</h2>
+      <p class="step-desc">Verify double-entry voucher lines. Change account codes using the combobox — each confirmation trains the recommendation model.</p>
+
+      <div class="mapping-toolbar">
+        <span id="mappingProgress">0 / 0 confirmed</span>
+        <button type="button" class="btn btn-primary btn-sm" id="confirmAllMappingBtn">Confirm All</button>
+      </div>
+
+      <div class="voucher-list" id="voucherList" aria-label="Voucher list"></div>
+    </section>
+
+    <!-- ──────── STEP 6: EXPORT ──────── -->
+    <section class="step-panel hidden" id="step-6" aria-labelledby="step6-heading">
+      <h2 id="step6-heading" class="step-heading">Export Express GL</h2>
+      <p class="step-desc">Configure columns and download the Express Accounting GL Voucher import file.</p>
+
+      <div class="export-config-card">
+        <h3 class="card-subheading">Export Columns</h3>
+        <div class="column-toggles" id="columnToggles">
+          <label class="toggle-label"><input type="checkbox" value="Voucher_No" checked /> Voucher No</label>
+          <label class="toggle-label"><input type="checkbox" value="Date" checked /> Date</label>
+          <label class="toggle-label"><input type="checkbox" value="Book_Code" checked /> Book Code</label>
+          <label class="toggle-label"><input type="checkbox" value="Account_Code" checked /> Account Code</label>
+          <label class="toggle-label"><input type="checkbox" value="Debit_Amount" checked /> Debit Amount</label>
+          <label class="toggle-label"><input type="checkbox" value="Credit_Amount" checked /> Credit Amount</label>
+          <label class="toggle-label"><input type="checkbox" value="Line_Description" checked /> Description</label>
+          <label class="toggle-label"><input type="checkbox" value="Target_Company_TaxID" checked /> Company Tax ID</label>
+          <label class="toggle-label"><input type="checkbox" value="Seller_TaxID" checked /> Seller Tax ID</label>
+          <label class="toggle-label"><input type="checkbox" value="VAT_Rate" /> VAT Rate</label>
+          <label class="toggle-label"><input type="checkbox" value="WHT_Rate" checked /> WHT Rate</label>
+          <label class="toggle-label"><input type="checkbox" value="Discount" /> Discount</label>
+          <label class="toggle-label"><input type="checkbox" value="Address" /> Address</label>
+        </div>
+      </div>
+
+      <div class="export-summary-row">
+        <div class="export-stat">
+          <span class="export-stat-num" id="exportDocCount">0</span>
+          <span class="export-stat-label">Documents</span>
+        </div>
+        <div class="export-stat">
+          <span class="export-stat-num" id="exportLineCount">0</span>
+          <span class="export-stat-label">Journal Lines</span>
+        </div>
+        <div class="export-stat">
+          <span class="export-stat-num" id="exportTotalAmt">฿0</span>
+          <span class="export-stat-label">Total Debit</span>
+        </div>
+      </div>
+
+      <div class="export-preview-wrap">
+        <div class="preview-header">
+          <span class="preview-label">CSV Preview</span>
+          <span class="preview-hint">(first 6 rows)</span>
+        </div>
+        <div class="csv-preview" id="csvPreview" aria-label="CSV preview table"></div>
+      </div>
+
+      <div class="export-actions">
+        <button type="button" class="btn btn-primary btn-lg" id="exportBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Express-Journal.CSV
+        </button>
+        <span class="export-validate-msg" id="exportValidateMsg" aria-live="polite"></span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══ FOOTER NAV ═══ -->
+  <footer class="footer-nav" role="navigation" aria-label="Step navigation">
+    <button type="button" class="btn btn-ghost" id="prevBtn" disabled>← Back</button>
+    <div class="footer-center" id="footerCenter"></div>
+    <button type="button" class="btn btn-primary" id="nextBtn">Continue →</button>
+  </footer>
+
+  <!-- ═══ SETTINGS PANEL ═══ -->
+  <div class="settings-overlay hidden" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-panel">
+      <div class="settings-panel-header">
+        <h2 id="settingsTitle" class="settings-heading">Settings</h2>
+        <button type="button" class="btn-icon" id="closeSettingsBtn" aria-label="Close settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="settings-tabs">
+        <button type="button" class="settings-tab active" data-tab="companies">Companies</button>
+        <button type="button" class="settings-tab" data-tab="coa">Chart of Accounts</button>
+      </div>
+
+      <div class="settings-tab-content" id="tabCompanies">
+        <div class="settings-section-header">
+          <span class="settings-section-title">Company Profiles</span>
+          <button type="button" class="btn btn-primary btn-sm">+ Add Company</button>
+        </div>
+        <table class="settings-table">
+          <thead>
+            <tr>
+              <th>Company Name</th>
+              <th class="col-taxid">Tax ID</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>บริษัท ยะวัน เทค จำกัด</td>
+              <td class="mono">0105559123456</td>
+              <td class="col-actions">
+                <button type="button" class="btn-text">Edit</button>
+                <button type="button" class="btn-text">COA</button>
+              </td>
+            </tr>
+            <tr>
+              <td>บริษัท ยะวัน เทรดดิ้ง จำกัด</td>
+              <td class="mono">0105559654321</td>
+              <td class="col-actions">
+                <button type="button" class="btn-text">Edit</button>
+                <button type="button" class="btn-text">COA</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="settings-tab-content hidden" id="tabCoa">
+        <div class="settings-section-header">
+          <span class="settings-section-title">Chart of Accounts Import</span>
+          <button type="button" class="btn btn-ghost btn-sm">↓ Download Template</button>
+        </div>
+
+        <div class="field-group" style="margin-bottom:var(--sp-4)">
+          <label class="field-label" for="coaCompanySelect">Import COA for</label>
+          <select class="field-select" id="coaCompanySelect">
+            <option value="co-1">บริษัท ยะวัน เทค จำกัด</option>
+            <option value="co-2">บริษัท ยะวัน เทรดดิ้ง จำกัด</option>
+          </select>
+        </div>
+
+        <div class="coa-dropzone" id="coaDropzone" tabindex="0" role="button" aria-label="Drop COA CSV here">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <p class="coa-dropzone-text">Drop COA CSV here or click to browse</p>
+          <p class="coa-dropzone-hint">Expected columns: <span class="mono">account_code, account_name, account_type</span></p>
+        </div>
+
+        <div class="coa-preview hidden" id="coaPreview">
+          <div class="coa-preview-header">
+            <span class="preview-label">Preview (first 5 rows)</span>
+            <button type="button" class="btn btn-primary btn-sm" id="importCoaBtn">Import COA</button>
+          </div>
+          <table class="settings-table" style="margin-top:var(--sp-3)">
+            <thead><tr><th>Code</th><th>Account Name</th><th>Type</th></tr></thead>
+            <tbody id="coaPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   LedgerFlow — 7-Step Wizard Logic (Demo / Prototype)
+   ══════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  /* ─── SAMPLE DATA ─── */
+  const COMPANIES = [
+    { id: 'co-1', name: 'บริษัท ยะวัน เทค จำกัด', taxId: '0105559123456' },
+    { id: 'co-2', name: 'บริษัท ยะวัน เทรดดิ้ง จำกัด', taxId: '0105559654321' },
+  ];
+
+  const COA = {
+    'co-1': [
+      { code: '1001', name: 'เงินสด', type: 'asset' },
+      { code: '1101', name: 'ลูกหนี้การค้า', type: 'asset' },
+      { code: '1151', name: 'ภาษีซื้อ', type: 'asset' },
+      { code: '1200', name: 'สินค้าคงเหลือ', type: 'asset' },
+      { code: '2110', name: 'เจ้าหนี้การค้า', type: 'liability' },
+      { code: '2150', name: 'ภาษีหัก ณ ที่จ่าย', type: 'liability' },
+      { code: '3100', name: 'ทุนเรือนหุ้น', type: 'equity' },
+      { code: '4001', name: 'รายได้จากการขาย', type: 'revenue' },
+      { code: '5010', name: 'ต้นทุนขาย', type: 'expense' },
+      { code: '5020', name: 'ค่าน้ำมัน', type: 'expense' },
+      { code: '5030', name: 'เงินเดือนและค่าจ้าง', type: 'expense' },
+      { code: '5040', name: 'ค่าน้ำค่าไฟ', type: 'expense' },
+      { code: '5045', name: 'ค่าเช่า', type: 'expense' },
+      { code: '5050', name: 'ค่าโทรศัพท์', type: 'expense' },
+      { code: '5060', name: 'ค่าประกันภัย', type: 'expense' },
+      { code: '5070', name: 'ค่าซ่อมแซม', type: 'expense' },
+      { code: '5080', name: 'ค่าใช้จ่ายสำนักงาน', type: 'expense' },
+      { code: '5090', name: 'ค่าเสื่อมราคา', type: 'expense' },
+      { code: '5100', name: 'ค่าโฆษณา', type: 'expense' },
+      { code: '5900', name: 'ค่าใช้จ่ายอื่น', type: 'expense' },
+    ],
+    'co-2': [
+      { code: '1001', name: 'เงินสด', type: 'asset' },
+      { code: '1151', name: 'ภาษีซื้อ', type: 'asset' },
+      { code: '2110', name: 'เจ้าหนี้การค้า', type: 'liability' },
+      { code: '2150', name: 'ภาษีหัก ณ ที่จ่าย', type: 'liability' },
+      { code: '4001', name: 'รายได้จากการขาย', type: 'revenue' },
+      { code: '5045', name: 'ค่าเช่า', type: 'expense' },
+      { code: '5080', name: 'ค่าใช้จ่ายสำนักงาน', type: 'expense' },
+      { code: '5900', name: 'ค่าใช้จ่ายอื่น', type: 'expense' },
+    ],
+  };
+
+  const MAPPING_RULES = {
+    'co-1': {
+      'Metro Electric Co.,Ltd_Invoice': '5040',
+      'PTT Retail Co.,Ltd_Invoice': '5020',
+      'Office Depot (Thailand) Co.,Ltd_Invoice': '5080',
+    },
+  };
+
+  const SAMPLE_FILES = [
+    { id:'f01', name:'INV-Metro-Electric-001.pdf',    size:2.1, folder:'2026-05-Invoices',  sellerTax:'0105566111111', sellerName:'Metro Electric Co.,Ltd',               buyerTax:'0105559123456', netAmt:10000, vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:97, invNo:'INV-2605-001',   invDate:'2026-05-12' },
+    { id:'f02', name:'INV-Metro-Electric-002.pdf',    size:1.8, folder:'2026-05-Invoices',  sellerTax:'0105566111111', sellerName:'Metro Electric Co.,Ltd',               buyerTax:'0105559123456', netAmt:8500,  vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:95, invNo:'INV-2605-002',   invDate:'2026-05-13' },
+    { id:'f03', name:'INV-PTT-Retail-003.pdf',        size:1.2, folder:'2026-05-Invoices',  sellerTax:'0107558000021', sellerName:'PTT Retail Co.,Ltd',                   buyerTax:'0105559123456', netAmt:5000,  vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:92, invNo:'INV-PTT-00392',  invDate:'2026-05-14' },
+    { id:'f04', name:'INV-Office-Depot-004.pdf',      size:0.9, folder:'2026-05-Invoices',  sellerTax:'0105541000088', sellerName:'Office Depot (Thailand) Co.,Ltd',      buyerTax:'0105559123456', netAmt:3200,  vatRate:7, whtRate:0, discount:200, docType:'Invoice', confidence:88, invNo:'OD-2605-0044',   invDate:'2026-05-15' },
+    { id:'f05', name:'BILL-Rent-May.pdf',             size:0.7, folder:'2026-05-Invoices',  sellerTax:'0105512345678', sellerName:'ABC Property Co.,Ltd',                 buyerTax:'0105559123456', netAmt:30000, vatRate:7, whtRate:5, discount:0,   docType:'Bill',    confidence:90, invNo:'R-2605-01',      invDate:'2026-05-01' },
+    { id:'f06', name:'INV-Siam-Corp-005.pdf',         size:1.1, folder:'2026-05-Invoices',  sellerTax:'0105599000999', sellerName:'Siam Corp Ltd',                        buyerTax:'0105559999999', netAmt:12000, vatRate:7, whtRate:1, discount:0,   docType:'Invoice', confidence:78, invNo:'SC-2605-188',    invDate:'2026-05-10', mismatch:true },
+    { id:'f07', name:'RECEIPT-2026-05-12.pdf',        size:0.5, folder:'2026-05-Invoices',  sellerTax:'0105533445566', sellerName:'Quick Services Co.,Ltd',               buyerTax:'0105559123456', netAmt:1500,  vatRate:0, whtRate:0, discount:0,   docType:'Receipt', confidence:85, invNo:'RC-12345',       invDate:'2026-05-12' },
+    { id:'f08', name:'INV-Telecom-006.pdf',           size:1.3, folder:'2026-05-Invoices',  sellerTax:'0107563000111', sellerName:'DTAC Broadband Co.,Ltd',               buyerTax:'0105559123456', netAmt:2800,  vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:94, invNo:'TB-2605-0093',   invDate:'2026-05-16' },
+    { id:'f09', name:'INV-Insurance-007.pdf',         size:0.8, folder:'2026-05-Receipts', sellerTax:'0105546789000', sellerName:'Muang Thai Life Insurance',             buyerTax:'0105559123456', netAmt:45000, vatRate:0, whtRate:1, discount:0,   docType:'Invoice', confidence:91, invNo:'ML-INS-2605',    invDate:'2026-05-02' },
+    { id:'f10', name:'BILL-Utilities-May.pdf',        size:0.6, folder:'2026-05-Receipts', sellerTax:'0107543200099', sellerName:'Metropolitan Electricity Authority',   buyerTax:'0105559123456', netAmt:6500,  vatRate:7, whtRate:0, discount:0,   docType:'Bill',    confidence:96, invNo:'MEA-2605',       invDate:'2026-05-05' },
+    { id:'f11', name:'INV-Maintenance-008.pdf',       size:1.0, folder:'2026-05-Receipts', sellerTax:'0105572345678', sellerName:'Tech Maintenance Ltd',                 buyerTax:'0105559123456', netAmt:7000,  vatRate:7, whtRate:3, discount:500, docType:'Invoice', confidence:87, invNo:'TM-8801',        invDate:'2026-05-18' },
+    { id:'f12', name:'INV-Ads-2605.pdf',              size:1.5, folder:'2026-05-Receipts', sellerTax:'0105561234567', sellerName:'Digital Media Solutions',              buyerTax:'0105559123456', netAmt:15000, vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:93, invNo:'DM-2605-ADS',    invDate:'2026-05-20' },
+  ];
+
+  /* ─── STATE ─── */
+  const state = {
+    currentStep: 1,
+    selectedCompanyId: '',
+    confirmedFiles: [],
+    processedFiles: [],
+    scanCurrentIndex: 0,
+    approvedScan: new Set(),
+    confirmedMapping: new Set(),
+    mappingRules: JSON.parse(JSON.stringify(MAPPING_RULES)),
+    vouchers: [],
+    exportColumns: new Set([
+      'Voucher_No','Date','Book_Code','Account_Code',
+      'Debit_Amount','Credit_Amount','Line_Description',
+      'Target_Company_TaxID','Seller_TaxID','WHT_Rate',
+    ]),
+  };
+
+  /* ─── HELPERS ─── */
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtMB = mb => mb >= 1 ? `${mb.toFixed(1)} MB` : `${(mb * 1000).toFixed(0)} KB`;
+  const getCompany = () => COMPANIES.find(c => c.id === state.selectedCompanyId) || null;
+  const getCOA = () => COA[state.selectedCompanyId] || [];
+
+  function isMismatch(f) {
+    const co = getCompany();
+    return f.mismatch === true || (co && f.buyerTax && f.buyerTax !== co.taxId);
+  }
+
+  function getLabelForCode(code) {
+    const entry = getCOA().find(c => c.code === code);
+    return entry ? entry.name : code;
+  }
+
+  function inferExpenseCode(f) {
+    const n = (f.sellerName || '').toLowerCase();
+    if (n.includes('electric') || n.includes('utility') || n.includes('authority')) return '5040';
+    if (n.includes('ptt') || n.includes('fuel') || n.includes('petrol')) return '5020';
+    if (n.includes('office') || n.includes('depot') || n.includes('stationery')) return '5080';
+    if (n.includes('property') || n.includes('rent') || n.includes('plaza') || n.includes('abc')) return '5045';
+    if (n.includes('telecom') || n.includes('dtac') || n.includes('true')) return '5050';
+    if (n.includes('insurance') || n.includes('life') || n.includes('assur')) return '5060';
+    if (n.includes('maintenance') || n.includes('repair') || n.includes('tech')) return '5070';
+    if (n.includes('media') || n.includes('ads') || n.includes('digital')) return '5100';
+    return '5900';
+  }
+
+  function buildVouchers(files) {
+    return files.map((f, i) => {
+      const net = f.netAmt - (f.discount || 0);
+      const vat = f.vatRate > 0 ? parseFloat((net * f.vatRate / 100).toFixed(2)) : 0;
+      const wht = f.whtRate > 0 ? parseFloat((net * f.whtRate / 100).toFixed(2)) : 0;
+      const gross = net + vat - wht;
+
+      const ruleKey = `${f.sellerName}_${f.docType}`;
+      const rules = state.mappingRules[state.selectedCompanyId] || {};
+      const recCode = rules[ruleKey] || inferExpenseCode(f);
+
+      const lines = [];
+      lines.push({ type:'Dr', code:recCode,  label:getLabelForCode(recCode),       amount:net,   isEditable:true });
+      if (vat > 0) lines.push({ type:'Dr', code:'1151', label:'ภาษีซื้อ 7%',            amount:vat,   isEditable:false });
+      lines.push({ type:'Cr', code:'2110', label:'เจ้าหนี้การค้า',              amount:gross, isEditable:false });
+      if (wht > 0) lines.push({ type:'Cr', code:'2150', label:`ภาษีหัก ณ ที่จ่าย ${f.whtRate}%`, amount:wht,   isEditable:false });
+
+      const voucherNo = `AP2605${String(i+1).padStart(3,'0')}`;
+      return { fileId:f.id, voucherNo, date:f.invDate, vendor:f.sellerName, gross, lines };
+    });
+  }
+
+  /* ─── NAVIGATION ─── */
+  function setStep(n) {
+    if (n > 1 && !state.selectedCompanyId) { showToast('Please select a company first.','warn'); return; }
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.add('hidden'));
+    const panel = $(`step-${n}`);
+    if (panel) { panel.classList.remove('hidden'); panel.scrollIntoView({ behavior:'smooth', block:'start' }); }
+    document.querySelectorAll('.step-item').forEach(item => {
+      const s = parseInt(item.dataset.step);
+      item.classList.remove('active','done');
+      if (s === n) item.classList.add('active');
+      else if (s < n) item.classList.add('done');
+    });
+    state.currentStep = n;
+    $('prevBtn').disabled = n <= 1;
+    const nextLabels = {1:'Continue →',2:'Confirm & Process →',3:'Continue →',4:'Continue to Mapping →',5:'Continue to Export →',6:'Download CSV'};
+    $('nextBtn').textContent = nextLabels[n] || 'Continue →';
+    if (n === 2) renderStep2();
+    if (n === 3) startProcessing();
+    if (n === 4) renderStep4();
+    if (n === 5) renderStep5();
+    if (n === 6) renderStep6();
+  }
+
+  $('prevBtn').addEventListener('click', () => { if (state.currentStep > 1) setStep(state.currentStep - 1); });
+  $('nextBtn').addEventListener('click', () => {
+    if (state.currentStep < 6) setStep(state.currentStep + 1);
+    else exportCSV();
+  });
+
+  /* ─── STEP 1: COMPANY + UPLOAD ─── */
+  $('companySelect').addEventListener('change', function () {
+    state.selectedCompanyId = this.value;
+    const co = getCompany();
+    const hint = $('companyHint');
+    const dz = $('dropzone');
+    if (co) {
+      hint.textContent = `Tax ID: ${co.taxId}`;
+      hint.className = 'field-hint field-hint--ok';
+      dz.dataset.disabled = 'false';
+      dz.removeAttribute('aria-disabled');
+      dz.style.opacity = '1';
+      dz.style.pointerEvents = '';
+      $('dropzoneText').textContent = 'Drag & drop files here';
+      $('dropzoneSub').innerHTML = 'or <button type="button" class="link-btn" id="browseBtn">browse your computer</button> — Folder upload supported';
+      document.getElementById('browseBtn')?.addEventListener('click', () => $('fileInput').click());
+      renderFileList();
+    } else {
+      hint.textContent = '';
+      dz.dataset.disabled = 'true';
+      dz.setAttribute('aria-disabled','true');
+      dz.style.opacity = '0.5';
+      dz.style.pointerEvents = 'none';
+      $('dropzoneText').textContent = 'Select a company above to enable upload';
+      $('dropzoneSub').textContent = 'Folder upload is supported';
+      $('fileList').innerHTML = '';
+    }
+  });
+
+  function renderFileList() {
+    const co = getCompany();
+    const ul = $('fileList');
+    ul.innerHTML = '';
+    SAMPLE_FILES.forEach(f => {
+      const bad = isMismatch(f);
+      const li = document.createElement('li');
+      li.className = 'file-row';
+      li.innerHTML = `
+        <span class="file-icon">${svgDoc()}</span>
+        <span class="file-name">${f.name}</span>
+        <span class="file-folder mono">${f.folder}</span>
+        <span class="file-size">${fmtMB(f.size)}</span>
+        ${bad
+          ? `<span class="badge badge-warn" title="Buyer Tax ID ${f.buyerTax} vs Company ${co?.taxId}">⚠ Mismatch</span>`
+          : '<span class="badge badge-ok">✓ Match</span>'
+        }
+      `;
+      ul.appendChild(li);
+    });
+  }
+
+  /* ─── STEP 2: FOLDER TREE ─── */
+  function renderStep2() {
+    const co = getCompany();
+    const container = $('folderTree');
+    container.innerHTML = '';
+    const folders = {};
+    SAMPLE_FILES.forEach(f => { (folders[f.folder] = folders[f.folder] || []).push(f); });
+
+    Object.entries(folders).forEach(([folder, files]) => {
+      const mismatches = files.filter(f => isMismatch(f)).length;
+      const section = document.createElement('div');
+      section.className = 'folder-section';
+      section.innerHTML = `
+        <div class="folder-row">
+          <svg class="folder-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span class="folder-name">${folder}</span>
+          <span class="folder-count">${files.length} files</span>
+          ${mismatches > 0 ? `<span class="badge badge-warn">${mismatches} mismatch</span>` : ''}
+        </div>
+        <ul class="folder-file-list">
+          ${files.map(f => `<li class="folder-file-row">
+            <label class="check-label">
+              <input type="checkbox" class="file-check" data-id="${f.id}" checked />
+              <span class="folder-file-name">${f.name}</span>
+            </label>
+            <span class="file-size">${fmtMB(f.size)}</span>
+            ${isMismatch(f)
+              ? `<span class="badge badge-warn" title="Tax ID: ${f.buyerTax}">⚠ Mismatch</span>`
+              : '<span class="badge badge-ok">✓ Match</span>'}
+          </li>`).join('')}
+        </ul>
+      `;
+      section.querySelector('.folder-row').addEventListener('click', () => {
+        section.querySelector('.folder-file-list').classList.toggle('collapsed');
+        section.querySelector('.folder-chevron').classList.toggle('rotated');
+      });
+      container.appendChild(section);
+    });
+
+    $('selectAll').addEventListener('change', function () {
+      document.querySelectorAll('.file-check').forEach(cb => { cb.checked = this.checked; });
+      updateSelectCount();
+    });
+    container.addEventListener('change', updateSelectCount);
+    updateSelectCount();
+
+    const mmCount = SAMPLE_FILES.filter(f => isMismatch(f)).length;
+    const alert = $('mismatchAlert');
+    if (mmCount > 0) {
+      alert.style.display = '';
+      alert.textContent = `${mmCount} Tax ID mismatch${mmCount > 1 ? 'es' : ''} — review before confirming`;
+      alert.className = 'mismatch-badge warn-chip';
+    } else {
+      alert.style.display = 'none';
+    }
+  }
+
+  function updateSelectCount() {
+    const checked = document.querySelectorAll('.file-check:checked');
+    $('selectCount').textContent = `${checked.length} files selected`;
+    const totalMB = Array.from(checked).reduce((sum, cb) => {
+      const f = SAMPLE_FILES.find(x => x.id === cb.dataset.id);
+      return f ? sum + f.size : sum;
+    }, 0);
+    $('summaryText').textContent = `${checked.length} files · ${totalMB.toFixed(1)} MB`;
+    state.confirmedFiles = SAMPLE_FILES.filter(f => {
+      const cb = document.querySelector(`.file-check[data-id="${f.id}"]`);
+      return cb && cb.checked;
+    });
+  }
+
+  /* ─── STEP 3: PROCESSING ─── */
+  let procTimer = null;
+  function startProcessing() {
+    if (state.confirmedFiles.length === 0) state.confirmedFiles = [...SAMPLE_FILES];
+    state.processedFiles = [];
+    const body = $('processTableBody');
+    body.innerHTML = '';
+    const STAGES = ['OCR','Classify','Extract','Map COA'];
+    const fileStates = state.confirmedFiles.map(f => ({ file:f, stage:-1, done:false }));
+
+    state.confirmedFiles.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="col-name"><span class="process-filename">${f.name}</span></td>
+        ${STAGES.map(s => `<td class="col-stage"><div class="stage-bar" id="sb-${f.id}-${s.replace(' ','')}"><div class="stage-bar-fill"></div></div></td>`).join('')}
+        <td class="col-status" id="ps-${f.id}"><span class="status-chip status-waiting">Waiting</span></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    let fi = 0, si = 0;
+    function tick() {
+      if (fi >= fileStates.length) {
+        $('processProgress').textContent = `All ${state.confirmedFiles.length} documents processed.`;
+        state.processedFiles = [...state.confirmedFiles];
+        clearInterval(procTimer);
+        return;
+      }
+      const fs = fileStates[fi];
+      const f = fs.file;
+      const sName = STAGES[si];
+      const bar = document.getElementById(`sb-${f.id}-${sName.replace(' ','')}`);
+      const statusEl = $(`ps-${f.id}`);
+      statusEl.innerHTML = `<span class="status-chip status-running">${sName}…</span>`;
+      if (bar) requestAnimationFrame(() => { bar.querySelector('.stage-bar-fill').style.width = '100%'; });
+      const total = fileStates.length;
+      const done = fileStates.filter(x => x.done).length;
+      $('processProgress').textContent = `Processing ${done + 1} of ${total}…`;
+      si++;
+      if (si >= STAGES.length) {
+        si = 0; fi++;
+        fs.done = true;
+        statusEl.innerHTML = '<span class="status-chip status-done">✓ Done</span>';
+        state.processedFiles.push(f);
+      }
+    }
+    clearInterval(procTimer);
+    procTimer = setInterval(tick, 320);
+  }
+
+  /* ─── STEP 4: SCAN REVIEW ─── */
+  function renderStep4() {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    state.scanCurrentIndex = 0;
+    renderDocNav(files);
+    loadScanForm(files[0]);
+    $('scanDocCount').textContent = `${files.length} documents`;
+  }
+
+  function renderDocNav(files) {
+    const ul = $('docNavList');
+    ul.innerHTML = '';
+    files.forEach((f, i) => {
+      const approved = state.approvedScan.has(f.id);
+      const li = document.createElement('li');
+      li.className = 'doc-nav-item' + (i === state.scanCurrentIndex ? ' active' : '');
+      li.setAttribute('role','option');
+      li.setAttribute('aria-selected', String(i === state.scanCurrentIndex));
+      li.dataset.idx = i;
+      li.innerHTML = `
+        <span class="doc-nav-icon">${approved ? svgCheck() : svgDoc()}</span>
+        <span class="doc-nav-name">${f.name}</span>
+        ${isMismatch(f) ? '<span class="badge badge-warn badge-xs">⚠</span>' : ''}
+        ${approved ? '<span class="badge badge-ok badge-xs">✓</span>' : ''}
+      `;
+      li.addEventListener('click', () => {
+        state.scanCurrentIndex = i;
+        renderDocNav(files);
+        loadScanForm(files[i]);
+      });
+      ul.appendChild(li);
+    });
+  }
+
+  function loadScanForm(f) {
+    if (!f) return;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const idx = files.findIndex(x => x.id === f.id);
+    $('pdfFilename').textContent = f.name;
+    $('pdfPageIndicator').textContent = `${idx + 1} / ${files.length}`;
+    $('scanDocType').textContent = f.docType;
+
+    const confEl = $('scanConfidence');
+    confEl.textContent = `${f.confidence}% confidence`;
+    confEl.className = `scan-confidence ${f.confidence >= 90 ? 'conf-high' : f.confidence >= 75 ? 'conf-med' : 'conf-low'}`;
+
+    const vat = f.vatRate > 0 ? parseFloat(((f.netAmt - (f.discount||0)) * f.vatRate / 100).toFixed(2)) : 0;
+    const wht = f.whtRate > 0 ? parseFloat(((f.netAmt - (f.discount||0)) * f.whtRate / 100).toFixed(2)) : 0;
+
+    $('scanInvDate').value = f.invDate || '';
+    $('scanInvNo').value = f.invNo || '';
+    $('scanSellerTax').value = f.sellerTax || '';
+    $('scanSellerName').value = f.sellerName || '';
+    $('scanBuyerTax').value = f.buyerTax || '';
+    $('scanBuyerName').value = '';
+    $('scanNet').value = fmt(f.netAmt);
+    $('scanVat').value = fmt(vat);
+    $('scanWhtRate').value = f.whtRate;
+    $('scanWht').value = fmt(wht);
+    $('scanDiscount').value = fmt(f.discount || 0);
+    $('scanGross').value = fmt(f.netAmt + vat);
+
+    const co = getCompany();
+    const st = $('scanBuyerTaxStatus');
+    if (co) {
+      if (f.buyerTax === co.taxId) {
+        st.textContent = `✓ Matches company Tax ID`;
+        st.className = 'taxid-status taxid-ok';
+      } else {
+        st.textContent = `⚠ Mismatch (Co: ${co.taxId})`;
+        st.className = 'taxid-status taxid-warn';
+      }
+    }
+
+    renderPdfSim(f, vat);
+
+    const approved = state.approvedScan.has(f.id);
+    const btn = $('approveHeaderBtn');
+    btn.textContent = approved ? '✓ Approved' : '✓ Approve Header';
+    btn.className = approved ? 'btn btn-ok' : 'btn btn-primary';
+  }
+
+  function renderPdfSim(f, vat) {
+    $('invoiceSim').innerHTML = `
+      <div class="sim-doc">
+        <div class="sim-header">
+          <div class="sim-logo-block"></div>
+          <div>
+            <div class="sim-company">${f.sellerName}</div>
+            <div class="sim-taxid">Tax ID <span class="mono">${f.sellerTax}</span></div>
+          </div>
+        </div>
+        <div class="sim-line"></div>
+        <div class="sim-meta">
+          <div class="sim-hl"><span class="sim-lbl">Invoice No</span><span class="sim-val">${f.invNo}</span></div>
+          <div class="sim-hl"><span class="sim-lbl">Date</span><span class="sim-val">${f.invDate}</span></div>
+          <div class="sim-hl"><span class="sim-lbl">Buyer Tax ID</span><span class="sim-val mono">${f.buyerTax}</span></div>
+        </div>
+        <div class="sim-line"></div>
+        <div class="sim-amounts">
+          <div class="sim-row"><span>Base Amount</span><span class="mono">${fmt(f.netAmt)}</span></div>
+          ${vat > 0 ? `<div class="sim-row"><span>VAT 7%</span><span class="mono">${fmt(vat)}</span></div>` : ''}
+          <div class="sim-row sim-total"><span>Total</span><span class="mono">${fmt(f.netAmt + vat)}</span></div>
+        </div>
+      </div>
+    `;
+  }
+
+  $('approveHeaderBtn').addEventListener('click', () => {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const f = files[state.scanCurrentIndex];
+    if (!f) return;
+    state.approvedScan.add(f.id);
+    renderDocNav(files);
+    loadScanForm(f);
+    showToast(`Header approved: ${f.name}`, 'ok');
+  });
+
+  $('scanNextBtn').addEventListener('click', () => {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    if (state.scanCurrentIndex < files.length - 1) {
+      state.scanCurrentIndex++;
+      renderDocNav(files);
+      loadScanForm(files[state.scanCurrentIndex]);
+    }
+  });
+
+  $('approveAllScan').addEventListener('click', () => {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    files.forEach(f => state.approvedScan.add(f.id));
+    renderDocNav(files);
+    loadScanForm(files[state.scanCurrentIndex]);
+    showToast('All headers approved', 'ok');
+  });
+
+  $('pdfPrev').addEventListener('click', () => {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    if (state.scanCurrentIndex > 0) { state.scanCurrentIndex--; renderDocNav(files); loadScanForm(files[state.scanCurrentIndex]); }
+  });
+  $('pdfNext').addEventListener('click', () => {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    if (state.scanCurrentIndex < files.length - 1) { state.scanCurrentIndex++; renderDocNav(files); loadScanForm(files[state.scanCurrentIndex]); }
+  });
+
+  /* ─── STEP 5: MAPPING REVIEW ─── */
+  function renderStep5() {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    state.vouchers = buildVouchers(files);
+    const list = $('voucherList');
+    list.innerHTML = '';
+
+    state.vouchers.forEach(v => {
+      const confirmed = state.confirmedMapping.has(v.voucherNo);
+      const totalDr = v.lines.filter(l => l.type === 'Dr').reduce((s, l) => s + l.amount, 0);
+      const totalCr = v.lines.filter(l => l.type === 'Cr').reduce((s, l) => s + l.amount, 0);
+      const balanced = Math.abs(totalDr - totalCr) < 0.01;
+
+      const card = document.createElement('div');
+      card.className = `voucher-card${confirmed ? ' voucher-confirmed' : ''}`;
+      card.id = `vc-${v.voucherNo}`;
+
+      const expCoa = getCOA().filter(c => c.type === 'expense');
+
+      card.innerHTML = `
+        <div class="voucher-card-header">
+          <div class="voucher-meta">
+            <span class="voucher-no mono">${v.voucherNo}</span>
+            <span class="voucher-sep">·</span>
+            <span class="voucher-date">${v.date}</span>
+            <span class="voucher-sep">·</span>
+            <span class="voucher-vendor">${v.vendor}</span>
+          </div>
+          <span class="voucher-gross mono">฿${fmt(v.gross)}</span>
+        </div>
+        <table class="voucher-table">
+          <thead>
+            <tr>
+              <th class="vt-type">Dr/Cr</th>
+              <th class="vt-code">Account Code</th>
+              <th class="vt-name">Account Name</th>
+              <th class="vt-amt">Debit (฿)</th>
+              <th class="vt-amt">Credit (฿)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${v.lines.map((line, li) => {
+              if (line.isEditable) {
+                const opts = expCoa.map(c =>
+                  `<option value="${c.code}" ${c.code === line.code ? 'selected' : ''}>${c.code} — ${c.name}</option>`
+                ).join('');
+                return `<tr class="vt-dr">
+                  <td class="vt-type"><span class="vtype-chip vtype-dr">Dr</span></td>
+                  <td class="vt-code">
+                    <select class="account-select" data-voucher="${v.voucherNo}" data-line="${li}">
+                      ${opts}
+                    </select>
+                  </td>
+                  <td class="vt-name vt-name-auto" id="vtname-${v.voucherNo}-${li}">${line.label}</td>
+                  <td class="vt-amt mono">${fmt(line.amount)}</td>
+                  <td class="vt-amt mono">—</td>
+                </tr>`;
+              }
+              const isCr = line.type === 'Cr';
+              return `<tr class="${isCr ? 'vt-cr' : 'vt-dr'}">
+                <td class="vt-type"><span class="vtype-chip ${isCr ? 'vtype-cr' : 'vtype-dr'}">${line.type}</span></td>
+                <td class="vt-code mono">${line.code}</td>
+                <td class="vt-name">${line.label}</td>
+                <td class="vt-amt mono">${isCr ? '—' : fmt(line.amount)}</td>
+                <td class="vt-amt mono">${isCr ? fmt(line.amount) : '—'}</td>
+              </tr>`;
+            }).join('')}
+            <tr class="vt-totals">
+              <td colspan="3" class="vt-totals-label">Totals</td>
+              <td class="vt-amt mono">${fmt(totalDr)}</td>
+              <td class="vt-amt mono">${fmt(totalCr)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="voucher-card-footer">
+          ${balanced
+            ? '<span class="balance-ok">✓ Balanced</span>'
+            : '<span class="balance-warn">⚠ Unbalanced</span>'}
+          <button type="button" class="btn btn-primary btn-sm confirm-map-btn" data-voucher="${v.voucherNo}" ${confirmed ? 'disabled' : ''}>
+            ${confirmed ? '✓ Confirmed' : 'Confirm Mapping'}
+          </button>
+        </div>
+      `;
+
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll('.account-select').forEach(sel => {
+      sel.addEventListener('change', function () {
+        const code = this.value;
+        const vno = this.dataset.voucher;
+        const li = parseInt(this.dataset.line);
+        const v = state.vouchers.find(x => x.voucherNo === vno);
+        if (v) { v.lines[li].code = code; v.lines[li].label = getLabelForCode(code); }
+        const nameEl = document.getElementById(`vtname-${vno}-${li}`);
+        if (nameEl) nameEl.textContent = getLabelForCode(code);
+        console.log(`[ML Pending] voucher=${vno} override → ${code}`);
+      });
+    });
+
+    list.querySelectorAll('.confirm-map-btn').forEach(btn => {
+      btn.addEventListener('click', function () { confirmMapping(this.dataset.voucher); });
+    });
+
+    updateMappingProgress();
+  }
+
+  function confirmMapping(vno) {
+    state.confirmedMapping.add(vno);
+    const v = state.vouchers.find(x => x.voucherNo === vno);
+    if (v) {
+      const f = SAMPLE_FILES.find(x => x.id === v.fileId);
+      if (f) {
+        const key = `${f.sellerName}_${f.docType}`;
+        const drLine = v.lines.find(l => l.isEditable);
+        if (drLine) {
+          if (!state.mappingRules[state.selectedCompanyId]) state.mappingRules[state.selectedCompanyId] = {};
+          state.mappingRules[state.selectedCompanyId][key] = drLine.code;
+          console.log(`[ML UPSERT] company=${state.selectedCompanyId} key="${key}" → ${drLine.code}`);
+        }
+      }
+    }
+    const card = $(`vc-${vno}`);
+    if (card) {
+      card.classList.add('voucher-confirmed');
+      const btn = card.querySelector('.confirm-map-btn');
+      if (btn) { btn.textContent = '✓ Confirmed'; btn.disabled = true; }
+    }
+    updateMappingProgress();
+    showToast(`Voucher ${vno} confirmed`, 'ok');
+  }
+
+  $('confirmAllMappingBtn').addEventListener('click', () => {
+    state.vouchers.forEach(v => confirmMapping(v.voucherNo));
+    showToast('All vouchers confirmed', 'ok');
+  });
+
+  function updateMappingProgress() {
+    $('mappingProgress').textContent = `${state.confirmedMapping.size} / ${state.vouchers.length} confirmed`;
+  }
+
+  /* ─── STEP 6: EXPORT ─── */
+  function buildExportRows() {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    if (!state.vouchers.length) state.vouchers = buildVouchers(files);
+    const co = getCompany();
+    return state.vouchers.flatMap(v => {
+      const f = SAMPLE_FILES.find(x => x.id === v.fileId);
+      return v.lines.map(line => ({
+        Voucher_No: v.voucherNo,
+        Date: v.date,
+        Book_Code: 'AP',
+        Account_Code: line.code,
+        Debit_Amount: line.type === 'Dr' ? fmt(line.amount) : '0.00',
+        Credit_Amount: line.type === 'Cr' ? fmt(line.amount) : '0.00',
+        Line_Description: `${line.label} - ${v.vendor}`,
+        Target_Company_TaxID: co?.taxId || '',
+        Seller_TaxID: f?.sellerTax || '',
+        VAT_Rate: f?.vatRate ? `${f.vatRate}%` : '0%',
+        WHT_Rate: f?.whtRate ? `${f.whtRate}%` : '0%',
+        Discount: fmt(f?.discount || 0),
+        Address: '',
+      }));
+    });
+  }
+
+  function renderStep6() {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    if (!state.vouchers.length) state.vouchers = buildVouchers(files);
+
+    const totalDr = state.vouchers.flatMap(v => v.lines).filter(l => l.type === 'Dr').reduce((s, l) => s + l.amount, 0);
+    const allLines = buildExportRows();
+
+    $('exportDocCount').textContent = files.length;
+    $('exportLineCount').textContent = allLines.length;
+    $('exportTotalAmt').textContent = `฿${fmt(totalDr)}`;
+    renderCsvPreview(allLines);
+
+    $('columnToggles').querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', function () {
+        if (this.checked) state.exportColumns.add(this.value);
+        else state.exportColumns.delete(this.value);
+        renderCsvPreview(buildExportRows());
+      });
+    });
+  }
+
+  function renderCsvPreview(lines) {
+    const cols = Array.from(state.exportColumns);
+    const container = $('csvPreview');
+    container.innerHTML = '';
+    const table = document.createElement('table');
+    table.className = 'csv-table';
+    table.innerHTML = `<thead><tr>${cols.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('')}</tr></thead>`;
+    const tbody = document.createElement('tbody');
+    lines.slice(0, 6).forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = cols.map(c => {
+        const isNum = ['Debit_Amount','Credit_Amount','Discount'].includes(c);
+        return `<td class="${isNum ? 'mono text-right' : ''}">${row[c] ?? ''}</td>`;
+      }).join('');
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  function exportCSV() {
+    const cols = Array.from(state.exportColumns);
+    const allLines = buildExportRows();
+
+    let balanced = true;
+    state.vouchers.forEach(v => {
+      const dr = v.lines.filter(l => l.type === 'Dr').reduce((s, l) => s + l.amount, 0);
+      const cr = v.lines.filter(l => l.type === 'Cr').reduce((s, l) => s + l.amount, 0);
+      if (Math.abs(dr - cr) > 0.01) balanced = false;
+    });
+
+    const msg = $('exportValidateMsg');
+    msg.textContent = balanced ? '✓ All vouchers balanced.' : '⚠ Some vouchers are unbalanced.';
+    msg.className = `export-validate-msg ${balanced ? 'ok' : 'warn'}`;
+
+    const rawLines = state.vouchers.flatMap(v => {
+      const f = SAMPLE_FILES.find(x => x.id === v.fileId);
+      const co = getCompany();
+      return v.lines.map(line => ({
+        Voucher_No: v.voucherNo, Date: v.date, Book_Code: 'AP',
+        Account_Code: line.code,
+        Debit_Amount: line.type === 'Dr' ? line.amount.toFixed(2) : '0.00',
+        Credit_Amount: line.type === 'Cr' ? line.amount.toFixed(2) : '0.00',
+        Line_Description: `${line.label} - ${v.vendor}`,
+        Target_Company_TaxID: co?.taxId || '',
+        Seller_TaxID: f?.sellerTax || '',
+        VAT_Rate: f?.vatRate ? `${f.vatRate}%` : '0%',
+        WHT_Rate: f?.whtRate ? `${f.whtRate}%` : '0%',
+        Discount: (f?.discount || 0).toFixed(2),
+        Address: '',
+      }));
+    });
+
+    const csvRows = rawLines.map(row => cols.map(c => `"${String(row[c] ?? '').replace(/"/g, '""')}"`).join(','));
+    const csv = [cols.join(','), ...csvRows].join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'Express-Journal.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded', 'ok');
+  }
+
+  $('exportBtn').addEventListener('click', exportCSV);
+
+  /* ─── SETTINGS ─── */
+  $('settingsBtn').addEventListener('click', () => {
+    $('settingsOverlay').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  });
+  $('closeSettingsBtn').addEventListener('click', () => {
+    $('settingsOverlay').classList.add('hidden');
+    document.body.style.overflow = '';
+  });
+  $('settingsOverlay').addEventListener('click', function (e) {
+    if (e.target === this) { this.classList.add('hidden'); document.body.style.overflow = ''; }
+  });
+  document.querySelectorAll('.settings-tab').forEach(tab => {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.add('hidden'));
+      this.classList.add('active');
+      $('tab' + this.dataset.tab.charAt(0).toUpperCase() + this.dataset.tab.slice(1)).classList.remove('hidden');
+    });
+  });
+  $('coaDropzone').addEventListener('click', () => {
+    const coa = getCOA();
+    if (!coa.length) { showToast('Select a company first', 'warn'); return; }
+    const tbody = $('coaPreviewBody');
+    tbody.innerHTML = coa.slice(0, 5).map(c => `<tr><td class="mono">${c.code}</td><td>${c.name}</td><td>${c.type}</td></tr>`).join('');
+    $('coaPreview').classList.remove('hidden');
+  });
+  $('importCoaBtn').addEventListener('click', () => {
+    $('coaPreview').classList.add('hidden');
+    showToast('COA imported successfully', 'ok');
+  });
+
+  /* ─── TOAST ─── */
+  let toastTmr;
+  function showToast(msg, type = 'ok') {
+    let t = document.getElementById('_toast');
+    if (!t) { t = document.createElement('div'); t.id = '_toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = `toast toast-${type} show`;
+    clearTimeout(toastTmr);
+    toastTmr = setTimeout(() => { t.className = `toast toast-${type}`; }, 2800);
+  }
+
+  /* ─── SVG HELPERS ─── */
+  function svgCheck() { return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`; }
+  function svgDoc()   { return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`; }
+
+  /* ─── INIT ─── */
+  setStep(1);
+}());
+</script>
+</body>
+</html>

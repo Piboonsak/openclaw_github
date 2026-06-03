@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Pre-Accounting Copilot - High-Level Infrastructure</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --surface: #ffffff;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --accent: #0f766e;
+      --ok: #15803d;
+      --warn: #b45309;
+      --cloud: #e0f2fe;
+      --office: #ede9fe;
+      --user: #ecfdf5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1, h2, h3 { margin: 0 0 12px; }
+
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .hero p { margin: 0; color: var(--muted); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .network {
+      display: grid;
+      grid-template-columns: 1fr 80px 1fr 80px 1fr;
+      align-items: stretch;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .diagram-wrap {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8fafc;
+      overflow-x: auto;
+      padding: 10px;
+    }
+
+    .diagram {
+      width: 100%;
+      min-width: 980px;
+      height: auto;
+      display: block;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 10px;
+      background: #fff;
+    }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .zone {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      min-height: 190px;
+    }
+
+    .zone h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .zone ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .zone-user { background: var(--user); }
+    .zone-cloud { background: var(--cloud); }
+    .zone-office { background: var(--office); }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-right: 8px;
+      border: 1px solid transparent;
+    }
+
+    .pill-https { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+    .pill-manual { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+    .pill-auto { background: #dbeafe; color: #1e3a8a; border-color: #93c5fd; }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fafafa;
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .role {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+
+    @media (max-width: 900px) {
+      .network {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        transform: rotate(90deg);
+        min-height: 34px;
+      }
+
+      .grid3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>High-Level Infra Network Design (Customer Version)</h1>
+      <p>
+        เอกสารนี้อธิบายภาพรวมโครงสร้างระบบแบบเข้าใจง่าย: WebApp อยู่บน Cloud,
+        พนักงานบัญชี/Manager/Owner ใช้ PC ของตัวเองเข้าใช้งานผ่าน HTTPS,
+        และนำผลลัพธ์ CSV เข้า Express Account ที่ติดตั้งบน Server On-Prem ในสำนักงาน
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>1) Network Overview</h2>
+      <p>
+        <span class="pill pill-https">HTTPS</span>
+        ผู้ใช้งานทุกบทบาทเข้าหน้า WebApp ผ่าน Browser แบบเข้ารหัส
+      </p>
+
+      <div class="diagram-wrap" aria-label="Draw.io style network diagram">
+        <svg class="diagram" viewBox="0 0 1040 420" role="img" aria-label="User PC to Cloud WebApp and Express On-Prem flow">
+          <defs>
+            <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+              <polygon points="0 0, 10 3, 0 6" fill="#0369a1"></polygon>
+            </marker>
+            <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+              <polygon points="0 0, 10 3, 0 6" fill="#16a34a"></polygon>
+            </marker>
+            <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+              <polygon points="0 0, 10 3, 0 6" fill="#ea580c"></polygon>
+            </marker>
+            <marker id="arrowTeal" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+              <polygon points="0 0, 10 3, 0 6" fill="#0f766e"></polygon>
+            </marker>
+          </defs>
+
+          <!-- User zone -->
+          <rect x="28" y="24" width="230" height="286" rx="10" fill="#ffffff" stroke="#ea580c" stroke-width="3"></rect>
+          <text x="42" y="52" font-size="16" font-weight="700" fill="#9a3412">User Side (PC)</text>
+
+          <!-- Laptop -->
+          <rect x="84" y="78" width="116" height="82" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"></rect>
+          <rect x="104" y="96" width="76" height="46" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="2"></rect>
+          <rect x="72" y="164" width="140" height="14" rx="5" fill="#cbd5e1" stroke="#2563eb" stroke-width="2"></rect>
+          <text x="66" y="196" font-size="13" fill="#334155">Accountant / Manager / Owner</text>
+
+          <!-- CSV box -->
+          <rect x="56" y="224" width="92" height="62" rx="8" fill="#ffffff" stroke="#2563eb" stroke-width="2"></rect>
+          <text x="74" y="260" font-size="20" font-weight="700" fill="#1d4ed8">CSV</text>
+
+          <!-- Cloud zone -->
+          <rect x="318" y="30" width="470" height="258" rx="28" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"></rect>
+          <text x="500" y="63" text-anchor="middle" font-size="26" font-weight="700" fill="#075985">Cloud</text>
+
+          <!-- Cloud inner blocks -->
+          <rect x="392" y="88" width="316" height="50" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"></rect>
+          <text x="550" y="119" text-anchor="middle" font-size="18" font-weight="700" fill="#0c4a6e">WebApp Frontend (HTTPS)</text>
+
+          <rect x="392" y="154" width="198" height="50" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"></rect>
+          <text x="491" y="185" text-anchor="middle" font-size="17" font-weight="700" fill="#0c4a6e">Backend API + OCR/AI</text>
+
+          <rect x="602" y="154" width="106" height="96" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="2"></rect>
+          <text x="655" y="182" text-anchor="middle" font-size="15" font-weight="700" fill="#0c4a6e">DB</text>
+          <line x1="620" y1="194" x2="690" y2="194" stroke="#0284c7" stroke-width="2"></line>
+          <line x1="620" y1="208" x2="690" y2="208" stroke="#0284c7" stroke-width="2"></line>
+
+          <!-- Express on-prem -->
+          <rect x="812" y="300" width="200" height="90" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="3"></rect>
+          <text x="912" y="334" text-anchor="middle" font-size="17" font-weight="700" fill="#9a3412">Express On-Prem Server</text>
+          <text x="912" y="358" text-anchor="middle" font-size="13" fill="#9a3412">Import Folder / Job</text>
+
+          <!-- Arrows -->
+          <line x1="204" y1="118" x2="382" y2="112" stroke="#0369a1" stroke-width="3" marker-end="url(#arrowBlue)"></line>
+
+          <!-- PDF icon for upload path -->
+          <rect x="256" y="74" width="42" height="48" rx="5" fill="#ffffff" stroke="#1d4ed8" stroke-width="2"></rect>
+          <polygon points="288,74 298,74 298,84" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1"></polygon>
+          <text x="277" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">PDF</text>
+          <text x="300" y="104" font-size="13" font-weight="700" fill="#075985">Upload</text>
+
+          <line x1="104" y1="286" x2="836" y2="340" stroke="#16a34a" stroke-width="3" marker-end="url(#arrowGreen)"></line>
+          <text x="344" y="335" font-size="15" font-weight="700" fill="#15803d">Upload CSV (Manual Mode)</text>
+
+          <line x1="728" y1="228" x2="844" y2="308" stroke="#ea580c" stroke-width="3" marker-end="url(#arrowOrange)"></line>
+          <text x="736" y="256" font-size="14" font-weight="700" fill="#c2410c">Export CSV (Auto Option)</text>
+
+          <!-- CSV download back to user -->
+          <line x1="390" y1="246" x2="150" y2="254" stroke="#0f766e" stroke-width="3" marker-end="url(#arrowTeal)"></line>
+          <text x="258" y="240" font-size="14" font-weight="700" fill="#0f766e">Download CSV</text>
+        </svg>
+
+        <div class="legend">
+          <span class="legend-item"><span class="swatch" style="background:#dbeafe"></span> Cloud Components</span>
+          <span class="legend-item"><span class="swatch" style="background:#ffffff; border:1px solid #ea580c"></span> User / On-Prem</span>
+          <span class="legend-item"><span class="swatch" style="background:#0f766e"></span> Download CSV Path</span>
+          <span class="legend-item"><span class="swatch" style="background:#16a34a"></span> Manual CSV Path</span>
+          <span class="legend-item"><span class="swatch" style="background:#ea580c"></span> Auto Export Path (Optional)</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2) End-to-End Data Flow</h2>
+      <div class="flow">
+        <div class="step">1. Accountant เปิดเอกสารใน PC ตัวเอง (PDF/JPG/PNG) แล้วอัปโหลดผ่านหน้าเว็บ</div>
+        <div class="step">2. Cloud ประมวลผล OCR + จัดประเภทเอกสาร + แนะนำบัญชี</div>
+        <div class="step">3. Accountant ตรวจข้อมูล, Manager ตรวจความถูกต้อง, Owner ติดตามภาพรวม</div>
+        <div class="step">4. ระบบสร้างไฟล์ผลลัพธ์ CSV ตามรูปแบบ Express GL</div>
+        <div class="step">5. CSV ถูกนำเข้า Express Account บนเซิร์ฟเวอร์สำนักงาน</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3) User Roles</h2>
+      <div class="grid3">
+        <div class="role">
+          <h3>Accountant</h3>
+          <ul>
+            <li>อัปโหลดเอกสารจากเครื่องตัวเอง</li>
+            <li>Review Scan + Mapping</li>
+            <li>Export CSV</li>
+          </ul>
+        </div>
+
+        <div class="role">
+          <h3>Manager</h3>
+          <ul>
+            <li>ติดตามงานคงค้าง</li>
+            <li>ตรวจ mismatch และคุณภาพข้อมูล</li>
+            <li>อนุมัติใน workflow</li>
+          </ul>
+        </div>
+
+        <div class="role">
+          <h3>Owner</h3>
+          <ul>
+            <li>ดู dashboard ภาพรวม</li>
+            <li>ติดตามสถานะ export</li>
+            <li>เห็นแนวโน้มผลลัพธ์ธุรกิจ</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4) CSV Transfer เข้า Express (2 ทางเลือก)</h2>
+      <p><span class="pill pill-manual">Mode A: Manual</span> ดาวน์โหลด CSV แล้วนำเข้าโดยผู้ใช้งาน</p>
+      <p><span class="pill pill-auto">Mode B: Assisted Auto Sync</span> มี service ฝั่งสำนักงานรับไฟล์และรัน import job อัตโนมัติ</p>
+
+      <ul>
+        <li><span class="ok">แนะนำเริ่มจาก Manual</span> เพื่อ go-live ได้เร็ว</li>
+        <li>เมื่อระบบนิ่ง ค่อยเพิ่ม Auto Sync เพื่อลดงานมือ</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>5) Security Summary</h2>
+      <ul>
+        <li>ทุกการใช้งานผ่าน <strong>HTTPS/TLS</strong></li>
+        <li>แยกสิทธิ์ตามบทบาท (Accountant/Manager/Owner)</li>
+        <li>เก็บ Audit Trail: upload, edit, approve, export, import</li>
+        <li>สำหรับ Auto Sync ควรใช้ VPN หรือ IP allowlist ตามนโยบาย IT</li>
+      </ul>
+      <p class="warn">หมายเหตุ: เอกสารนี้เป็น High-level design สำหรับการสื่อสารกับลูกค้าและทีม IT</p>
+    </section>
+  </div>
+</body>
+</html>

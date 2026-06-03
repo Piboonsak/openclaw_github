@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สัญญาจ้างพัฒนาซอฟต์แวร์ — AI Pre-Accounting Copilot</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Sarabun', 'TH SarabunPSK', sans-serif;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #1a1a1a;
+            background: #fff;
+            padding: 40px 60px;
+            max-width: 210mm;
+            margin: 0 auto;
+        }
+
+        @media print {
+            body { padding: 20mm 25mm; font-size: 14px; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+
+            /* Keep important blocks together in print output. */
+            h1, h2, h3,
+            table, .party-block, .note-box, .diagram-container,
+            .signature-area, .sig-box {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            h1, h2, h3 {
+                break-after: avoid;
+                page-break-after: avoid;
+            }
+
+            p, li {
+                orphans: 3;
+                widows: 3;
+            }
+
+            tr, td, th {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 28px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+        }
+
+        h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 4px;
+        }
+
+        .center { text-align: center; }
+        .subtitle { text-align: center; font-size: 14px; color: #555; margin-bottom: 24px; }
+
+        .party-block {
+            border: 1px dashed #999;
+            padding: 16px 20px;
+            margin: 12px 0;
+            min-height: 120px;
+            background: #fafafa;
+        }
+
+        .party-block .label {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .blank-line {
+            border-bottom: 1px dotted #666;
+            display: inline-block;
+            width: 300px;
+            margin-left: 8px;
+        }
+
+        .blank-short {
+            border-bottom: 1px dotted #666;
+            display: inline-block;
+            width: 150px;
+            margin-left: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+
+        table th, table td {
+            border: 1px solid #ccc;
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        table th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .indent { padding-left: 24px; }
+        .indent2 { padding-left: 48px; }
+
+        ol, ul { margin-left: 24px; margin-top: 4px; margin-bottom: 8px; }
+        li { margin-bottom: 4px; }
+
+        .signature-area {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            gap: 40px;
+        }
+
+        .sig-box {
+            flex: 1;
+            text-align: center;
+            padding-top: 80px;
+        }
+
+        .sig-box .sig-line {
+            border-top: 1px solid #333;
+            width: 200px;
+            margin: 0 auto 4px;
+        }
+
+        .sig-box .sig-label { font-size: 13px; color: #555; }
+
+        .highlight { background: #fffde6; padding: 2px 4px; }
+
+        .note-box {
+            border-left: 4px solid #e67e22;
+            background: #fef9e7;
+            padding: 10px 14px;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+
+        .diagram-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .diagram-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 80px;
+            color: rgba(0,0,0,0.03);
+            font-weight: 700;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="watermark">DRAFT</div>
+
+<h1>สัญญาจ้างพัฒนาซอฟต์แวร์</h1>
+<p class="subtitle">ระบบ AI Pre-Accounting Copilot<br>เลขที่สัญญา: ____/2569</p>
+
+<p class="center" style="margin-bottom:24px;">ทำที่ <span class="blank-short"></span> วันที่ <span class="blank-short"></span> เดือน <span class="blank-short"></span> พ.ศ. <span class="blank-short"></span></p>
+
+<!-- ============================================================ -->
+<h2>คู่สัญญา</h2>
+
+<div class="party-block">
+    <p class="label">ผู้ว่าจ้าง ("ผู้ว่าจ้าง")</p>
+    <p>ชื่อบริษัท / ชื่อ-นามสกุล: <span class="blank-line"></span></p>
+    <p>ที่อยู่: <span class="blank-line"></span></p>
+    <p><span class="blank-line"></span></p>
+    <p>เลขประจำตัวผู้เสียภาษี: <span class="blank-line"></span></p>
+    <p>โทรศัพท์: <span class="blank-short"></span> อีเมล: <span class="blank-short"></span></p>
+    <p>ผู้มีอำนาจลงนาม: <span class="blank-line"></span> ตำแหน่ง: <span class="blank-short"></span></p>
+</div>
+
+<div class="party-block">
+    <p class="label">ผู้รับจ้าง ("ผู้รับจ้าง")</p>
+    <p>ชื่อบริษัท / ชื่อ-นามสกุล: <span class="blank-line"></span></p>
+    <p>ที่อยู่: <span class="blank-line"></span></p>
+    <p><span class="blank-line"></span></p>
+    <p>เลขประจำตัวผู้เสียภาษี: <span class="blank-line"></span></p>
+    <p>โทรศัพท์: <span class="blank-short"></span> อีเมล: <span class="blank-short"></span></p>
+    <p>ผู้มีอำนาจลงนาม: <span class="blank-line"></span> ตำแหน่ง: <span class="blank-short"></span></p>
+</div>
+
+<p style="margin-top:12px;">คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญาฉบับนี้ โดยมีเงื่อนไขและข้อตกลงดังต่อไปนี้:</p>
+
+<!-- ============================================================ -->
+<h2>ข้อ 1. วัตถุประสงค์</h2>
+<p>ผู้ว่าจ้างตกลงว่าจ้าง และผู้รับจ้างตกลงรับจ้างพัฒนาระบบซอฟต์แวร์ "AI Pre-Accounting Copilot" เพื่อสนับสนุนกระบวนการเตรียมข้อมูลทางบัญชีแบบ Human-in-the-Loop ครอบคลุมการอ่านเอกสาร การจำแนกประเภทเอกสาร การสกัดข้อมูล การตรวจสอบโดยผู้ใช้งาน และการส่งออกข้อมูลในรูปแบบ Excel/CSV ทั้งนี้ให้เป็นไปตามขอบเขตงานตามข้อ 2</p>
+
+<!-- ============================================================ -->
+<h2>ข้อ 2. ขอบเขตงาน (Statement of Work – SoW)</h2>
+
+<h3>2.1 Phase 1 – Paid Proof of Concept (PoC)</h3>
+<table>
+    <tr><th>รายการ</th><th>รายละเอียด</th></tr>
+    <tr><td>ระยะเวลา</td><td>1–2 สัปดาห์ นับจากวันเริ่มงาน</td></tr>
+    <tr><td>จำนวนเอกสารทดสอบ</td><td>200–300 ไฟล์ (จัดเตรียมโดยผู้ว่าจ้าง)</td></tr>
+    <tr>
+        <td>ผลงานส่งมอบ (Deliverables)</td>
+        <td>
+            <ol>
+                <li>Extraction proof-of-concept (1–2 รอบ)</li>
+                <li>Accuracy Report</li>
+                <li>Field Mapping Guide</li>
+                <li>Recommendation for MVP</li>
+            </ol>
+        </td>
+    </tr>
+</table>
+
+<h3>2.2 Phase 2 – MVP Production</h3>
+<table>
+    <tr><th>รายการ</th><th>รายละเอียด</th></tr>
+    <tr><td>ระยะเวลา</td><td>4–6 สัปดาห์ นับจากวันลงนามสัญญา MVP</td></tr>
+    <tr>
+        <td>ขอบเขตรวม (In-Scope)</td>
+        <td>
+            <ol>
+                <li>Web UI (Drag-drop upload)</li>
+                <li>Document Auto-Classification</li>
+                <li>Field Extraction พร้อม Validation Rules 4 ข้อ</li>
+                <li>Human Review Workflow</li>
+                <li>Excel/CSV Export พร้อม Audit Trail</li>
+                <li>User Management (Admin / Reviewer)</li>
+            </ol>
+        </td>
+    </tr>
+    <tr>
+        <td>ขอบเขตไม่รวม (Out of Scope)</td>
+        <td>
+            <ul>
+                <li>Line-item Extraction (batch mode)</li>
+                <li>GL Integration หรือการเชื่อมต่อระบบ ERP</li>
+                <li>Custom Trainer (document types)</li>
+                <li>Managed Human Review (outsourced)</li>
+                <li><strong>ระบบ Express Accounting หรือซอฟต์แวร์บัญชีอื่นใด</strong></li>
+                <li><strong>การบันทึกบัญชี, การลงรายการ GL, หรือการจัดทำงบการเงิน</strong></li>
+            </ul>
+        </td>
+    </tr>
+</table>
+
+<h3>2.3 เป้าหมายความแม่นยำ (Accuracy Targets)</h3>
+<table>
+    <tr><th>ประเภทเอกสาร</th><th>Target Accuracy</th><th>หมายเหตุ</th></tr>
+    <tr><td>ใบกำกับภาษีปกติ (เต็ม)</td><td>90–95%</td><td>ส่วนใหญ่เห็นชัด</td></tr>
+    <tr><td>ใบกำกับอย่างย่อ</td><td>85–90%</td><td>ขนาดเล็กลง</td></tr>
+    <tr><td>ใบสำหรับชำระหนี้ (print)</td><td>80–88%</td><td>ความคมชัดแตกต่าง</td></tr>
+    <tr><td>ใบสำหรับชำระหนี้ (ลบเลือน)</td><td>50–70%</td><td>Low-confidence → flag for human</td></tr>
+    <tr><td>Thermal receipt / Handwritten</td><td colspan="2">ไม่อยู่ในขอบเขตงาน (No Support)</td></tr>
+</table>
+
+<div class="note-box">
+    <strong>⚠️ หมายเหตุ:</strong> ระบบจะแจ้งรายการที่มีความเชื่อมั่นต่ำเพื่อให้ผู้ใช้งานตรวจสอบก่อนส่งออกข้อมูล โดยผลลัพธ์จากระบบเป็นข้อมูลเพื่อประกอบการทำงานเท่านั้น และไม่อาจใช้ทดแทนดุลยพินิจทางวิชาชีพบัญชีได้
+</div>
+
+<h3>2.4 การส่งมอบ, ถ่ายทอดความรู้ และการดูแลระบบ (Delivery, Knowledge Transfer & MA Support)</h3>
+<table>
+    <tr><th>รายการ</th><th>รายละเอียด</th></tr>
+    <tr>
+        <td><strong>Delivery & Handover</strong></td>
+        <td>
+            <ol>
+                <li>ส่งมอบระบบพร้อม User Manual (ภาษาไทย)</li>
+                <li>Source code deploy บน Cloud environment ที่ตกลง</li>
+                <li>เอกสาร Admin Guide สำหรับ IT Contact</li>
+            </ol>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Knowledge Transfer</strong></td>
+        <td>
+            <ol>
+                <li>อบรมการใช้งานระบบ (Online) จำนวน 2 ครั้ง (ครั้งละ 1–2 ชม.)</li>
+                <li>สอนการตั้งค่า Mapping ผังบัญชี (Chart of Accounts) เบื้องต้น</li>
+                <li>แนะนำ Workflow การตรวจสอบและ Export</li>
+                <li>จัดทำ FAQ และ Troubleshooting Guide</li>
+            </ol>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>MA Support — Online</strong></td>
+        <td>
+            <ul>
+                <li>ช่องทาง: Email / LINE Official / Ticket System</li>
+                <li>เวลาให้บริการ: จันทร์–ศุกร์ 09:00–18:00 น.</li>
+                <li>Response Time ตาม SLA ของ Plan ที่เลือก (ข้อ 9)</li>
+                <li>รวมอยู่ในค่า Subscription รายเดือน</li>
+            </ul>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>MA Support — On-Site</strong></td>
+        <td>
+            <ul>
+                <li>ให้บริการเมื่อผู้ว่าจ้างร้องขอ โดยนัดหมายล่วงหน้าอย่างน้อย 3 วันทำการ</li>
+                <li>วันจันทร์–ศุกร์ (เวลาทำงานปกติ): ไม่มีค่าใช้จ่ายเพิ่ม สำหรับ Plan Standard ขึ้นไป (Starter = 5,000 บาท/ครั้ง)</li>
+                <li>วันเสาร์–อาทิตย์ หรือนอกเวลา: ค่าใช้จ่ายเพิ่มเติม 20,000–30,000 บาท/ครั้ง</li>
+                <li>ขอบเขต On-Site: แก้ไขปัญหาเฉพาะหน้า, ช่วยตั้งค่า Mapping, อบรมเพิ่มเติม</li>
+            </ul>
+        </td>
+    </tr>
+</table>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+
+<h2>ข้อ 3. สถาปัตยกรรมระบบ (System Architecture)</h2>
+
+<p>ระบบมีโครงสร้างการทำงานดังแผนภาพต่อไปนี้:</p>
+
+<div class="diagram-container">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Sarabun, sans-serif" font-size="13">
+    <!-- Background -->
+    <rect width="820" height="520" fill="#fff"/>
+
+    <!-- User Side -->
+    <rect x="30" y="60" width="240" height="280" rx="8" fill="none" stroke="#e67e22" stroke-width="2"/>
+    <text x="150" y="50" text-anchor="middle" font-weight="700" fill="#e67e22" font-size="14">User Side (PC)</text>
+
+    <!-- User icon -->
+    <circle cx="100" cy="140" r="20" fill="none" stroke="#555" stroke-width="1.5"/>
+    <line x1="100" y1="160" x2="100" y2="200" stroke="#555" stroke-width="1.5"/>
+    <line x1="80" y1="175" x2="120" y2="175" stroke="#555" stroke-width="1.5"/>
+    <line x1="100" y1="200" x2="85" y2="230" stroke="#555" stroke-width="1.5"/>
+    <line x1="100" y1="200" x2="115" y2="230" stroke="#555" stroke-width="1.5"/>
+
+    <!-- Monitor icon -->
+    <rect x="140" y="120" width="70" height="50" rx="3" fill="none" stroke="#555" stroke-width="1.5"/>
+    <line x1="175" y1="170" x2="175" y2="185" stroke="#555" stroke-width="1.5"/>
+    <line x1="155" y1="185" x2="195" y2="185" stroke="#555" stroke-width="2"/>
+
+    <text x="150" y="240" text-anchor="middle" font-size="11" fill="#555">Accountant / Manager / Owner</text>
+
+    <!-- CSV box -->
+    <rect x="50" y="280" width="80" height="40" rx="4" fill="#e8f8e8" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="90" y="305" text-anchor="middle" font-weight="700" fill="#27ae60" font-size="14">CSV</text>
+
+    <!-- Cloud Box -->
+    <rect x="330" y="60" width="320" height="280" rx="8" fill="#e8f4fd" stroke="#2980b9" stroke-width="2"/>
+    <text x="490" y="50" text-anchor="middle" font-weight="700" fill="#2980b9" font-size="16">Cloud</text>
+
+    <!-- WebApp Frontend -->
+    <rect x="360" y="90" width="260" height="45" rx="5" fill="#fff" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="490" y="118" text-anchor="middle" font-weight="600" fill="#2980b9">WebApp Frontend (HTTPS)</text>
+
+    <!-- Backend API -->
+    <rect x="360" y="160" width="180" height="45" rx="5" fill="#fff" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="450" y="188" text-anchor="middle" font-weight="600" fill="#2980b9">Backend API + OCR/AI</text>
+
+    <!-- DB -->
+    <rect x="560" y="160" width="60" height="45" rx="5" fill="#fff" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="590" y="183" text-anchor="middle" font-size="12" fill="#2980b9">DB</text>
+    <line x1="565" y1="190" x2="615" y2="190" stroke="#2980b9" stroke-width="1"/>
+    <line x1="565" y1="195" x2="615" y2="195" stroke="#2980b9" stroke-width="1"/>
+
+    <!-- Upload arrow: User → Cloud -->
+    <defs>
+        <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/>
+        </marker>
+        <marker id="arrowTeal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#16a085"/>
+        </marker>
+        <marker id="arrowOrange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#e67e22"/>
+        </marker>
+        <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/>
+        </marker>
+    </defs>
+
+    <!-- PDF icon on arrow -->
+    <rect x="265" y="95" width="22" height="28" rx="2" fill="#fff" stroke="#c0392b" stroke-width="1.2"/>
+    <text x="276" y="113" text-anchor="middle" font-size="8" fill="#c0392b" font-weight="700">PDF</text>
+    <polygon points="279,95 287,103 279,103" fill="#c0392b" opacity="0.3"/>
+
+    <!-- Upload line -->
+    <line x1="215" y1="140" x2="350" y2="112" stroke="#2980b9" stroke-width="2" marker-end="url(#arrowBlue)"/>
+    <text x="280" y="135" text-anchor="middle" font-size="11" fill="#2980b9" font-weight="600">Upload</text>
+
+    <!-- Download CSV arrow: Cloud → User -->
+    <line x1="350" y1="300" x2="140" y2="300" stroke="#16a085" stroke-width="2.5" marker-end="url(#arrowTeal)" stroke-dasharray="6,3"/>
+    <text x="245" y="290" text-anchor="middle" font-size="11" fill="#16a085" font-weight="600">Download CSV</text>
+
+    <!-- Express On-Prem Server -->
+    <rect x="580" y="400" width="210" height="80" rx="8" fill="none" stroke="#e67e22" stroke-width="2"/>
+    <text x="685" y="430" text-anchor="middle" font-weight="700" fill="#e67e22" font-size="13">Express On-Prem Server</text>
+    <text x="685" y="450" text-anchor="middle" font-size="11" fill="#e67e22">Import Folder / Job</text>
+    <text x="685" y="468" text-anchor="middle" font-size="10" fill="#999">(ไม่อยู่ในขอบเขตสัญญานี้)</text>
+
+    <!-- Auto Export arrow: Cloud → Express -->
+    <line x1="600" y1="340" x2="670" y2="395" stroke="#e67e22" stroke-width="2" marker-end="url(#arrowOrange)"/>
+    <text x="665" y="370" text-anchor="middle" font-size="10" fill="#e67e22" font-weight="600">Export CSV (Auto Option)</text>
+
+    <!-- Manual CSV: User → Express -->
+    <line x1="140" y1="330" x2="575" y2="440" stroke="#27ae60" stroke-width="2" marker-end="url(#arrowGreen)"/>
+    <text x="360" y="410" text-anchor="middle" font-size="11" fill="#27ae60" font-weight="600">Upload CSV (Manual Mode)</text>
+
+    <!-- HTTPS badge -->
+    <rect x="30" y="10" width="60" height="22" rx="11" fill="#27ae60"/>
+    <text x="60" y="25" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">HTTPS</text>
+    <text x="100" y="26" font-size="11" fill="#555">ผู้ใช้งานทุกคนเข้าหน้า WebApp ผ่าน Browser แบบเข้ารหัส</text>
+
+    <!-- Legend -->
+    <rect x="30" y="475" width="760" height="35" rx="4" fill="#f9f9f9" stroke="#ddd"/>
+    <rect x="50" y="486" width="14" height="14" rx="3" fill="#e8f4fd" stroke="#2980b9"/>
+    <text x="70" y="497" font-size="10">Cloud Components</text>
+    <rect x="180" y="486" width="14" height="14" rx="3" fill="none" stroke="#e67e22"/>
+    <text x="200" y="497" font-size="10">User / On-Prem</text>
+    <rect x="300" y="486" width="14" height="14" rx="3" fill="#16a085"/>
+    <text x="320" y="497" font-size="10">Download CSV Path</text>
+    <rect x="440" y="486" width="14" height="14" rx="3" fill="#27ae60"/>
+    <text x="460" y="497" font-size="10">Manual CSV Path</text>
+    <rect x="580" y="486" width="14" height="14" rx="3" fill="#e67e22"/>
+    <text x="600" y="497" font-size="10">Auto Export (Optional)</text>
+</svg>
+</div>
+
+<div class="note-box">
+    <strong>⚠️ ข้อจำกัดความรับผิดชอบ:</strong> ส่วน "Express On-Prem Server" ในแผนภาพเป็นเพียงการแสดงทางเลือกการนำ CSV เข้าระบบบัญชีของผู้ว่าจ้างเท่านั้น <strong>ไม่อยู่ในขอบเขตงานของสัญญาฉบับนี้</strong> ผู้รับจ้างไม่รับผิดชอบต่อ Express, การบันทึกบัญชี หรือการนำข้อมูลเข้าระบบ GL ใดๆ
+</div>
+
+<!-- ============================================================ -->
+<h2>ข้อ 4. ค่าจ้างและงวดการชำระเงิน</h2>
+
+<h3>4.1 ค่าพัฒนา (Implementation Fee)</h3>
+<table>
+    <tr><th>Phase</th><th>ค่าบริการ (สุทธิ)</th><th>งวดการชำระ</th><th>เงื่อนไข</th></tr>
+    <tr>
+        <td rowspan="1"><strong>Phase 1 – PoC</strong></td>
+        <td>55,000 บาท</td>
+        <td>ชำระ 100% ก่อนเริ่มงาน</td>
+        <td>ชำระภายใน 7 วันหลังลงนามสัญญา</td>
+    </tr>
+    <tr>
+        <td rowspan="3"><strong>Phase 2 – MVP</strong></td>
+        <td rowspan="3">260,000–350,000 บาท<br><em>(ตามผล PoC และระดับความซับซ้อนของงาน<br>รวมงานกำหนดกติกาการแมปผังบัญชีตามขอบเขต)</em></td>
+        <td><strong>งวดที่ 1 (50%)</strong> — Kickoff</td>
+        <td>หลังลงนามสัญญา MVP</td>
+    </tr>
+    <tr>
+        <td><strong>งวดที่ 2 (30%)</strong> — UAT Pass</td>
+        <td>ผ่าน Acceptance Criteria ที่ตกลงร่วมกัน</td>
+    </tr>
+    <tr>
+        <td><strong>งวดที่ 3 (20%)</strong> — Production Sign-off</td>
+        <td>หลัง Go-live + Warranty Period 7 วัน</td>
+    </tr>
+</table>
+
+<h3>4.2 ค่าบริการรายเดือน (Subscription) — หลัง Go-live</h3>
+
+<div class="note-box">
+    <strong>💡 หมายเหตุ:</strong> โครงสร้างค่าบริการกำหนดตามปริมาณการใช้งานรวมของสำนักงานบัญชี เพื่อให้สอดคล้องกับลักษณะธุรกิจที่ดูแลลูกค้าหลายบริษัท และเพื่อให้สามารถขยายการใช้งานได้อย่างต่อเนื่องภายใต้ต้นทุนที่เหมาะสม
+</div>
+
+<table>
+    <tr><th>Plan</th><th>ค่าบริการ/เดือน</th><th>จำนวนหน้าประมวลผลรวม (Pooled)</th><th>จำนวนบริษัทผู้เสียภาษีสูงสุด (Clients Limit)</th><th>ค่าเกินหน้า (Overage)</th></tr>
+    <tr><td>Starter</td><td>12,000 บาท</td><td>1,500 หน้า / เดือน</td><td><strong>สูงสุด 20 บริษัท</strong> (เฉลี่ย 600 บาท/บริษัท)</td><td>8 บาท/หน้า</td></tr>
+    <tr><td>Standard ⭐</td><td>25,000 บาท</td><td>4,500 หน้า / เดือน</td><td><strong>สูงสุด 100 บริษัท</strong> (เฉลี่ย 250 บาท/บริษัท)</td><td>6 บาท/หน้า</td></tr>
+    <tr><td>Pro</td><td>55,000 บาท</td><td>12,000 หน้า / เดือน</td><td><strong>ไม่จำกัดจำนวนบริษัท (Unlimited)</strong></td><td>4–5 บาท/หน้า</td></tr>
+</table>
+
+<p><strong>การตั้งค่าบริษัทใหม่ (Self-Onboarding):</strong> ไม่คิดค่าบริการเพิ่มเติม ผู้ว่าจ้างสามารถเพิ่มข้อมูลบริษัทและตั้งค่าการใช้งานผ่านระบบหลังบ้านได้เอง ภายใต้ความจุของแพ็กเกจที่เลือก</p>
+
+<p><strong>Subscription รวม:</strong> Cloud hosting, ค่าใช้บริการ AI/OCR ตามการใช้งาน, การบำรุงรักษาระบบ, การแก้ไขข้อบกพร่องของระบบ, Online MA support และรายงานความแม่นยำรายเดือน</p>
+<p><strong>ไม่รวม:</strong> Managed human review, งานพัฒนาเพิ่มเติมตามความต้องการเฉพาะ, การปรับ Template เกิน 2 รูปแบบ/ปี, ERP/GL integration และ On-site support นอกเวลาทำงาน</p>
+
+<h3>4.3 เงื่อนไขการชำระเงิน</h3>
+<ul>
+    <li>ราคาข้างต้นเป็นราคาสุทธิ — ผู้รับจ้างดำเนินการในนาม<strong>บุคคลธรรมดา</strong> จึง<strong>ไม่มี VAT</strong></li>
+    <li>ผู้ว่าจ้าง (นิติบุคคล) มีสิทธิ์<strong>หัก ณ ที่จ่าย WHT 3%</strong> จากค่าบริการ และนำส่ง ภ.ง.ด.3 ภายในวันที่ 7 ของเดือนถัดไป พร้อมออกหนังสือรับรองหัก ณ ที่จ่ายให้ผู้รับจ้าง</li>
+    <li>ชำระโดยโอนเงินเข้าบัญชีผู้รับจ้าง (รายละเอียดแนบท้ายสัญญา)</li>
+    <li>Subscription ชำระล่วงหน้าภายในวันที่ 5 ของแต่ละเดือน โดยผู้รับจ้างออกเอกสารประกอบการชำระเงินในแต่ละรอบบิล</li>
+    <li>หากผู้ว่าจ้างผิดนัดชำระเกิน 15 วัน ให้ชำระเบี้ยปรับในอัตรา 1.5% ต่อเดือนของยอดค้างชำระ</li>
+    <li>หากผู้ว่าจ้างผิดนัดชำระเกิน 30 วัน ผู้รับจ้างมีสิทธิ์ระงับการให้บริการชั่วคราวจนกว่าจะชำระครบถ้วน</li>
+</ul>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+
+<h2>ข้อ 5. ระยะเวลาการดำเนินงาน</h2>
+<table>
+    <tr><th>Phase</th><th>ระยะเวลา</th><th>วันเริ่ม</th><th>วันสิ้นสุด (โดยประมาณ)</th></tr>
+    <tr><td>Phase 1 – PoC</td><td>1–2 สัปดาห์</td><td>นับจากวันชำระเงิน + ส่งเอกสาร</td><td>ภายใน 14 วันปฏิทิน</td></tr>
+    <tr><td>Phase 2 – MVP</td><td><strong>2–3 เดือน</strong></td><td>นับจากวันลงนามสัญญา MVP</td><td>ภายใน 90 วันปฏิทิน</td></tr>
+</table>
+
+<div class="note-box">
+    <strong>หมายเหตุ:</strong> ระยะเวลา Phase 2 กำหนดเป็น 2–3 เดือน เพื่อให้ครอบคลุมการพัฒนา ทดสอบระบบ และการเตรียมความพร้อมก่อนใช้งานจริงภายใต้ข้อมูลของหลายบริษัท
+</div>
+
+<p>ระยะเวลาโครงการอาจขยายออกได้ในกรณีเหตุสุดวิสัย กรณีผู้ว่าจ้างส่งมอบเอกสารหรือข้อมูลล่าช้า หรือกรณีมีการเปลี่ยนแปลงขอบเขตงาน ทั้งนี้ต้องได้รับความยินยอมร่วมกันเป็นลายลักษณ์อักษร</p>
+
+<!-- ============================================================ -->
+<h2>ข้อ 6. การดูแลระบบและการสนับสนุน (MA Support)</h2>
+
+<h3>6.1 MA Support — Online</h3>
+<table>
+    <tr><th>รายการ</th><th>รายละเอียด</th></tr>
+    <tr><td>ช่องทาง</td><td>Email / LINE Official / Ticket System</td></tr>
+    <tr><td>เวลาให้บริการ</td><td>วันจันทร์–ศุกร์ 09:00–18:00 น. (ไม่รวมวันหยุดนักขัตฤกษ์)</td></tr>
+    <tr><td>ขอบเขต</td><td>แก้ไขข้อบกพร่องของระบบ, ให้คำปรึกษาการใช้งาน, สนับสนุนการตั้งค่าที่อยู่ในขอบเขตสัญญา และตรวจสอบความถูกต้องเชิงระบบ</td></tr>
+    <tr><td>Response Time</td><td>ตาม SLA ของ Plan (ข้อ 9)</td></tr>
+    <tr><td>ค่าใช้จ่าย</td><td><strong>รวมอยู่ใน Subscription</strong></td></tr>
+</table>
+
+<h3>6.2 MA Support — On-Site</h3>
+<table>
+    <tr><th>รายการ</th><th>รายละเอียด</th></tr>
+    <tr><td>การนัดหมาย</td><td>แจ้งล่วงหน้าอย่างน้อย 3 วันทำการ</td></tr>
+    <tr><td>วัน-เวลาปกติ<br>(จันทร์–ศุกร์ 09:00–18:00)</td><td>Plan Standard/Pro: ไม่มีค่าใช้จ่ายเพิ่ม (เดือนละไม่เกิน 2 ครั้ง)<br>Plan Starter: 5,000 บาท/ครั้ง</td></tr>
+    <tr><td>วันเสาร์–อาทิตย์<br>หรือนอกเวลาทำงาน</td><td><strong>ค่าใช้จ่ายเพิ่มเติม 20,000–30,000 บาท/ครั้ง</strong><br>(รวมค่าเดินทาง ค่าล่วงเวลา และค่าเตรียมการ)</td></tr>
+    <tr><td>ขอบเขต On-Site</td><td>แก้ไขปัญหาหน้างาน, ช่วยตั้งค่าที่จำเป็น, อบรมเพิ่มเติม และตรวจสอบเอกสารตัวอย่างตามที่ตกลงร่วมกัน</td></tr>
+</table>
+
+<div class="note-box">
+    ผู้รับจ้างจะแจ้งค่าใช้จ่ายก่อนเข้าปฏิบัติงาน On-Site ทุกครั้ง และจะดำเนินการเมื่อได้รับการยืนยันจากผู้ว่าจ้างเป็นลายลักษณ์อักษร
+</div>
+
+<!-- ============================================================ -->
+<h2>ข้อ 7. ข้อจำกัดความรับผิดชอบ (Limitation of Liability)</h2>
+
+<ol>
+    <li><strong>ระบบบัญชีภายนอก:</strong> ผู้รับจ้างไม่มีหน้าที่รับผิดชอบต่อระบบบัญชีภายนอกของผู้ว่าจ้าง รวมถึงระบบ Express, ERP หรือ GL และการนำเข้าข้อมูลจากไฟล์ CSV ไปยังระบบดังกล่าวเป็นความรับผิดชอบของผู้ว่าจ้างแต่เพียงฝ่ายเดียว</li>
+    <li><strong>การใช้ผลลัพธ์ของระบบ:</strong> ผลลัพธ์จากระบบเป็นข้อมูลเพื่อประกอบการปฏิบัติงาน ไม่ใช่คำวินิจฉัยทางบัญชี ผู้ว่าจ้างต้องตรวจสอบความถูกต้องก่อนนำไปใช้งานจริง</li>
+    <li><strong>เพดานความรับผิด:</strong> ความรับผิดรวมสูงสุดของผู้รับจ้างตามสัญญาฉบับนี้ ไม่เกินจำนวนค่าบริการที่ผู้ว่าจ้างได้ชำระจริงให้แก่ผู้รับจ้างภายในรอบ 12 เดือนก่อนเกิดเหตุแห่งความเสียหาย</li>
+    <li><strong>ความเสียหายทางอ้อม:</strong> ผู้รับจ้างไม่ต้องรับผิดต่อความเสียหายทางอ้อม ความเสียหายพิเศษ ความเสียหายต่อโอกาสทางธุรกิจ หรือกำไรที่คาดหมายว่าจะได้รับ</li>
+    <li><strong>คุณภาพข้อมูลนำเข้า:</strong> ระดับความแม่นยำขึ้นอยู่กับคุณภาพเอกสารต้นทาง เอกสารที่ลบเลือน ลายมือ หรือ Thermal receipt ไม่อยู่ในขอบเขตรับประกันผล</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>ข้อ 8. การรับประกัน (Warranty)</h2>
+<ul>
+    <li>สำหรับ Phase 2 (MVP) ผู้รับจ้างรับประกันการทำงานของระบบตามขอบเขตและเกณฑ์ที่ตกลงไว้เป็นระยะเวลา <strong>7 วัน</strong> นับจากวันเปิดใช้งานจริง (Go-live)</li>
+    <li>กรณีพบข้อบกพร่องภายในระยะรับประกัน ผู้รับจ้างจะดำเนินการแก้ไขโดยไม่เรียกเก็บค่าใช้จ่ายเพิ่มเติม</li>
+    <li>ความเสียหายหรือปัญหาที่เกิดจากการแก้ไขระบบโดยผู้ว่าจ้างหรือบุคคลภายนอกที่ผู้ว่าจ้างมอบหมาย ไม่อยู่ในขอบเขตรับประกัน</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2>ข้อ 9. SLA – Service Level Agreement (สำหรับ Subscription)</h2>
+
+<table>
+    <tr><th>Plan</th><th>Uptime Guarantee</th><th>Response Time (Email)</th><th>Bug Fix SLA</th></tr>
+    <tr><td>Starter</td><td>99.0%</td><td>ภายใน 24 ชม. (วันทำการ)</td><td>Critical: 48 ชม. / Normal: 5 วันทำการ</td></tr>
+    <tr><td>Standard</td><td>99.5%</td><td>ภายใน 12 ชม. (วันทำการ)</td><td>Critical: 24 ชม. / Normal: 3 วันทำการ</td></tr>
+    <tr><td>Pro</td><td>99.9%</td><td>ภายใน 4 ชม.</td><td>Critical: 12 ชม. / Normal: 2 วันทำการ</td></tr>
+</table>
+
+<p><strong>ชดเชย Downtime:</strong> หาก Uptime ต่ำกว่ามาตรฐาน ผู้ว่าจ้างจะได้รับเครดิตค่าบริการคืนตามสัดส่วนเวลาที่ระบบไม่พร้อมใช้งาน</p>
+<p><strong>ข้อยกเว้น:</strong> Scheduled maintenance (แจ้งล่วงหน้า 48 ชม.), เหตุสุดวิสัย, ปัญหาจาก Third-party API (OCR/LLM provider)</p>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+
+<h2>ข้อ 10. ทรัพย์สินทางปัญญาและใบอนุญาต (IP & License)</h2>
+
+<ol>
+    <li><strong>กรรมสิทธิ์:</strong> ระบบ AI Pre-Accounting Copilot และส่วนประกอบทั้งหมด (รวมถึง algorithm, source code, documentation, trained models) เป็น<strong>ทรัพย์สินทางปัญญาของผู้รับจ้าง</strong>แต่เพียงผู้เดียว</li>
+    <li><strong>สิทธิ์การใช้งาน:</strong> ผู้ว่าจ้างได้รับ License แบบ non-exclusive, non-transferable เพื่อใช้ในกิจการภายในขององค์กรผู้ว่าจ้างเท่านั้น</li>
+    <li><strong>ข้อห้าม:</strong>
+        <ul>
+            <li>ห้ามทำซ้ำ ดัดแปลง หรือสร้าง derivative works จากระบบ</li>
+            <li>ห้ามนำระบบไปใช้แข่งขันกับผู้รับจ้างทั้งทางตรงและทางอ้อม</li>
+            <li>ห้ามขาย ให้เช่า หรือแจกจ่ายระบบให้บุคคลภายนอก</li>
+            <li>ห้าม reverse engineer หรือพยายามถอดรหัสระบบ</li>
+        </ul>
+    </li>
+    <li><strong>ข้อห้ามการแข่งขัน (Non-Compete):</strong> ผู้ว่าจ้างตกลงจะไม่ใช้ความรู้หรือข้อมูลจากระบบเพื่อพัฒนาหรือจ้างพัฒนาระบบแข่งขันเป็นระยะเวลา <strong>24 เดือน</strong> นับจากวันยุติสัญญา</li>
+    <li><strong>ข้อมูลของผู้ว่าจ้าง:</strong> เอกสารและข้อมูลที่ผู้ว่าจ้างอัปโหลดเข้าระบบยังคงเป็นทรัพย์สินของผู้ว่าจ้าง ผู้รับจ้างจะไม่นำไปใช้นอกเหนือจากการให้บริการตามสัญญา</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>ข้อ 11. การรักษาความลับและคุ้มครองข้อมูลส่วนบุคคล</h2>
+
+<ol>
+    <li>คู่สัญญาทั้งสองฝ่ายตกลงรักษาข้อมูลลับ (Confidential Information) ของอีกฝ่ายตลอดระยะเวลาสัญญาและต่อเนื่องอีก 2 ปีหลังสิ้นสุดสัญญา</li>
+    <li>ข้อมูลส่วนบุคคลที่ปรากฏในเอกสาร (เช่น ชื่อผู้ขาย ที่อยู่ หมายเลขโทรศัพท์) จะถูกประมวลผลตามนโยบาย PDPA (พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562) และ Data Processing Agreement (DPA) ที่ลงนามแยกต่างหาก</li>
+    <li>ผู้ว่าจ้างรับผิดชอบในการขอความยินยอมจากเจ้าของข้อมูลที่เกี่ยวข้อง</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>ข้อ 12. หน้าที่ของผู้ว่าจ้าง</h2>
+
+<ol>
+    <li>จัดเตรียมเอกสารตัวอย่าง 200–300 ไฟล์ พร้อม Field Mapping และ Requirement Docs ภายในกำหนด</li>
+    <li>จัดให้มี IT Contact Person เพื่อประสานงานด้านเทคนิค</li>
+    <li>ให้สิทธิ์เข้าถึงระบบและขั้นตอนการออก Invoice ตามที่จำเป็น</li>
+    <li>ตรวจสอบและอนุมัติผลงานตาม Acceptance Criteria ภายใน 5 วันทำการหลังส่งมอบ</li>
+    <li>ตรวจสอบความถูกต้องของข้อมูลที่ระบบสกัดก่อนนำไปบันทึกบัญชีจริง</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>ข้อ 13. การยกเลิกสัญญา (Termination)</h2>
+
+<h3>13.1 การยกเลิกโดยผู้ว่าจ้าง</h3>
+<ul>
+    <li>ผู้ว่าจ้างมีสิทธิบอกเลิกสัญญา โดยต้องแจ้งผู้รับจ้างเป็นลายลักษณ์อักษรล่วงหน้าไม่น้อยกว่า <strong>30 วัน</strong></li>
+    <li>ค่าบริการที่ได้ชำระแล้วสำหรับงานที่ส่งมอบเสร็จสมบูรณ์แล้ว ไม่อาจเรียกคืนได้</li>
+    <li>กรณีบอกเลิกสัญญาระหว่างงวดงาน ผู้ว่าจ้างต้องชำระค่าบริการตามส่วนของงานที่ดำเนินการแล้วเสร็จ ณ วันที่บอกเลิก</li>
+</ul>
+
+<h3>13.2 การยกเลิกโดยผู้รับจ้าง</h3>
+<ul>
+    <li>ผู้รับจ้างมีสิทธิบอกเลิกสัญญา หากผู้ว่าจ้างผิดนัดชำระเกิน 30 วัน นับแต่วันที่ได้รับหนังสือแจ้งเตือนเป็นลายลักษณ์อักษร</li>
+    <li>ผู้รับจ้างมีสิทธิ์ระงับการให้บริการชั่วคราว หากผู้ว่าจ้างผิดนัดชำระเกิน 15 วัน</li>
+</ul>
+
+<h3>13.3 ผลของการยกเลิก</h3>
+<ul>
+    <li>เมื่อสัญญาสิ้นสุด ผู้รับจ้างจะจัดส่งข้อมูลของผู้ว่าจ้างในรูปแบบที่ตกลงกัน (เช่น CSV/Excel) ภายใน 14 วัน</li>
+    <li>ผู้รับจ้างมีสิทธิลบข้อมูลของผู้ว่าจ้างออกจากระบบภายใน 30 วันนับแต่วันที่ส่งมอบข้อมูลเสร็จสิ้น เว้นแต่กฎหมายกำหนดให้ต้องเก็บรักษาไว้</li>
+    <li>สิทธิการใช้งานระบบของผู้ว่าจ้างสิ้นสุดลงโดยทันทีเมื่อสัญญาสิ้นสุดลง</li>
+</ul>
+
+<h3>13.4 Subscription</h3>
+<p>Subscription มีระยะเวลาขั้นต่ำ 12 เดือน และจะต่ออายุโดยอัตโนมัติเป็นรอบเดือน เว้นแต่ฝ่ายใดฝ่ายหนึ่งจะแจ้งไม่ประสงค์ต่ออายุเป็นลายลักษณ์อักษรล่วงหน้าไม่น้อยกว่า 30 วันก่อนวันครบกำหนด</p>
+
+<!-- ============================================================ -->
+<h2>ข้อ 14. เหตุสุดวิสัย (Force Majeure)</h2>
+<p>คู่สัญญาฝ่ายใดฝ่ายหนึ่งไม่ต้องรับผิดในความล่าช้าหรือการไม่สามารถปฏิบัติการตามสัญญา อันเกิดจากเหตุสุดวิสัย เช่น ภัยธรรมชาติ สงคราม การจลาจล โรคระบาด คำสั่งของหน่วยงานรัฐ หรือเหตุอื่นใดที่อยู่นอกเหนือการควบคุมโดยสมเหตุสมผล ทั้งนี้ฝ่ายที่ได้รับผลกระทบต้องแจ้งให้อีกฝ่ายทราบเป็นลายลักษณ์อักษรภายใน 7 วันนับแต่วันที่ทราบเหตุ</p>
+
+<!-- ============================================================ -->
+<h2>ข้อ 15. การระงับข้อพิพาท</h2>
+<ol>
+    <li>กรณีเกิดข้อพิพาท คู่สัญญาตกลงเจรจาโดยสุจริตเพื่อหาข้อยุติร่วมกันภายใน 30 วันนับแต่วันที่มีหนังสือแจ้งข้อพิพาท</li>
+    <li>หากไม่สามารถตกลงกันได้ คู่สัญญาอาจตกลงระงับข้อพิพาทโดยอนุญาโตตุลาการตามข้อบังคับของสถาบันอนุญาโตตุลาการ สำนักงานศาลยุติธรรม หรือดำเนินคดีต่อศาลที่มีเขตอำนาจในประเทศไทย</li>
+    <li>สัญญาฉบับนี้อยู่ภายใต้กฎหมายไทย</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>ข้อ 16. ทั่วไป</h2>
+<ol>
+    <li>สัญญาฉบับนี้มีผลผูกพันนับแต่วันที่คู่สัญญาทั้งสองฝ่ายลงนาม</li>
+    <li>การแก้ไขเพิ่มเติมสัญญาต้องทำเป็นหนังสือและลงนามโดยผู้มีอำนาจของทั้งสองฝ่าย</li>
+    <li>หากข้อกำหนดใดตกเป็นโมฆะหรือไม่อาจบังคับใช้ได้ ให้ถือว่าเฉพาะข้อกำหนดนั้นเป็นอันสิ้นผล โดยไม่กระทบต่อความสมบูรณ์ของข้อกำหนดอื่น</li>
+    <li>สัญญาฉบับนี้จัดทำขึ้นเป็น 2 ฉบับ มีข้อความตรงกันทุกประการ และคู่สัญญาเก็บรักษาไว้ฝ่ายละ 1 ฉบับ</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>ข้อ 17. การเปลี่ยนแปลงความต้องการและการจำแนก Defect (Change Control & Defect Classification)</h2>
+
+<h3>17.1 Requirement Baseline</h3>
+<p>Requirement Baseline ให้ยึดตามเอกสาร SoW, Requirement List และ Acceptance Criteria ที่คู่สัญญาตกลงร่วมกันเป็นลายลักษณ์อักษร ณ วันเริ่มพัฒนา Phase 2 (MVP)</p>
+
+<h3>17.2 หลักเกณฑ์การจำแนก Defect</h3>
+<ul>
+    <li><strong>Defect (ไม่คิดค่าใช้จ่ายเพิ่ม):</strong> การทำงานของระบบไม่เป็นไปตาม Requirement Baseline หรือ Acceptance Criteria ที่คู่สัญญาตกลงไว้แล้ว</li>
+    <li><strong>Requirement ใหม่ / Change Request:</strong> การเพิ่มหรือเปลี่ยนแปลงฟังก์ชัน ตรรกะธุรกิจ รูปแบบข้อมูล ขั้นตอนการทำงาน หรือรายงานที่อยู่นอก Requirement Baseline</li>
+    <li>กรณีมีข้อโต้แย้งในการจำแนก ให้ยึด Requirement Baseline และบันทึกการประชุมล่าสุดเป็นหลักฐานประกอบการพิจารณา</li>
+</ul>
+
+<h3>17.3 สิทธิ์ปรับ Requirement ฟรีภายในโครงการ</h3>
+<ul>
+    <li>ผู้ว่าจ้างมีสิทธิขอปรับแก้ Requirement รวมกันไม่เกิน <strong>5%</strong> ของ Requirement List ที่ได้ทำการ freeze แล้ว โดยไม่คิดค่าพัฒนาเพิ่มเติม</li>
+    <li>การคำนวณโควตา 5% ให้คิดสะสมจาก Change Request ทั้งหมดในโครงการ MVP โดยนับเป็นจำนวนรายการข้อกำหนด (requirement items)</li>
+    <li>Change Request ที่อยู่ภายในโควตา 5% อาจมีผลต่อแผนงาน โดยคู่สัญญาจะตกลงกำหนดเวลาร่วมกันเป็นลายลักษณ์อักษร</li>
+</ul>
+
+<h3>17.4 กรณีเกินโควตา 5%</h3>
+<ul>
+    <li>หาก Change Request เกินโควตา 5% ให้ดำเนินการในรูปแบบ Change Order โดยผู้รับจ้างต้องประเมินผลกระทบด้านเวลาและค่าใช้จ่ายก่อนเริ่มงาน</li>
+    <li>งานส่วนเกินคิดค่าบริการตามจำนวน man-day ที่คู่สัญญาตกลงร่วมกัน ในอัตรา <strong>12,000 บาทต่อ 1 man-day</strong></li>
+    <li>ผู้รับจ้างจะเริ่มดำเนินงานส่วนเกินได้ต่อเมื่อได้รับอนุมัติ Change Order จากผู้ว่าจ้างเป็นลายลักษณ์อักษรแล้วเท่านั้น</li>
+</ul>
+
+<h3>17.5 ขั้นตอน Change Request</h3>
+<ol>
+    <li>ผู้ว่าจ้างยื่นคำขอ Change Request เป็นลายลักษณ์อักษร พร้อมรายละเอียดความต้องการที่ชัดเจน</li>
+    <li>ผู้รับจ้างวิเคราะห์และจำแนกคำขอเป็น Defect หรือ Requirement ใหม่ภายใน 3 วันทำการ</li>
+    <li>กรณีเป็น Requirement ใหม่ ผู้รับจ้างต้องเสนอผลกระทบด้านขอบเขตงาน ระยะเวลา ค่าใช้จ่าย และจำนวน man-day</li>
+    <li>คู่สัญญาต้องลงนามอนุมัติ Change Order ก่อนเริ่มดำเนินการพัฒนาในส่วนดังกล่าว</li>
+</ol>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+
+<h2>ลงนาม</h2>
+
+<p style="margin-top:16px;">คู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในสัญญาฉบับนี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นหลักฐาน</p>
+
+<div class="signature-area">
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>(..................................................)</p>
+        <p class="sig-label"><strong>ผู้ว่าจ้าง</strong></p>
+        <p class="sig-label">ตำแหน่ง: <span class="blank-short"></span></p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+    </div>
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>(..................................................)</p>
+        <p class="sig-label"><strong>ผู้รับจ้าง</strong></p>
+        <p class="sig-label">ตำแหน่ง: <span class="blank-short"></span></p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+    </div>
+</div>
+
+<div class="signature-area" style="margin-top:40px;">
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>(..................................................)</p>
+        <p class="sig-label"><strong>พยาน (ฝ่ายผู้ว่าจ้าง)</strong></p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+    </div>
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>(..................................................)</p>
+        <p class="sig-label"><strong>พยาน (ฝ่ายผู้รับจ้าง)</strong></p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<div style="margin-top:40px; padding:16px; background:#f5f5f5; border-radius:8px; font-size:12px; color:#777;">
+    <p><strong>หมายเหตุ:</strong> เอกสารฉบับนี้เป็นร่างสัญญาเพื่อการพิจารณาเบื้องต้น คู่สัญญาควรให้ที่ปรึกษากฎหมายตรวจสอบก่อนลงนาม</p>
+    <p><strong>อ้างอิง:</strong> Engagement Proposal v2.1, AI Pre-Accounting Copilot — May 2026</p>
+</div>
+
+</body>
+</html>

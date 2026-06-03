@@ -1,10 +1,34 @@
 {
   "folders": [
     {
+      "name": "ai-accounting-copilot",
       "path": "."
+    },
+    {
+      "name": "Openclaw",
+      "path": "D:\\01_gitrepo\\Openclaw"
+    },
+    {
+      "name": "ai-instruction",
+      "path": "D:\\01_gitrepo\\ai-instruction"
     }
   ],
   "settings": {
+    "powershell.cwd": "ai-accounting-copilot",
+    "terminal.integrated.cwd": "${workspaceFolder:ai-accounting-copilot}",
+    "github.copilot.chat.codeGeneration.instructions": [
+      {
+        "file": "ai-accounting-copilot/.github/copilot-instructions.md"
+      },
+      {
+        "file": "Openclaw/.github/copilot-instructions.md"
+      }
+    ],
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+      {
+        "text": "Use Conventional Commits like feat(api):, fix(core):, docs(project):, infra(docker):, test(unit):. Keep messages in English and never commit secrets."
+      }
+    ],
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "charliermarsh.ruff",
     "[python]": {
@@ -21,11 +45,75 @@
     "[json]": {
       "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
+    "files.exclude": {
+      "**/.git": true,
+      "**/.DS_Store": true,
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/.venv": true,
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/.mypy_cache": true,
+      "**/.ruff_cache": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/out": true,
+      "**/coverage": true,
+      "**/.venv": true,
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/.mypy_cache": true,
+      "**/.ruff_cache": true,
+      "**/graphify-out": true
+    },
     "python.linting.enabled": true,
     "python.linting.ruffEnabled": true,
     "python.linting.mypyEnabled": true,
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "dev",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": {
+          "cwd": "${workspaceFolder:ai-accounting-copilot}"
+        },
+        "group": "build"
+      },
+      {
+        "label": "lint",
+        "type": "shell",
+        "command": "npm run lint",
+        "options": {
+          "cwd": "${workspaceFolder:ai-accounting-copilot}"
+        },
+        "group": "build"
+      },
+      {
+        "label": "test",
+        "type": "shell",
+        "command": "npm run test",
+        "options": {
+          "cwd": "${workspaceFolder:ai-accounting-copilot}"
+        },
+        "group": "test"
+      },
+      {
+        "label": "format",
+        "type": "shell",
+        "command": "npm run format",
+        "options": {
+          "cwd": "${workspaceFolder:ai-accounting-copilot}"
+        },
+        "group": "build"
+      }
+    ]
   },
   "extensions": {
     "recommendations": [
@@ -37,7 +125,10 @@
       "ms-vscode.makefile-tools",
       "ms-azuretools.vscode-docker",
       "eamodio.gitlens",
-      "GitHub.copilot"
+      "GitHub.copilot",
+      "github.vscode-github-actions",
+      "ms-playwright.playwright",
+      "github.copilot-chat"
     ]
   }
 }

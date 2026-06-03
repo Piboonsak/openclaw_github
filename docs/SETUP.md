@@ -127,6 +127,83 @@ Frontend will be available at: **http://localhost:3000**
 
 ---
 
+## Option 3: Production Deployment (Cloud WebApp Hosting)
+
+This option is for real customer usage where Accountant, Manager, and Owner access the system from their own PCs via HTTPS.
+
+### 1. Recommended Production Topology
+
+1. Frontend hosted on cloud web hosting/CDN
+2. Backend API hosted on cloud compute (container service)
+3. Managed PostgreSQL for application data
+4. Object storage for uploaded files and generated exports
+5. HTTPS termination via load balancer or reverse proxy
+
+### 2. Production Environment Variables
+
+Configure environment variables in production secret store (not in source files):
+
+```bash
+ENVIRONMENT=production
+API_BASE_URL=https://<your-domain>
+DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db>
+CLAUDE_API_KEY=<secret>
+STORAGE_BUCKET=<bucket-name>
+EXPORT_MODE=manual_or_auto
+```
+
+### 3. HTTPS and Domain
+
+1. Bind application to company domain (for example `app.company.com`)
+2. Install valid TLS certificate
+3. Redirect HTTP to HTTPS
+4. Enable HSTS and secure cookies
+
+### 4. User Access Validation
+
+Verify these user journeys on production URL:
+
+1. Accountant uploads local files from own PC via browser
+2. Manager views review queue and approval status
+3. Owner views summary dashboard and export status
+
+---
+
+## Option 4: On-Prem Express Account Integration
+
+This option connects cloud output CSV with Express Account installed on office on-prem server.
+
+### Mode A: Manual CSV Transfer
+
+1. Accountant clicks export CSV from Step 6
+2. CSV is downloaded to local PC
+3. User copies CSV to office import location
+4. Express Account operator imports file
+
+### Mode B: Assisted Auto Sync (Optional)
+
+1. Cloud app generates CSV to integration endpoint/shared transfer area
+2. Office sync service receives file into Express import folder
+3. Scheduled import job executes on Express server
+4. Import status is logged for reconciliation
+
+### On-Prem Server Checklist
+
+1. Prepare dedicated import folder on office server
+2. Restrict access rights for import folder
+3. Define file naming policy and archive policy
+4. Define retry and failure handling process
+5. Keep import logs (timestamp, filename, status, operator/service)
+
+### Office Network Checklist
+
+1. Allow outbound HTTPS from user PCs to cloud webapp
+2. For auto sync, allow secure route between cloud integration point and office gateway (VPN/IP allowlist)
+3. Validate DNS and certificate trust on all user PCs
+4. Test upload and import with sample CSV before go-live
+
+---
+
 ## Testing
 
 ### Backend Tests

@@ -1,5 +1,52 @@
 # Architecture Overview — AI Pre-Accounting Copilot
 
+## Infrastructure & User Access Model (Customer View)
+
+This platform is hosted on cloud as a web application. Accountants, Managers, and Owners access it from their own PCs through a browser via HTTPS. Documents are opened from each user's local machine and uploaded to the cloud webapp. After review and approval, result CSV files are exported and imported into Express Account running on an on-prem server in the office.
+
+### High-Level Network Design
+
+```mermaid
+flowchart LR
+  subgraph USERS["User PCs"]
+    ACC["Accountant PC"]
+    MGR["Manager PC"]
+    OWN["Owner PC"]
+  end
+
+  subgraph CLOUD["Cloud WebApp Hosting"]
+    WAF["HTTPS Entry and Load Balancer"]
+    FE["Frontend React"]
+    API["Backend API FastAPI"]
+    DB[("PostgreSQL")]
+    ST[("Document Storage")]
+  end
+
+  subgraph OFFICE["Office On-Prem"]
+    EXP["Express Account Server"]
+    IMP["CSV Import Folder"]
+  end
+
+  ACC -->|"HTTPS"| WAF
+  MGR -->|"HTTPS"| WAF
+  OWN -->|"HTTPS"| WAF
+
+  WAF --> FE
+  FE --> API
+  API --> DB
+  API --> ST
+
+  API -->|"Export CSV"| IMP
+  IMP -->|"Import job or manual import"| EXP
+```
+
+### Role-Based Usage Flow
+
+1. Accountant: opens local invoice files and uploads via HTTPS webapp, then reviews extraction and mapping.
+2. Manager: reviews process quality, mismatches, and approval status from the dashboard.
+3. Owner: monitors summary KPIs and export status.
+4. Approved batch is exported as Express-compatible CSV and consumed by Express Account on the office server.
+
 ## System Design
 
 ```
@@ -67,6 +114,42 @@
 ```
 
 ## Data Flow
+
+### COA Mapping Strategy (Technical)
+
+The platform uses a shared multi-tenant mapping approach for accounting offices that manage many client companies.
+
+1. Each client company keeps its own Chart of Accounts profile and mapping metadata.
+2. COA structures and mapping examples are indexed as vectors in a shared retrieval layer.
+3. At runtime, the processing pipeline loads company context by company ID and retrieves only relevant COA candidates.
+4. The extraction prompt is composed dynamically using retrieved COA context and document signals.
+5. Mapping output is validated against company-specific rules before presenting results to human review.
+
+This design avoids per-company model retraining, reduces operating cost, and scales to large accounting offices while preserving company-level mapping behavior.
+
+### COA Mapping Runtime Flow
+
+```text
+Document + Company ID
+  -> OCR text
+  -> Retrieve company COA context (vector + metadata)
+  -> Dynamic prompt composition
+  -> Field extraction + account mapping
+  -> Rule validation
+  -> Human review (if low confidence or rule mismatch)
+```
+
+### 0. End-to-End User and Network Flow
+
+```text
+User PC (Accountant/Manager/Owner)
+  ↓ HTTPS
+Cloud WebApp
+  ↓ Process and review
+CSV export
+  ↓
+Office on-prem Express Account Server
+```
 
 ### 1. Document Upload
 ```
@@ -277,6 +360,12 @@ DELETE /api/users/{id}
 - Cache: ElastiCache Redis
 - File Storage: S3 with lifecycle policies
 - CI/CD: GitHub Actions → build → test → deploy (via Openclaw)
+
+### Office Integration (Express On-Prem)
+- Express Account remains installed on office on-prem server.
+- CSV from this platform is delivered to a controlled import path (manual or automated transfer).
+- Office IT defines import schedule and retry policy.
+- Integration logs must capture import timestamp, file name, and success/failure status.
 
 ## Error Handling & Logging
 
