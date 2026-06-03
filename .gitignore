@@ -96,3 +96,21 @@ samples/sample_documents/*.jpeg
 samples/sample_documents/*.xlsx
 samples/sample_documents/*.csv
 customer_data/
+
+# PoC raw training/customer documents (keep rule YAML only)
+docs/PoC/**/*.pdf
+docs/PoC/**/*.docx
+docs/PoC/**/*.xlsx
+docs/PoC/**/*.xls
+docs/PoC/**/*.png
+docs/PoC/**/*.jpg
+docs/PoC/**/*.jpeg
+!docs/PoC/**/*.yaml
+
+# Commercial/sensitive proposal docs
+docs/CONTRACT-*.pdf
+docs/Engagement_Proposal*.pdf
+
+# Local private vault for raw datasets and customer docs
+private_data/**
+!private_data/.gitkeep

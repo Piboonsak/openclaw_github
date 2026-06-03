@@ -1,0 +1,13 @@
+# Git LFS policy (only for intentionally versioned large artifacts)
+# Keep raw customer/training files in private_data/ (gitignored), not in Git history.
+
+# Use this path only when we explicitly decide to version large non-sensitive assets.
+artifacts/lfs/**/*.pdf filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.docx filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.xlsx filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.xls filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.png filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.zip filter=lfs diff=lfs merge=lfs -text
+artifacts/lfs/**/*.7z filter=lfs diff=lfs merge=lfs -text
