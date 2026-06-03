@@ -1,0 +1,6 @@
+Pillow>=10.0.0
+pytesseract>=0.3.10
+openai>=1.40.0
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-dotenv>=1.0.1

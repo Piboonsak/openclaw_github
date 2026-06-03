@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node.js
+node_modules/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Customer/accounting data
+samples/sample_documents/*.pdf
+samples/sample_documents/*.png
+samples/sample_documents/*.jpg
+samples/sample_documents/*.jpeg
+samples/sample_documents/*.xlsx
+samples/sample_documents/*.csv
+customer_data/
+uploads/
+
+# Build/cache
+.pytest_cache/
+.coverage
+dist/
+build/
