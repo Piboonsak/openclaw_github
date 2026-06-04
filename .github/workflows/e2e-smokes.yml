@@ -1,0 +1,45 @@
+name: Playwright Smoke & E2E Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  smoke-test:
+    name: Headless Smoke Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Start Docker Dev Stack
+        run: |
+          docker compose -f docker/docker-compose.dev.yml up -d
+          echo "Waiting for PostgreSQL, Redis, and MinIO storage systems to spin up..."
+          sleep 20
+          docker ps
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Smoke Tests Suite
+        run: pytest tests/smoke/
+        env:
+          TEST_API_URL: http://localhost:8000
+
+      - name: Stop Docker Stack
+        if: always()
+        run: docker compose -f docker/docker-compose.dev.yml down

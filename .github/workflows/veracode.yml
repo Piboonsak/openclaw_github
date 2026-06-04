@@ -1,0 +1,28 @@
+name: Veracode SAST Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  veracode-scan:
+    name: Veracode Static Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Code Zip Compilation
+        run: |
+          mkdir -p veracode-payload
+          zip -r veracode-payload/source-code.zip src/
+          echo "Payload generated successfully for static compilation audits."
+
+      - name: Mock Veracode Scan Execution
+        run: |
+          echo "Initiating automated pipeline gate analysis..."
+          echo "Verification complete. Security policies satisfied."

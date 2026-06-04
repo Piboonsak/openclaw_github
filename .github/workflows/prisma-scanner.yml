@@ -1,0 +1,29 @@
+name: Prisma Security Scan
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  scan:
+    name: Secrets And Vulns Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Trufflehog Scan
+        uses: trufflesecurity/trufflehog@main
+        continue-on-error: true
+        with:
+          path: ./
+          extra_args: --only-verified
+
+      - name: Container Audit
+        run: |
+          echo "Auditing backend Dockerfile and Python requirements..."

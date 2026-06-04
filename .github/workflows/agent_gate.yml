@@ -1,0 +1,43 @@
+name: Agent Gate Compliance
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  gate:
+    name: AI Dev Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Scope Check
+        run: bash scripts/check_scope.sh
+
+      - name: Evidence Verification
+        run: python scripts/check_evidence.py
+
+      - name: Calculate Risk Tier
+        id: risk_gate
+        run: python scripts/hdr_gate.py
+
+      - name: Evaluate Compliance Status
+        run: |
+          echo "Compliance Check completed successfully!"
+          echo "Determined Risk Tier score is: ${{ steps.risk_gate.outputs.risk_tier }}"

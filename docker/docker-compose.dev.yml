@@ -6,15 +6,15 @@ services:
     image: postgres:16-alpine
     container_name: ai-copilot-db
     environment:
-      POSTGRES_USER: copilot
-      POSTGRES_PASSWORD: dev_password
-      POSTGRES_DB: ai_accounting
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: ai_accounting_sit
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U copilot"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,28 +31,55 @@ services:
       timeout: 5s
       retries: 5
 
+  # MinIO - Local S3 Mock
+  minio:
+    image: minio/minio:RELEASE.2023-11-20T22-40-07Z
+    container_name: ai-copilot-storage
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Backend API
   backend:
     build:
       context: ../
       dockerfile: docker/Dockerfile.backend
+      target: development
     container_name: ai-copilot-api
     environment:
-      DATABASE_URL: postgresql://copilot:dev_password@postgres:5432/ai_accounting
-      REDIS_URL: redis://redis:6379/0
-      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-sk-test}
-      ENVIRONMENT: development
+      STAGE: SIT
+      DATABASE_URL: postgresql://postgres:postgres_password@postgres:5432/ai_accounting_sit
+      STORAGE_PROVIDER: minio
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_BUCKET: ai-accounting-sit
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      OCR_SERVICE: tesseract
+      LLM_PROVIDER: anthropic
+      LLM_MODEL: claude-3-5-haiku-20241022
+      MAX_TOKENS_PER_INVOICE: 1500
     ports:
       - "8000:8000"
     volumes:
-      - ../src/backend:/app/src/backend
-      - uploads:/app/uploads
+      - ../:/app
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      minio:
+        condition: service_healthy
 
   # Frontend
   frontend:
@@ -71,4 +98,4 @@ services:
 
 volumes:
   postgres_data:
-  uploads:
+  minio_data:

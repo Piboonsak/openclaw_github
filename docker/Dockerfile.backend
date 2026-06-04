@@ -1,22 +1,46 @@
-# Backend Dockerfile for AI Accounting Copilot
-FROM python:3.12-slim
+# Multi-stage Dockerfile for FastAPI Python Backend (ai-accounting-copilot)
+FROM python:3.12-slim AS base
 
 WORKDIR /app
 
-# Install system dependencies
+# Enable logging printing and disable bytecode cache
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Install essential system dependencies (including Tesseract Thai OCR support and libmagic)
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     tesseract-ocr \
+    tesseract-ocr-tha \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python packages
+# Copy and install requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY src/backend /app
+# --- Development stage ---
+FROM base AS development
+ENV STAGE=SIT
+COPY . .
+CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-# Run migrations and start server
+# --- SIT stage ---
+FROM base AS sit
+ENV STAGE=SIT
+COPY . .
+CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# --- UAT stage ---
+FROM base AS uat
+ENV STAGE=UAT
+COPY . .
+CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# --- Production stage ---
+FROM base AS production
+ENV STAGE=Prod
+COPY . .
 EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000"]
