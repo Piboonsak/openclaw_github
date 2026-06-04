@@ -1,0 +1,1213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Epic 5 — Design &amp; Implementation Discussion</title>
+  <style>
+    :root {
+      --bg: #f3f5fa; --card: #ffffff; --ink: #172033; --muted: #5f6b85;
+      --line: #dbe2f0; --brand: #173fcf; --brand-soft: #ebf1ff;
+      --red: #b42318; --red-soft: #fef0f0; --amber: #b54708; --amber-soft: #fff7e8;
+      --green: #067647; --green-soft: #ecfdf3; --slate: #344054;
+      --purple: #6941c6; --purple-soft: #f4f3ff; --cyan: #0e7490; --cyan-soft: #ecfeff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; color: var(--ink);
+      background: radial-gradient(circle at top left, rgba(23,63,207,0.12), transparent 35%),
+      linear-gradient(180deg, #f8faff 0%, #f3f5fa 100%); line-height: 1.45; }
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 24px; }
+
+    /* Hero */
+    .hero { background: linear-gradient(135deg, #1733a5 0%, #2353ea 68%, #4c77ff 100%);
+      border-radius: 20px; padding: 28px; color: #fff;
+      box-shadow: 0 18px 42px rgba(23,51,165,0.22); margin-bottom: 18px; }
+    .hero h1 { margin: 0 0 10px; font-size: 1.95rem; letter-spacing: -0.02em; }
+    .hero p { margin: 0; max-width: 900px; opacity: 0.94; }
+
+    /* Cards */
+    .summary, .legend, .agenda, .table-card, .task, .arch-card, .gap-card, .decision-card, .tooling-map {
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(20,32,61,0.05); }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px; padding: 12px; margin-bottom: 16px; }
+    .kpi { padding: 12px; border-radius: 12px; background: #f8faff; border: 1px solid #e4ebff; }
+    .kpi strong { display: block; color: var(--brand); font-size: 1.5rem; margin-bottom: 2px; }
+    .kpi span { color: var(--muted); font-size: 0.9rem; }
+    .kpi.done { background: var(--green-soft); border-color: #b7e4c7; }
+    .kpi.done strong { color: var(--green); }
+
+    /* Layout */
+    .meta-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .legend, .agenda, .table-card, .arch-card, .gap-card, .decision-card, .tooling-map { padding: 16px; }
+    h2 { margin: 0 0 10px; font-size: 1.1rem; color: var(--slate); }
+    .legend-list, .agenda ol { margin: 0; padding-left: 18px; }
+    .legend-list li, .agenda li { margin: 6px 0; color: var(--muted); }
+
+    /* Chips & badges */
+    .chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+      padding: 4px 10px; font-weight: 700; font-size: 0.76rem; letter-spacing: 0.02em; }
+    .rag-red { color: var(--red); background: var(--red-soft); }
+    .rag-amber { color: var(--amber); background: var(--amber-soft); }
+    .rag-green { color: var(--green); background: var(--green-soft); }
+    .status-done { color: var(--green); background: var(--green-soft); font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; }
+    .status-stub { color: var(--amber); background: var(--amber-soft); font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; }
+    .status-design { color: var(--purple); background: var(--purple-soft); font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; }
+    .skill-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;
+      padding: 3px 8px; font-weight: 600; font-size: 0.72rem;
+      color: var(--purple); background: var(--purple-soft); border: 1px solid #e0daf7;
+      margin: 2px; white-space: nowrap; }
+    .skill-chip.agent { color: var(--cyan); background: var(--cyan-soft); border-color: #cff5fa; }
+
+    /* Architecture section */
+    .arch-card { margin-bottom: 16px; border-top: 3px solid var(--brand); }
+    .arch-card h2 { color: var(--brand); }
+    .pipeline-flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      padding: 16px; background: #f8faff; border-radius: 12px; margin: 12px 0;
+      font-family: "Consolas", "JetBrains Mono", monospace; font-size: 0.82rem; overflow-x: auto; }
+    .pf-step { padding: 8px 14px; border-radius: 10px; border: 2px solid var(--line);
+      text-align: center; min-width: 120px; }
+    .pf-step.done { border-color: var(--green); background: var(--green-soft); }
+    .pf-step.design { border-color: var(--amber); background: var(--amber-soft); }
+    .pf-step strong { display: block; font-size: 0.78rem; color: var(--ink); }
+    .pf-step small { color: var(--muted); font-size: 0.68rem; }
+    .pf-arrow { color: var(--muted); font-size: 1.2rem; flex-shrink: 0; }
+
+    /* Gap analysis */
+    .gap-card { margin-bottom: 16px; }
+    .gap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 12px; margin-top: 12px; }
+    .gap-item { background: #faf9ff; border: 1px solid #e8e4f7; border-radius: 10px; padding: 12px; }
+    .gap-item h4 { margin: 0 0 6px; font-size: 0.88rem; color: var(--ink); }
+    .gap-item .phase-tag { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--muted); margin-bottom: 6px; display: block; }
+    .gap-item ul { margin: 6px 0 0; padding-left: 16px; }
+    .gap-item li { font-size: 0.82rem; color: var(--muted); margin: 3px 0; }
+    .gap-item .approach { font-size: 0.82rem; color: var(--green); margin-top: 8px;
+      padding: 6px 8px; background: var(--green-soft); border-radius: 6px; }
+
+    /* Decision cards */
+    .decision-card { margin-bottom: 16px; border-top: 3px solid var(--red); }
+    .decision-card h2 { color: var(--red); }
+    .decision-list { counter-reset: dec; }
+    .decision-item { counter-increment: dec; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    .decision-item:last-child { border-bottom: none; }
+    .decision-item::before { content: "D" counter(dec); font-weight: 700; font-size: 0.78rem;
+      color: var(--red); background: var(--red-soft); padding: 2px 8px; border-radius: 4px;
+      margin-right: 8px; }
+    .decision-item strong { color: var(--ink); }
+    .decision-item .context { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+    .decision-item .recommend { font-size: 0.82rem; color: var(--green); font-weight: 600; margin-top: 4px; }
+    .decision-item details { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; background: #f9fbff; }
+    .decision-item summary { cursor: pointer; padding: 10px 12px; font-size: 0.82rem; font-weight: 700; color: var(--brand); }
+    .decision-item details > div { padding: 0 12px 12px; }
+    .code-skel { margin-top: 8px; background: #eff4ff; border: 1px solid #d9e5ff; border-radius: 8px;
+      padding: 10px; font-family: "Consolas", "JetBrains Mono", monospace; font-size: 0.76rem;
+      line-height: 1.55; overflow-x: auto; color: #1d2c4f; }
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: 8px; min-width: 700px; }
+    .compare-table th, .compare-table td { border-bottom: 1px solid var(--line); padding: 8px 6px; font-size: 0.78rem; }
+    .compare-table th { background: #f4f7ff; color: var(--slate); text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-hi { color: var(--green); background: var(--green-soft); padding: 2px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; }
+    .badge-mid { color: var(--amber); background: var(--amber-soft); padding: 2px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; }
+    .badge-low { color: var(--red); background: var(--red-soft); padding: 2px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; }
+    .mini-table { width: 100%; border-collapse: collapse; min-width: 760px; margin-top: 8px; }
+    .mini-table th, .mini-table td { border-bottom: 1px solid var(--line); padding: 8px 6px; font-size: 0.8rem; }
+    .mini-table th { color: var(--slate); text-transform: uppercase; letter-spacing: 0.04em; background: #f4f7ff; }
+    .proscons { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-top: 10px; }
+    .pc-box { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
+    .pc-box h4 { margin: 0 0 6px; font-size: 0.84rem; color: var(--ink); }
+    .pc-box ul { margin: 6px 0 0; padding-left: 16px; }
+    .pc-box li { margin: 3px 0; font-size: 0.79rem; color: var(--muted); }
+
+    /* Tooling map */
+    .tooling-map { margin-bottom: 16px; }
+    .tooling-map h2 { color: var(--purple); }
+    .map-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px; margin-top: 10px; }
+    .map-item { background: #faf9ff; border: 1px solid #e8e4f7; border-radius: 10px; padding: 10px 12px; }
+    .map-item strong { display: block; font-size: 0.82rem; color: var(--ink); margin-bottom: 6px; }
+    .map-item .desc { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line);
+      vertical-align: top; font-size: 0.88rem; }
+    th { color: var(--slate); font-size: 0.76rem; text-transform: uppercase;
+      letter-spacing: 0.04em; background: #f9fbff; }
+
+    /* Task cards */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 14px; margin-top: 16px; }
+    .task { padding: 16px; border-top: 4px solid transparent; }
+    .task.red { border-top-color: var(--red); }
+    .task.amber { border-top-color: var(--amber); }
+    .task.green { border-top-color: var(--green); }
+    .task-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .task h3 { margin: 0; font-size: 1rem; color: var(--brand); }
+    .sub { color: var(--muted); font-size: 0.86rem; margin-top: 4px; }
+    .meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+    .meta-box { background: #f8faff; border: 1px solid #e7ecf7; border-radius: 10px; padding: 8px; }
+    .meta-box strong { display: block; font-size: 0.72rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .meta-box span { font-size: 0.88rem; color: var(--ink); }
+    .task ul { margin: 8px 0 0; padding-left: 18px; }
+    .task li { margin: 5px 0; color: var(--muted); font-size: 0.88rem; }
+    .design-box { margin-top: 10px; padding: 10px; background: #fffbeb; border: 1px solid #f2dfaa;
+      border-radius: 8px; font-size: 0.82rem; }
+    .design-box strong { color: var(--amber); font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.04em; display: block; margin-bottom: 4px; }
+    .design-box ul { margin: 4px 0 0; padding-left: 16px; }
+    .design-box li { color: #7a5a06; margin: 3px 0; }
+    .skills-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px;
+      padding-top: 10px; border-top: 1px dashed var(--line); }
+    .skills-row .label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted); margin-right: 4px; line-height: 2; }
+
+    .footer-note { margin-top: 16px; padding: 14px 16px; background: #fff8e8;
+      border: 1px solid #f2dfaa; border-radius: 12px; color: #7a5a06; }
+    .section-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
+
+    @media (max-width: 920px) { .meta-grid, .meta { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1>Epic 5 — Design &amp; Implementation Discussion</h1>
+    <p>Full design analysis for the Document Processing &amp; Journal Mapping pipeline. Includes architecture overview, design gap analysis per pipeline phase, open decisions to resolve, and Claude Code skills/agents mapped to each task. Source code is currently <strong>all stubs</strong> &mdash; this document defines how to implement each module.</p>
+  </section>
+
+  <!-- SUMMARY KPIs -->
+  <section class="summary">
+    <div class="kpi done"><strong>5 Done</strong><span>TASK-505, 506, 511, 512, 513</span></div>
+    <div class="kpi"><strong>9 Design</strong><span>Pipeline tasks need implementation</span></div>
+    <div class="kpi"><strong>0 Implemented</strong><span>All src/*.py files are stubs</span></div>
+    <div class="kpi"><strong>5 Rules</strong><span>rule_coa.yaml templates ready</span></div>
+    <div class="kpi"><strong>1 Prototype</strong><span>LedgerFlow 6-step wizard (frontend only)</span></div>
+    <div class="kpi"><strong>4 Test Scenarios</strong><span>Expected Dr/Cr in rule_coa.yaml</span></div>
+  </section>
+
+  <!-- META GRID -->
+  <section class="meta-grid">
+    <section class="legend">
+      <h2>Implementation Status Legend</h2>
+      <ul class="legend-list">
+        <li><span class="status-done">DONE</span> Task complete with validated output artifacts.</li>
+        <li><span class="status-stub">STUB</span> Source file exists but contains placeholder code only.</li>
+        <li><span class="status-design">DESIGN</span> Spec written, no code yet. Design decisions needed before implementation.</li>
+      </ul>
+    </section>
+    <section class="agenda">
+      <h2>Discussion Agenda</h2>
+      <ol>
+        <li>Review pipeline architecture and data flow.</li>
+        <li>Resolve 8 open design decisions (D1-D8 below).</li>
+        <li>Confirm implementation sequence and ownership.</li>
+        <li>Agree which tasks can run in parallel.</li>
+      </ol>
+    </section>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- PIPELINE ARCHITECTURE                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="arch-card">
+    <h2>Pipeline Architecture — End-to-End Flow</h2>
+    <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 8px;">
+      Maps prototype steps (LedgerFlow wizard) to backend tasks. Green = done, amber = needs implementation.
+    </p>
+    <div class="pipeline-flow">
+      <div class="pf-step done"><strong>Step 1: Upload</strong><small>Prototype ready</small></div>
+      <span class="pf-arrow">&rarr;</span>
+      <div class="pf-step done"><strong>Step 2: Select</strong><small>Manifest (505)</small></div>
+      <span class="pf-arrow">&rarr;</span>
+      <div class="pf-step design"><strong>Step 3a: OCR</strong><small>501 + 507 + 508</small></div>
+      <span class="pf-arrow">&rarr;</span>
+      <div class="pf-step design"><strong>Step 3b: Extract</strong><small>502 (Claude LLM)</small></div>
+      <span class="pf-arrow">&rarr;</span>
+      <div class="pf-step design"><strong>Step 3c: Map COA</strong><small>503 (Journal Router)</small></div>
+      <span class="pf-arrow">&rarr;</span>
+      <div class="pf-step design"><strong>Step 4: Scan Review</strong><small>504 + 509 (human)</small></div>
+      <span class="pf-arrow">&rarr;</span>
+      <div class="pf-step design"><strong>Step 5: Map Review</strong><small>503 output + human</small></div>
+      <span class="pf-arrow">&rarr;</span>
+      <div class="pf-step design"><strong>Step 6: Export</strong><small>CSV/Excel</small></div>
+    </div>
+
+    <p class="section-label" style="margin-top: 16px;">Data Flow Between Tasks</p>
+    <pre style="background: #f0f2f8; padding: 14px; border-radius: 10px; font-size: 0.78rem; overflow-x: auto; line-height: 1.6; margin: 0;">
+PDF files (private_data/poc/Comp_1/)
+  &darr;
+<strong>TASK-505</strong> manifest.jsonl + split.json   <span style="color:var(--green)">DONE</span>
+  &darr;
+<strong>TASK-501</strong> &rarr; cache/{sha256}/ocr_output.json       <span style="color:var(--amber)">STUB: src/ocr/processor.py</span>
+  &darr;                                               pdf2image + pytesseract (tha+eng)
+<strong>TASK-502</strong> &rarr; cache/{sha256}/extraction_output.json  <span style="color:var(--amber)">STUB: src/extraction/fields.py</span>
+  &darr;                                               Claude API structured output
+<strong>TASK-503</strong> &rarr; cache/{sha256}/journal_output.json     <span style="color:var(--amber)">STUB: src/validation/rules.py</span>
+  &darr;                                               rule_coa.yaml rule engine
+<strong>TASK-504</strong> &rarr; expectations.filled.jsonl              <span style="color:var(--purple)">DESIGN: human labeling</span>
+  &darr;
+<strong>TASK-510</strong> &rarr; KPI-GATES.md (accuracy thresholds)    <span style="color:var(--purple)">DESIGN: needs baseline</span>
+  &darr;
+<strong>LedgerFlow UI</strong> &rarr; Express-Journal.CSV              <span style="color:var(--green)">Prototype: ux-ui-prototype.html</span>
+    </pre>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- DESIGN GAP ANALYSIS                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="gap-card">
+    <h2>Design Gap Analysis — Per Pipeline Phase</h2>
+    <div class="gap-grid">
+
+      <div class="gap-item">
+        <span class="phase-tag">Phase 1: OCR (TASK-501, 507, 508)</span>
+        <h4>What's clear</h4>
+        <ul>
+          <li>Stack: pdf2image + pytesseract (tha+eng)</li>
+          <li>Cache: SHA-256 keyed, prevent re-processing</li>
+          <li>Output schema defined in plan (page-level + merged)</li>
+          <li>Fallback: pytesseract &rarr; AWS Textract</li>
+        </ul>
+        <h4 style="margin-top: 8px;">What needs design</h4>
+        <ul>
+          <li>Thai OCR quality &mdash; pytesseract tha is weak; need preprocessing (deskew, denoise) or alternative engine (EasyOCR, PaddleOCR)</li>
+          <li>Multi-page token limits &mdash; merged text from 10+ page PDFs may exceed LLM context</li>
+          <li>Quality-based fallback trigger &mdash; not just timeout but garbled-text detection</li>
+          <li>Image preprocessing pipeline (contrast adjustment for scanned docs)</li>
+        </ul>
+        <div class="approach">Benchmark complete (pytesseract vs EasyOCR vs PaddleOCR on 5 Thai docs). Current choice: PaddleOCR primary, pytesseract fallback, EasyOCR optional due CPU latency.</div>
+      </div>
+
+      <div class="gap-item">
+        <span class="phase-tag">Phase 2: Extraction (TASK-502)</span>
+        <h4>What's clear</h4>
+        <ul>
+          <li>Claude API with JSON schema structured output</li>
+          <li>Confidence scoring per field</li>
+          <li>Model routing: simple &rarr; fast model, complex &rarr; capable model</li>
+          <li>Field list: from expectations template (TASK-506)</li>
+        </ul>
+        <h4 style="margin-top: 8px;">What needs design</h4>
+        <ul>
+          <li>Prompt template design &mdash; few-shot examples, Thai/English bilingual handling</li>
+          <li>Model version &mdash; plan says Claude 3.5 but should use Claude 4.x (Haiku 4.5 / Sonnet 4.6)</li>
+          <li>"Complex doc" detection heuristic &mdash; what triggers upgrade to Sonnet?</li>
+          <li>Confidence scoring method &mdash; LLM self-report or multi-pass comparison?</li>
+          <li>doc_type detection &mdash; heuristic from OCR text or LLM classification?</li>
+        </ul>
+        <div class="approach">Recommend: use /claude-api skill with Claude 4.x structured output (tool_use mode), LLM-reported confidence + rule-based override</div>
+      </div>
+
+      <div class="gap-item">
+        <span class="phase-tag">Phase 3: Journal Router (TASK-503)</span>
+        <h4>What's clear</h4>
+        <ul>
+          <li>5 rule templates in rule_coa.yaml with conditions + alternatives</li>
+          <li>Dr/Cr balance validation (±0.01 tolerance)</li>
+          <li>4 test scenarios with expected outputs</li>
+          <li>Output goes to LedgerFlow Step 5 (Map Review) for human approval</li>
+        </ul>
+        <h4 style="margin-top: 8px;">What needs design</h4>
+        <ul>
+          <li>Rule matching algorithm &mdash; how to select correct rule from doc_type + conditions</li>
+          <li>Variable account resolution &mdash; <code>is_variable: true</code> in YAML; need vendor &rarr; expense-code mapping (LLM or lookup table?)</li>
+          <li>Multi-company rule loading &mdash; per-company YAML + global defaults</li>
+          <li>"รายงานรับ/รายงานจ่าย" &mdash; are these tax reports derived from journal entries, or separate document types needing rules?</li>
+          <li>Rule precedence when multiple rules match</li>
+          <li>Express GL export format specification</li>
+        </ul>
+        <div class="approach">Recommend: rule-first engine with LLM fallback for <code>is_variable</code> accounts. Load rules per company from YAML. Use /finance:journal-entry-prep for accounting validation</div>
+      </div>
+
+      <div class="gap-item">
+        <span class="phase-tag">Phase 4: Ground Truth &amp; Quality (TASK-504, 509, 510)</span>
+        <h4>What's clear</h4>
+        <ul>
+          <li>Template for 42 docs ready (TASK-506 done)</li>
+          <li>KPI thresholds defined: Tax ID &ge;99%, Invoice# &ge;97%, Total &ge;98%</li>
+          <li>Dual-review labeling process planned</li>
+        </ul>
+        <h4 style="margin-top: 8px;">What needs design</h4>
+        <ul>
+          <li>Accuracy evaluator algorithm &mdash; exact match vs fuzzy? amount tolerance?</li>
+          <li>Small-sample statistics &mdash; 42 docs is too small for &ge;99% confidence intervals</li>
+          <li>Journal entry accuracy &mdash; plan only measures header fields, not Dr/Cr posting correctness</li>
+          <li>Labeling tool &mdash; Excel? web form? CLI?</li>
+          <li>Thai field normalization rules (date formats, company name variants)</li>
+        </ul>
+        <div class="approach">Recommend: use expectations.template.jsonl as Excel export (/anthropic-skills:xlsx), add journal-level accuracy metrics beyond field-level</div>
+      </div>
+
+      <div class="gap-item">
+        <span class="phase-tag">Phase 5: Frontend &amp; Export (TASK-513, 514)</span>
+        <h4>What's clear</h4>
+        <ul>
+          <li>HTML infographic done (TASK-513)</li>
+          <li>LedgerFlow prototype has full 6-step wizard with demo data</li>
+          <li>Export: Express-Journal.CSV with selectable columns</li>
+        </ul>
+        <h4 style="margin-top: 8px;">What needs design</h4>
+        <ul>
+          <li>Backend-frontend bridge &mdash; prototype uses JavaScript objects, backend outputs JSON files to cache/</li>
+          <li>Auto-refresh template engine (TASK-514) &mdash; Jinja2? Python string interpolation?</li>
+          <li>Whether prototype becomes production UI or just PoC demonstration</li>
+        </ul>
+        <div class="approach">Recommend: build Python API (FastAPI) to serve cache/ outputs to frontend. Use /anthropic-skills:web-artifacts-builder for TASK-514</div>
+      </div>
+
+      <div class="gap-item">
+        <span class="phase-tag">Cross-cutting: Pipeline Orchestration</span>
+        <h4>Not yet addressed in any task</h4>
+        <ul>
+          <li>How do TASK-501 &rarr; 502 &rarr; 503 chain together? Single script? Pipeline framework?</li>
+          <li>Error propagation &mdash; if OCR fails, how does it flow through extraction/routing?</li>
+          <li>Batch processing vs per-document &mdash; process 42 docs sequentially or in parallel?</li>
+          <li>Progress reporting &mdash; prototype shows per-file stage progress but backend has no progress API</li>
+          <li>Company context &mdash; how does company selection flow through to rule_coa.yaml loading?</li>
+        </ul>
+        <div class="approach">Recommend: build a <code>pipeline.py</code> orchestrator that chains OCR &rarr; Extract &rarr; Route per document, with status callback for frontend progress</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- OPEN DESIGN DECISIONS                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="decision-card">
+    <h2>Open Design Decisions (Must Resolve Before Implementation)</h2>
+    <div class="decision-list">
+      <div class="decision-item">
+        <strong>OCR engine for Thai documents</strong>
+        <div class="context">Benchmark completed on 5 Thai sample docs from <code>private_data/poc</code> (first page per PDF, pypdfium2 render scale 1.2x). Affects TASK-501 and all downstream extraction quality.</div>
+        <div class="recommend">Decision: Use PaddleOCR as primary Thai OCR engine for quality-first extraction, keep pytesseract as fast fallback mode, and keep EasyOCR as optional experiment only when long CPU latency is acceptable.</div>
+        <details>
+          <summary>D1 Benchmark Result (click to expand)</summary>
+          <div>
+            <p style="font-size:0.8rem; color:var(--muted); margin:8px 0;">
+              Source artifact: <code>docs/PoC/d1_ocr_benchmark.json</code>. All 3 engines completed on the 5-doc batch. EasyOCR remained the slowest by a large margin on CPU.
+            </p>
+            <div style="overflow-x:auto;">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>Engine</th>
+                    <th>Status</th>
+                    <th>Completed docs</th>
+                    <th>Avg runtime / doc</th>
+                    <th>Avg confidence</th>
+                    <th>Avg text length</th>
+                    <th>Avg heuristic score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>pytesseract (tha+eng)</td>
+                    <td><span class="chip rag-green">Completed</span></td>
+                    <td>5/5</td>
+                    <td>44,573.40 ms</td>
+                    <td>85.17</td>
+                    <td>1,731.2</td>
+                    <td>49.45</td>
+                  </tr>
+                  <tr>
+                    <td>EasyOCR (th+en)</td>
+                    <td><span class="chip rag-amber">Completed (Very slow)</span></td>
+                    <td>5/5</td>
+                    <td>222,337.66 ms</td>
+                    <td>32.80</td>
+                    <td>1,616.6</td>
+                    <td>48.23</td>
+                  </tr>
+                  <tr>
+                    <td>PaddleOCR (Thai model)</td>
+                    <td><span class="chip rag-green">Completed</span></td>
+                    <td>5/5</td>
+                    <td>29,174.84 ms</td>
+                    <td>94.44</td>
+                    <td>1,873.4</td>
+                    <td>65.34</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p style="font-size:0.8rem; color:var(--muted); margin:10px 0 6px;"><strong>Estimated runtime cost (CPU-only, local/self-hosted):</strong> assumes 4 vCPU worker at $0.48/hour (example: 4 x $0.12/vCPU-hour), API cost = $0 for all three engines.</p>
+            <div style="overflow-x:auto;">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>Engine</th>
+                    <th>Avg runtime / doc</th>
+                    <th>Estimated compute cost / doc (USD)</th>
+                    <th>Estimated compute cost / 1,000 docs (USD)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>pytesseract (0.3.13 + tesseract 5.3.4)</td>
+                    <td>44.57 s</td>
+                    <td>$0.00594</td>
+                    <td>$5.94</td>
+                  </tr>
+                  <tr>
+                    <td>EasyOCR (1.7.2)</td>
+                    <td>222.34 s</td>
+                    <td>$0.02965</td>
+                    <td>$29.65</td>
+                  </tr>
+                  <tr>
+                    <td>PaddleOCR (3.6.0 + paddlepaddle 3.2.2)</td>
+                    <td>29.17 s</td>
+                    <td>$0.00389</td>
+                    <td>$3.89</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p style="font-size:0.8rem; color:var(--muted); margin:10px 0 6px;"><strong>CVE snapshot by severity (tested versions):</strong> based on local <code>pip-audit</code> scan of direct engine packages and wrappers in this environment.</p>
+            <div style="overflow-x:auto;">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>Engine version group</th>
+                    <th>Critical</th>
+                    <th>High</th>
+                    <th>Medium</th>
+                    <th>Low</th>
+                    <th>Total CVE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>pytesseract 0.3.13 + tesseract 5.3.4</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                  </tr>
+                  <tr>
+                    <td>EasyOCR 1.7.2</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                  </tr>
+                  <tr>
+                    <td>PaddleOCR 3.6.0 + paddlepaddle 3.2.2</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="font-size:0.78rem; color:var(--muted); margin:6px 0 0;">Note: local scan also found vulnerabilities in other environment packages not directly in these three OCR engine package groups. For release gating, run image-level scanning (OS packages + Python lockfile) in CI.</p>
+
+            <div class="proscons">
+              <div class="pc-box">
+                <h4>pytesseract — Pros / Cons</h4>
+                <ul>
+                  <li>Pros: Simple dependency stack and stable baseline behavior.</li>
+                  <li>Pros: Mid-tier confidence and moderate text coverage.</li>
+                  <li>Cons: Slower than PaddleOCR in this benchmark.</li>
+                  <li>Cons: Lower Thai-specific quality metrics than PaddleOCR.</li>
+                </ul>
+              </div>
+              <div class="pc-box">
+                <h4>EasyOCR — Pros / Cons</h4>
+                <ul>
+                  <li>Pros: Captures Thai characters well (highest Thai ratio among engines).</li>
+                  <li>Pros: Works without cloud APIs.</li>
+                  <li>Cons: Very slow on CPU (avg ~222s/doc) and throughput-unfriendly.</li>
+                  <li>Cons: Lowest confidence and lowest heuristic score in this run.</li>
+                </ul>
+              </div>
+              <div class="pc-box">
+                <h4>PaddleOCR — Pros / Cons</h4>
+                <ul>
+                  <li>Pros: Best overall quality metrics (heuristic score, confidence, keyword hit).</li>
+                  <li>Pros: Faster than both pytesseract and EasyOCR in this run.</li>
+                  <li>Cons: Runtime stack is heavier and required version pinning in this environment.</li>
+                  <li>Cons: More setup complexity for reproducible local environments.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="decision-item">
+        <strong>Claude model version and routing trigger</strong>
+        <div class="context">Plan references Claude 3.5 Haiku/Sonnet (outdated). Should use Claude 4.x. Need to define what makes a doc "complex" to trigger model upgrade.</div>
+        <div class="recommend">Recommend: Default Haiku 4.5, upgrade to Sonnet 4.6 when: (a) page_count &gt; 3, (b) OCR confidence &lt; 80%, or (c) first extraction attempt has &gt;2 low-confidence fields.</div>
+      </div>
+      <div class="decision-item">
+        <strong>Journal Router: rule-based vs LLM-assisted for variable accounts</strong>
+        <div class="context"><code>is_variable: true</code> entries in rule_coa.yaml need expense account code (5xxx-xx) determined by vendor/description. Prototype uses vendor-name matching. LLM could classify but adds cost/latency.</div>
+        <div class="recommend">Recommend: Hybrid &mdash; deterministic rules and vendor lookup first, fuzzy similarity second, LLM semantic assist only when unresolved, then human confirmation writes back to mapping cache.</div>
+        <details>
+          <summary>D3 Design Logic + Code Skeleton (discussion-only)</summary>
+          <div>
+            <p style="font-size:0.8rem; color:var(--muted); margin:8px 0;">
+              This design separates <strong>onboarding intelligence</strong> from <strong>runtime determinism</strong>. COA + mapping guideline files are ingested asynchronously once,
+              while runtime routing minimizes LLM calls and learns from confirmed user decisions in Map Review.
+            </p>
+            <div class="proscons">
+              <div class="pc-box">
+                <h4>Runtime Resolver Tiers</h4>
+                <ul>
+                  <li>Tier 1: Canonical exact match (vendor/item normalized text)</li>
+                  <li>Tier 2: Similarity match (Jaro-Winkler or token overlap)</li>
+                  <li>Tier 3: LLM account suggestion from company COA context</li>
+                  <li>Map Review always shown for unresolved or low confidence</li>
+                </ul>
+              </div>
+              <div class="pc-box">
+                <h4>Learning Loop</h4>
+                <ul>
+                  <li>User approves or edits suggested expense account</li>
+                  <li>System writes confirmation to company mapping cache</li>
+                  <li>Future transactions route deterministically at Tier 1</li>
+                  <li>LLM usage and latency decrease over time</li>
+                </ul>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="compare-table">
+                <thead>
+                  <tr>
+                    <th>Approach</th>
+                    <th>Accuracy stability</th>
+                    <th>Latency/cost</th>
+                    <th>Maintainability</th>
+                    <th>Recommendation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Rule-only</td>
+                    <td><span class="badge-mid">Medium</span></td>
+                    <td><span class="badge-hi">Low</span></td>
+                    <td><span class="badge-mid">Medium</span></td>
+                    <td>Good baseline, weak for unseen vendors</td>
+                  </tr>
+                  <tr>
+                    <td>LLM-only</td>
+                    <td><span class="badge-mid">Medium</span></td>
+                    <td><span class="badge-low">High</span></td>
+                    <td><span class="badge-low">Low</span></td>
+                    <td>Not preferred for production accounting posting</td>
+                  </tr>
+                  <tr>
+                    <td>Hybrid (proposed)</td>
+                    <td><span class="badge-hi">High</span></td>
+                    <td><span class="badge-mid">Medium</span></td>
+                    <td><span class="badge-hi">High</span></td>
+                    <td>Best fit for PoC to MVP transition</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre class="code-skel"># D3 skeleton (discussion only)
+def resolve_variable_account(tx, company_ctx):
+    key = normalize_vendor_item(tx.vendor_name, tx.line_description)
+
+    # Tier 1: deterministic cache
+    hit = mapping_cache_get(company_ctx.company_id, key)
+    if hit:
+        return {"account_code": hit, "source": "cache_exact", "confidence": 0.99}
+
+    # Tier 2: local similarity (no LLM)
+    sim = mapping_cache_similarity_lookup(company_ctx.company_id, key, threshold=0.90)
+    if sim:
+        return {"account_code": sim.account_code, "source": "cache_fuzzy", "confidence": sim.score}
+
+    # Tier 3: LLM fallback using only company COA candidates
+    llm = suggest_account_from_coa(tx, company_ctx.chart_of_accounts)
+    return {"account_code": llm.account_code, "source": "llm_assist", "confidence": llm.confidence, "needs_review": True}
+
+def on_map_review_confirmed(company_id, key, approved_account_code):
+    mapping_cache_upsert(company_id, key, approved_account_code)</pre>
+          </div>
+        </details>
+      </div>
+      <div class="decision-item">
+        <strong>Rule matching precedence</strong>
+        <div class="context">A document could match multiple rules (e.g., Invoice matches both RRL-PURCHASE-SUPPLIES and RRL-EXPENSE-CREDIT). Need clear precedence logic.</div>
+        <div class="recommend">Recommend: Score-based matching &mdash; count condition matches, highest score wins. Tie-breaker: most specific rule (most conditions defined) wins.</div>
+        <details>
+          <summary>D4 Matching Precedence + Scoring Skeleton (discussion-only)</summary>
+          <div>
+            <p style="font-size:0.8rem; color:var(--muted); margin:8px 0;">
+              To avoid non-deterministic posting, each candidate rule gets a weighted score. Highest score wins. Ties are resolved by specificity (rule with more explicit conditions).
+            </p>
+            <div class="proscons">
+              <div class="pc-box">
+                <h4>Suggested Weighting</h4>
+                <ul>
+                  <li><code>document_type</code> match: +20</li>
+                  <li><code>payment_method</code> match: +20</li>
+                  <li><code>source_document</code> match (e.g., P/O): +25</li>
+                  <li><code>has_vat</code>, <code>vat_type</code>, <code>has_wht</code>: +10 each</li>
+                  <li>Condition mismatch for hard constraints: candidate rejected</li>
+                </ul>
+              </div>
+              <div class="pc-box">
+                <h4>Safety Behavior</h4>
+                <ul>
+                  <li>No candidate pass: mark voucher <code>UNRESOLVED_RULE</code></li>
+                  <li>Tie after specificity: route with <code>ambiguous_rule</code> flag</li>
+                  <li>Always run final Dr/Cr balance validation before output</li>
+                </ul>
+              </div>
+            </div>
+            <pre class="code-skel"># D4 skeleton (discussion only)
+def pick_best_rule(extraction, compiled_rules):
+    scored = []
+    for rule in compiled_rules:
+        score, matched, rejected = score_rule(rule, extraction)
+        if rejected:
+            continue
+        scored.append({
+            "rule": rule,
+            "score": score,
+            "specificity": count_defined_conditions(rule),
+            "matched": matched,
+        })
+
+    if not scored:
+        return {"status": "UNRESOLVED_RULE", "needs_review": True}
+
+    scored.sort(key=lambda r: (r["score"], r["specificity"]), reverse=True)
+    winner = scored[0]
+    return {
+        "status": "OK",
+        "rule_id": winner["rule"].rule_id,
+        "score": winner["score"],
+        "specificity": winner["specificity"],
+        "needs_review": (len(scored) > 1 and scored[0]["score"] == scored[1]["score"]),
+    }</pre>
+          </div>
+        </details>
+      </div>
+      <div class="decision-item">
+        <strong>"รายงานรับ" / "รายงานจ่าย" scope</strong>
+        <div class="context">Scope should include platform settlement statements (example in Comp_2/6904-เมเจอร์) that summarize gross sales, commissions, fee VAT, and net payout. These can drive revenue-side GL posting logic.</div>
+        <div class="recommend">Recommend: Treat this as dual-scope &mdash; (1) settlement-driven journal rules for platform income posting and (2) derived purchase/sales VAT reports generated from finalized journal lines.</div>
+        <details>
+          <summary>D5 Platform Settlement Mapping + Posting Skeleton (discussion-only)</summary>
+          <div>
+            <p style="font-size:0.8rem; color:var(--muted); margin:8px 0;">
+              For files like <code>3-C6LKDCCVLXDTE2-20260401.pdf</code>, extraction should normalize settlement fields first, then route through a dedicated posting template for platform channels.
+            </p>
+            <div class="proscons">
+              <div class="pc-box">
+                <h4>Normalized Settlement Fields</h4>
+                <ul>
+                  <li><code>gross_sales_amount</code></li>
+                  <li><code>platform_commission_amount</code></li>
+                  <li><code>platform_fee_vat_amount</code></li>
+                  <li><code>withholding_tax_amount</code> (if any)</li>
+                  <li><code>net_payout_amount</code></li>
+                </ul>
+              </div>
+              <div class="pc-box">
+                <h4>Posting Pattern (example)</h4>
+                <ul>
+                  <li>Dr Bank = net payout received</li>
+                  <li>Dr Platform commission expense</li>
+                  <li>Dr Input VAT on platform fee</li>
+                  <li>Cr Service revenue (gross)</li>
+                  <li>Cr Output VAT / Cr WHT payable as applicable</li>
+                </ul>
+              </div>
+            </div>
+            <pre class="code-skel"># D5 skeleton (discussion only)
+def route_platform_settlement(doc):
+    x = normalize_settlement_fields(doc)
+
+    entries = []
+    entries.append(dr("1113-01", x.net_payout_amount))
+    entries.append(dr("5xxx-commission", x.platform_commission_amount))
+
+    if x.platform_fee_vat_amount > 0:
+        entries.append(dr("1154-00", x.platform_fee_vat_amount))
+
+    entries.append(cr("4100-01", x.gross_sales_amount))
+
+    if x.output_vat_amount > 0:
+        entries.append(cr("2135-00", x.output_vat_amount))
+    if x.withholding_tax_amount > 0:
+        entries.append(cr("2132-03", x.withholding_tax_amount))
+
+    assert is_balanced(entries), "Settlement posting must balance"
+    return entries</pre>
+            <p style="font-size:0.78rem; color:var(--muted); margin:8px 0 0;">
+              Edge cases to include in final rule spec: reversal lines, month-end adjustments, negative commission corrections, and missing VAT columns in some platform formats.
+            </p>
+          </div>
+        </details>
+      </div>
+      <div class="decision-item">
+        <strong>Multi-company rule architecture</strong>
+        <div class="context">rule_coa.yaml is company-specific (ฤทธิ์ล้ำเลิศ). Prototype supports 2 companies. Need structure for per-company COA + shared rule templates.</div>
+        <div class="recommend">Recommend: <code>rules/global/</code> for shared journal patterns + <code>rules/{company_id}/rule_coa.yaml</code> for per-company COA and overrides.</div>
+      </div>
+      <div class="decision-item">
+        <strong>Backend-frontend integration</strong>
+        <div class="context">Prototype is self-contained HTML/JS with hardcoded data. Backend outputs JSON to cache/. No API layer exists.</div>
+        <div class="recommend">Recommend for PoC: Python script processes batch &rarr; writes results to JSON &rarr; frontend reads static JSON files. Full API layer deferred to MVP.</div>
+      </div>
+      <div class="decision-item">
+        <strong>Accuracy evaluator scope</strong>
+        <div class="context">Plan only measures header field accuracy (Tax ID, invoice#, amounts). Doesn't measure journal entry posting accuracy (correct account codes, balanced Dr/Cr).</div>
+        <div class="recommend">Recommend: Add journal-level metrics &mdash; account_code accuracy per line, balance check pass rate, and full-voucher match rate.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- CLAUDE TOOLING REFERENCE                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="tooling-map">
+    <h2>Claude Code Skills &amp; Agents Reference</h2>
+    <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 12px;">
+      <span class="skill-chip">/skill</span> = slash command (type directly),
+      <span class="skill-chip agent">agent</span> = subagent (ask Claude to use it)
+    </p>
+    <div class="map-grid">
+      <div class="map-item">
+        <strong>Backend &amp; Pipeline</strong>
+        <div class="desc">OCR, extraction, routing, fallback</div>
+        <span class="skill-chip">/engineering:system-design</span>
+        <span class="skill-chip">/engineering:architecture</span>
+        <span class="skill-chip">/feature-dev:feature-dev</span>
+        <span class="skill-chip">/claude-api</span>
+        <span class="skill-chip agent">code-architect</span>
+        <span class="skill-chip agent">silent-failure-hunter</span>
+      </div>
+      <div class="map-item">
+        <strong>Accounting &amp; Finance</strong>
+        <div class="desc">Journal entries, COA rules, Dr/Cr validation</div>
+        <span class="skill-chip">/finance:journal-entry-prep</span>
+        <span class="skill-chip">/finance:reconciliation</span>
+        <span class="skill-chip">/data:validate-data</span>
+        <span class="skill-chip agent">code-architect</span>
+      </div>
+      <div class="map-item">
+        <strong>Data Science &amp; Quality</strong>
+        <div class="desc">Datasets, benchmarks, KPIs, statistics</div>
+        <span class="skill-chip">/data:statistical-analysis</span>
+        <span class="skill-chip">/data:validate-data</span>
+        <span class="skill-chip">/data:explore-data</span>
+        <span class="skill-chip">/data:analyze</span>
+        <span class="skill-chip">/engineering:testing-strategy</span>
+        <span class="skill-chip agent">code-explorer</span>
+      </div>
+      <div class="map-item">
+        <strong>QA &amp; Process</strong>
+        <div class="desc">SOPs, labeling, quality gates</div>
+        <span class="skill-chip">/operations:process-doc</span>
+        <span class="skill-chip">/operations:risk-assessment</span>
+        <span class="skill-chip">/engineering:documentation</span>
+        <span class="skill-chip agent">pr-test-analyzer</span>
+      </div>
+      <div class="map-item">
+        <strong>Frontend &amp; Visualization</strong>
+        <div class="desc">HTML reports, dashboards, infographics</div>
+        <span class="skill-chip">/anthropic-skills:web-artifacts-builder</span>
+        <span class="skill-chip">/data:build-dashboard</span>
+        <span class="skill-chip">/data:create-viz</span>
+        <span class="skill-chip">/engineering:deploy-checklist</span>
+      </div>
+      <div class="map-item">
+        <strong>Templates &amp; Artifacts</strong>
+        <div class="desc">Spreadsheets, PDF reports</div>
+        <span class="skill-chip">/anthropic-skills:xlsx</span>
+        <span class="skill-chip">/data:data-context-extractor</span>
+        <span class="skill-chip">/anthropic-skills:pdf</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SPRINT BOARD                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="table-card">
+    <h2>Sprint Board Summary</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Title</th>
+            <th>Code Status</th>
+            <th>RAG</th>
+            <th>Claude Skills</th>
+            <th>ETA</th>
+            <th>Depends On</th>
+            <th>Key Design Decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>501</td><td>OCR Processor</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/engineering:system-design</span> <span class="skill-chip agent">code-architect</span></td><td>Day 2</td><td>505</td><td>D1: OCR engine choice for Thai</td></tr>
+          <tr><td>502</td><td>Structured Extraction</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/claude-api</span> <span class="skill-chip agent">code-architect</span></td><td>Day 4</td><td>501</td><td>D2: Model version + routing trigger</td></tr>
+          <tr><td>503</td><td>Journal Router</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/finance:journal-entry-prep</span> <span class="skill-chip">/data:validate-data</span></td><td>Day 5</td><td>502, 504</td><td>D3: Rule-based vs LLM for variable accounts</td></tr>
+          <tr><td>504</td><td>Ground Truth Dataset</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/data:validate-data</span> <span class="skill-chip">/anthropic-skills:xlsx</span></td><td>Day 6</td><td>505, 509</td><td>D8: Evaluator scope (field + journal)</td></tr>
+          <tr><td>505</td><td>Manifest &amp; Split</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>None</td><td>&mdash;</td></tr>
+          <tr><td>506</td><td>Expectations Template</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>505</td><td>&mdash;</td></tr>
+          <tr><td>507</td><td>Multi-Page Support</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/feature-dev</span> <span class="skill-chip agent">code-architect</span></td><td>Day 3</td><td>501</td><td>Token limits for merged text</td></tr>
+          <tr><td>508</td><td>Fallback Routing</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/engineering:system-design</span> <span class="skill-chip agent">silent-failure-hunter</span></td><td>Day 4</td><td>501, 502</td><td>D1: Quality-based trigger (not just timeout)</td></tr>
+          <tr><td>509</td><td>Labeling SOP</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/operations:process-doc</span> <span class="skill-chip">/engineering:documentation</span></td><td>Day 3</td><td>506</td><td>Thai field normalization rules</td></tr>
+          <tr><td>510</td><td>KPI Gates</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/data:statistical-analysis</span> <span class="skill-chip">/engineering:testing-strategy</span></td><td>Day 7</td><td>504</td><td>D8: Add journal-level metrics</td></tr>
+          <tr><td>511</td><td>Exclusion Enforcement</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>505</td><td>&mdash;</td></tr>
+          <tr><td>512</td><td>Cohort Quality Gate</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>505, 511</td><td>&mdash;</td></tr>
+          <tr><td>513</td><td>HTML Infographic</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>510</td><td>&mdash;</td></tr>
+          <tr><td>514</td><td>Auto-Refresh HTML</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/anthropic-skills:web-artifacts-builder</span> <span class="skill-chip">/engineering:deploy-checklist</span></td><td>Day 9</td><td>513, 505</td><td>Template engine choice</td></tr>
+          <tr><td>515</td><td>Baseline Benchmarking</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/data:statistical-analysis</span> <span class="skill-chip">/data:analyze</span> <span class="skill-chip agent">code-explorer</span></td><td>Day 10</td><td>504, 510</td><td>Minimum benchmark size for 42 docs</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- TASK CARDS (Design Phase Only)                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <h2 style="margin-top: 20px; color: var(--slate);">Task Cards — Design-Phase Tasks (9 remaining)</h2>
+  <section class="grid">
+
+    <!-- TASK-501 -->
+    <article class="task red">
+      <div class="task-head">
+        <div><h3>TASK-501 OCR Processor</h3><div class="sub">Core pipeline foundation &mdash; all downstream depends on this</div></div>
+        <span class="status-stub">STUB</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>File</strong><span>src/ocr/processor.py</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 2</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>TASK-505 (done)</span></div>
+      </div>
+      <ul>
+        <li>Implement: <code>process_document(file_path)</code> &rarr; per-page OCR + merged text + cache</li>
+        <li>Input: PDF from manifest, Output: <code>cache/{sha256}/ocr_output.json</code></li>
+        <li>Must handle: tha+eng bilingual, corrupted PDFs, password-protected, multi-page (507)</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li><b>D1:</b> Benchmark pytesseract vs EasyOCR vs PaddleOCR on 5 Thai docs</li>
+          <li>Add image preprocessing: deskew, denoise, contrast for scanned docs</li>
+          <li>Cache invalidation: hash-based (never re-process same PDF)</li>
+          <li>Error codes: OCR_CORRUPTED, OCR_TIMEOUT, OCR_PASSWORD, OCR_EMPTY</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/engineering:system-design</span>
+        <span class="skill-chip">/feature-dev:feature-dev</span>
+        <span class="skill-chip agent">feature-dev:code-architect</span>
+      </div>
+    </article>
+
+    <!-- TASK-502 -->
+    <article class="task red">
+      <div class="task-head">
+        <div><h3>TASK-502 Structured Extraction</h3><div class="sub">Most complex reasoning module &mdash; Claude LLM structured output</div></div>
+        <span class="status-stub">STUB</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>File</strong><span>src/extraction/fields.py</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 4</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>TASK-501</span></div>
+      </div>
+      <ul>
+        <li>Implement: <code>extract_fields(ocr_text, schema, doc_type)</code></li>
+        <li>Claude API structured output with JSON schema &rarr; retry on parse failure</li>
+        <li>Confidence scoring per field &mdash; flag &lt;75% for human review</li>
+        <li>doc_type detection: purchase / sale / receipt / payment</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li><b>D2:</b> Use Claude Haiku 4.5 (default) &rarr; Sonnet 4.6 (fallback/complex)</li>
+          <li>Trigger upgrade: page_count &gt; 3, OCR confidence &lt; 80%, or &gt;2 low-confidence fields</li>
+          <li>Use <code>tool_use</code> mode for guaranteed structured output</li>
+          <li>Design bilingual prompt template (Thai invoice text + English field names)</li>
+          <li>Add: <code>doc_type_detected</code>, <code>model_used</code>, <code>processing_time_ms</code></li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/claude-api</span>
+        <span class="skill-chip">/engineering:architecture</span>
+        <span class="skill-chip agent">feature-dev:code-architect</span>
+      </div>
+    </article>
+
+    <!-- TASK-503 -->
+    <article class="task red">
+      <div class="task-head">
+        <div><h3>TASK-503 Journal Router</h3><div class="sub">Accounting correctness gate &mdash; highest business risk</div></div>
+        <span class="status-stub">STUB</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>File</strong><span>src/validation/rules.py</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 5</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>TASK-502, 504</span></div>
+      </div>
+      <ul>
+        <li>Implement: <code>compile_rules(yaml_path)</code> + <code>route_journal(extraction, rules)</code></li>
+        <li>Load rule_coa.yaml &rarr; match doc to rule &rarr; generate Dr/Cr lines &rarr; validate balance</li>
+        <li>5 rules defined: SALE-CREDIT, RECEIVE-PAYMENT, PURCHASE-SUPPLIES, EXPENSE-CASH, EXPENSE-CREDIT</li>
+        <li>Scope: ซื้อ ขาย รับ จ่าย + รายงานรับ/จ่าย</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li><b>D3:</b> Hybrid resolver &mdash; deterministic rule/cache first, fuzzy similarity second, LLM assist only when unresolved, then Map Review confirmation writes back to mapping cache</li>
+          <li><b>D4:</b> Rule precedence: weighted score-based matching with specificity tie-break and <code>UNRESOLVED_RULE</code> safety flag when no candidate passes</li>
+          <li><b>D5:</b> Dual scope for รายงานรับ/จ่าย &mdash; platform settlement-driven posting rules plus derived VAT purchase/sales reports from finalized journal lines</li>
+          <li><b>D6:</b> Multi-company: <code>rules/{company_id}/rule_coa.yaml</code> structure</li>
+          <li>Vendor lookup table for expense account (from user confirmations in Map Review)</li>
+          <li>Output must be Express GL compatible JSON</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/finance:journal-entry-prep</span>
+        <span class="skill-chip">/data:validate-data</span>
+        <span class="skill-chip">/engineering:system-design</span>
+        <span class="skill-chip agent">feature-dev:code-architect</span>
+      </div>
+    </article>
+
+    <!-- TASK-504 -->
+    <article class="task red">
+      <div class="task-head">
+        <div><h3>TASK-504 Ground Truth Dataset</h3><div class="sub">Quality system depends on trusted truth set</div></div>
+        <span class="status-design">DESIGN</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>Output</strong><span>expectations.filled.jsonl</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 6</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>505 (done), 509</span></div>
+      </div>
+      <ul>
+        <li>42 docs need manual labeling with expected field values</li>
+        <li>Dual-review process for conflict resolution</li>
+        <li>Accuracy evaluator: compare prediction vs ground truth per field</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li><b>D8:</b> Add journal-level accuracy (account code, Dr/Cr lines, voucher match rate)</li>
+          <li>Use /anthropic-skills:xlsx to export template as Excel for labelers</li>
+          <li>Field matching: exact match for codes/dates, &plusmn;0.01 tolerance for amounts, fuzzy for names</li>
+          <li>Define inter-rater agreement measurement</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/data:validate-data</span>
+        <span class="skill-chip">/data:explore-data</span>
+        <span class="skill-chip">/anthropic-skills:xlsx</span>
+        <span class="skill-chip agent">feature-dev:code-explorer</span>
+      </div>
+    </article>
+
+    <!-- TASK-507 -->
+    <article class="task amber">
+      <div class="task-head">
+        <div><h3>TASK-507 Multi-Page Support</h3><div class="sub">Extension of 501 &mdash; coupled to OCR output contract</div></div>
+        <span class="status-design">DESIGN</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>Scope</strong><span>Integrated into 501</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 3</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>TASK-501</span></div>
+      </div>
+      <ul>
+        <li>Per-page rasterization + text merge with delimiters</li>
+        <li>Metadata: page_count, is_multi_page</li>
+        <li>Risk: merged text from 10+ pages may exceed Claude context window</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li>Page delimiter: <code>--- Page {n} ---</code> (simple, parseable)</li>
+          <li>Token management: if merged text &gt; 100K chars, process pages individually</li>
+          <li>Keep per-page images in cache for debugging</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/feature-dev:feature-dev</span>
+        <span class="skill-chip">/engineering:architecture</span>
+      </div>
+    </article>
+
+    <!-- TASK-508 -->
+    <article class="task amber">
+      <div class="task-head">
+        <div><h3>TASK-508 Fallback Routing</h3><div class="sub">Resilience layer &mdash; primary/fallback for OCR + LLM</div></div>
+        <span class="status-design">DESIGN</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>Scope</strong><span>Cross-cutting 501+502</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 4</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>501, 502</span></div>
+      </div>
+      <ul>
+        <li>OCR: pytesseract &rarr; AWS Textract (or chosen alternative from D1)</li>
+        <li>LLM: Haiku 4.5 &rarr; Sonnet 4.6</li>
+        <li>Output: model_used, fallback_reason, fallback_count</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li>Trigger: timeout (30s) OR quality-based (garbled text detection for OCR, &gt;3 parse failures for LLM)</li>
+          <li>Max 1 fallback attempt, then error code (no retry loop)</li>
+          <li>Track fallback rate per doc_type for monitoring</li>
+          <li>Use silent-failure-hunter agent to review fallback logic after implementation</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/engineering:system-design</span>
+        <span class="skill-chip">/operations:risk-assessment</span>
+        <span class="skill-chip agent">silent-failure-hunter</span>
+      </div>
+    </article>
+
+    <!-- TASK-509 -->
+    <article class="task red">
+      <div class="task-head">
+        <div><h3>TASK-509 Labeling SOP</h3><div class="sub">Human process &mdash; impacts model evaluation quality directly</div></div>
+        <span class="status-design">DESIGN</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>Output</strong><span>LABELING-SOP.md</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 3</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>506 (done)</span></div>
+      </div>
+      <ul>
+        <li>Field normalization rules: Thai date &rarr; ISO format, company name canonicalization</li>
+        <li>3-5 annotated example documents from Comp_1</li>
+        <li>Dual-review process + escalation path</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li>Date normalization: พ.ศ. &rarr; ค.ศ. conversion (2569 &rarr; 2026)</li>
+          <li>Amount: strip commas, 2 decimal places, positive values only</li>
+          <li>Tax ID: 13-digit string, no dashes</li>
+          <li>Escalation: domain expert (accountant) resolves disputes</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/operations:process-doc</span>
+        <span class="skill-chip">/engineering:documentation</span>
+        <span class="skill-chip">/operations:process-optimization</span>
+      </div>
+    </article>
+
+    <!-- TASK-510 -->
+    <article class="task amber">
+      <div class="task-head">
+        <div><h3>TASK-510 KPI Gates</h3><div class="sub">Release control point &mdash; needs trustworthy baseline</div></div>
+        <span class="status-design">DESIGN</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>Output</strong><span>KPI-GATES.md</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 7</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>504</span></div>
+      </div>
+      <ul>
+        <li>Tax ID &ge;99%, Invoice# &ge;97%, Date &ge;97%, Total &ge;98%</li>
+        <li>Doc pass rate &ge;95%, Dr/Cr balance &ge;99%, Fallback &le;20%</li>
+        <li>Regression gate: no &gt;2pt drop per release</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li>42 docs too small for &ge;99% confidence intervals &mdash; use bootstrap/resampling</li>
+          <li>Add journal-level metrics: account_code accuracy, voucher match rate</li>
+          <li>PoC gate = pass/fail; MVP gate = automated CI check</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/data:statistical-analysis</span>
+        <span class="skill-chip">/engineering:testing-strategy</span>
+        <span class="skill-chip agent">feature-dev:code-architect</span>
+      </div>
+    </article>
+
+    <!-- TASK-514 -->
+    <article class="task amber">
+      <div class="task-head">
+        <div><h3>TASK-514 Auto-Refresh Infographic</h3><div class="sub">Automation &mdash; keep HTML report in sync with data</div></div>
+        <span class="status-design">DESIGN</span>
+      </div>
+      <div class="meta">
+        <div class="meta-box"><strong>Output</strong><span>Updated infographic HTML</span></div>
+        <div class="meta-box"><strong>ETA</strong><span>Day 9</span></div>
+        <div class="meta-box"><strong>Depends</strong><span>513 (done), 505 (done)</span></div>
+      </div>
+      <ul>
+        <li>Read split.json + manifest.jsonl &rarr; render into HTML template</li>
+        <li>Callable from CLI or CI/CD</li>
+        <li>Preserve TASK-513 design</li>
+      </ul>
+      <div class="design-box">
+        <strong>Design Decisions</strong>
+        <ul>
+          <li>Template: Python with Jinja2 (cleanest separation of data and HTML)</li>
+          <li>CI trigger: on push to main when data files change</li>
+          <li>Output committed to repo (not built on demand for PoC)</li>
+        </ul>
+      </div>
+      <div class="skills-row">
+        <span class="label">Skills:</span>
+        <span class="skill-chip">/anthropic-skills:web-artifacts-builder</span>
+        <span class="skill-chip">/engineering:deploy-checklist</span>
+        <span class="skill-chip">/feature-dev:feature-dev</span>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- IMPLEMENTATION SEQUENCE                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="footer-note">
+    <strong>Recommended Implementation Sequence</strong><br>
+    <strong>Week 1:</strong> Resolve D1 (OCR engine benchmark) &rarr; Implement TASK-501 (OCR) + TASK-507 (multi-page) &rarr; Start TASK-509 (labeling SOP) in parallel.<br>
+    <strong>Week 2:</strong> Implement TASK-502 (extraction with Claude 4.x) + TASK-508 (fallback) &rarr; Start TASK-504 (labeling 42 docs).<br>
+    <strong>Week 3:</strong> Implement TASK-503 (journal router with rule_coa.yaml) &rarr; TASK-510 (KPI gates) &rarr; TASK-514 (auto-refresh).<br>
+    <strong>Week 4:</strong> TASK-515 (baseline benchmarking) &rarr; Connect backend to LedgerFlow prototype &rarr; End-to-end PoC demo.<br>
+    <strong>Checkpoint:</strong> Hold design review after Week 1 OCR benchmark results before committing to Week 2 extraction design.
+  </section>
+
+  <p style="text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 16px;">
+    Last updated: 2026-06-05 (D3-D5 expanded for implementation discussion)
+  </p>
+
+</div>
+</body>
+</html>
