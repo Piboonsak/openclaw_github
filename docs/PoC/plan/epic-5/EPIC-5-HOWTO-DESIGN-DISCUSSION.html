@@ -551,9 +551,375 @@ PDF files (private_data/poc/Comp_1/)
         </details>
       </div>
       <div class="decision-item">
-        <strong>Claude model version and routing trigger</strong>
+        <strong>D2 — Claude model version and routing trigger</strong>
         <div class="context">Plan references Claude 3.5 Haiku/Sonnet (outdated). Should use Claude 4.x. Need to define what makes a doc "complex" to trigger model upgrade.</div>
         <div class="recommend">Recommend: Default Haiku 4.5, upgrade to Sonnet 4.6 when: (a) page_count &gt; 3, (b) OCR confidence &lt; 80%, or (c) first extraction attempt has &gt;2 low-confidence fields.</div>
+
+        <!-- ═══════ D2 DROPDOWN: 6-Stage Architecture ═══════ -->
+        <details>
+          <summary>▶ D2 Architecture — 6-Stage Hybrid Pipeline (A → F)</summary>
+          <div class="details-body">
+
+            <!-- ─── 1. Architecture Overview ─── -->
+            <h4>1. Architecture Overview</h4>
+            <p>
+              The pipeline is designed to <strong>minimise LLM calls</strong> by resolving as much as possible
+              through deterministic stages (OCR → template → rules) before escalating to Claude.
+              Only ~15–25 % of documents should reach Stage D in steady state.
+            </p>
+
+            <div class="compare-table">
+              <table>
+                <thead>
+                  <tr><th>Stage</th><th>Responsibility</th><th>Latency</th><th>Cost/Doc</th><th>Output</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="badge-hi">A</span> OCR + Layout</td>
+                    <td>PaddleOCR → text blocks + bounding boxes + per-block confidence</td>
+                    <td>~1.2 s</td>
+                    <td>฿0 (local GPU/CPU)</td>
+                    <td><code>OcrResult{blocks, layout_zones, avg_confidence}</code></td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-hi">B</span> Template Classifier</td>
+                    <td>Fingerprint hash (header zone + logo bbox) → match against <code>vendor_templates.yaml</code>. Outputs <code>vendor_id</code>, <code>doc_type</code>.</td>
+                    <td>&lt;50 ms</td>
+                    <td>฿0</td>
+                    <td><code>TemplateMatch{vendor_id, doc_type, match_score}</code></td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-hi">C</span> Rule Extractor</td>
+                    <td>Template-specific regex/coordinate rules extract fields. Field-level validator checks format (date, number, VAT logic: total = subtotal × 1.07).</td>
+                    <td>&lt;100 ms</td>
+                    <td>฿0</td>
+                    <td><code>Extraction{fields[], validation_errors[], confidence_per_field}</code></td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-mid">D</span> Claude LLM</td>
+                    <td>Called <strong>only when</strong>: (1) template unknown, (2) field confidence &lt; threshold, (3) rule conflict, (4) variable account mapping needed.</td>
+                    <td>~2–5 s</td>
+                    <td>฿0.35–1.80</td>
+                    <td><code>LlmExtraction{fields[], model_used, token_count}</code></td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-low">E</span> Human Review</td>
+                    <td>Only exceptions flagged by Stage C/D: unresolvable conflicts, OCR &lt; 60 %, brand-new vendor with no mapping.</td>
+                    <td>Manual</td>
+                    <td>฿5–15 (labor)</td>
+                    <td><code>ReviewDecision{approved_fields, corrections[], reviewer_id}</code></td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-hi">F</span> Feedback Loop</td>
+                    <td>Human corrections → auto-generate new template rule or update <code>vendor_templates.yaml</code>. Next occurrence of same vendor/layout bypasses D &amp; E.</td>
+                    <td>Background</td>
+                    <td>฿0</td>
+                    <td><code>TemplateUpdate{vendor_id, new_rules[], effective_date}</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- ─── 2. Stage Interaction Flow ─── -->
+            <h4>2. Stage Interaction Flow</h4>
+<pre class="code-skel">
+┌─────────┐    ┌─────────┐    ┌─────────┐
+│ Stage A │───▶│ Stage B │───▶│ Stage C │
+│ OCR     │    │Template │    │  Rules  │
+└─────────┘    └────┬────┘    └────┬────┘
+                    │              │
+              match_score     all fields
+              &lt; 0.7?         confident?
+                    │              │
+                    ▼ YES          ▼ NO
+              ┌─────────┐    ┌─────────┐
+              │ Stage D │◀───│ Stage D │
+              │ Claude  │    │ Claude  │
+              └────┬────┘    └────┬────┘
+                   │              │
+              still has      resolved?
+              exceptions?         │
+                   │              ▼ YES
+                   ▼ YES    ┌─────────┐
+              ┌─────────┐   │ Stage F │ ◀── also after E
+              │ Stage E │   │Feedback │
+              │  Human  │   └─────────┘
+              └────┬────┘
+                   │
+                   ▼
+              ┌─────────┐
+              │ Stage F │
+              │Feedback │
+              └─────────┘
+</pre>
+
+            <!-- ─── 3. Code Skeleton ─── -->
+            <h4>3. Pipeline Orchestrator Skeleton</h4>
+<pre class="code-skel">
+# src/pipeline/orchestrator.py
+from dataclasses import dataclass
+from enum import Enum, auto
+
+class StageResult(Enum):
+    PASS = auto()        # proceed to export
+    ESCALATE_LLM = auto()   # → Stage D
+    ESCALATE_HUMAN = auto() # → Stage E
+    FEEDBACK = auto()    # → Stage F (async)
+
+@dataclass
+class PipelineContext:
+    doc_id: str
+    ocr_result: "OcrResult"            # Stage A output
+    template_match: "TemplateMatch"    # Stage B output
+    extraction: "Extraction"           # Stage C output
+    llm_result: "LlmExtraction | None" # Stage D output (if called)
+    review: "ReviewDecision | None"    # Stage E output (if escalated)
+
+async def run_pipeline(image_path: str) -> PipelineContext:
+    """Main orchestrator — runs stages A→F with early exit."""
+    ctx = PipelineContext(doc_id=gen_id(), ...)
+
+    # ── Stage A: OCR ──
+    ctx.ocr_result = await ocr_engine.process(image_path)
+    if ctx.ocr_result.avg_confidence &lt; 0.60:
+        return escalate_human(ctx, reason="OCR too low")
+
+    # ── Stage B: Template Classify ──
+    ctx.template_match = template_classifier.classify(ctx.ocr_result)
+
+    # ── Stage C: Rule Extraction ──
+    if ctx.template_match.match_score &gt;= TEMPLATE_THRESHOLD:
+        ctx.extraction = rule_extractor.extract(ctx.ocr_result, ctx.template_match)
+        if ctx.extraction.all_confident():
+            await feedback_loop.record_success(ctx)  # Stage F
+            return ctx  # ✅ DONE — no LLM needed
+    
+    # ── Stage D: Claude LLM ──
+    model = select_model(ctx)  # see routing policy below
+    ctx.llm_result = await claude_extract(ctx, model=model)
+    
+    if ctx.llm_result.has_unresolved():
+        return escalate_human(ctx, reason="LLM unresolved")
+
+    # ── Stage F: Feedback ──
+    await feedback_loop.learn(ctx)
+    return ctx  # ✅ DONE
+
+def select_model(ctx: PipelineContext) -> str:
+    """Production routing policy — see §Routing Policy below."""
+    if ctx.ocr_result.page_count &gt; 3:
+        return "claude-sonnet-4-20250514"
+    if ctx.ocr_result.avg_confidence &lt; 0.80:
+        return "claude-sonnet-4-20250514"
+    if ctx.extraction and ctx.extraction.low_confidence_fields &gt; 2:
+        return "claude-sonnet-4-20250514"
+    return "claude-haiku-4-20250414"
+</pre>
+
+            <!-- ─── 4. Production Routing Policy ─── -->
+            <h4>4. Production Routing Policy</h4>
+            <div class="proscons">
+              <div class="pc-box">
+                <h5>Model Selection Matrix</h5>
+                <table>
+                  <thead>
+                    <tr><th>Condition</th><th>Model</th><th>Rationale</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Template matched &amp; all fields confident ≥ 0.85</td><td><em>None (skip LLM)</em></td><td>Rule extractor sufficient</td></tr>
+                    <tr><td>Template matched but 1–2 low-conf fields</td><td>Haiku 4.5</td><td>Simple fill-in, low token cost</td></tr>
+                    <tr><td>No template match (new vendor)</td><td>Haiku 4.5</td><td>Full extraction but standard doc</td></tr>
+                    <tr><td>OCR confidence &lt; 0.80 or page_count &gt; 3</td><td>Sonnet 4.6</td><td>Needs reasoning over noisy/long input</td></tr>
+                    <tr><td>Rule conflict (VAT mismatch, duplicate vendor)</td><td>Sonnet 4.6</td><td>Needs judgment to resolve ambiguity</td></tr>
+                    <tr><td>Variable account mapping (<code>is_variable: true</code>)</td><td>Haiku 4.5 + CoT prompt</td><td>Account classification from description</td></tr>
+                    <tr><td>Retry after first LLM attempt failed validation</td><td>Sonnet 4.6 (upgrade)</td><td>Harder case — throw more capability at it</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="pc-box">
+                <h5>Fallback Triggers (Stage C → D Escalation)</h5>
+                <ul>
+                  <li><strong>Template match_score &lt; 0.70</strong> → unknown layout, must use LLM for full extraction</li>
+                  <li><strong>Any field confidence &lt; 0.75</strong> → ambiguous OCR text in critical field (amount, date, vendor_tax_id)</li>
+                  <li><strong>VAT validation fails</strong> → total ≠ subtotal × 1.07 (±฿1 tolerance) after rule extraction</li>
+                  <li><strong>Missing required field</strong> → template rule yielded null for mandatory field (invoice_no, date, total)</li>
+                  <li><strong>Variable account flag</strong> → <code>rule_coa.yaml</code> entry has <code>is_variable: true</code></li>
+                </ul>
+              </div>
+
+              <div class="pc-box">
+                <h5>KPI Cost Guardrails</h5>
+                <table>
+                  <thead>
+                    <tr><th>Metric</th><th>Target</th><th>Hard Limit</th><th>Action if Breached</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>LLM call rate (% of docs hitting Stage D)</td><td>≤ 20 %</td><td>≤ 35 %</td><td>Pause batch, review template coverage</td></tr>
+                    <tr><td>Avg cost per document (all stages)</td><td>≤ ฿0.50</td><td>≤ ฿1.50</td><td>Alert + switch to Haiku-only mode</td></tr>
+                    <tr><td>Sonnet usage rate (% of LLM calls)</td><td>≤ 30 %</td><td>≤ 50 %</td><td>Tighten Sonnet triggers</td></tr>
+                    <tr><td>Daily LLM spend</td><td>≤ ฿500</td><td>≤ ฿1,500</td><td>Hard stop — queue remaining for next day</td></tr>
+                    <tr><td>Human review rate</td><td>≤ 5 %</td><td>≤ 15 %</td><td>Review confidence thresholds</td></tr>
+                    <tr><td>Stage F template learning rate</td><td>≥ 3 new rules/week</td><td>—</td><td>Monitor — stagnation = coverage plateau</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ─── 5. Cost Calculator ─── -->
+            <h4>5. Cost Calculator — Based on Training Data (Comp_1 &amp; Comp_2)</h4>
+            <p>
+              Training data baseline: <strong>Comp_1</strong> (ฤทธิ์ล้ำเลิศ) — 43 purchase invoices, avg 400 KB/page, ~1.5 pages/doc;
+              <strong>Comp_2</strong> (ชาญฟู้ดส์) — 221 documents across 5 categories: platform settlements (121 docs, avg 180 KB),
+              tax invoices (99 docs, avg 25 KB). Projected token usage estimated from OCR output density.
+            </p>
+
+            <div class="compare-table">
+              <table>
+                <thead>
+                  <tr><th>Parameter</th><th>Comp_1 (Invoices)</th><th>Comp_2 (Settlements)</th><th>Comp_2 (Tax Inv.)</th><th>Blended Avg</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Avg pages/doc</td><td>1.5</td><td>2.0</td><td>1.0</td><td>1.4</td></tr>
+                  <tr><td>Est. OCR tokens/doc</td><td>~800</td><td>~1,200</td><td>~400</td><td>~750</td></tr>
+                  <tr><td>Prompt template tokens</td><td>350</td><td>350</td><td>350</td><td>350</td></tr>
+                  <tr><td>Total input tokens/doc (if LLM called)</td><td>~1,150</td><td>~1,550</td><td>~750</td><td>~1,100</td></tr>
+                  <tr><td>Output tokens/doc</td><td>~300</td><td>~400</td><td>~250</td><td>~300</td></tr>
+                  <tr><td>Template match rate (steady state)</td><td>80 %</td><td>90 %</td><td>85 %</td><td>85 %</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h5>5.1 Model Pricing (as of Jun 2025)</h5>
+            <div class="compare-table">
+              <table>
+                <thead>
+                  <tr><th>Model</th><th>Input ($/1M tok)</th><th>Output ($/1M tok)</th><th>Input (฿/1K tok)</th><th>Output (฿/1K tok)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Claude Haiku 4.5</td><td>$0.80</td><td>$4.00</td><td>฿0.028</td><td>฿0.140</td></tr>
+                  <tr><td>Claude Sonnet 4.6</td><td>$3.00</td><td>$15.00</td><td>฿0.105</td><td>฿0.525</td></tr>
+                </tbody>
+              </table>
+              <p style="font-size:0.85em;color:#666;">Exchange rate: 1 USD = 35 THB (conservative). Batch API 50% discount not applied (real-time use case).</p>
+            </div>
+
+            <h5>5.2 Per-Document Cost (Hybrid Pipeline vs All-LLM)</h5>
+            <div class="compare-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Scenario</th>
+                    <th>LLM Call Rate</th>
+                    <th>Model Mix<br>(Haiku:Sonnet)</th>
+                    <th>Cost/Doc<br>(฿)</th>
+                    <th>10,000 Docs<br>(฿)</th>
+                    <th>Monthly @<br>3,000 docs (฿)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="background:#fef3f3;">
+                    <td><strong>A) All-LLM Sonnet</strong> (no rules)</td>
+                    <td>100 %</td>
+                    <td>0 : 100</td>
+                    <td>฿1.73</td>
+                    <td>฿17,300</td>
+                    <td>฿5,190</td>
+                  </tr>
+                  <tr style="background:#fef9f3;">
+                    <td><strong>B) All-LLM Haiku</strong> (no rules)</td>
+                    <td>100 %</td>
+                    <td>100 : 0</td>
+                    <td>฿0.47</td>
+                    <td>฿4,700</td>
+                    <td>฿1,410</td>
+                  </tr>
+                  <tr style="background:#f3fef5;">
+                    <td><strong>C) Hybrid — Week 1</strong> (20% template)</td>
+                    <td>80 %</td>
+                    <td>70 : 30</td>
+                    <td>฿0.53</td>
+                    <td>฿5,300</td>
+                    <td>฿1,590</td>
+                  </tr>
+                  <tr style="background:#eefcf3;">
+                    <td><strong>D) Hybrid — Month 1</strong> (60% template)</td>
+                    <td>40 %</td>
+                    <td>75 : 25</td>
+                    <td>฿0.24</td>
+                    <td>฿2,400</td>
+                    <td>฿720</td>
+                  </tr>
+                  <tr style="background:#e6f9ed;">
+                    <td><strong>E) Hybrid — Steady State</strong> (85% template) ⭐</td>
+                    <td>15 %</td>
+                    <td>80 : 20</td>
+                    <td>฿0.09</td>
+                    <td>฿900</td>
+                    <td>฿270</td>
+                  </tr>
+                  <tr style="background:#e0f7e9;">
+                    <td><strong>F) Hybrid — Mature</strong> (95% template)</td>
+                    <td>5 %</td>
+                    <td>80 : 20</td>
+                    <td>฿0.03</td>
+                    <td>฿300</td>
+                    <td>฿90</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h5>5.3 Cost Calculation Formula</h5>
+<pre class="code-skel">
+# Cost per document = LLM_call_rate × (
+#     haiku_share × (input_tokens × haiku_input_price + output_tokens × haiku_output_price)
+#   + sonnet_share × (input_tokens × sonnet_input_price + output_tokens × sonnet_output_price)
+# )
+
+# Example: Scenario E (Steady State)
+llm_call_rate = 0.15
+haiku_share, sonnet_share = 0.80, 0.20
+input_tok, output_tok = 1100, 300
+
+haiku_cost  = input_tok * 0.028/1000 + output_tok * 0.140/1000  # = ฿0.0729
+sonnet_cost = input_tok * 0.105/1000 + output_tok * 0.525/1000  # = ฿0.2730
+
+cost_per_doc = llm_call_rate * (haiku_share * haiku_cost + sonnet_share * sonnet_cost)
+# = 0.15 × (0.80 × 0.0729 + 0.20 × 0.2730)
+# = 0.15 × (0.05832 + 0.05460)
+# = 0.15 × 0.11292
+# = ฿0.017 per doc  (LLM cost only)
+
+# Add OCR infra amortised cost (~฿0.05/doc for GPU) + storage (~฿0.02/doc)
+total_per_doc = 0.017 + 0.05 + 0.02  # ≈ ฿0.09
+</pre>
+
+            <h5>5.4 Training Data Projection (264 docs → 10,000 docs)</h5>
+            <div class="compare-table">
+              <table>
+                <thead>
+                  <tr><th>Company</th><th>Training Docs</th><th>Unique Templates</th><th>Projected Template Coverage @10K</th><th>Est. LLM Calls @10K</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Comp_1 (ฤทธิ์ล้ำเลิศ)</td><td>43</td><td>~3 (purchase inv. variants)</td><td>92 %</td><td>~800 calls</td></tr>
+                  <tr><td>Comp_2 (ชาญฟู้ดส์)</td><td>221</td><td>~6 (settlements × 4, tax inv., misc)</td><td>88 %</td><td>~1,200 calls</td></tr>
+                  <tr><td><strong>Combined</strong></td><td><strong>264</strong></td><td><strong>~9 templates</strong></td><td><strong>90 %</strong></td><td><strong>~1,000 calls / 10K docs</strong></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h5>5.5 Break-Even vs Subscription Plan</h5>
+            <p>
+              Standard plan (฿18,000/mo for 3,000 pages) → effective cost = ฿6.00/page.<br>
+              Our hybrid steady-state cost = <strong>฿0.09/page</strong> (LLM + infra).<br>
+              Even including dev amortisation (฿260K MVP ÷ 24 months = ฿10,833/mo ÷ 3,000 docs = ฿3.61/doc),
+              total cost = <strong>฿3.70/doc</strong> — still <strong>38% cheaper</strong> than SaaS outsourcing at ฿6.00/doc,
+              while retaining full data ownership and audit trail.
+            </p>
+
+          </div>
+        </details>
       </div>
       <div class="decision-item">
         <strong>Journal Router: rule-based vs LLM-assisted for variable accounts</strong>
