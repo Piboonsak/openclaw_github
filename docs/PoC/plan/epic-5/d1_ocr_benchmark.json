@@ -1,0 +1,202 @@
+{
+  "benchmark_date": "2026-06-05 03:09:37",
+  "dataset": {
+    "doc_count": 5,
+    "docs": [
+      "private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ บิลซื้อ RRL/03062026125257.pdf",
+      "private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ บิลซื้อ RRL/03062026125316.pdf",
+      "private_data/poc/Comp_2/ชาญฟู๊ดส์ ใบกำกับภาษีซื้อ/04062026154843-0001.pdf",
+      "private_data/poc/Comp_2/6904-ค่าโฆษณา/20260401_GFAD20260401007852.pdf",
+      "private_data/poc/Comp_2/6904-เมืองไทย/3-C4MDT62EFFTGJJ-20260401.pdf"
+    ],
+    "keywords": [
+      "ใบกำกับ",
+      "ภาษี",
+      "เลข",
+      "วันที่",
+      "รวม",
+      "บาท",
+      "ผู้ขาย",
+      "บริษัท"
+    ]
+  },
+  "method": "First page of each PDF rendered at 1.2x with pypdfium2. Heuristic score favors Thai accounting keyword coverage, Thai character ratio, numeric density, and average OCR confidence.",
+  "summary": {
+    "pytesseract": {
+      "avg_runtime_ms": 44573.4,
+      "avg_conf": 85.17,
+      "avg_text_len": 1731.2,
+      "avg_thai_ratio": 0.3646,
+      "avg_keyword_hit": 0.45,
+      "avg_heuristic_score": 49.45
+    },
+    "easyocr": {
+      "avg_runtime_ms": 222337.66,
+      "avg_conf": 32.8,
+      "avg_text_len": 1616.6,
+      "avg_thai_ratio": 0.4698,
+      "avg_keyword_hit": 0.5,
+      "avg_heuristic_score": 48.23
+    },
+    "paddleocr": {
+      "avg_runtime_ms": 29174.84,
+      "avg_conf": 94.44,
+      "avg_text_len": 1873.4,
+      "avg_thai_ratio": 0.4208,
+      "avg_keyword_hit": 0.65,
+      "avg_heuristic_score": 65.34
+    }
+  },
+  "rows": [
+    {
+      "doc": "private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ บิลซื้อ RRL/03062026125257.pdf",
+      "pytesseract": {
+        "runtime_ms": 21427.31,
+        "avg_conf": 86.62,
+        "text_len": 2037,
+        "thai_ratio": 0.4516,
+        "keyword_hit": 0.375,
+        "heuristic_score": 46.85,
+        "sample": "PLANET T AND S CO., LTD.\nANET (aw       @ nest เอส จํากั%    \"\nบริษัท แพลนเนท ที แอนด์ เอส จํากัด [ วันเดือนปี [ เงื่อนไข\npate _| การชําระมิน\n28 Krungttep Krtha 20 Yaek 3, Thapchang, Sapansung, Bangkok 10250                    ซาตคท\nว8ซอยกรุงเทพกรีฑา 20 แยก 3 แขวงทับข้าง เขตสะพาน"
+      },
+      "easyocr": {
+        "runtime_ms": 427556.8,
+        "avg_conf": 28.17,
+        "text_len": 1862,
+        "thai_ratio": 0.5419,
+        "keyword_hit": 0.625,
+        "heuristic_score": 54.78,
+        "sample": ")elanet\n planep fand s co., ltd.\n บริษัท แพลนเนท ที แอนด์ เอส จำกัด\nวัน เดือนฺมี\nเงือนไซ\nเรขที\ndte\nกวขาระเงน\n28 krungfen\nkritha 2d yaek\ntagchang., sapansung, bangkok 10250\n31/03/2026\nadd\n|/8|<2603587\n28 ฐอยทรุงเทรกรีฑา\nแขวงทับว้าง เขดสะหานสูง กรุงเทศมหานคร 10250\n56|]'2330-5323 4,"
+      },
+      "paddleocr": {
+        "runtime_ms": 87311.35,
+        "avg_conf": 91.71,
+        "text_len": 2054,
+        "thai_ratio": 0.5005,
+        "keyword_hit": 0.875,
+        "heuristic_score": 78.46,
+        "sample": "DLANET\nPLANET T AND S CO., LTD.\nบริษัท แพลนเนท ที แอนด์ เอส จำกัด\nวัน เดือน ปี\nเงื่อนไช\nเลขที่\nDATE\nการชาระเงิน\nNo.\n28 Krungthep Kritha 20 Yaek 3, Thapchang, Sapansung, Bangkok 10250\n31/03/2026\n30D\nIVSK2603587\n28 ซอยกรุงเทพกรีทา 20 แยก 3 แขวงทับซ้าง เขตสะพานสูง กรุงเทพมหานคร 1025"
+      }
+    },
+    {
+      "doc": "private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ บิลซื้อ RRL/03062026125316.pdf",
+      "pytesseract": {
+        "runtime_ms": 192130.73,
+        "avg_conf": 85.78,
+        "text_len": 2660,
+        "thai_ratio": 0.509,
+        "keyword_hit": 0.875,
+        "heuristic_score": 76.32,
+        "sample": "ESE                                                         หน้าที่ 1 /\nเณ 0 ier                         เลขที : 120856\nบริษัท โฮม โปรดักส์ ใยืนเตอร์ จํากัด (มหาชน) สาขา เมกาโฮม-รัตนาธิเบศร์                            วันที่ : 29/03/2026\nสาขาที่ 00138                             "
+      },
+      "easyocr": {
+        "runtime_ms": 450937.46,
+        "avg_conf": 37.79,
+        "text_len": 1841,
+        "thai_ratio": 0.723,
+        "keyword_hit": 0.875,
+        "heuristic_score": 73.82,
+        "sample": "หน้าที่\nhune:\nzall zentar ศิดค่อ 1347\nเลขที่\n122356\nบริษัท โฮม ฺฺโปรดักส์ เข็นเดอร์  จำกัด ไมหาชน) ฺสาขาฺเมกาโรม-รัตนาธิเบศร์\nวันที่\n29/03/2026\nสาขาที 00138\n ออก.ทนโบกำกับภาือย่างย่อ\n04-195598\n87/6 หมู่\nตำบลบางรักใหญ่ อำเภอบางบัวทอง จังหวัดนนทบุรี iiito\nเลขประจำตัวผู้เสียภาษีอากร"
+      },
+      "paddleocr": {
+        "runtime_ms": 17995.75,
+        "avg_conf": 91.79,
+        "text_len": 2053,
+        "thai_ratio": 0.7038,
+        "keyword_hit": 1.0,
+        "heuristic_score": 89.27,
+        "sample": "MEGA\nหน้ที่ 1/'\nHOMECall Center ติดต่อ 1347\nเลยที่ : 120856\nบริษัท โฮม โปรตักส์เซ็นเตอร์ จำกัด (มหาซน) สาขา เมกาโฮม-รัตนาธิเบศร์\nวันที่: 29/03/2026\nสาขาที่ 00138\nออกแทนใบกำกับภาษีอย่างย่อ : 004-195598\n89/6 หมู่ 6 ตำบลบางรักใหญ่ อำเภอบางบัวทอง จังหวัด นนทบรี 11110\nเลขประจำตัวผูเสี"
+      }
+    },
+    {
+      "doc": "private_data/poc/Comp_2/ชาญฟู๊ดส์ ใบกำกับภาษีซื้อ/04062026154843-0001.pdf",
+      "pytesseract": {
+        "runtime_ms": 4646.96,
+        "avg_conf": 83.5,
+        "text_len": 1773,
+        "thai_ratio": 0.2916,
+        "keyword_hit": 0.375,
+        "heuristic_score": 43.01,
+        "sample": "บ                                                                'ใบเสร็จรับเงิน / ใบกํากับภาษี\n(>6ด9                                   RECEIPT / TAX INVOICE\nGrabtaxi (Thailand) Co., Ltd. (Head Office)                            time. อเอร0260130007921\n252 SPE Tower, 10th floor, "
+      },
+      "easyocr": {
+        "runtime_ms": 70603.25,
+        "avg_conf": 30.77,
+        "text_len": 1348,
+        "thai_ratio": 0.3961,
+        "keyword_hit": 0.5,
+        "heuristic_score": 45.53,
+        "sample": "ใบเสร่งรับเงืน/ใบก่ากับภายี\ngิrิดอ\n receipt itax ivoice\ngrabtaxi (thailand) co., ltd. (head office)\nเลขทีมง.\n6}4d20260130007921\n252 spe tower, loth floor,\nวันท์ date\nวฬ0เวาา6\nphahonyothin rd, samsen nai,\nก้างอึง ref.\nphaya thai, bangkok 10400\nว้างกึง3e. 2\ntax|d 0105556090377\nรหัส"
+      },
+      "paddleocr": {
+        "runtime_ms": 11519.64,
+        "avg_conf": 94.49,
+        "text_len": 1437,
+        "thai_ratio": 0.3493,
+        "keyword_hit": 0.625,
+        "heuristic_score": 61.8,
+        "sample": "Grab\nในเสร็จรับเงิน/ในกำกับภาษี\nRECEIPT / TAX INVOICE\nGrabtaxi (Thailand) Co., Ltd. (Head Office)\nเลขที่/No.\n252 SPE Tower, 10th floor,\nGFAD20260130007921\nวันที่/Date\n30/01/2026\nPhahonyothin Rd, Samsen Nai,\nอ้างอิง/Ref. 1\nAds\nPhaya Thai, Bangkok 10400\nอ้างอิง/Ref. 2\nTAX ID 010555"
+      }
+    },
+    {
+      "doc": "private_data/poc/Comp_2/6904-ค่าโฆษณา/20260401_GFAD20260401007852.pdf",
+      "pytesseract": {
+        "runtime_ms": 3422.45,
+        "avg_conf": 84.29,
+        "text_len": 1777,
+        "thai_ratio": 0.2921,
+        "keyword_hit": 0.625,
+        "heuristic_score": 56.8,
+        "sample": "6                y)                                                                                                    ใบเสร็จรับเงิน /ใบคํากับภาษี\nGrabtaxi (Thailand) Co., Ltd. (Head Office)                            ravine 08/เบ20260401007852\n252 SPE Tower, 10th กีออ, ง       "
+      },
+      "easyocr": {
+        "runtime_ms": 48845.3,
+        "avg_conf": 37.87,
+        "text_len": 1301,
+        "thai_ratio": 0.3882,
+        "keyword_hit": 0.5,
+        "heuristic_score": 46.63,
+        "sample": "ใบเสร็จรับ!เงิน /ไบกำกับภาษี\nติเดอ\nreceipt\ntax ivoice\n grabtaxi (thailand) co., ltd. (head office)\nเลขที n๓.\n6f4d20260401007852\n252 spe tower., loth floor.,\nวันที date\n01/04 2026\nphahonyothin rd, samsen nai,\nอ้างอิง ref.\nads\nphaya thai., bangkok 10400\nอ้างอิง reโ.\ntax |d 01055560"
+      },
+      "paddleocr": {
+        "runtime_ms": 7519.47,
+        "avg_conf": 97.19,
+        "text_len": 1377,
+        "thai_ratio": 0.3486,
+        "keyword_hit": 0.75,
+        "heuristic_score": 68.57,
+        "sample": "Grab\nใบเสร็จรับเงิน /ใบกำกับภาษี\nRECEIPT / TAX INVOICE\nGrabtaxi (Thailand) Co., Ltd. (Head Office)\nเลขที่/No.\n252 SPE Tower, 10th floor,\nGFAD20260401007852\nวันที่/Date\n01/04/2026\nPhahonyothin Rd, Samsen Nai,\nอ้างอิง/Ref. 1\nAds\nPhaya Thai, Bangkok 10400\nอ้างอิง/Ref. 2\nTAX ID 01055"
+      }
+    },
+    {
+      "doc": "private_data/poc/Comp_2/6904-เมืองไทย/3-C4MDT62EFFTGJJ-20260401.pdf",
+      "pytesseract": {
+        "runtime_ms": 1239.57,
+        "avg_conf": 85.64,
+        "text_len": 409,
+        "thai_ratio": 0.2787,
+        "keyword_hit": 0.0,
+        "heuristic_score": 24.29,
+        "sample": "รายงานธุรกิจรายวัน                                    GraFood\n1เณนายน 226 98                                          ง\n‘svar 6ล\n\nสรุปข้อมูล\n\nah                   - ont            satoan\n\n‘THB 7,222.74                             THB 0.00                    31 รายการ\n\nรายรับทั้งห"
+      },
+      "easyocr": {
+        "runtime_ms": 113745.51,
+        "avg_conf": 29.42,
+        "text_len": 1731,
+        "thai_ratio": 0.2998,
+        "keyword_hit": 0.0,
+        "heuristic_score": 20.41,
+        "sample": "รายงานธรกิจรายวัน\n graofood\n.\n2d26, nุธ\n+bราม2เราา\nาาnรอaอnแ\nauang ina ahad\ncdmpler\nสรุปข้อมุล\nกา\nค้าสาาอพัวงทนส\nthb 7,222.74\nthb d.0d\n31 รายการ\nรายรับทั้งหมด\nเ้เลืองขานพั้งทนสาะเทโอทไปไท้ลยไหวัทาฤทัสบต,เมนาชน2อหไว์เว้า๋อะเท๋4สามวับเทือไทเพปรกฏไพบันราอาคาร\natniiattu\nเป้าเเนภเม\nมร"
+      },
+      "paddleocr": {
+        "runtime_ms": 21527.98,
+        "avg_conf": 97.04,
+        "text_len": 2446,
+        "thai_ratio": 0.2016,
+        "keyword_hit": 0.0,
+        "heuristic_score": 28.59,
+        "sample": "รายงานธุรกิจรายวัน\nGrabFood\n1 เมมายน 2026, พุธ\n+6620212530\nSavory Malatang - Muang Thai Phatra Complex 0\nสรุปข้อมูล\nรายรับทั้งหมด\nด้างชาระ Grab\nคำลังขื้อทั้งหมดศ\nTHB 7,222.74\nTHB 0.00\n31 รายการ\nรายรับทั้งหมด\nเป็นที่ต้องจายทั้งหมดคจะถูกโอนไปได้คุญในวั้น พฤุหัสดี, เมษายน 2อาจใร้เวล"
+      }
+    }
+  ]
+}

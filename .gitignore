@@ -105,6 +105,9 @@ docs/PoC/**/*.xls
 docs/PoC/**/*.png
 docs/PoC/**/*.jpg
 docs/PoC/**/*.jpeg
+docs/PoC/plan/*
+!docs/PoC/plan/epic-5/
+!docs/PoC/plan/epic-5/**
 !docs/PoC/**/*.yaml
 
 # Commercial/sensitive proposal docs

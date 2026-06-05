@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comp_1 Cohort Infographic</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --surface: #ffffff;
+      --ink: #11213a;
+      --muted: #5d6a80;
+      --train: #1d6fff;
+      --val: #22a06b;
+      --test: #ef8f00;
+      --excluded: #c62828;
+      --line: #d9e1ee;
+      --shadow: 0 14px 34px rgba(30, 62, 112, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans Thai", sans-serif;
+      background: radial-gradient(1100px 500px at 85% -5%, #dce9ff, transparent), var(--bg);
+      color: var(--ink);
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px 18px 34px;
+    }
+
+    .hero {
+      background: linear-gradient(140deg, #0f2450, #254a96);
+      color: #fff;
+      border-radius: 22px;
+      padding: 24px 24px 26px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      right: -70px;
+      top: -100px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.35), transparent 70%);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: #dbe7ff;
+      font-size: 14px;
+      max-width: 780px;
+      line-height: 1.55;
+    }
+
+    .grid {
+      margin-top: 18px;
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 5px 16px rgba(27, 46, 86, 0.08);
+    }
+
+    .label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.55px;
+      margin-bottom: 7px;
+      font-weight: 700;
+    }
+
+    .value {
+      font-size: 31px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .split-wrap {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 14px;
+    }
+
+    .bar {
+      height: 18px;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      display: flex;
+      background: #f1f5fc;
+      margin-top: 10px;
+    }
+
+    .seg { height: 100%; }
+    .seg.train { background: var(--train); width: 67.44%; }
+    .seg.val { background: var(--val); width: 13.95%; }
+    .seg.test { background: var(--test); width: 16.28%; }
+    .seg.excluded { background: var(--excluded); width: 2.33%; }
+
+    .legend {
+      margin-top: 11px;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      font-size: 13px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-right: 7px;
+      vertical-align: middle;
+    }
+
+    .kpi-list {
+      margin: 0;
+      padding-left: 20px;
+      line-height: 1.65;
+      font-size: 14px;
+      color: #26344d;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #ffcdc7;
+      color: #b53d2f;
+      background: #fff4f2;
+      margin-left: 8px;
+      vertical-align: middle;
+      font-weight: 600;
+    }
+
+    .meta {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .meta strong { color: #213a69; }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split-wrap { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 23px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Comp_1 Cohort Status (Epic 5)</h1>
+      <p>
+        อินโฟกราฟิกนี้สรุป dataset readiness สำหรับ train/val/test โดยอิงข้อมูลล่าสุดจาก split และกฎ
+        <strong>exclude non-transaction docs</strong> เพื่อป้องกัน noise ก่อนเทรนจริง
+      </p>
+    </section>
+
+    <section class="grid" aria-label="cohort summary cards">
+      <article class="card">
+        <div class="label">Total PDFs</div>
+        <div class="value">43</div>
+        <div class="hint">เอกสารทั้งหมดใน Comp_1</div>
+      </article>
+      <article class="card">
+        <div class="label">Included</div>
+        <div class="value">42</div>
+        <div class="hint">ใช้ train/val/test ได้</div>
+      </article>
+      <article class="card">
+        <div class="label">Excluded</div>
+        <div class="value">1</div>
+        <div class="hint">non_transaction_reference_doc</div>
+      </article>
+      <article class="card">
+        <div class="label">Split Seed</div>
+        <div class="value">20260604</div>
+        <div class="hint">random strategy (reproducible)</div>
+      </article>
+    </section>
+
+    <section class="split-wrap">
+      <article class="card">
+        <div class="label">Train / Val / Test / Excluded</div>
+        <div class="bar" aria-hidden="true">
+          <span class="seg train"></span>
+          <span class="seg val"></span>
+          <span class="seg test"></span>
+          <span class="seg excluded"></span>
+        </div>
+        <div class="legend">
+          <div><span class="dot" style="background:var(--train)"></span>Train: <strong>29</strong> (67.44%)</div>
+          <div><span class="dot" style="background:var(--val)"></span>Val: <strong>6</strong> (13.95%)</div>
+          <div><span class="dot" style="background:var(--test)"></span>Test: <strong>7</strong> (16.28%)</div>
+          <div><span class="dot" style="background:var(--excluded)"></span>Excluded: <strong>1</strong> (2.33%)</div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="label">KPI Gate (Suggested)</div>
+        <ul class="kpi-list">
+          <li>Tax ID accuracy >= 99%</li>
+          <li>Total amount accuracy >= 98%</li>
+          <li>Document pass rate >= 95%</li>
+          <li>Debit/Credit balancing >= 99%</li>
+          <li>Fallback rate <= 20%</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <div class="label">Exclusion Rule Detail</div>
+      <div style="font-size:14px; line-height:1.65; color:#26344d;">
+        Excluded document:
+        <strong>ฤทธิ์ล้ำเลิศ ผังบัญชี.pdf</strong>
+        <span class="tag">non_transaction_reference_doc</span>
+        <br />
+        SHA256: <span style="font-family:Consolas, monospace; font-size:12px;">ba1aedd99e24f991f213b7d6c33d9525ce2557613f3b02f90c3d40d31dcade5a</span>
+      </div>
+      <div class="meta">
+        Source files: <strong>private_data/poc/Comp_1/split.json</strong>, <strong>private_data/poc/Comp_1/manifest.jsonl</strong>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

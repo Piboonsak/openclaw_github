@@ -909,10 +909,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li><b>D1:</b> Benchmark pytesseract vs EasyOCR vs PaddleOCR on 5 Thai docs</li>
-          <li>Add image preprocessing: deskew, denoise, contrast for scanned docs</li>
-          <li>Cache invalidation: hash-based (never re-process same PDF)</li>
-          <li>Error codes: OCR_CORRUPTED, OCR_TIMEOUT, OCR_PASSWORD, OCR_EMPTY</li>
+          <li><b>D1:</b> Keep PaddleOCR primary for Thai quality; retain pytesseract as fallback mode</li>
+          <li>Apply deterministic preprocessing pipeline: deskew, denoise, contrast normalize before OCR</li>
+          <li>Use content hash + engine version in cache key to avoid stale OCR reuse</li>
+          <li>Standardize OCR error contract: <code>OCR_CORRUPTED</code>, <code>OCR_TIMEOUT</code>, <code>OCR_PASSWORD</code>, <code>OCR_EMPTY</code></li>
         </ul>
       </div>
       <div class="skills-row">
@@ -943,11 +943,11 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li><b>D2:</b> Use Claude Haiku 4.5 (default) &rarr; Sonnet 4.6 (fallback/complex)</li>
-          <li>Trigger upgrade: page_count &gt; 3, OCR confidence &lt; 80%, or &gt;2 low-confidence fields</li>
-          <li>Use <code>tool_use</code> mode for guaranteed structured output</li>
-          <li>Design bilingual prompt template (Thai invoice text + English field names)</li>
-          <li>Add: <code>doc_type_detected</code>, <code>model_used</code>, <code>processing_time_ms</code></li>
+          <li><b>D2:</b> Default to Haiku 4.5 and escalate to Sonnet 4.6 only by explicit complexity triggers</li>
+          <li>Escalation triggers: <code>page_count &gt; 3</code>, OCR confidence &lt; 80, or &gt;2 low-confidence extracted fields</li>
+          <li>Use strict schema + <code>tool_use</code> to minimize malformed JSON and retry loops</li>
+          <li>Prompt strategy: Thai source text + English schema fields + field-level extraction hints</li>
+          <li>Mandatory telemetry fields: <code>doc_type_detected</code>, <code>model_used</code>, <code>processing_time_ms</code>, <code>retry_count</code></li>
         </ul>
       </div>
       <div class="skills-row">
@@ -982,8 +982,8 @@ def route_platform_settlement(doc):
           <li><b>D4:</b> Rule precedence: weighted score-based matching with specificity tie-break and <code>UNRESOLVED_RULE</code> safety flag when no candidate passes</li>
           <li><b>D5:</b> Dual scope for รายงานรับ/จ่าย &mdash; platform settlement-driven posting rules plus derived VAT purchase/sales reports from finalized journal lines</li>
           <li><b>D6:</b> Multi-company: <code>rules/{company_id}/rule_coa.yaml</code> structure</li>
-          <li>Vendor lookup table for expense account (from user confirmations in Map Review)</li>
-          <li>Output must be Express GL compatible JSON</li>
+          <li>Vendor/item lookup table must be self-learning from user confirmations in Map Review</li>
+          <li>Output contract: balanced entries + explainability fields + Express GL compatible JSON</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1015,9 +1015,10 @@ def route_platform_settlement(doc):
         <strong>Design Decisions</strong>
         <ul>
           <li><b>D8:</b> Add journal-level accuracy (account code, Dr/Cr lines, voucher match rate)</li>
-          <li>Use /anthropic-skills:xlsx to export template as Excel for labelers</li>
-          <li>Field matching: exact match for codes/dates, &plusmn;0.01 tolerance for amounts, fuzzy for names</li>
-          <li>Define inter-rater agreement measurement</li>
+          <li>Export labeling template to Excel and preserve immutable document IDs for joins</li>
+          <li>Matching policy: exact for IDs/codes, &plusmn;0.01 tolerance for amounts, controlled fuzzy rules for names</li>
+          <li>Require two-reviewer workflow with explicit conflict resolution status</li>
+          <li>Track inter-rater agreement (Cohen's kappa or percent agreement) per key field</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1048,9 +1049,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Page delimiter: <code>--- Page {n} ---</code> (simple, parseable)</li>
-          <li>Token management: if merged text &gt; 100K chars, process pages individually</li>
-          <li>Keep per-page images in cache for debugging</li>
+          <li>Page delimiter standard: <code>--- Page {n} ---</code> to preserve deterministic downstream parsing</li>
+          <li>Token guardrail: if merged OCR text &gt; 100K chars, switch to page-wise extraction mode</li>
+          <li>Retain page images + page text in cache for replay and audit debugging</li>
+          <li>Preserve original page order metadata to avoid multi-page field drift</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1079,10 +1081,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Trigger: timeout (30s) OR quality-based (garbled text detection for OCR, &gt;3 parse failures for LLM)</li>
-          <li>Max 1 fallback attempt, then error code (no retry loop)</li>
-          <li>Track fallback rate per doc_type for monitoring</li>
-          <li>Use silent-failure-hunter agent to review fallback logic after implementation</li>
+          <li>Trigger fallback by timeout (30s) and quality signals (garbled OCR, repeated parse errors)</li>
+          <li>Allow only one fallback hop per stage to prevent retry storms</li>
+          <li>Emit structured reason codes: <code>ocr_low_quality</code>, <code>llm_parse_fail</code>, <code>timeout</code></li>
+          <li>Monitor fallback rate by document type and vendor cohort for drift detection</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1112,10 +1114,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Date normalization: พ.ศ. &rarr; ค.ศ. conversion (2569 &rarr; 2026)</li>
-          <li>Amount: strip commas, 2 decimal places, positive values only</li>
-          <li>Tax ID: 13-digit string, no dashes</li>
-          <li>Escalation: domain expert (accountant) resolves disputes</li>
+          <li>Date normalization: พ.ศ. to ค.ศ. conversion with explicit source-date retention for audit</li>
+          <li>Amount normalization: remove separators, enforce 2 decimals, validate sign and currency consistency</li>
+          <li>Tax ID normalization: 13-digit canonical string, strip separators, reject invalid checksum</li>
+          <li>Escalation policy: accountant reviewer resolves conflicts with reason code logging</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1145,9 +1147,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>42 docs too small for &ge;99% confidence intervals &mdash; use bootstrap/resampling</li>
-          <li>Add journal-level metrics: account_code accuracy, voucher match rate</li>
-          <li>PoC gate = pass/fail; MVP gate = automated CI check</li>
+          <li>Because 42 docs is small, estimate uncertainty with bootstrap confidence intervals</li>
+          <li>Include journal metrics: account-code precision/recall, balance pass rate, full-voucher match rate</li>
+          <li>Define hard fail thresholds and soft warning thresholds per metric</li>
+          <li>PoC gate remains manual pass/fail; MVP gate becomes automated CI quality check</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1177,9 +1180,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Template: Python with Jinja2 (cleanest separation of data and HTML)</li>
-          <li>CI trigger: on push to main when data files change</li>
-          <li>Output committed to repo (not built on demand for PoC)</li>
+          <li>Template engine: Python + Jinja2 to separate data model from presentation layout</li>
+          <li>Regeneration trigger: run when manifest/split/benchmark inputs change</li>
+          <li>Render output as committed artifact for PoC traceability and diff review</li>
+          <li>Fail render step on missing required data keys to prevent silent stale reports</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1205,7 +1209,7 @@ def route_platform_settlement(doc):
   </section>
 
   <p style="text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 16px;">
-    Last updated: 2026-06-05 (D3-D5 expanded for implementation discussion)
+    Last updated: 2026-06-05 (D3-D5 and Task Card design decisions aligned)
   </p>
 
 </div>
