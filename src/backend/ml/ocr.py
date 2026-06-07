@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -55,19 +56,26 @@ def _fallback_blocks_when_ocr_unavailable(file_path: Path) -> list[dict[str, Any
 
 def _is_tesseract_unavailable_error(exc: Exception) -> bool:
     message = str(exc).lower()
-    return (
-        "tesseract" in message
-        and ("not installed" in message or "not in your path" in message)
+    return "tesseract" in message and (
+        "not installed" in message or "not in your path" in message
     )
 
 
-def _extract_text_blocks_with_tesseract(image_obj: Any, id_offset: int = 0) -> list[dict[str, Any]]:
+def _extract_text_blocks_with_tesseract(
+    image_obj: Any, id_offset: int = 0
+) -> list[dict[str, Any]]:
     try:
         pytesseract = importlib.import_module("pytesseract")
     except ImportError as exc:  # pragma: no cover - depends on local OCR stack
         raise RuntimeError(
             "Missing OCR dependencies: Pillow + pytesseract are required for image OCR"
         ) from exc
+
+    # If PATH is not refreshed yet after installation, fallback to common Windows path.
+    if shutil.which("tesseract") is None:
+        windows_default = Path("C:/Program Files/Tesseract-OCR/tesseract.exe")
+        if windows_default.exists():
+            pytesseract.pytesseract.tesseract_cmd = str(windows_default)
 
     data = pytesseract.image_to_data(
         image_obj,
@@ -107,7 +115,9 @@ def _extract_text_blocks_for_pdf(file_path: Path) -> list[dict[str, Any]]:
     try:
         pypdf = importlib.import_module("pypdf")
     except ImportError as exc:  # pragma: no cover - depends on local PDF stack
-        raise RuntimeError("Missing PDF dependency: pypdf is required for PDF processing") from exc
+        raise RuntimeError(
+            "Missing PDF dependency: pypdf is required for PDF processing"
+        ) from exc
 
     reader = pypdf.PdfReader(str(file_path))
     blocks: list[dict[str, Any]] = []
@@ -127,7 +137,12 @@ def _extract_text_blocks_for_pdf(file_path: Path) -> list[dict[str, Any]]:
                     "id": block_id,
                     "text": text,
                     "confidence": 1.0,
-                    "bbox": [0, line_idx * 24, max(len(text) * 8, 40), (line_idx + 1) * 24],
+                    "bbox": [
+                        0,
+                        line_idx * 24,
+                        max(len(text) * 8, 40),
+                        (line_idx + 1) * 24,
+                    ],
                     "page": page_idx + 1,
                 }
             )

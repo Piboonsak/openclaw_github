@@ -17,6 +17,10 @@ anthropic==0.7.1
 openai==1.3.0
 
 # OCR & Document Processing
+# System dependency (required for image/scanned PDF OCR):
+# - Windows: install Tesseract OCR 5.5+ (UB Mannheim installer)
+# - Linux: apt install tesseract-ocr tesseract-ocr-tha
+# - macOS: brew install tesseract
 python-multipart==0.0.6
 pdf2image==1.16.3
 Pillow==10.1.0
@@ -57,3 +61,7 @@ black==23.12.0
 # Utilities
 requests==2.31.0
 aiohttp==3.9.1
+
+# Governance (state/intake schema validation)
+jsonschema>=4.21,<5
+PyYAML>=6.0,<7

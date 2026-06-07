@@ -1,4 +1,6 @@
 Pillow>=10.0.0
+# System dependency (required for image/scanned PDF OCR):
+# install Tesseract OCR 5.5+ on host OS (not a pip package)
 pytesseract>=0.3.10
 openai>=1.40.0
 fastapi>=0.115.0
