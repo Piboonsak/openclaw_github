@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import os
 import re
 import shutil
 from pathlib import Path
@@ -18,16 +19,22 @@ DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 _PADDLE_OCR_INSTANCE: Any | None = None
 _LOW_CONF_THRESHOLD = 0.55
 _MIN_ALNUM_RATIO = 0.30
+# Bumped from 2.0 (≈144 DPI) so Thai diacritics survive PaddleOCR/Tesseract;
+# override via OCR_RENDER_SCALE for tuning per environment.
+OCR_RENDER_SCALE = float(os.environ.get("OCR_RENDER_SCALE", "3.0"))
+# Repo-local tessdata dir: Program Files install ships eng+osd only, so we
+# bundle tha.traineddata here and point Tesseract at it via --tessdata-dir.
+LOCAL_TESSDATA_DIR = Path(os.environ.get("TESSDATA_DIR", str(REPO_ROOT / ".tessdata")))
 
 
 def _preprocess_image_for_ocr(image_obj: Any) -> Any:
     """Apply lightweight preprocessing for scanned documents before OCR."""
     image = image_obj.convert("L")
     image_ops = importlib.import_module("PIL.ImageOps")
-    image_filter = importlib.import_module("PIL.ImageFilter")
-    image = image_ops.autocontrast(image, cutoff=2)
-    image = image.filter(image_filter.MedianFilter(size=3))
-    return image
+    # MedianFilter(size=3) used to be applied here; it blurred small Thai tone
+    # marks and vowels into the baseline, which hurt PaddleOCR recall on
+    # scanned receipts. Plain autocontrast preserves stroke detail.
+    return image_ops.autocontrast(image, cutoff=2)
 
 
 def _looks_garbled(blocks: list[dict[str, Any]]) -> bool:
@@ -215,9 +222,16 @@ def _extract_text_blocks_with_tesseract(
         if windows_default.exists():
             pytesseract.pytesseract.tesseract_cmd = str(windows_default)
 
+    config_args = ""
+    if LOCAL_TESSDATA_DIR.exists() and (LOCAL_TESSDATA_DIR / "tha.traineddata").exists():
+        # Tesseract treats the value after --tessdata-dir as a literal path; do not
+        # wrap it in quotes (pytesseract passes args directly, no shell parsing).
+        config_args = f"--tessdata-dir {LOCAL_TESSDATA_DIR.as_posix()}"
+
     data = pytesseract.image_to_data(
         image_obj,
         lang="tha+eng",
+        config=config_args,
         output_type=pytesseract.Output.DICT,
     )
 
@@ -302,7 +316,7 @@ def _extract_text_blocks_for_pdf(file_path: Path) -> list[dict[str, Any]]:
     pdf_doc = pdfium.PdfDocument(str(file_path))
     for page_idx in range(len(pdf_doc)):
         page = pdf_doc[page_idx]
-        bitmap = page.render(scale=2.0)
+        bitmap = page.render(scale=OCR_RENDER_SCALE)
         pil_image = bitmap.to_pil()
         page_blocks = _extract_text_blocks_with_preferred_engine(
             pil_image, id_offset=block_id
@@ -389,8 +403,15 @@ def run_ocr(file_path: str, cache_root: Path | None = None) -> dict[str, Any]:
             "OCR engines are unavailable (PaddleOCR/Tesseract). OCR ran in degraded mode using filename fallback text."
         )
 
+    # Weight by text length so single-char noise blocks don't dominate the
+    # arithmetic mean and drag the score down on Thai receipts.
+    total_chars = sum(len(str(block.get("text", ""))) for block in blocks) or 1
     avg_conf = round(
-        sum(float(block["confidence"]) for block in blocks) / max(len(blocks), 1),
+        sum(
+            float(block["confidence"]) * len(str(block.get("text", "")))
+            for block in blocks
+        )
+        / total_chars,
         4,
     )
 
