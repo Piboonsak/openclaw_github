@@ -1,0 +1,80 @@
+{
+  "comment": "Ground-truth expectation registry for validating the 41 authentic PDF vouchers inside private_data/poc/Comp_1. This schema is used by the batch validation suite to measure pre-accounting accuracy percentages.",
+  "dataset_version": "1.0-PoC",
+  "documents": {
+    "RRL_Invoice_001.pdf": {
+      "supplier_name": "ฤทธิ์ล้ำเลิศ บิลซื้อ RRL",
+      "invoice_number": "RRL202410-001",
+      "invoice_date": "2024-10-15",
+      "amounts": {
+        "net_amount": 10000.0,
+        "vat_amount": 700.0,
+        "wht_amount": 300.0,
+        "gross_amount": 10400.0
+      },
+      "expected_journal": {
+        "journal_code": "PV",
+        "postings": [
+          {
+            "account_code": "5040",
+            "account_name": "ซื้อสินค้า/วัตถุดิบและบริการ",
+            "debit": 10000.0,
+            "credit": 0.0
+          },
+          {
+            "account_code": "1154",
+            "account_name": "ภาษีซื้อ",
+            "debit": 700.0,
+            "credit": 0.0
+          },
+          {
+            "account_code": "2195",
+            "account_name": "เจ้าหนี้การค้า",
+            "debit": 0.0,
+            "credit": 10400.0
+          },
+          {
+            "account_code": "2191",
+            "account_name": "ภาษีเงินได้หัก ณ ที่จ่ายค้างจ่าย 3%",
+            "debit": 0.0,
+            "credit": 300.0
+          }
+        ]
+      }
+    },
+    "RRL_Invoice_002_Sample_VAT_WHT.pdf": {
+      "supplier_name": "ฤทธิ์ล้ำเลิศ บิลซื้อ RRL",
+      "invoice_number": "RRL202410-002",
+      "invoice_date": "2024-10-16",
+      "amounts": {
+        "net_amount": 5000.0,
+        "vat_amount": 350.0,
+        "wht_amount": 0.0,
+        "gross_amount": 5350.0
+      },
+      "expected_journal": {
+        "journal_code": "PV",
+        "postings": [
+          {
+            "account_code": "5040",
+            "account_name": "ซื้อสินค้า/วัตถุดิบและบริการ",
+            "debit": 5000.0,
+            "credit": 0.0
+          },
+          {
+            "account_code": "1154",
+            "account_name": "ภาษีซื้อ",
+            "debit": 350.0,
+            "credit": 0.0
+          },
+          {
+            "account_code": "2195",
+            "account_name": "เจ้าหนี้การค้า",
+            "debit": 0.0,
+            "credit": 5350.0
+          }
+        ]
+      }
+    }
+  }
+}

@@ -194,6 +194,92 @@
     <div class="kpi"><strong>4 Test Scenarios</strong><span>Expected Dr/Cr in rule_coa.yaml</span></div>
   </section>
 
+  <!-- D7 INFRASTRUCTURE PREREQUISITES -->
+  <section class="decision-card" style="border-left: 4px solid var(--amber); margin-bottom: 20px;">
+    <h2>D7 Infrastructure Prerequisites (Network &amp; Infra)</h2>
+    <p style="color: var(--muted); font-size: 0.85rem; margin: 0 0 12px;">
+      These infrastructure tasks must be completed <strong>before</strong> any pipeline implementation begins. All derived from <strong>D7: Deployment &amp; API Architecture</strong>.
+    </p>
+
+    <table style="width:100%; font-size:0.82rem; border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f0f4ff;">
+          <th style="padding:6px; text-align:left; border-bottom:1px solid var(--line);">#</th>
+          <th style="padding:6px; text-align:left; border-bottom:1px solid var(--line);">Prerequisite</th>
+          <th style="padding:6px; text-align:left; border-bottom:1px solid var(--line);">Detail</th>
+          <th style="padding:6px; text-align:center; border-bottom:1px solid var(--line);">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:5px 6px;">P1</td>
+          <td style="padding:5px 6px;"><strong>DNS &amp; Domain</strong></td>
+          <td style="padding:5px 6px;">Configure <code>app.aiaccount.yahwan.biz</code> A-record → Hostinger VPS IP</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P2</td>
+          <td style="padding:5px 6px;"><strong>TLS Certificate</strong></td>
+          <td style="padding:5px 6px;">Let's Encrypt cert via Certbot for <code>app.aiaccount.yahwan.biz</code> (auto-renew)</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P3</td>
+          <td style="padding:5px 6px;"><strong>Nginx Reverse Proxy</strong></td>
+          <td style="padding:5px 6px;">Path-based routing: <code>/</code> → frontend, <code>/api/</code> → FastAPI, <code>/ws/</code> → WebSocket upgrade</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P4</td>
+          <td style="padding:5px 6px;"><strong>Docker Compose Stack</strong></td>
+          <td style="padding:5px 6px;">Compose file with: nginx-alpine, fastapi, celery-worker, redis, postgres, minio</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P5</td>
+          <td style="padding:5px 6px;"><strong>PostgreSQL Database</strong></td>
+          <td style="padding:5px 6px;">Schema init: <code>documents</code>, <code>extractions</code>, <code>journals</code>, <code>audit_log</code> tables + migrations</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P6</td>
+          <td style="padding:5px 6px;"><strong>Redis</strong></td>
+          <td style="padding:5px 6px;">Session store (TTL 24h) + Celery broker + WebSocket pub/sub channel</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P7</td>
+          <td style="padding:5px 6px;"><strong>MinIO (S3-compatible)</strong></td>
+          <td style="padding:5px 6px;">Buckets: <code>uploads/</code>, <code>cache/</code>, <code>exports/</code> — pre-signed URL policy for frontend upload</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P8</td>
+          <td style="padding:5px 6px;"><strong>Celery Worker Config</strong></td>
+          <td style="padding:5px 6px;">Task queues: <code>ocr</code> (CPU-bound), <code>llm</code> (I/O-bound), <code>export</code> — with priority routing</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P9</td>
+          <td style="padding:5px 6px;"><strong>Health Check Endpoints</strong></td>
+          <td style="padding:5px 6px;"><code>GET /api/v1/health</code> (liveness) + <code>/api/v1/health/ready</code> (db, redis, storage connectivity)</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 6px;">P10</td>
+          <td style="padding:5px 6px;"><strong>CI/CD Pipeline (Openclaw)</strong></td>
+          <td style="padding:5px 6px;">GitHub Actions in <code>Piboonsak/Openclaw</code>: build images → push GHCR → deploy VPS → health gate</td>
+          <td style="padding:5px 6px; text-align:center;">⬜</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:12px; font-size:0.8rem; color:var(--muted); border-top:1px solid var(--line); padding-top:8px;">
+      <strong>Dependency:</strong> P1→P2→P3 (networking), P4 depends on P3+P5+P6+P7+P8 (services), P9 depends on P4, P10 depends on P9.<br>
+      <strong>Blocking:</strong> TASK-501/502/503 cannot deploy without P4–P9 complete. TASK-514 auto-refresh needs P4 running.
+    </div>
+  </section>
+
   <!-- META GRID -->
   <section class="meta-grid">
     <section class="legend">
@@ -279,10 +365,10 @@ PDF files (private_data/poc/Comp_1/)
         </ul>
         <h4 style="margin-top: 8px;">What needs design</h4>
         <ul>
-          <li>Thai OCR quality &mdash; pytesseract tha is weak; need preprocessing (deskew, denoise) or alternative engine (EasyOCR, PaddleOCR)</li>
-          <li>Multi-page token limits &mdash; merged text from 10+ page PDFs may exceed LLM context</li>
-          <li>Quality-based fallback trigger &mdash; not just timeout but garbled-text detection</li>
-          <li>Image preprocessing pipeline (contrast adjustment for scanned docs)</li>
+          <li><strong>D1:</strong> Thai OCR quality &mdash; pytesseract tha is weak; need preprocessing (deskew, denoise) or alternative engine (EasyOCR, PaddleOCR)</li>
+          <li><strong>D2:</strong> Multi-page token limits &mdash; merged text from 10+ page PDFs may exceed LLM context</li>
+          <li><strong>D1:</strong> Quality-based fallback trigger &mdash; not just timeout but garbled-text detection</li>
+          <li><strong>D1:</strong> Image preprocessing pipeline (contrast adjustment for scanned docs)</li>
         </ul>
         <div class="approach">Benchmark complete (pytesseract vs EasyOCR vs PaddleOCR on 5 Thai docs). Current choice: PaddleOCR primary, pytesseract fallback, EasyOCR optional due CPU latency.</div>
       </div>
@@ -298,13 +384,13 @@ PDF files (private_data/poc/Comp_1/)
         </ul>
         <h4 style="margin-top: 8px;">What needs design</h4>
         <ul>
-          <li>Prompt template design &mdash; few-shot examples, Thai/English bilingual handling</li>
-          <li>Model version &mdash; plan says Claude 3.5 but should use Claude 4.x (Haiku 4.5 / Sonnet 4.6)</li>
-          <li>"Complex doc" detection heuristic &mdash; what triggers upgrade to Sonnet?</li>
-          <li>Confidence scoring method &mdash; LLM self-report or multi-pass comparison?</li>
-          <li>doc_type detection &mdash; heuristic from OCR text or LLM classification?</li>
+          <li><strong>D2:</strong> Prompt template design &mdash; few-shot examples, Thai/English bilingual handling</li>
+          <li><strong>D2:</strong> Model version &mdash; plan says Claude 3.5 but should use Claude 4.x (Haiku 4.5 / Sonnet 4.6)</li>
+          <li><strong>D2:</strong> "Complex doc" detection heuristic &mdash; what triggers upgrade to Sonnet?</li>
+          <li><strong>D6:</strong> Confidence scoring method &mdash; LLM self-report or multi-pass comparison?</li>
+          <li><strong>D2:</strong> doc_type detection &mdash; heuristic from OCR text or LLM classification?</li>
         </ul>
-        <div class="approach">Recommend: use /claude-api skill with Claude 4.x structured output (tool_use mode), LLM-reported confidence + rule-based override</div>
+        <div class="approach">Decision: Claude 4.x structured output (tool_use mode), Haiku 4.5 default &rarr; Sonnet 4.6 escalation, LLM-reported confidence + rule-based override + multi-pass agreement scoring (D6)</div>
       </div>
 
       <div class="gap-item">
@@ -318,14 +404,14 @@ PDF files (private_data/poc/Comp_1/)
         </ul>
         <h4 style="margin-top: 8px;">What needs design</h4>
         <ul>
-          <li>Rule matching algorithm &mdash; how to select correct rule from doc_type + conditions</li>
-          <li>Variable account resolution &mdash; <code>is_variable: true</code> in YAML; need vendor &rarr; expense-code mapping (LLM or lookup table?)</li>
-          <li>Multi-company rule loading &mdash; per-company YAML + global defaults</li>
-          <li>"รายงานรับ/รายงานจ่าย" &mdash; are these tax reports derived from journal entries, or separate document types needing rules?</li>
-          <li>Rule precedence when multiple rules match</li>
-          <li>Express GL export format specification</li>
+          <li><strong>D4:</strong> Rule matching algorithm &mdash; how to select correct rule from doc_type + conditions</li>
+          <li><strong>D3:</strong> Variable account resolution &mdash; <code>is_variable: true</code> in YAML; need vendor &rarr; expense-code mapping (LLM or lookup table?)</li>
+          <li><strong>D6:</strong> Multi-company rule loading &mdash; per-company YAML + global defaults</li>
+          <li><strong>D5:</strong> "รายงานรับ/รายงานจ่าย" &mdash; are these tax reports derived from journal entries, or separate document types needing rules?</li>
+          <li><strong>D4:</strong> Rule precedence when multiple rules match</li>
+          <li><strong>D7:</strong> Express GL export format specification</li>
         </ul>
-        <div class="approach">Recommend: rule-first engine with LLM fallback for <code>is_variable</code> accounts. Load rules per company from YAML. Use /finance:journal-entry-prep for accounting validation</div>
+        <div class="approach">Decision: Score-based rule matching with specificity tie-break (D4), hybrid variable account resolver with rule→fuzzy→LLM→human pipeline (D3), per-company YAML <code>rules/{company_id}/rule_coa.yaml</code> (D6), dual-scope for รายงานรับ/จ่าย (D5). Use /finance:journal-entry-prep for accounting validation.</div>
       </div>
 
       <div class="gap-item">
@@ -338,13 +424,13 @@ PDF files (private_data/poc/Comp_1/)
         </ul>
         <h4 style="margin-top: 8px;">What needs design</h4>
         <ul>
-          <li>Accuracy evaluator algorithm &mdash; exact match vs fuzzy? amount tolerance?</li>
-          <li>Small-sample statistics &mdash; 42 docs is too small for &ge;99% confidence intervals</li>
-          <li>Journal entry accuracy &mdash; plan only measures header fields, not Dr/Cr posting correctness</li>
-          <li>Labeling tool &mdash; Excel? web form? CLI?</li>
+          <li><strong>D8:</strong> Accuracy evaluator algorithm &mdash; exact match vs fuzzy? amount tolerance?</li>
+          <li><strong>D8:</strong> Small-sample statistics &mdash; 42 docs is too small for &ge;99% confidence intervals</li>
+          <li><strong>D8:</strong> Journal entry accuracy &mdash; plan only measures header fields, not Dr/Cr posting correctness</li>
+          <li><strong>D8:</strong> Labeling tool &mdash; Excel? web form? CLI?</li>
           <li>Thai field normalization rules (date formats, company name variants)</li>
         </ul>
-        <div class="approach">Recommend: use expectations.template.jsonl as Excel export (/anthropic-skills:xlsx), add journal-level accuracy metrics beyond field-level</div>
+        <div class="approach">Decision: 4-level evaluator (field &rarr; account &rarr; journal &rarr; rule effectiveness) with reinforcement feedback loop from human review (D8). Excel export for labeling. Bootstrap CI for small-sample stats.</div>
       </div>
 
       <div class="gap-item">
@@ -357,24 +443,24 @@ PDF files (private_data/poc/Comp_1/)
         </ul>
         <h4 style="margin-top: 8px;">What needs design</h4>
         <ul>
-          <li>Backend-frontend bridge &mdash; prototype uses JavaScript objects, backend outputs JSON files to cache/</li>
-          <li>Auto-refresh template engine (TASK-514) &mdash; Jinja2? Python string interpolation?</li>
-          <li>Whether prototype becomes production UI or just PoC demonstration</li>
+          <li><strong>D7:</strong> Backend-frontend bridge &mdash; prototype uses JavaScript objects, backend outputs JSON files to cache/</li>
+          <li><strong>D7:</strong> Auto-refresh template engine (TASK-514) &mdash; Jinja2? Python string interpolation?</li>
+          <li><strong>D7:</strong> Whether prototype becomes production UI or just PoC demonstration</li>
         </ul>
-        <div class="approach">Recommend: build Python API (FastAPI) to serve cache/ outputs to frontend. Use /anthropic-skills:web-artifacts-builder for TASK-514</div>
+        <div class="approach">Decision: FastAPI backend with path-based routing on <code>app.aiaccount.yahwan.biz</code> (D7). WebSocket for real-time progress. Prototype evolves into production React SPA served by nginx-alpine container.</div>
       </div>
 
       <div class="gap-item">
         <span class="phase-tag">Cross-cutting: Pipeline Orchestration</span>
         <h4>Not yet addressed in any task</h4>
         <ul>
-          <li>How do TASK-501 &rarr; 502 &rarr; 503 chain together? Single script? Pipeline framework?</li>
-          <li>Error propagation &mdash; if OCR fails, how does it flow through extraction/routing?</li>
-          <li>Batch processing vs per-document &mdash; process 42 docs sequentially or in parallel?</li>
-          <li>Progress reporting &mdash; prototype shows per-file stage progress but backend has no progress API</li>
-          <li>Company context &mdash; how does company selection flow through to rule_coa.yaml loading?</li>
+          <li><strong>D2:</strong> How do TASK-501 &rarr; 502 &rarr; 503 chain together? Single script? Pipeline framework?</li>
+          <li><strong>D2:</strong> Error propagation &mdash; if OCR fails, how does it flow through extraction/routing?</li>
+          <li><strong>D2:</strong> Batch processing vs per-document &mdash; process 42 docs sequentially or in parallel?</li>
+          <li><strong>D7:</strong> Progress reporting &mdash; prototype shows per-file stage progress but backend has no progress API</li>
+          <li><strong>D6:</strong> Company context &mdash; how does company selection flow through to rule_coa.yaml loading?</li>
         </ul>
-        <div class="approach">Recommend: build a <code>pipeline.py</code> orchestrator that chains OCR &rarr; Extract &rarr; Route per document, with status callback for frontend progress</div>
+        <div class="approach">Decision: 6-stage pipeline orchestrator (A&rarr;F) per document (D2), Celery async workers for batch parallelism, WebSocket + poll fallback for progress reporting (D7), company_id selects <code>rules/{company_id}/rule_coa.yaml</code> (D6).</div>
       </div>
 
     </div>
@@ -553,7 +639,7 @@ PDF files (private_data/poc/Comp_1/)
       <div class="decision-item">
         <strong>D2 — Claude model version and routing trigger</strong>
         <div class="context">Plan references Claude 3.5 Haiku/Sonnet (outdated). Should use Claude 4.x. Need to define what makes a doc "complex" to trigger model upgrade.</div>
-        <div class="recommend">Recommend: Default Haiku 4.5, upgrade to Sonnet 4.6 when: (a) page_count &gt; 3, (b) OCR confidence &lt; 80%, or (c) first extraction attempt has &gt;2 low-confidence fields.</div>
+        <div class="recommend">Decision: Default Haiku 4.5, upgrade to Sonnet 4.6 when: (a) page_count &gt; 3, (b) OCR confidence &lt; 80%, or (c) first extraction attempt has &gt;2 low-confidence fields.</div>
 
         <!-- ═══════ D2 DROPDOWN: 6-Stage Architecture ═══════ -->
         <details>
@@ -924,7 +1010,7 @@ total_per_doc = 0.017 + 0.05 + 0.02  # ≈ ฿0.09
       <div class="decision-item">
         <strong>Journal Router: rule-based vs LLM-assisted for variable accounts</strong>
         <div class="context"><code>is_variable: true</code> entries in rule_coa.yaml need expense account code (5xxx-xx) determined by vendor/description. Prototype uses vendor-name matching. LLM could classify but adds cost/latency.</div>
-        <div class="recommend">Recommend: Hybrid &mdash; deterministic rules and vendor lookup first, fuzzy similarity second, LLM semantic assist only when unresolved, then human confirmation writes back to mapping cache.</div>
+        <div class="recommend">Decision: Hybrid &mdash; deterministic rules and vendor lookup first, fuzzy similarity second, LLM semantic assist only when unresolved, then human confirmation writes back to mapping cache.</div>
         <details>
           <summary>D3 Design Logic + Code Skeleton (discussion-only)</summary>
           <div>
@@ -1014,7 +1100,7 @@ def on_map_review_confirmed(company_id, key, approved_account_code):
       <div class="decision-item">
         <strong>Rule matching precedence</strong>
         <div class="context">A document could match multiple rules (e.g., Invoice matches both RRL-PURCHASE-SUPPLIES and RRL-EXPENSE-CREDIT). Need clear precedence logic.</div>
-        <div class="recommend">Recommend: Score-based matching &mdash; count condition matches, highest score wins. Tie-breaker: most specific rule (most conditions defined) wins.</div>
+        <div class="recommend">Decision: Score-based matching &mdash; count condition matches, highest score wins. Tie-breaker: most specific rule (most conditions defined) wins.</div>
         <details>
           <summary>D4 Matching Precedence + Scoring Skeleton (discussion-only)</summary>
           <div>
@@ -1073,7 +1159,7 @@ def pick_best_rule(extraction, compiled_rules):
       <div class="decision-item">
         <strong>"รายงานรับ" / "รายงานจ่าย" scope</strong>
         <div class="context">Scope should include platform settlement statements (example in Comp_2/6904-เมเจอร์) that summarize gross sales, commissions, fee VAT, and net payout. These can drive revenue-side GL posting logic.</div>
-        <div class="recommend">Recommend: Treat this as dual-scope &mdash; (1) settlement-driven journal rules for platform income posting and (2) derived purchase/sales VAT reports generated from finalized journal lines.</div>
+        <div class="recommend">Decision: Treat this as dual-scope &mdash; (1) settlement-driven journal rules for platform income posting and (2) derived purchase/sales VAT reports generated from finalized journal lines.</div>
         <details>
           <summary>D5 Platform Settlement Mapping + Posting Skeleton (discussion-only)</summary>
           <div>
@@ -1130,18 +1216,1377 @@ def route_platform_settlement(doc):
       </div>
       <div class="decision-item">
         <strong>Multi-company rule architecture</strong>
-        <div class="context">rule_coa.yaml is company-specific (ฤทธิ์ล้ำเลิศ). Prototype supports 2 companies. Need structure for per-company COA + shared rule templates.</div>
-        <div class="recommend">Recommend: <code>rules/global/</code> for shared journal patterns + <code>rules/{company_id}/rule_coa.yaml</code> for per-company COA and overrides.</div>
+        <div class="context">rule_coa.yaml is company-specific (ฤทธิ์ล้ำเลิศ). Prototype supports 2 companies. Need structure for per-company COA + shared rule templates. Users upload COA PDF (ผังบัญชี) and GL mapping rules .docx (การบันทึกบัญชี) — LLM generates <code>rule_coa.yaml</code> as background process.</div>
+        <div class="recommend">Decision: LLM-powered Rule Generator pipeline. Upload COA PDF + mapping .docx → OCR → LLM structured extraction → validate → emit <code>rules/{company_id}/rule_coa.yaml</code> with per-rule confidence scores.</div>
+        <details>
+          <summary>D6 Architecture Design — COA Rule Generation Pipeline (click to expand)</summary>
+          <div>
+
+            <!-- ─── D6 ARCHITECTURE OVERVIEW ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:10px 0 6px;"><strong>Architecture Overview</strong></p>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  D6: Multi-Company COA Rule Generation Pipeline                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────┐    ┌───────────────┐    ┌────────────────────────┐      │
+│  │ Upload COA    │    │ Upload GL     │    │ Company Profile        │      │
+│  │ (ผังบัญชี.pdf)│    │ (การบันทึก    │    │ (name, tax_id,         │      │
+│  │               │    │  บัญชี.docx)  │    │  business_type)        │      │
+│  └──────┬────────┘    └──────┬────────┘    └───────────┬────────────┘      │
+│         │                    │                         │                    │
+│         ▼                    ▼                         │                    │
+│  ┌──────────────────────────────────────┐              │                    │
+│  │  Stage 1: Document Ingestion         │              │                    │
+│  │  • PDF → OCR (PaddleOCR/pytesseract) │              │                    │
+│  │  • DOCX → python-docx text extract   │              │                    │
+│  │  • Cache by SHA-256 content hash     │              │                    │
+│  └──────────────────┬───────────────────┘              │                    │
+│                     │                                  │                    │
+│                     ▼                                  │                    │
+│  ┌──────────────────────────────────────┐              │                    │
+│  │  Stage 2: LLM Structured Extraction  │◄─────────────┘                    │
+│  │  • Claude 4.x (Sonnet) with schema   │                                  │
+│  │  • Extract: COA list + journal rules  │                                  │
+│  │  • Self-reported confidence per item  │                                  │
+│  │  • Multi-pass validation (2 passes)   │                                  │
+│  └──────────────────┬───────────────────┘                                  │
+│                     │                                                       │
+│                     ▼                                                       │
+│  ┌──────────────────────────────────────┐                                  │
+│  │  Stage 3: Rule Compilation & Validate│                                  │
+│  │  • YAML schema validation            │                                  │
+│  │  • Dr/Cr balance check per rule      │                                  │
+│  │  • Cross-reference COA codes         │                                  │
+│  │  • Confidence scoring (see report)   │                                  │
+│  └──────────────────┬───────────────────┘                                  │
+│                     │                                                       │
+│                     ▼                                                       │
+│  ┌──────────────────────────────────────┐                                  │
+│  │  Stage 4: Output & Storage           │                                  │
+│  │  • rules/{company_id}/rule_coa.yaml  │                                  │
+│  │  • rules/{company_id}/confidence.json│                                  │
+│  │  • Audit log with source references  │                                  │
+│  └──────────────────────────────────────┘                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+            </pre>
+
+            <!-- ─── D6 FILE STRUCTURE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>File & Directory Structure</strong></p>
+            <pre class="code-skel">
+rules/
+├── global/
+│   ├── base_patterns.yaml       # Shared Thai journal entry templates
+│   ├── wht_rates.yaml           # Standard WHT rate reference
+│   └── vat_rules.yaml           # VAT 7% standard patterns
+├── {company_id}/                 # e.g. "comp_1_ritlerlert"
+│   ├── rule_coa.yaml            # Generated: full COA + journal rules
+│   ├── confidence.json          # Per-rule confidence report
+│   ├── source/
+│   │   ├── coa_upload.pdf       # Original uploaded COA file
+│   │   └── mapping_upload.docx  # Original uploaded GL mapping
+│   └── audit/
+│       ├── generation_log.json  # LLM prompts, responses, timestamps
+│       └── validation_report.md # Auto-generated validation summary
+└── rule_schema.json             # JSON Schema for rule_coa.yaml validation
+            </pre>
+
+            <!-- ─── D6 GENERATION PROCESS ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>LLM Rule Generation Process (Background Task)</strong></p>
+            <pre class="code-skel">
+# Pipeline stages exposed as progress bar steps:
+
+Stage 1/5: "Uploading & validating files"
+  → Accept PDF (COA) + DOCX (GL mapping)
+  → Validate file types, size limits (max 20MB each)
+  → Store originals in rules/{company_id}/source/
+  → Progress: 0-10%
+
+Stage 2/5: "Extracting text from documents"
+  → PDF: PaddleOCR (multi-page, tha+eng)
+  → DOCX: python-docx paragraph/table extraction
+  → Merge text with section markers
+  → Progress: 10-30%
+
+Stage 3/5: "Analyzing COA structure"
+  → LLM Pass 1: Extract chart_of_accounts list
+    Prompt: "Given this Thai COA document, extract all account codes..."
+    Schema: [{code, name, type(asset|liability|revenue|expense)}]
+  → Validate: code format, no duplicates, type classification
+  → Progress: 30-55%
+
+Stage 4/5: "Generating journal entry rules"
+  → LLM Pass 2: Extract journal_entry_rules from GL mapping doc
+    Prompt: "Given this accounting recording guide and COA list,
+             generate double-entry journal rules..."
+    Schema: [{rule_id, name, description, document_types,
+              transaction_type, book_code, conditions, entries[],
+              validation}]
+  → Cross-validate: all account_codes exist in COA list
+  → Dr/Cr balance check per rule
+  → Progress: 55-85%
+
+Stage 5/5: "Validating & writing rule file"
+  → Schema validation against rule_schema.json
+  → Generate confidence.json with per-rule scores
+  → Write rule_coa.yaml
+  → Progress: 85-100%
+            </pre>
+
+            <!-- ─── D6 UX/UI SPECIFICATION ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>UX/UI — Settings Panel: COA Rule Generator</strong></p>
+            <p style="font-size:0.78rem; color:var(--muted);">Access: Settings → Company → [COA] button → opens Rule Generator panel</p>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────┐
+│  COA Rule Generator — บริษัท ฤทธิ์ล้ำเลิศ จำกัด                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Step 1: Upload Source Documents                                        │
+│  ─────────────────────────────────────────────────────────────────────  │
+│                                                                         │
+│  ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐  ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐│
+│  │  ↑  Drop COA PDF here         │  │  ↑  Drop GL Mapping .docx     ││
+│  │     (ผังบัญชี)                 │  │     (การบันทึกบัญชี)            ││
+│  │  ✓ ฤทธิ์ล้ำเลิศ ผังบัญชี.pdf  │  │  ✓ ฤทธิ์ล้ำเลิศ การบันทึก...  ││
+│  │     2.4 MB                     │  │     1.8 MB                     ││
+│  └─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┘  └─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┘│
+│                                                                         │
+│  Company Profile:                                                       │
+│  Name: [ บริษัท ฤทธิ์ล้ำเลิศ จำกัด        ]                             │
+│  Tax ID: [ 0105559XXXXXX                   ]                            │
+│  Business Type: [ ▼ กิจการให้บริการ (Service) ]                          │
+│                                                                         │
+│  [ ▶ Generate Rules ]                                                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+            </pre>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Step 2: Processing (Background)                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Generating COA rules for บริษัท ฤทธิ์ล้ำเลิศ จำกัด                      │
+│                                                                         │
+│  ████████████████████████████░░░░░░░░░░░  68%                           │
+│                                                                         │
+│  Stage 4/5: Generating journal entry rules...                           │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │  Stage                              Status        Time          │   │
+│  │  ─────────────────────────────────────────────────────────────  │   │
+│  │  1. Upload & validate               ✓ Done        2s           │   │
+│  │  2. Extract text (OCR/docx)         ✓ Done        28s          │   │
+│  │  3. Analyze COA structure           ✓ Done        12s          │   │
+│  │  4. Generate journal rules          ⟳ Running...  --           │   │
+│  │  5. Validate & write                ○ Pending     --           │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  Estimated time remaining: ~15 seconds                                  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+            </pre>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Step 3: Results — Confidence Report                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ✓ Rule generation complete — 5 rules generated                         │
+│                                                                         │
+│  COA Extraction: 18 accounts found                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Code       Name                    Type       Confidence        │   │
+│  │ ──────────────────────────────────────────────────────────────  │   │
+│  │ 1111-00    เงินสด                  Asset      ██████████  98%   │   │
+│  │ 1113-01    ธนาคาร                  Asset      ██████████  97%   │   │
+│  │ 1130-01    ลูกหนี้การค้า            Asset      █████████░  92%   │   │
+│  │ 1154-00    ภาษีซื้อ                Asset      ██████████  99%   │   │
+│  │ 2120-01    เจ้าหนี้การค้า           Liability  ██████████  97%   │   │
+│  │ 2135-00    ภาษีขาย                 Liability  ██████████  99%   │   │
+│  │ 4100-01    รายได้บริการ             Revenue    █████████░  94%   │   │
+│  │ 5130-01    ซื้อวัสดุอุปกรณ์          Expense    ████████░░  88%   │   │
+│  │ ...        (18 total)              ...        Avg: 95.2%       │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  Journal Entry Rules:                                                   │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Rule ID            Name              Dr/Cr   Confidence  Status │   │
+│  │ ──────────────────────────────────────────────────────────────  │   │
+│  │ RRL-SALE-CREDIT    ขายเงินเชื่อ       3 lines  ████████░░ 89%  ✓  │   │
+│  │ RRL-RECEIVE-PAY    รับชำระ            5 lines  ███████░░░ 78%  ⚠  │   │
+│  │ RRL-PURCHASE-SUP   ซื้อวัสดุอุปกรณ์    3 lines  █████████░ 92%  ✓  │   │
+│  │ RRL-EXPENSE-CASH   ค่าใช้จ่าย(สด)     4 lines  ████████░░ 85%  ✓  │   │
+│  │ RRL-EXPENSE-CRED   ค่าใช้จ่าย(เชื่อ)   4 lines  ████████░░ 83%  ⚠  │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  ⚠ 2 rules below 85% threshold — recommend human review                │
+│                                                                         │
+│  [ ✓ Approve & Save ]   [ ✏ Edit Rules ]   [ ↓ Download YAML ]        │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+            </pre>
+
+            <!-- ─── D6 CONFIDENCE SCORING METHOD ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Confidence Scoring Methodology</strong></p>
+            <div style="overflow-x:auto;">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>Signal</th>
+                    <th>Weight</th>
+                    <th>Measurement</th>
+                    <th>Scoring</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>LLM self-report</td>
+                    <td>30%</td>
+                    <td>Claude confidence field per extraction</td>
+                    <td>0-100 from model output</td>
+                  </tr>
+                  <tr>
+                    <td>Multi-pass agreement</td>
+                    <td>25%</td>
+                    <td>Run extraction 2x, compare outputs</td>
+                    <td>100 if identical, -20 per disagreement</td>
+                  </tr>
+                  <tr>
+                    <td>COA cross-reference</td>
+                    <td>20%</td>
+                    <td>All account_codes in entries exist in COA list</td>
+                    <td>100 if all valid, 0 per missing code</td>
+                  </tr>
+                  <tr>
+                    <td>Dr/Cr balance check</td>
+                    <td>15%</td>
+                    <td>Debit total == Credit total per rule</td>
+                    <td>100 if balanced, 0 if not</td>
+                  </tr>
+                  <tr>
+                    <td>Source text coverage</td>
+                    <td>10%</td>
+                    <td>% of rule fields traceable to source text</td>
+                    <td>Proportional to fields with source match</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="font-size:0.78rem; color:var(--muted); margin:8px 0;">
+              <strong>Thresholds:</strong> ≥90% = auto-approve (green ✓), 75-89% = flag for review (amber ⚠), &lt;75% = requires human editing (red ✗)
+            </p>
+
+            <!-- ─── D6 POC CONFIDENCE REPORT ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>PoC Confidence Report — บริษัท ฤทธิ์ล้ำเลิศ จำกัด (Comp_1)</strong></p>
+            <p style="font-size:0.78rem; color:var(--muted);">Source: <code>ฤทธิ์ล้ำเลิศ ผังบัญชี.pdf</code> + <code>ฤทธิ์ล้ำเลิศ การบันทึกบัญชี.docx</code> → Generated: <code>docs/PoC/Comp_1/rule_coa.yaml</code></p>
+            <div style="overflow-x:auto;">
+              <table class="mini-table">
+                <thead>
+                  <tr>
+                    <th>Rule ID</th>
+                    <th>Rule Name</th>
+                    <th>LLM Self (30%)</th>
+                    <th>Multi-Pass (25%)</th>
+                    <th>COA Ref (20%)</th>
+                    <th>Balance (15%)</th>
+                    <th>Source (10%)</th>
+                    <th>Overall</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>RRL-SALE-CREDIT</code></td>
+                    <td>การบันทึกขายเงินเชื่อ</td>
+                    <td><span class="badge-hi">92</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-mid">80</span></td>
+                    <td><strong><span class="badge-hi">95.6%</span></strong></td>
+                    <td>✓ Auto</td>
+                  </tr>
+                  <tr>
+                    <td><code>RRL-RECEIVE-PAYMENT</code></td>
+                    <td>การบันทึกรับชำระ</td>
+                    <td><span class="badge-mid">78</span></td>
+                    <td><span class="badge-mid">80</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-low">60</span></td>
+                    <td><strong><span class="badge-mid">84.4%</span></strong></td>
+                    <td>⚠ Review</td>
+                  </tr>
+                  <tr>
+                    <td><code>RRL-PURCHASE-SUPPLIES</code></td>
+                    <td>การบันทึกซื้อวัสดุอุปกรณ์</td>
+                    <td><span class="badge-hi">90</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">90</span></td>
+                    <td><strong><span class="badge-hi">96.0%</span></strong></td>
+                    <td>✓ Auto</td>
+                  </tr>
+                  <tr>
+                    <td><code>RRL-EXPENSE-CASH</code></td>
+                    <td>การบันทึกค่าใช้จ่าย (สด)</td>
+                    <td><span class="badge-mid">82</span></td>
+                    <td><span class="badge-mid">80</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-mid">70</span></td>
+                    <td><strong><span class="badge-mid">87.6%</span></strong></td>
+                    <td>⚠ Review</td>
+                  </tr>
+                  <tr>
+                    <td><code>RRL-EXPENSE-CREDIT</code></td>
+                    <td>การบันทึกค่าใช้จ่าย (เชื่อ)</td>
+                    <td><span class="badge-mid">80</span></td>
+                    <td><span class="badge-mid">80</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-hi">100</span></td>
+                    <td><span class="badge-mid">70</span></td>
+                    <td><strong><span class="badge-mid">86.0%</span></strong></td>
+                    <td>⚠ Review</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="font-size:0.78rem; color:var(--muted); margin:8px 0;">
+              <strong>Summary:</strong> 2/5 rules ≥90% (auto-approve), 3/5 rules 75-89% (flag for review). No rules below 75%.
+            </p>
+            <p style="font-size:0.78rem; color:var(--muted); margin:4px 0;">
+              <strong>Low-confidence factors for RRL-RECEIVE-PAYMENT:</strong> Complex multi-leg entry (5 Dr/Cr lines), VAT deferred→recognized reversal logic is Thai-specific and rarely seen in training data, source .docx description was brief (2 sentences for a 5-line voucher).
+            </p>
+            <p style="font-size:0.78rem; color:var(--muted); margin:4px 0;">
+              <strong>Low-confidence factors for EXPENSE rules:</strong> <code>is_variable: true</code> on expense account (5xxx-xx) means the exact code depends on vendor context. <code>alternatives</code> for payment source (cash vs director_loan) and WHT entity type (individual vs corporate) add branching complexity. Source document covers these as brief bullet points, not detailed examples.
+            </p>
+
+            <!-- ─── D6 TECHNICAL IMPLEMENTATION ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Technical Implementation — Key APIs</strong></p>
+            <pre class="code-skel">
+# POST /api/rules/generate
+# Request:
+{
+  "company_id": "comp_1_ritlerlert",
+  "company_name": "บริษัท ฤทธิ์ล้ำเลิศ จำกัด",
+  "business_type": "service",
+  "coa_file": &lt;uploaded PDF&gt;,
+  "mapping_file": &lt;uploaded DOCX&gt;
+}
+# Response (immediate):
+{
+  "job_id": "gen_2026-06-05_abc123",
+  "status": "queued",
+  "estimated_seconds": 60
+}
+
+# GET /api/rules/generate/{job_id}/progress
+# Response (polled by frontend every 2s):
+{
+  "job_id": "gen_2026-06-05_abc123",
+  "status": "processing",
+  "progress_pct": 68,
+  "current_stage": 4,
+  "stage_label": "Generating journal entry rules...",
+  "stages": [
+    {"stage": 1, "status": "done", "duration_ms": 2100},
+    {"stage": 2, "status": "done", "duration_ms": 28400},
+    {"stage": 3, "status": "done", "duration_ms": 12200},
+    {"stage": 4, "status": "running", "duration_ms": null},
+    {"stage": 5, "status": "pending", "duration_ms": null}
+  ]
+}
+
+# GET /api/rules/generate/{job_id}/result
+# Response (when status == "done"):
+{
+  "job_id": "gen_2026-06-05_abc123",
+  "status": "done",
+  "output_path": "rules/comp_1_ritlerlert/rule_coa.yaml",
+  "coa_count": 18,
+  "rule_count": 5,
+  "overall_confidence": 89.9,
+  "rules_confidence": [
+    {"rule_id": "RRL-SALE-CREDIT", "confidence": 95.6, "status": "auto"},
+    {"rule_id": "RRL-RECEIVE-PAYMENT", "confidence": 84.4, "status": "review"},
+    ...
+  ],
+  "flags": ["2 rules below 90% threshold"]
+}
+            </pre>
+
+            <!-- ─── D6 DESIGN PRINCIPLES ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Key Design Principles</strong></p>
+            <ul style="font-size:0.8rem; color:var(--muted); padding-left:18px;">
+              <li><strong>Idempotent regeneration:</strong> Re-uploading same files yields same output (SHA-256 cache). Changed files trigger full re-generation.</li>
+              <li><strong>Human-in-the-loop:</strong> Rules below 90% confidence require explicit approval before use in journal routing (TASK-503).</li>
+              <li><strong>Audit trail:</strong> Every generation preserves source files, LLM prompts/responses, and validation results.</li>
+              <li><strong>Incremental update:</strong> Future: edit individual rules without regenerating entire file. Track <code>last_modified_by: human|llm</code> per rule.</li>
+              <li><strong>Multi-company isolation:</strong> Each company's rules directory is independent. No cross-contamination of COA codes.</li>
+              <li><strong>Graceful degradation:</strong> If generation fails mid-pipeline, partial results are saved with clear error markers. No silent data loss.</li>
+            </ul>
+
+          </div>
+        </details>
       </div>
       <div class="decision-item">
         <strong>Backend-frontend integration</strong>
-        <div class="context">Prototype is self-contained HTML/JS with hardcoded data. Backend outputs JSON to cache/. No API layer exists.</div>
-        <div class="recommend">Recommend for PoC: Python script processes batch &rarr; writes results to JSON &rarr; frontend reads static JSON files. Full API layer deferred to MVP.</div>
+        <div class="context">Prototype is self-contained HTML/JS with hardcoded data. Backend outputs JSON to cache/. No API layer exists. Need production-ready API architecture aligned with DNS, TLS, Nginx reverse proxy on Hostinger VPS.</div>
+        <div class="recommend">Decision: Path-based routing on single domain (<code>app.aiaccount.yahwan.biz</code>). Nginx TLS termination &rarr; <code>/api/v1/</code> to FastAPI backend, <code>/ws/</code> for WebSocket progress, <code>/</code> to React SPA. Session auth for PoC. Celery workers for async OCR+LLM. See full architecture below.</div>
+        <details>
+          <summary>D7 Architecture Design &mdash; Backend-Frontend Integration &amp; DevOps (click to expand)</summary>
+          <div>
+
+            <!-- ─── D7 NETWORK TOPOLOGY ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:10px 0 6px;"><strong>Network Topology &amp; DNS Layout</strong></p>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Hostinger VPS  (76.13.210.250)                                             │
+│  OS: Ubuntu 22.04 / Debian 12                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │  Nginx (Host-level reverse proxy + TLS termination)              │       │
+│  │  Port 80/443 → Certbot Let's Encrypt auto-renew                 │       │
+│  │                                                                  │       │
+│  │  server_name: app.aiaccount.yahwan.biz                           │       │
+│  │    /           → frontend:3000 (React SPA)                       │       │
+│  │    /api/       → backend:8000  (FastAPI)                         │       │
+│  │    /ws/        → backend:8000  (WebSocket for processing status) │       │
+│  │    /storage/   → minio:9000    (pre-signed redirect, optional)   │       │
+│  │                                                                  │       │
+│  │  server_name: demo-aiaccount.yahwan.biz                          │       │
+│  │    /           → /var/www/demo-aiaccount (static prototype)      │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│                                                                             │
+│  ┌─────────────────────── Docker Compose Network ───────────────────┐       │
+│  │                                                                  │       │
+│  │  frontend:3000 ←── React (Vite build, served by nginx-alpine)    │       │
+│  │       ↕ /api proxy (in dev: Vite proxy; in prod: host Nginx)     │       │
+│  │  backend:8000  ←── FastAPI (uvicorn, --workers 2)                │       │
+│  │       ↕                                                          │       │
+│  │  postgres:5432 ←── PostgreSQL 16                                 │       │
+│  │  redis:6379    ←── Redis 7 (task queue + cache)                  │       │
+│  │  minio:9000    ←── S3-compatible storage                         │       │
+│  │  worker        ←── Celery worker (OCR + LLM async tasks)         │       │
+│  │                                                                  │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+            </pre>
+
+            <!-- ─── D7 DNS RECORDS ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>DNS Records (Hostinger DNS Panel)</strong></p>
+            <table style="width:100%; font-size:0.78rem; border-collapse:collapse; margin-bottom:12px;">
+              <thead><tr style="background:#f0f4ff;"><th style="padding:6px; text-align:left; border-bottom:1px solid var(--line);">Type</th><th style="padding:6px; text-align:left; border-bottom:1px solid var(--line);">Name</th><th style="padding:6px; text-align:left; border-bottom:1px solid var(--line);">Value</th><th style="padding:6px; text-align:left; border-bottom:1px solid var(--line);">TTL</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px 6px;">A</td><td style="padding:4px 6px;"><code>app.aiaccount</code></td><td style="padding:4px 6px;"><code>76.13.210.250</code></td><td style="padding:4px 6px;">3600</td></tr>
+                <tr><td style="padding:4px 6px;">A</td><td style="padding:4px 6px;"><code>demo-aiaccount</code></td><td style="padding:4px 6px;"><code>76.13.210.250</code></td><td style="padding:4px 6px;">3600</td></tr>
+                <tr><td style="padding:4px 6px;">CNAME</td><td style="padding:4px 6px;"><code>api.aiaccount</code></td><td style="padding:4px 6px;"><code>app.aiaccount.yahwan.biz</code></td><td style="padding:4px 6px;">3600</td></tr>
+              </tbody>
+            </table>
+
+            <!-- ─── D7 TLS STRATEGY ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>TLS / Certificate Strategy</strong></p>
+            <ul style="font-size:0.8rem; color:var(--muted); padding-left:18px;">
+              <li><strong>Protocol:</strong> TLS 1.2+ only (<code>ssl_protocols TLSv1.2 TLSv1.3;</code>)</li>
+              <li><strong>HSTS:</strong> Enabled with <code>max-age=31536000</code></li>
+              <li><strong>Certificate:</strong> Let's Encrypt via Certbot (auto-renew every 60 days)</li>
+              <li><strong>Setup:</strong> <code>certbot --nginx -d app.aiaccount.yahwan.biz -d demo-aiaccount.yahwan.biz --non-interactive --agree-tos</code></li>
+            </ul>
+
+            <!-- ─── D7 API ENDPOINTS ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>REST API Endpoints (Mapped to UI Steps)</strong></p>
+            <table style="width:100%; font-size:0.75rem; border-collapse:collapse; margin-bottom:12px;">
+              <thead><tr style="background:#f0f4ff;"><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">UI Step</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Method</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Endpoint</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Purpose</th></tr></thead>
+              <tbody>
+                <tr style="background:#ecfdf3;"><td colspan="4" style="padding:4px 6px; font-weight:600;">Step 1: Upload</td></tr>
+                <tr><td style="padding:3px 6px;">1</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/upload</code></td><td style="padding:3px 6px;">Upload batch (multipart/form-data: files[] + company_id)</td></tr>
+                <tr><td style="padding:3px 6px;">1</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/companies</code></td><td style="padding:3px 6px;">List companies for selector dropdown</td></tr>
+                <tr><td style="padding:3px 6px;">1</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/upload/validate-taxid</code></td><td style="padding:3px 6px;">Pre-check TaxID match</td></tr>
+
+                <tr style="background:#ecfdf3;"><td colspan="4" style="padding:4px 6px; font-weight:600;">Step 2: Select / Confirm Queue</td></tr>
+                <tr><td style="padding:3px 6px;">2</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/batches/{batch_id}/files</code></td><td style="padding:3px 6px;">Get file list with status</td></tr>
+                <tr><td style="padding:3px 6px;">2</td><td style="padding:3px 6px;"><code>PATCH</code></td><td style="padding:3px 6px;"><code>/api/v1/batches/{batch_id}/files</code></td><td style="padding:3px 6px;">Update selection (select/deselect/remove)</td></tr>
+
+                <tr style="background:#ecfdf3;"><td colspan="4" style="padding:4px 6px; font-weight:600;">Step 3: Processing (Async)</td></tr>
+                <tr><td style="padding:3px 6px;">3</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/batches/{batch_id}/process</code></td><td style="padding:3px 6px;">Start OCR+LLM pipeline</td></tr>
+                <tr><td style="padding:3px 6px;">3</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/jobs/{job_id}/status</code></td><td style="padding:3px 6px;">Poll job status (fallback)</td></tr>
+                <tr><td style="padding:3px 6px;">3</td><td style="padding:3px 6px;"><code>WS</code></td><td style="padding:3px 6px;"><code>/ws/v1/jobs/{job_id}</code></td><td style="padding:3px 6px;">Real-time stage progress stream</td></tr>
+
+                <tr style="background:#ecfdf3;"><td colspan="4" style="padding:4px 6px; font-weight:600;">Step 4: Scan Review (Header Fields)</td></tr>
+                <tr><td style="padding:3px 6px;">4</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/batches/{batch_id}/extractions</code></td><td style="padding:3px 6px;">List all extractions</td></tr>
+                <tr><td style="padding:3px 6px;">4</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/{doc_id}/extraction</code></td><td style="padding:3px 6px;">Single extraction detail</td></tr>
+                <tr><td style="padding:3px 6px;">4</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/{doc_id}/preview</code></td><td style="padding:3px 6px;">PDF/image pre-signed URL</td></tr>
+                <tr><td style="padding:3px 6px;">4</td><td style="padding:3px 6px;"><code>PUT</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/{doc_id}/extraction</code></td><td style="padding:3px 6px;">Update fields (human edit)</td></tr>
+                <tr><td style="padding:3px 6px;">4</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/{doc_id}/approve-header</code></td><td style="padding:3px 6px;">Approve header fields</td></tr>
+                <tr><td style="padding:3px 6px;">4</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/batches/{batch_id}/approve-all-headers</code></td><td style="padding:3px 6px;">Bulk approve</td></tr>
+
+                <tr style="background:#ecfdf3;"><td colspan="4" style="padding:4px 6px; font-weight:600;">Step 5: COA Mapping Review</td></tr>
+                <tr><td style="padding:3px 6px;">5</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/batches/{batch_id}/vouchers</code></td><td style="padding:3px 6px;">List voucher journal entries</td></tr>
+                <tr><td style="padding:3px 6px;">5</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/companies/{company_id}/coa</code></td><td style="padding:3px 6px;">COA dropdown options</td></tr>
+                <tr><td style="padding:3px 6px;">5</td><td style="padding:3px 6px;"><code>PUT</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/{doc_id}/voucher</code></td><td style="padding:3px 6px;">Update COA mapping</td></tr>
+                <tr><td style="padding:3px 6px;">5</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/documents/{doc_id}/confirm-mapping</code></td><td style="padding:3px 6px;">Confirm (trains model)</td></tr>
+
+                <tr style="background:#ecfdf3;"><td colspan="4" style="padding:4px 6px; font-weight:600;">Step 6: Export</td></tr>
+                <tr><td style="padding:3px 6px;">6</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/batches/{batch_id}/export</code></td><td style="padding:3px 6px;">Generate export CSV</td></tr>
+                <tr><td style="padding:3px 6px;">6</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/exports/{export_id}/download</code></td><td style="padding:3px 6px;">Download file</td></tr>
+                <tr><td style="padding:3px 6px;">6</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/exports/{export_id}/preview</code></td><td style="padding:3px 6px;">Preview first N rows</td></tr>
+
+                <tr style="background:#f4f3ff;"><td colspan="4" style="padding:4px 6px; font-weight:600;">Settings / Admin</td></tr>
+                <tr><td style="padding:3px 6px;">&mdash;</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/companies/{id}/coa/import</code></td><td style="padding:3px 6px;">Import COA from CSV</td></tr>
+                <tr><td style="padding:3px 6px;">&mdash;</td><td style="padding:3px 6px;"><code>POST</code></td><td style="padding:3px 6px;"><code>/api/v1/auth/login</code></td><td style="padding:3px 6px;">Login (session cookie)</td></tr>
+                <tr><td style="padding:3px 6px;">&mdash;</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/health</code></td><td style="padding:3px 6px;">Liveness check</td></tr>
+                <tr><td style="padding:3px 6px;">&mdash;</td><td style="padding:3px 6px;"><code>GET</code></td><td style="padding:3px 6px;"><code>/api/v1/health/ready</code></td><td style="padding:3px 6px;">Deep health (DB + Redis + Storage)</td></tr>
+              </tbody>
+            </table>
+
+            <!-- ─── D7 WEBSOCKET PROTOCOL ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>WebSocket Protocol (Step 3 Real-time Updates)</strong></p>
+            <pre class="code-skel">
+Client connects:  wss://app.aiaccount.yahwan.biz/ws/v1/jobs/{job_id}
+
+Server sends events:
+  { "event": "stage_update",
+    "file_id": "uuid",
+    "stage": "ocr|classify|extract|map_coa",
+    "status": "running|done|failed",
+    "duration_ms": 1200,
+    "timestamp": "2026-06-05T10:30:00Z" }
+
+  { "event": "job_complete",
+    "summary": { "total": 12, "success": 11, "failed": 1, "duration_ms": 35000 } }
+
+Fallback: Poll GET /api/v1/jobs/{job_id}/status every 3s if WS unavailable
+            </pre>
+
+            <!-- ─── D7 DOCUMENT STATE MACHINE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Document Lifecycle State Machine</strong></p>
+            <pre class="code-skel">
+UPLOADED → QUEUED → PROCESSING → EXTRACTED → HEADER_APPROVED → MAPPING_CONFIRMED → EXPORTED
+                         │
+                         ▼ (on error)
+                      FAILED
+            </pre>
+
+            <!-- ─── D7 AUTH FLOW ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Authentication Flow (Session-based for PoC)</strong></p>
+            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:0; font-size:0.78rem; margin-bottom:14px; border:1px solid var(--line); border-radius:10px; overflow:hidden;">
+              <!-- Header -->
+              <div style="background:var(--brand-soft); padding:8px 12px; font-weight:600; text-align:center; border-bottom:1px solid var(--line);">Frontend (Browser)</div>
+              <div style="background:#f8f9fa; padding:8px 12px; font-weight:600; text-align:center; border-bottom:1px solid var(--line);"></div>
+              <div style="background:var(--green-soft); padding:8px 12px; font-weight:600; text-align:center; border-bottom:1px solid var(--line);">Backend (FastAPI + Redis)</div>
+              <!-- Step 1: Login -->
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;"><code>POST /api/v1/auth/login</code><br><span style="color:var(--muted); font-size:0.72rem;">{username, password}</span></div>
+              <div style="padding:8px 4px; border-bottom:1px solid #eee; text-align:center; color:var(--brand); font-size:1.1rem;">&#10132;</div>
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;">Verify credentials against DB</div>
+              <!-- Step 1 response -->
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;">Store cookie in browser</div>
+              <div style="padding:8px 4px; border-bottom:1px solid #eee; text-align:center; color:var(--green); font-size:1.1rem;">&#10134;</div>
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;"><code>Set-Cookie: session_id=xxx</code><br><span style="color:var(--muted); font-size:0.72rem;">Store session in Redis (TTL 24h)</span></div>
+              <!-- Step 2: API call -->
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;"><code>GET /api/v1/documents</code><br><span style="color:var(--muted); font-size:0.72rem;">Cookie: session_id=xxx</span></div>
+              <div style="padding:8px 4px; border-bottom:1px solid #eee; text-align:center; color:var(--brand); font-size:1.1rem;">&#10132;</div>
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;">Validate session from cookie<br><span style="color:var(--red); font-size:0.72rem;">401 if expired/invalid</span></div>
+              <!-- Step 2 response -->
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;">Render data in UI</div>
+              <div style="padding:8px 4px; border-bottom:1px solid #eee; text-align:center; color:var(--green); font-size:1.1rem;">&#10134;</div>
+              <div style="padding:8px 12px; border-bottom:1px solid #eee;"><code>200 OK</code> + JSON data</div>
+              <!-- Step 3: Logout -->
+              <div style="padding:8px 12px;"><code>POST /api/v1/auth/logout</code></div>
+              <div style="padding:8px 4px; text-align:center; color:var(--brand); font-size:1.1rem;">&#10132;</div>
+              <div style="padding:8px 12px;">Delete session from Redis<br><span style="color:var(--muted); font-size:0.72rem;">Clear cookie → redirect to login</span></div>
+            </div>
+
+            <!-- ─── D7 NGINX PROD CONFIG ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Nginx Production Config (app-aiaccount.conf)</strong></p>
+            <pre class="code-skel">
+upstream backend {
+    server 127.0.0.1:8000;
+    keepalive 32;
+}
+
+upstream frontend {
+    server 127.0.0.1:3000;
+}
+
+server {
+    listen 80;
+    server_name app.aiaccount.yahwan.biz;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name app.aiaccount.yahwan.biz;
+
+    ssl_certificate /etc/letsencrypt/live/app.aiaccount.yahwan.biz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.aiaccount.yahwan.biz/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'
+      https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:;" always;
+
+    # API → Backend
+    location /api/ {
+        proxy_pass http://backend/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50m;
+        proxy_read_timeout 120s;
+    }
+
+    # WebSocket → Backend
+    location /ws/ {
+        proxy_pass http://backend/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400s;
+    }
+
+    # SPA → Frontend container
+    location / {
+        proxy_pass http://frontend;
+        proxy_set_header Host $host;
+        proxy_intercept_errors on;
+        error_page 404 = /index.html;
+    }
+
+    # Static asset caching
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        proxy_pass http://frontend;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+            </pre>
+
+            <!-- ─── D7 DOCKER COMPOSE PROD ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Docker Compose Production Stack</strong></p>
+            <pre class="code-skel">
+# docker/docker-compose.prod.yml
+services:
+  backend:
+    image: ghcr.io/yahwan-shop/ai-accounting-backend:${TAG:-latest}
+    container_name: aiaccount-api
+    restart: unless-stopped
+    environment:
+      STAGE: production
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASS}@postgres:5432/ai_accounting
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ENDPOINT: http://minio:9000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      LLM_MODEL: claude-haiku-4-20250414
+      SECRET_KEY: ${SECRET_KEY}
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on: [postgres, redis, minio]
+
+  worker:
+    image: ghcr.io/yahwan-shop/ai-accounting-backend:${TAG:-latest}
+    command: celery -A src.worker worker --loglevel=info --concurrency=2
+    depends_on: [backend, redis]
+
+  frontend:
+    image: ghcr.io/yahwan-shop/ai-accounting-frontend:${TAG:-latest}
+    container_name: aiaccount-ui
+    ports: ["127.0.0.1:3000:80"]
+
+  postgres:
+    image: postgres:16-alpine
+    volumes: [pg_data:/var/lib/postgresql/data]
+    healthcheck: { test: "pg_isready -U ${DB_USER}", interval: 10s }
+
+  redis:
+    image: redis:7-alpine
+    healthcheck: { test: "redis-cli ping", interval: 10s }
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    volumes: [minio_data:/data]
+
+volumes:
+  pg_data:
+  minio_data:
+            </pre>
+
+            <!-- ─── D7 UPLOAD FLOW ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>File Upload Flow</strong></p>
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; font-size:0.75rem;">
+              <!-- Nodes -->
+              <div style="background:var(--brand-soft); border:2px solid var(--brand); border-radius:10px; padding:10px; text-align:center;">
+                <div style="font-weight:600; color:var(--brand); margin-bottom:4px;">Browser</div>
+                <div style="color:var(--muted);">User drops PDF/JPG<br>multipart/form-data<br>max 50 MB</div>
+              </div>
+              <div style="background:#fff7e8; border:2px solid var(--amber); border-radius:10px; padding:10px; text-align:center;">
+                <div style="font-weight:600; color:var(--amber); margin-bottom:4px;">Nginx</div>
+                <div style="color:var(--muted);">TLS termination<br><code>client_max_body_size 50m</code><br><code>proxy_pass /api/</code></div>
+              </div>
+              <div style="background:var(--green-soft); border:2px solid var(--green); border-radius:10px; padding:10px; text-align:center;">
+                <div style="font-weight:600; color:var(--green); margin-bottom:4px;">Backend (FastAPI)</div>
+                <div style="color:var(--muted);">Validate file type<br>Generate file_id (UUID)<br>Stream to storage</div>
+              </div>
+              <div style="background:var(--purple-soft); border:2px solid var(--purple); border-radius:10px; padding:10px; text-align:center;">
+                <div style="font-weight:600; color:var(--purple); margin-bottom:4px;">MinIO (S3)</div>
+                <div style="color:var(--muted);">Store object<br>Return ETag<br>201 Created</div>
+              </div>
+              <!-- Flow arrows -->
+              <div style="grid-column:1/-1; display:flex; align-items:center; justify-content:center; gap:4px; padding:4px 0;">
+                <span style="background:var(--brand); color:#fff; padding:2px 8px; border-radius:4px; font-size:0.7rem;">1. POST /upload</span>
+                <span style="color:var(--muted);">&#10132;</span>
+                <span style="background:var(--amber); color:#fff; padding:2px 8px; border-radius:4px; font-size:0.7rem;">2. proxy_pass</span>
+                <span style="color:var(--muted);">&#10132;</span>
+                <span style="background:var(--green); color:#fff; padding:2px 8px; border-radius:4px; font-size:0.7rem;">3. PUT object</span>
+                <span style="color:var(--muted);">&#10132;</span>
+                <span style="background:var(--purple); color:#fff; padding:2px 8px; border-radius:4px; font-size:0.7rem;">4. Store</span>
+              </div>
+              <div style="grid-column:1/-1; display:flex; align-items:center; justify-content:center; gap:4px; padding:4px 0;">
+                <span style="background:var(--green-soft); color:var(--green); padding:2px 8px; border-radius:4px; font-size:0.7rem; border:1px solid var(--green);">&#10134; 201 {batch_id, files[]}</span>
+                <span style="color:var(--muted);">&#10134;</span>
+                <span style="background:#fff7e8; color:var(--amber); padding:2px 8px; border-radius:4px; font-size:0.7rem; border:1px solid var(--amber);">&#10134; proxy response</span>
+                <span style="color:var(--muted);">&#10134;</span>
+                <span style="background:var(--brand-soft); color:var(--brand); padding:2px 8px; border-radius:4px; font-size:0.7rem; border:1px solid var(--brand);">&#10134; Show in file list</span>
+              </div>
+            </div>
+
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Storage Layout (MinIO Bucket)</strong></p>
+            <div style="font-size:0.76rem; font-family:'JetBrains Mono',monospace; background:#f8faff; border:1px solid var(--line); border-radius:8px; padding:12px 16px; line-height:1.6;">
+              <div><strong style="color:var(--brand);">bucket:</strong> ai-accounting-<span style="color:var(--amber);">{env}</span>/</div>
+              <div style="padding-left:16px;">&#x251C;&#x2500;&#x2500; <span style="color:var(--purple);">{company_id}</span>/</div>
+              <div style="padding-left:32px;">&#x251C;&#x2500;&#x2500; <strong>uploads/</strong><span style="color:var(--purple);">{batch_id}</span>/</div>
+              <div style="padding-left:48px;">&#x251C;&#x2500;&#x2500; <span style="color:var(--muted);">{file_id}.pdf</span></div>
+              <div style="padding-left:48px;">&#x2514;&#x2500;&#x2500; <span style="color:var(--muted);">{file_id}.jpg</span></div>
+              <div style="padding-left:32px;">&#x251C;&#x2500;&#x2500; <strong>cache/</strong><span style="color:var(--cyan);">{sha256}</span>/</div>
+              <div style="padding-left:48px;">&#x251C;&#x2500;&#x2500; <span style="color:var(--green);">ocr_output.json</span></div>
+              <div style="padding-left:48px;">&#x251C;&#x2500;&#x2500; <span style="color:var(--green);">extraction_output.json</span></div>
+              <div style="padding-left:48px;">&#x2514;&#x2500;&#x2500; <span style="color:var(--green);">journal_output.json</span></div>
+              <div style="padding-left:32px;">&#x2514;&#x2500;&#x2500; <strong>exports/</strong><span style="color:var(--purple);">{export_id}</span>/</div>
+              <div style="padding-left:48px;">&#x2514;&#x2500;&#x2500; <span style="color:var(--amber);">Express-Journal.csv</span></div>
+            </div>
+
+            <!-- ─── D7 RATE LIMITING & SECURITY ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Security &amp; Rate Limiting</strong></p>
+            <table style="width:100%; font-size:0.78rem; border-collapse:collapse; margin-bottom:12px;">
+              <thead><tr style="background:#fef0f0;"><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Endpoint</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Limit</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Window</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Note</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:3px 6px;"><code>/api/v1/auth/login</code></td><td style="padding:3px 6px;">5</td><td style="padding:3px 6px;">1 min</td><td style="padding:3px 6px;">Brute-force protection</td></tr>
+                <tr><td style="padding:3px 6px;"><code>/api/v1/documents/upload</code></td><td style="padding:3px 6px;">20</td><td style="padding:3px 6px;">1 min</td><td style="padding:3px 6px;">Upload throttle</td></tr>
+                <tr><td style="padding:3px 6px;"><code>/api/v1/batches/*/process</code></td><td style="padding:3px 6px;">5</td><td style="padding:3px 6px;">1 min</td><td style="padding:3px 6px;">LLM cost control</td></tr>
+                <tr><td style="padding:3px 6px;">General API</td><td style="padding:3px 6px;">100</td><td style="padding:3px 6px;">1 min</td><td style="padding:3px 6px;">Per-session</td></tr>
+              </tbody>
+            </table>
+            <ul style="font-size:0.8rem; color:var(--muted); padding-left:18px;">
+              <li><strong>CORS:</strong> Only needed for local dev (<code>localhost:3000/5173</code>). Production uses same-origin via path routing.</li>
+              <li><strong>CSP:</strong> <code>default-src 'self'</code> + Google Fonts allowlist</li>
+              <li><strong>Upload:</strong> Max 50MB per file, supported: PDF/JPG/PNG only</li>
+              <li><strong>Session TTL:</strong> 24 hours in Redis; sliding renewal on activity</li>
+            </ul>
+
+            <!-- ─── D7 DEPLOYMENT SEQUENCE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Deployment Sequence (CI/CD via Openclaw)</strong></p>
+            <pre class="code-skel">
+Developer pushes to main (YAHWAN-SHOP/ai-accounting-copilot)
+    ↓
+GitHub Actions (dispatched from Piboonsak/Openclaw)
+    ├── Build backend Docker image → ghcr.io/yahwan-shop/ai-accounting-backend
+    ├── Build frontend Docker image → ghcr.io/yahwan-shop/ai-accounting-frontend
+    └── Deploy to Hostinger VPS via SSH
+         ├── docker compose pull
+         ├── docker compose up -d
+         ├── Wait for /api/v1/health/ready → 200
+         └── Report status back to Openclaw issue
+
+Health Checks:
+  GET /api/v1/health       → {"status": "ok", "version": "0.1.0"}
+  GET /api/v1/health/ready → {"status": "ok", "db": "connected", "redis": "connected", "storage": "connected"}
+            </pre>
+
+            <!-- ─── D7 FRONTEND API CLIENT ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Frontend API Client Pattern (TypeScript)</strong></p>
+            <pre class="code-skel">
+// src/frontend/src/api/client.ts
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+class ApiClient {
+  // Step 1: Upload
+  async uploadDocuments(companyId: string, files: File[]): Promise&lt;Batch&gt;
+  // Step 3: Real-time progress
+  connectJobStream(jobId: string, onEvent: (e: JobEvent) =&gt; void): WebSocket
+  // Step 4: Extraction review
+  async getExtraction(docId: string): Promise&lt;Extraction&gt;
+  async updateExtraction(docId: string, fields: Fields): Promise&lt;ValidationResult&gt;
+  async approveHeader(docId: string): Promise&lt;void&gt;
+  // Step 5: COA Mapping
+  async getVouchers(batchId: string): Promise&lt;Voucher[]&gt;
+  async updateVoucher(docId: string, lines: VoucherLine[]): Promise&lt;BalanceCheck&gt;
+  // Step 6: Export
+  async generateExport(batchId: string, config: ExportConfig): Promise&lt;ExportResult&gt;
+}
+
+export const api = new ApiClient(BASE_URL);
+            </pre>
+
+            <!-- ─── D7 DECISION LOG ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Decision Log</strong></p>
+            <table style="width:100%; font-size:0.75rem; border-collapse:collapse; margin-bottom:12px;">
+              <thead><tr style="background:#f0f4ff;"><th style="padding:5px; border-bottom:1px solid var(--line);">#</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Decision</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Rationale</th><th style="padding:5px; text-align:left; border-bottom:1px solid var(--line);">Status</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:3px 6px;">D7-1</td><td style="padding:3px 6px;">Path-based routing (<code>/api/</code>) over subdomain</td><td style="padding:3px 6px;">Single TLS cert, no CORS in prod</td><td style="padding:3px 6px; color:var(--green); font-weight:600;">Decided</td></tr>
+                <tr><td style="padding:3px 6px;">D7-2</td><td style="padding:3px 6px;">Session cookies (not JWT) for PoC</td><td style="padding:3px 6px;">Simpler; JWT upgrade for mobile later</td><td style="padding:3px 6px; color:var(--green); font-weight:600;">Decided</td></tr>
+                <tr><td style="padding:3px 6px;">D7-3</td><td style="padding:3px 6px;">WebSocket + poll fallback for Step 3</td><td style="padding:3px 6px;">WS = real-time; poll for reliability</td><td style="padding:3px 6px; color:var(--green); font-weight:600;">Decided</td></tr>
+                <tr><td style="padding:3px 6px;">D7-4</td><td style="padding:3px 6px;">Celery for async OCR+LLM tasks</td><td style="padding:3px 6px;">Mature, supports priorities &amp; retries</td><td style="padding:3px 6px; color:var(--green); font-weight:600;">Decided</td></tr>
+                <tr><td style="padding:3px 6px;">D7-5</td><td style="padding:3px 6px;">Single Docker Compose on VPS</td><td style="padding:3px 6px;">PoC simplicity; K8s upgrade at scale</td><td style="padding:3px 6px; color:var(--green); font-weight:600;">Decided</td></tr>
+                <tr><td style="padding:3px 6px;">D7-6</td><td style="padding:3px 6px;">MinIO for S3-compatible storage</td><td style="padding:3px 6px;">Portable to AWS S3 later</td><td style="padding:3px 6px; color:var(--green); font-weight:600;">Decided</td></tr>
+              </tbody>
+            </table>
+
+            <!-- ─── D7 DESIGN PRINCIPLES ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:14px 0 6px;"><strong>Key Design Principles</strong></p>
+            <ul style="font-size:0.8rem; color:var(--muted); padding-left:18px;">
+              <li><strong>Same-origin simplicity:</strong> Path-based routing eliminates CORS complexity and multi-cert management in production.</li>
+              <li><strong>Graceful degradation:</strong> WebSocket with polling fallback ensures Step 3 works even behind restrictive proxies.</li>
+              <li><strong>Stateless workers:</strong> Celery workers can be scaled independently without session affinity.</li>
+              <li><strong>Environment parity:</strong> Docker Compose for both dev and prod — same service topology, different configs.</li>
+              <li><strong>Zero-downtime deploy:</strong> <code>docker compose pull &amp;&amp; up -d</code> with health check gates before traffic switch.</li>
+              <li><strong>Audit-first:</strong> Every state transition logged; all human edits tracked with before/after diffs.</li>
+            </ul>
+
+          </div>
+        </details>
       </div>
       <div class="decision-item">
         <strong>Accuracy evaluator scope</strong>
-        <div class="context">Plan only measures header field accuracy (Tax ID, invoice#, amounts). Doesn't measure journal entry posting accuracy (correct account codes, balanced Dr/Cr).</div>
-        <div class="recommend">Recommend: Add journal-level metrics &mdash; account_code accuracy per line, balance check pass rate, and full-voucher match rate.</div>
+        <div class="context">Plan only measures header field accuracy (Tax ID, invoice#, amounts). Doesn't measure journal entry posting accuracy (correct account codes, balanced Dr/Cr). D6 generates rules but no feedback loop to improve them from human review.</div>
+        <div class="recommend">Decision: Add journal-level metrics &mdash; account_code accuracy per line, balance check pass rate, and full-voucher match rate. Connect D6 rule output to D8 evaluator. Capture user corrections as reinforcement signal to improve rules iteratively.</div>
+        <details>
+          <summary>D8 Architecture Design — Accuracy Evaluator &amp; Reinforcement Feedback Loop (click to expand)</summary>
+          <div>
+
+            <!-- ─── D8 OVERVIEW: HOW D8 CONNECTS TO D6 ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:10px 0 6px;"><strong>System Overview — D6↔D8 Feedback Loop</strong></p>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  D8: Accuracy Evaluator &amp; Reinforcement Feedback Loop                               │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                     │
+│  ┌───────────────────────────────────────────────────────────────────────────┐      │
+│  │  FROM D6: rule_coa.yaml (generated rules)                                 │      │
+│  │  ──────────────────────────────────────────                               │      │
+│  │  Rules are applied during TASK-503 extraction → journal_output.json       │      │
+│  └──────────────────────┬────────────────────────────────────────────────────┘      │
+│                         │                                                           │
+│                         ▼                                                           │
+│  ┌──────────────────────────────────────┐    ┌──────────────────────────────┐      │
+│  │  Runtime: Apply Rules to Document    │    │  Ground Truth Sources        │      │
+│  │  • Map extracted fields → COA codes  │    │  ① expectations.filled.jsonl │      │
+│  │  • Generate Dr/Cr journal lines      │    │     (manual labeling)        │      │
+│  │  • Attach confidence per line        │    │  ② User corrections (review) │      │
+│  └──────────────────┬───────────────────┘    │     (human-in-the-loop)      │      │
+│                     │                         └──────────────┬───────────────┘      │
+│                     │                                        │                      │
+│                     ▼                                        ▼                      │
+│  ┌──────────────────────────────────────────────────────────────────────────┐      │
+│  │  EVALUATOR ENGINE                                                        │      │
+│  │  ────────────────────────────────────────────────────────────────────    │      │
+│  │  Level 1: Field Accuracy    — Tax ID, date, amount (exact/fuzzy match)   │      │
+│  │  Level 2: Account Accuracy  — COA code match per journal line            │      │
+│  │  Level 3: Journal Accuracy  — Full voucher Dr/Cr balance &amp; structure     │      │
+│  │  Level 4: Rule Effectiveness— % documents where rule produced correct GL │      │
+│  │                                                                          │      │
+│  │  Output: accuracy_report.json + per_rule_scores.json                     │      │
+│  └──────────────────────────────────┬───────────────────────────────────────┘      │
+│                                     │                                              │
+│                                     ▼                                              │
+│  ┌──────────────────────────────────────────────────────────────────────────┐      │
+│  │  REINFORCEMENT FEEDBACK COLLECTOR                                        │      │
+│  │  ────────────────────────────────────────────────────────────────────    │      │
+│  │  When user reviews GL and CONFIRMS or EDITS:                             │      │
+│  │                                                                          │      │
+│  │  ┌─ Confirm (no edit) ─────────────────────────────────────────────┐     │      │
+│  │  │  Signal: positive reinforcement (+1 for that rule)              │     │      │
+│  │  │  Action: increment rule.success_count                           │     │      │
+│  │  └────────────────────────────────────────────────────────────────┘     │      │
+│  │                                                                          │      │
+│  │  ┌─ Edit (correction) ─────────────────────────────────────────────┐     │      │
+│  │  │  Signal: negative + correction pair (predicted → actual)        │     │      │
+│  │  │  Log: { doc_id, rule_id, field, predicted, corrected, user_id } │     │      │
+│  │  │  Action: store in corrections_log.jsonl → trigger rule update   │     │      │
+│  │  └────────────────────────────────────────────────────────────────┘     │      │
+│  │                                                                          │      │
+│  └──────────────────────────────────┬───────────────────────────────────────┘      │
+│                                     │                                              │
+│                                     ▼                                              │
+│  ┌──────────────────────────────────────────────────────────────────────────┐      │
+│  │  RULE IMPROVEMENT ENGINE (feeds back to D6)                              │      │
+│  │  ────────────────────────────────────────────────────────────────────    │      │
+│  │  Trigger conditions:                                                     │      │
+│  │    • Rule accuracy drops below threshold (e.g. &lt;80%)                     │      │
+│  │    • N corrections accumulated (e.g. 5+ edits on same rule)              │      │
+│  │    • Scheduled batch re-evaluation (weekly)                              │      │
+│  │                                                                          │      │
+│  │  Actions:                                                                │      │
+│  │    ① Re-prompt LLM with corrections as few-shot examples                 │      │
+│  │    ② Generate candidate rule_coa_v{N+1}.yaml                             │      │
+│  │    ③ A/B test new rules against holdout corrections                      │      │
+│  │    ④ Human approval gate before promoting to production                  │      │
+│  │                                                                          │      │
+│  │  ──► Output: Updated rules/{company_id}/rule_coa.yaml (versioned)        │      │
+│  └──────────────────────────────────────────────────────────────────────────┘      │
+│                                                                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+
+            <!-- ─── D8 FEEDBACK DATA FLOW ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Reinforcement Feedback Data Flow</strong></p>
+            <pre class="code-skel">
+User reviews journal entry in UI
+  │
+  ├── [CONFIRM] ───────────────────────────────────────────────────────────┐
+  │     No edits. Rule worked correctly.                                   │
+  │     → Log: { action: "confirm", rule_id, doc_id, timestamp }          │
+  │     → Increment: rule_stats[rule_id].confirmed += 1                   │
+  │                                                                        │
+  ├── [EDIT account_code] ─────────────────────────────────────────────────┤
+  │     User changes "4100-01" → "4100-02"                                 │
+  │     → Log: { action: "correct", field: "account_code",                │
+  │              predicted: "4100-01", corrected: "4100-02",               │
+  │              rule_id: "sale_domestic_vat", doc_type: "tax_invoice",    │
+  │              context_snippet: "ค่าสินค้า...", user_id, timestamp }     │
+  │     → Increment: rule_stats[rule_id].corrected += 1                   │
+  │                                                                        │
+  ├── [EDIT Dr/Cr structure] ──────────────────────────────────────────────┤
+  │     User adds/removes/reorders journal lines                           │
+  │     → Log: { action: "restructure", predicted_lines: [...],           │
+  │              corrected_lines: [...], rule_id, doc_id }                 │
+  │     → Flag: rule needs structural review (high-impact correction)      │
+  │                                                                        │
+  └── [REJECT] ────────────────────────────────────────────────────────────┘
+        User marks entire entry as wrong                                    
+        → Log: { action: "reject", rule_id, doc_id, reason_text }          
+        → Alert: if 3+ rejections on same rule → queue for re-generation   
+</pre>
+
+            <!-- ─── D8 FILE STRUCTURE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>File &amp; Directory Structure</strong></p>
+            <pre class="code-skel">
+evaluation/
+├── metrics/
+│   ├── accuracy_report.json         # Overall accuracy by level (field/account/journal)
+│   ├── per_rule_scores.json         # Per-rule accuracy + usage stats
+│   └── trend_history.jsonl          # Historical accuracy over time (append-only)
+├── feedback/
+│   ├── corrections_log.jsonl        # All user corrections (append-only, immutable)
+│   ├── confirmations_log.jsonl      # All user confirmations (positive signal)
+│   └── rule_stats.json              # Aggregated stats per rule_id
+├── improvement/
+│   ├── candidates/                  # Candidate rule versions awaiting approval
+│   │   └── rule_coa_v{N}.yaml
+│   ├── ab_test_results.json         # A/B test scores (candidate vs current)
+│   └── promotion_log.json           # History of rule promotions
+└── config/
+    ├── eval_thresholds.yaml         # Accuracy thresholds &amp; trigger conditions
+    └── feedback_policy.yaml         # When to trigger re-generation
+</pre>
+
+            <!-- ─── D8 EVALUATOR CODE SKELETON ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Evaluator &amp; Feedback Code Skeleton</strong></p>
+            <pre class="code-skel">
+# src/evaluation/accuracy_evaluator.py
+
+from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+
+class MatchLevel(Enum):
+    FIELD = "field"           # Individual field (tax_id, amount, date)
+    ACCOUNT = "account"       # COA account code per journal line
+    JOURNAL = "journal"       # Full voucher structure (Dr/Cr balance)
+    RULE = "rule"             # End-to-end rule effectiveness
+
+@dataclass
+class EvalResult:
+    level: MatchLevel
+    rule_id: str
+    predicted: str
+    expected: str
+    is_match: bool
+    confidence: float
+    match_type: str           # "exact" | "fuzzy" | "tolerance"
+
+def evaluate_document(prediction: dict, ground_truth: dict, rules: dict) -&gt; list[EvalResult]:
+    """Compare prediction vs ground truth at all 4 levels."""
+    results = []
+
+    # Level 1: Field accuracy
+    for field in ["tax_id", "invoice_no", "date", "total_amount", "vat_amount"]:
+        results.append(compare_field(field, prediction, ground_truth))
+
+    # Level 2: Account code accuracy
+    for i, line in enumerate(prediction.get("journal_lines", [])):
+        gt_line = find_matching_gt_line(line, ground_truth["journal_lines"])
+        results.append(compare_account(line, gt_line))
+
+    # Level 3: Journal structure accuracy
+    results.append(check_journal_structure(prediction, ground_truth))
+
+    # Level 4: Rule effectiveness
+    rule_id = prediction.get("applied_rule_id")
+    results.append(evaluate_rule(rule_id, results))
+
+    return results
+</pre>
+            <pre class="code-skel">
+# src/evaluation/feedback_collector.py
+
+import json
+from pathlib import Path
+from datetime import datetime
+
+CORRECTIONS_LOG = Path("evaluation/feedback/corrections_log.jsonl")
+CONFIRMATIONS_LOG = Path("evaluation/feedback/confirmations_log.jsonl")
+RULE_STATS = Path("evaluation/feedback/rule_stats.json")
+
+def log_confirmation(doc_id: str, rule_id: str, user_id: str):
+    """User confirmed the GL entry — positive reinforcement signal."""
+    entry = {
+        "action": "confirm",
+        "doc_id": doc_id,
+        "rule_id": rule_id,
+        "user_id": user_id,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    _append_jsonl(CONFIRMATIONS_LOG, entry)
+    _increment_stat(rule_id, "confirmed")
+
+def log_correction(doc_id: str, rule_id: str, field: str,
+                   predicted: str, corrected: str, user_id: str,
+                   context_snippet: str = ""):
+    """User edited a field — negative signal with correction pair."""
+    entry = {
+        "action": "correct",
+        "doc_id": doc_id,
+        "rule_id": rule_id,
+        "field": field,
+        "predicted": predicted,
+        "corrected": corrected,
+        "context_snippet": context_snippet,
+        "user_id": user_id,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    _append_jsonl(CORRECTIONS_LOG, entry)
+    _increment_stat(rule_id, "corrected")
+    _check_retraining_trigger(rule_id)
+
+def _check_retraining_trigger(rule_id: str):
+    """Check if accumulated corrections exceed threshold → queue rule update."""
+    stats = _load_stats()
+    rule = stats.get(rule_id, {})
+    correction_rate = rule.get("corrected", 0) / max(rule.get("total_applied", 0), 1)
+
+    if correction_rate &gt; 0.20 or rule.get("corrected", 0) &gt;= 5:
+        queue_rule_improvement(rule_id, reason="correction_threshold_exceeded")
+</pre>
+            <pre class="code-skel">
+# src/evaluation/rule_improver.py
+# Feeds corrections back into D6 pipeline for rule regeneration
+
+from pathlib import Path
+
+def queue_rule_improvement(rule_id: str, reason: str):
+    """Queue a rule for LLM-powered re-generation using corrections as examples."""
+    corrections = load_corrections_for_rule(rule_id)
+
+    # Build few-shot examples from user corrections
+    few_shot_examples = []
+    for c in corrections[-10:]:  # Last 10 corrections as context
+        few_shot_examples.append({
+            "document_context": c["context_snippet"],
+            "wrong_mapping": c["predicted"],
+            "correct_mapping": c["corrected"],
+            "field": c["field"]
+        })
+
+    # Create improvement request (picked up by D6 pipeline)
+    request = {
+        "rule_id": rule_id,
+        "reason": reason,
+        "current_accuracy": calculate_rule_accuracy(rule_id),
+        "correction_examples": few_shot_examples,
+        "company_id": get_company_for_rule(rule_id),
+        "status": "pending_generation",  # → "candidate" → "approved" → "promoted"
+    }
+    save_improvement_request(request)
+
+def regenerate_rule_with_feedback(request: dict) -&gt; dict:
+    """
+    Re-invoke D6 LLM pipeline with correction examples injected into prompt.
+    
+    Prompt structure:
+      System: You are a Thai accounting rule generator...
+      Context: Company COA + existing rules
+      Corrections: "Users reported these mappings were wrong: [examples]"
+      Task: Generate improved rule that handles these cases correctly
+    """
+    company_id = request["company_id"]
+    existing_rule = load_current_rule(company_id, request["rule_id"])
+    corrections = request["correction_examples"]
+
+    # Compose enhanced prompt with correction feedback
+    prompt = build_improvement_prompt(
+        base_rule=existing_rule,
+        corrections=corrections,
+        company_coa=load_coa(company_id)
+    )
+
+    # Call LLM (same D6 Stage 2 infrastructure)
+    candidate = call_llm_structured(prompt, schema="rule_coa_entry")
+
+    # Validate candidate (D6 Stage 3)
+    validation = validate_rule(candidate, company_id)
+
+    # A/B test against holdout corrections
+    ab_score = ab_test_candidate(candidate, existing_rule, holdout_corrections=corrections[:3])
+
+    return {
+        "candidate_rule": candidate,
+        "validation": validation,
+        "ab_score": ab_score,
+        "status": "awaiting_human_approval" if ab_score &gt; 0.7 else "auto_rejected"
+    }
+</pre>
+
+            <!-- ─── D8 METRICS SCHEMA ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Accuracy Report Schema</strong></p>
+            <pre class="code-skel">
+// evaluation/metrics/accuracy_report.json
+{
+  "company_id": "comp_1_ritlerlert",
+  "evaluated_at": "2026-06-05T14:30:00Z",
+  "document_count": 42,
+  "metrics": {
+    "level_1_field": {
+      "tax_id":       { "accuracy": 0.952, "total": 42, "correct": 40 },
+      "invoice_no":   { "accuracy": 0.929, "total": 42, "correct": 39 },
+      "date":         { "accuracy": 0.976, "total": 42, "correct": 41 },
+      "total_amount": { "accuracy": 0.905, "total": 42, "correct": 38, "tolerance": 0.01 },
+      "vat_amount":   { "accuracy": 0.881, "total": 42, "correct": 37, "tolerance": 0.01 }
+    },
+    "level_2_account": {
+      "accuracy": 0.857,
+      "total_lines": 126,
+      "correct_lines": 108,
+      "common_errors": [
+        { "predicted": "4100-01", "expected": "4100-02", "count": 7, "context": "ค่าบริการ vs ค่าสินค้า" },
+        { "predicted": "1102-00", "expected": "1102-01", "count": 4, "context": "ธนาคาร sub-account" }
+      ]
+    },
+    "level_3_journal": {
+      "balance_pass_rate": 0.976,
+      "structure_match_rate": 0.833,
+      "common_issues": ["missing WHT line for service invoices", "VAT line amount rounding"]
+    },
+    "level_4_rule_effectiveness": {
+      "rules_evaluated": 15,
+      "rules_above_threshold": 12,
+      "rules_needing_improvement": ["sale_domestic_vat", "purchase_service_wht", "petty_cash_general"],
+      "threshold": 0.80
+    }
+  }
+}
+</pre>
+            <pre class="code-skel">
+// evaluation/feedback/rule_stats.json (per-rule aggregation)
+{
+  "sale_domestic_vat": {
+    "total_applied": 18,
+    "confirmed": 12,
+    "corrected": 6,
+    "rejected": 0,
+    "accuracy": 0.667,
+    "last_correction": "2026-06-04T09:15:00Z",
+    "improvement_status": "pending_generation",
+    "version": 1
+  },
+  "purchase_goods_full_vat": {
+    "total_applied": 14,
+    "confirmed": 13,
+    "corrected": 1,
+    "rejected": 0,
+    "accuracy": 0.929,
+    "improvement_status": null,
+    "version": 1
+  }
+}
+</pre>
+
+            <!-- ─── D8 UX: REVIEW FEEDBACK CAPTURE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>UX/UI — Human Review Feedback Capture</strong></p>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  GL Review — ใบกำกับภาษี #INV-2026-0142                                          │
+│  Rule applied: sale_domestic_vat (v1)    Confidence: 87%                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Journal Entry Preview:                                                         │
+│  ───────────────────────────────────────────────────────────────────────────    │
+│  Line │ Account    │ Description      │ Dr          │ Cr          │ Status     │
+│  ─────┼────────────┼──────────────────┼─────────────┼─────────────┼────────────│
+│   1   │ 1102-00 ⚠ │ เงินฝากธนาคาร    │ 107,000.00  │             │ ✎ edited   │
+│       │ →1102-01   │                  │             │             │            │
+│   2   │ 4100-01    │ รายได้จากการขาย   │             │ 100,000.00  │ ✓ correct  │
+│   3   │ 2103-01    │ ภาษีขาย          │             │   7,000.00  │ ✓ correct  │
+│  ─────┴────────────┴──────────────────┴─────────────┴─────────────┴────────────│
+│  Balance: Dr 107,000.00 = Cr 107,000.00  ✓                                     │
+│                                                                                 │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │  💡 Your correction will help improve future rule accuracy.               │  │
+│  │     Correction: 1102-00 → 1102-01 (เงินฝากธนาคาร — กสิกรไทย)             │  │
+│  │     This rule has been corrected 4 times on similar documents.            │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+│  [ ✓ Confirm &amp; Submit ]    [ ✗ Reject Entry ]    [ ⟳ Re-run with different rule ] │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  Rule Health Dashboard — บริษัท ฤทธิ์ล้ำเลิศ จำกัด                                │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Overall Rule Accuracy: 85.7%  (target: 80%)                                   │
+│  ████████████████████░░░░  108/126 lines correct                               │
+│                                                                                 │
+│  Per-Rule Breakdown:                                                            │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│  Rule ID                    │ Applied │ Accuracy │ Trend   │ Action             │
+│  ──────────────────────────┼─────────┼──────────┼─────────┼───────────────────  │
+│  purchase_goods_full_vat    │   14    │  92.9%   │  ↗ +2%  │ —                  │
+│  sale_domestic_vat          │   18    │  66.7%   │  ↘ -5%  │ ⚠ Queued for regen │
+│  purchase_service_wht       │    8    │  75.0%   │  →  0%  │ ⚠ 2 more to trigger│
+│  petty_cash_general         │    6    │  66.7%   │  ↘ -8%  │ 🔄 Candidate ready │
+│  sale_export_zero_vat       │   10    │  90.0%   │  ↗ +3%  │ —                  │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│                                                                                 │
+│  Recent Corrections (last 7 days):                                              │
+│  • 1102-00 → 1102-01  ×4  (bank sub-account confusion)                         │
+│  • 4100-01 → 4100-02  ×3  (service vs goods revenue)                           │
+│  • Missing WHT line   ×2  (service invoice &gt;1000 THB)                           │
+│                                                                                 │
+│  [ ▶ Run Batch Evaluation ]  [ 📋 Export Report ]  [ ⚙ Thresholds ]             │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+
+            <!-- ─── D8 IMPROVEMENT LIFECYCLE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Rule Improvement Lifecycle (State Machine)</strong></p>
+            <pre class="code-skel">
+                         ┌─────────────────────────────────────────────┐
+                         │         Rule Improvement Lifecycle          │
+                         └─────────────────────────────────────────────┘
+
+  ┌──────────┐     corrections ≥ 5     ┌─────────────────┐     LLM regen     ┌──────────────┐
+  │ ACTIVE   │─────── OR ──────────────▶│ QUEUED_FOR_REGEN│────────────────────▶│ CANDIDATE    │
+  │ (v1)     │   accuracy &lt; 80%         │                 │    (D6 pipeline)   │ (v2 draft)   │
+  └──────────┘                          └─────────────────┘                    └──────┬───────┘
+       ▲                                                                              │
+       │                                                                              │
+       │  promote                                                              A/B test
+       │  (human approval)                                                     against holdout
+       │                                                                              │
+       │         ┌─────────────┐            ┌──────────────────┐                      │
+       └─────────│  PROMOTED   │◀───────────│ AWAITING_APPROVAL│◀─────────────────────┘
+                 │  (v2 live)  │   approved  │ (human gate)     │   score &gt; 0.7
+                 └─────────────┘            └──────────────────┘
+                                                     │
+                                              score ≤ 0.7 or rejected
+                                                     │
+                                                     ▼
+                                            ┌──────────────┐
+                                            │ AUTO_REJECTED │──── back to QUEUED
+                                            │ (needs more   │     with more data
+                                            │  corrections) │
+                                            └──────────────┘
+</pre>
+
+            <!-- ─── D8 API CONTRACT ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>API Contract</strong></p>
+            <pre class="code-skel">
+# ─── Feedback Endpoints ───
+
+POST /api/feedback/confirm
+  Request:  { "doc_id": "abc123", "rule_id": "sale_domestic_vat", "user_id": "u01" }
+  Response: { "status": "logged", "rule_stats": { "confirmed": 13, "corrected": 6 } }
+
+POST /api/feedback/correct
+  Request:  {
+    "doc_id": "abc123",
+    "rule_id": "sale_domestic_vat",
+    "corrections": [
+      { "field": "account_code", "line": 1, "predicted": "1102-00", "corrected": "1102-01" }
+    ],
+    "user_id": "u01"
+  }
+  Response: {
+    "status": "logged",
+    "rule_stats": { "confirmed": 12, "corrected": 7, "accuracy": 0.632 },
+    "trigger_fired": true,
+    "improvement_queued": "sale_domestic_vat"
+  }
+
+POST /api/feedback/reject
+  Request:  { "doc_id": "abc123", "rule_id": "sale_domestic_vat", "reason": "wrong template" }
+  Response: { "status": "logged", "alert": "3+ rejections — rule flagged for review" }
+
+# ─── Evaluation Endpoints ───
+
+POST /api/evaluation/run
+  Request:  { "company_id": "comp_1_ritlerlert", "scope": "all" | "rule_id" }
+  Response: { "job_id": "eval_001", "status": "running", "document_count": 42 }
+
+GET /api/evaluation/report/{company_id}
+  Response: accuracy_report.json (see schema above)
+
+GET /api/evaluation/rules/{company_id}
+  Response: per_rule_scores.json with improvement status
+
+# ─── Rule Improvement Endpoints ───
+
+GET /api/rules/improvements/{company_id}
+  Response: list of queued/candidate/awaiting rules
+
+POST /api/rules/improvements/{rule_id}/approve
+  Request:  { "user_id": "admin01", "version": 2 }
+  Response: { "status": "promoted", "new_version": 2, "previous_accuracy": 0.667, "expected_accuracy": 0.85 }
+
+POST /api/rules/improvements/{rule_id}/reject
+  Request:  { "user_id": "admin01", "reason": "not tested enough" }
+  Response: { "status": "rejected", "requeued": true }
+</pre>
+
+            <!-- ─── D8 KEY DESIGN PRINCIPLES ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Key Design Principles</strong></p>
+            <ul style="font-size:0.85rem; line-height:1.7;">
+              <li><strong>Append-only correction logs:</strong> <code>corrections_log.jsonl</code> is immutable. Never delete or modify past corrections — they form the training signal.</li>
+              <li><strong>Human-in-the-loop gate:</strong> No rule is auto-promoted. Every candidate must pass A/B test AND receive human approval before replacing the active rule.</li>
+              <li><strong>Gradual improvement:</strong> Rules improve incrementally per company. Each correction makes future extractions more accurate for that specific company's patterns.</li>
+              <li><strong>Transparency:</strong> Users see which rule was applied, its accuracy stats, and how their corrections contribute. Builds trust in the system.</li>
+              <li><strong>Versioned rules:</strong> Every rule version is preserved. Rollback is instant if a promoted rule performs worse than expected.</li>
+              <li><strong>D6 reuse:</strong> Rule improvement uses the same LLM pipeline from D6 (Stage 2 + Stage 3) — just with enhanced prompts that include correction examples as few-shot context.</li>
+              <li><strong>Privacy-safe:</strong> Correction logs store field values and context snippets only — no full document content. Sufficient for retraining without data retention risk.</li>
+            </ul>
+
+          </div>
+        </details>
       </div>
     </div>
   </section>
@@ -1230,21 +2675,21 @@ def route_platform_settlement(doc):
           </tr>
         </thead>
         <tbody>
-          <tr><td>501</td><td>OCR Processor</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/engineering:system-design</span> <span class="skill-chip agent">code-architect</span></td><td>Day 2</td><td>505</td><td>D1: OCR engine choice for Thai</td></tr>
-          <tr><td>502</td><td>Structured Extraction</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/claude-api</span> <span class="skill-chip agent">code-architect</span></td><td>Day 4</td><td>501</td><td>D2: Model version + routing trigger</td></tr>
-          <tr><td>503</td><td>Journal Router</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/finance:journal-entry-prep</span> <span class="skill-chip">/data:validate-data</span></td><td>Day 5</td><td>502, 504</td><td>D3: Rule-based vs LLM for variable accounts</td></tr>
-          <tr><td>504</td><td>Ground Truth Dataset</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/data:validate-data</span> <span class="skill-chip">/anthropic-skills:xlsx</span></td><td>Day 6</td><td>505, 509</td><td>D8: Evaluator scope (field + journal)</td></tr>
+          <tr><td>501</td><td>OCR Processor</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/engineering:system-design</span> <span class="skill-chip agent">code-architect</span></td><td>Day 2</td><td>505</td><td>D1: ✅ PaddleOCR primary + pytesseract fallback</td></tr>
+          <tr><td>502</td><td>Structured Extraction</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/claude-api</span> <span class="skill-chip agent">code-architect</span></td><td>Day 4</td><td>501</td><td>D2: ✅ Haiku 4.5 default, Sonnet 4.6 escalation</td></tr>
+          <tr><td>503</td><td>Journal Router</td><td><span class="status-stub">STUB</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/finance:journal-entry-prep</span> <span class="skill-chip">/data:validate-data</span></td><td>Day 5</td><td>502, 504</td><td>D3/D4/D5/D6: ✅ Hybrid rule engine + score precedence</td></tr>
+          <tr><td>504</td><td>Ground Truth Dataset</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/data:validate-data</span> <span class="skill-chip">/anthropic-skills:xlsx</span></td><td>Day 6</td><td>505, 509</td><td>D8: ✅ 4-level evaluator + feedback loop</td></tr>
           <tr><td>505</td><td>Manifest &amp; Split</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>None</td><td>&mdash;</td></tr>
           <tr><td>506</td><td>Expectations Template</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>505</td><td>&mdash;</td></tr>
-          <tr><td>507</td><td>Multi-Page Support</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/feature-dev</span> <span class="skill-chip agent">code-architect</span></td><td>Day 3</td><td>501</td><td>Token limits for merged text</td></tr>
-          <tr><td>508</td><td>Fallback Routing</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/engineering:system-design</span> <span class="skill-chip agent">silent-failure-hunter</span></td><td>Day 4</td><td>501, 502</td><td>D1: Quality-based trigger (not just timeout)</td></tr>
-          <tr><td>509</td><td>Labeling SOP</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/operations:process-doc</span> <span class="skill-chip">/engineering:documentation</span></td><td>Day 3</td><td>506</td><td>Thai field normalization rules</td></tr>
-          <tr><td>510</td><td>KPI Gates</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/data:statistical-analysis</span> <span class="skill-chip">/engineering:testing-strategy</span></td><td>Day 7</td><td>504</td><td>D8: Add journal-level metrics</td></tr>
+          <tr><td>507</td><td>Multi-Page Support</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/feature-dev</span> <span class="skill-chip agent">code-architect</span></td><td>Day 3</td><td>501</td><td>D2: ✅ Page-wise mode when &gt;100K chars</td></tr>
+          <tr><td>508</td><td>Fallback Routing</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/engineering:system-design</span> <span class="skill-chip agent">silent-failure-hunter</span></td><td>Day 4</td><td>501, 502</td><td>D1/D2: ✅ Quality + timeout fallback triggers</td></tr>
+          <tr><td>509</td><td>Labeling SOP</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-red">Red</span></td><td><span class="skill-chip">/operations:process-doc</span> <span class="skill-chip">/engineering:documentation</span></td><td>Day 3</td><td>506</td><td>D8: ✅ Normalization rules in evaluator scope</td></tr>
+          <tr><td>510</td><td>KPI Gates</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/data:statistical-analysis</span> <span class="skill-chip">/engineering:testing-strategy</span></td><td>Day 7</td><td>504</td><td>D8: ✅ 4-level metrics + bootstrap CI</td></tr>
           <tr><td>511</td><td>Exclusion Enforcement</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>505</td><td>&mdash;</td></tr>
           <tr><td>512</td><td>Cohort Quality Gate</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>505, 511</td><td>&mdash;</td></tr>
           <tr><td>513</td><td>HTML Infographic</td><td><span class="status-done">DONE</span></td><td><span class="chip rag-green">Green</span></td><td>&mdash;</td><td>Done</td><td>510</td><td>&mdash;</td></tr>
-          <tr><td>514</td><td>Auto-Refresh HTML</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/anthropic-skills:web-artifacts-builder</span> <span class="skill-chip">/engineering:deploy-checklist</span></td><td>Day 9</td><td>513, 505</td><td>Template engine choice</td></tr>
-          <tr><td>515</td><td>Baseline Benchmarking</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/data:statistical-analysis</span> <span class="skill-chip">/data:analyze</span> <span class="skill-chip agent">code-explorer</span></td><td>Day 10</td><td>504, 510</td><td>Minimum benchmark size for 42 docs</td></tr>
+          <tr><td>514</td><td>Auto-Refresh HTML</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/anthropic-skills:web-artifacts-builder</span> <span class="skill-chip">/engineering:deploy-checklist</span></td><td>Day 9</td><td>513, 505</td><td>D7: ✅ Jinja2 + FastAPI backend serve</td></tr>
+          <tr><td>515</td><td>Baseline Benchmarking</td><td><span class="status-design">DESIGN</span></td><td><span class="chip rag-amber">Amber</span></td><td><span class="skill-chip">/data:statistical-analysis</span> <span class="skill-chip">/data:analyze</span> <span class="skill-chip agent">code-explorer</span></td><td>Day 10</td><td>504, 510</td><td>D8: ✅ Bootstrap CI for small-sample stats</td></tr>
         </tbody>
       </table>
     </div>
@@ -1275,10 +2720,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li><b>D1:</b> Keep PaddleOCR primary for Thai quality; retain pytesseract as fallback mode</li>
-          <li>Apply deterministic preprocessing pipeline: deskew, denoise, contrast normalize before OCR</li>
-          <li>Use content hash + engine version in cache key to avoid stale OCR reuse</li>
-          <li>Standardize OCR error contract: <code>OCR_CORRUPTED</code>, <code>OCR_TIMEOUT</code>, <code>OCR_PASSWORD</code>, <code>OCR_EMPTY</code></li>
+          <li><b>D1 ✅:</b> Keep PaddleOCR primary for Thai quality; retain pytesseract as fallback mode</li>
+          <li><b>D1:</b> Apply deterministic preprocessing pipeline: deskew, denoise, contrast normalize before OCR</li>
+          <li><b>D1:</b> Use content hash + engine version in cache key to avoid stale OCR reuse</li>
+          <li><b>D1:</b> Standardize OCR error contract: <code>OCR_CORRUPTED</code>, <code>OCR_TIMEOUT</code>, <code>OCR_PASSWORD</code>, <code>OCR_EMPTY</code></li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1309,11 +2754,11 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li><b>D2:</b> Default to Haiku 4.5 and escalate to Sonnet 4.6 only by explicit complexity triggers</li>
-          <li>Escalation triggers: <code>page_count &gt; 3</code>, OCR confidence &lt; 80, or &gt;2 low-confidence extracted fields</li>
-          <li>Use strict schema + <code>tool_use</code> to minimize malformed JSON and retry loops</li>
-          <li>Prompt strategy: Thai source text + English schema fields + field-level extraction hints</li>
-          <li>Mandatory telemetry fields: <code>doc_type_detected</code>, <code>model_used</code>, <code>processing_time_ms</code>, <code>retry_count</code></li>
+          <li><b>D2 ✅:</b> Default to Haiku 4.5 and escalate to Sonnet 4.6 only by explicit complexity triggers</li>
+          <li><b>D2:</b> Escalation triggers: <code>page_count &gt; 3</code>, OCR confidence &lt; 80, or &gt;2 low-confidence extracted fields</li>
+          <li><b>D2:</b> Use strict schema + <code>tool_use</code> to minimize malformed JSON and retry loops</li>
+          <li><b>D2:</b> Prompt strategy: Thai source text + English schema fields + field-level extraction hints</li>
+          <li><b>D2:</b> Mandatory telemetry fields: <code>doc_type_detected</code>, <code>model_used</code>, <code>processing_time_ms</code>, <code>retry_count</code></li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1344,12 +2789,12 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li><b>D3:</b> Hybrid resolver &mdash; deterministic rule/cache first, fuzzy similarity second, LLM assist only when unresolved, then Map Review confirmation writes back to mapping cache</li>
-          <li><b>D4:</b> Rule precedence: weighted score-based matching with specificity tie-break and <code>UNRESOLVED_RULE</code> safety flag when no candidate passes</li>
-          <li><b>D5:</b> Dual scope for รายงานรับ/จ่าย &mdash; platform settlement-driven posting rules plus derived VAT purchase/sales reports from finalized journal lines</li>
-          <li><b>D6:</b> Multi-company: <code>rules/{company_id}/rule_coa.yaml</code> structure</li>
-          <li>Vendor/item lookup table must be self-learning from user confirmations in Map Review</li>
-          <li>Output contract: balanced entries + explainability fields + Express GL compatible JSON</li>
+          <li><b>D3 ✅:</b> Hybrid resolver &mdash; deterministic rule/cache first, fuzzy similarity second, LLM assist only when unresolved, then Map Review confirmation writes back to mapping cache</li>
+          <li><b>D4 ✅:</b> Rule precedence: weighted score-based matching with specificity tie-break and <code>UNRESOLVED_RULE</code> safety flag when no candidate passes</li>
+          <li><b>D5 ✅:</b> Dual scope for รายงานรับ/จ่าย &mdash; platform settlement-driven posting rules plus derived VAT purchase/sales reports from finalized journal lines</li>
+          <li><b>D6 ✅:</b> Multi-company: <code>rules/{company_id}/rule_coa.yaml</code> structure &mdash; <span style="color:var(--green)">✓ Designed (see D6 expandable above)</span></li>
+          <li><b>D3:</b> Vendor/item lookup table must be self-learning from user confirmations in Map Review</li>
+          <li><b>D7:</b> Output contract: balanced entries + explainability fields + Express GL compatible JSON</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1380,11 +2825,11 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li><b>D8:</b> Add journal-level accuracy (account code, Dr/Cr lines, voucher match rate)</li>
-          <li>Export labeling template to Excel and preserve immutable document IDs for joins</li>
-          <li>Matching policy: exact for IDs/codes, &plusmn;0.01 tolerance for amounts, controlled fuzzy rules for names</li>
-          <li>Require two-reviewer workflow with explicit conflict resolution status</li>
-          <li>Track inter-rater agreement (Cohen's kappa or percent agreement) per key field</li>
+          <li><b>D8 ✅:</b> Add journal-level accuracy (account code, Dr/Cr lines, voucher match rate) + reinforcement feedback loop from human review → feeds back into D6 rule improvement. See <em>Accuracy evaluator scope</em> detail below.</li>
+          <li><b>D8:</b> Export labeling template to Excel and preserve immutable document IDs for joins</li>
+          <li><b>D8:</b> Matching policy: exact for IDs/codes, &plusmn;0.01 tolerance for amounts, controlled fuzzy rules for names</li>
+          <li><b>D8:</b> Require two-reviewer workflow with explicit conflict resolution status</li>
+          <li><b>D8:</b> Track inter-rater agreement (Cohen's kappa or percent agreement) per key field</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1415,10 +2860,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Page delimiter standard: <code>--- Page {n} ---</code> to preserve deterministic downstream parsing</li>
-          <li>Token guardrail: if merged OCR text &gt; 100K chars, switch to page-wise extraction mode</li>
-          <li>Retain page images + page text in cache for replay and audit debugging</li>
-          <li>Preserve original page order metadata to avoid multi-page field drift</li>
+          <li><b>D2 ✅:</b> Page delimiter standard: <code>--- Page {n} ---</code> to preserve deterministic downstream parsing</li>
+          <li><b>D2:</b> Token guardrail: if merged OCR text &gt; 100K chars, switch to page-wise extraction mode</li>
+          <li><b>D1:</b> Retain page images + page text in cache for replay and audit debugging</li>
+          <li><b>D2:</b> Preserve original page order metadata to avoid multi-page field drift</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1447,10 +2892,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Trigger fallback by timeout (30s) and quality signals (garbled OCR, repeated parse errors)</li>
-          <li>Allow only one fallback hop per stage to prevent retry storms</li>
-          <li>Emit structured reason codes: <code>ocr_low_quality</code>, <code>llm_parse_fail</code>, <code>timeout</code></li>
-          <li>Monitor fallback rate by document type and vendor cohort for drift detection</li>
+          <li><b>D1/D2 ✅:</b> Trigger fallback by timeout (30s) and quality signals (garbled OCR, repeated parse errors)</li>
+          <li><b>D2:</b> Allow only one fallback hop per stage to prevent retry storms</li>
+          <li><b>D1/D2:</b> Emit structured reason codes: <code>ocr_low_quality</code>, <code>llm_parse_fail</code>, <code>timeout</code></li>
+          <li><b>D8:</b> Monitor fallback rate by document type and vendor cohort for drift detection</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1480,10 +2925,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Date normalization: พ.ศ. to ค.ศ. conversion with explicit source-date retention for audit</li>
-          <li>Amount normalization: remove separators, enforce 2 decimals, validate sign and currency consistency</li>
-          <li>Tax ID normalization: 13-digit canonical string, strip separators, reject invalid checksum</li>
-          <li>Escalation policy: accountant reviewer resolves conflicts with reason code logging</li>
+          <li><b>D8 ✅:</b> Date normalization: พ.ศ. to ค.ศ. conversion with explicit source-date retention for audit</li>
+          <li><b>D8:</b> Amount normalization: remove separators, enforce 2 decimals, validate sign and currency consistency</li>
+          <li><b>D8:</b> Tax ID normalization: 13-digit canonical string, strip separators, reject invalid checksum</li>
+          <li><b>D8:</b> Escalation policy: accountant reviewer resolves conflicts with reason code logging</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1513,10 +2958,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Because 42 docs is small, estimate uncertainty with bootstrap confidence intervals</li>
-          <li>Include journal metrics: account-code precision/recall, balance pass rate, full-voucher match rate</li>
-          <li>Define hard fail thresholds and soft warning thresholds per metric</li>
-          <li>PoC gate remains manual pass/fail; MVP gate becomes automated CI quality check</li>
+          <li><b>D8 ✅:</b> Because 42 docs is small, estimate uncertainty with bootstrap confidence intervals</li>
+          <li><b>D8:</b> Include journal metrics: account-code precision/recall, balance pass rate, full-voucher match rate</li>
+          <li><b>D8:</b> Define hard fail thresholds and soft warning thresholds per metric</li>
+          <li><b>D8:</b> PoC gate remains manual pass/fail; MVP gate becomes automated CI quality check</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1546,10 +2991,10 @@ def route_platform_settlement(doc):
       <div class="design-box">
         <strong>Design Decisions</strong>
         <ul>
-          <li>Template engine: Python + Jinja2 to separate data model from presentation layout</li>
-          <li>Regeneration trigger: run when manifest/split/benchmark inputs change</li>
-          <li>Render output as committed artifact for PoC traceability and diff review</li>
-          <li>Fail render step on missing required data keys to prevent silent stale reports</li>
+          <li><b>D7 ✅:</b> Template engine: Python + Jinja2 to separate data model from presentation layout</li>
+          <li><b>D7:</b> Regeneration trigger: run when manifest/split/benchmark inputs change</li>
+          <li><b>D7:</b> Render output as committed artifact for PoC traceability and diff review</li>
+          <li><b>D7:</b> Fail render step on missing required data keys to prevent silent stale reports</li>
         </ul>
       </div>
       <div class="skills-row">
@@ -1575,7 +3020,7 @@ def route_platform_settlement(doc):
   </section>
 
   <p style="text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 16px;">
-    Last updated: 2026-06-05 (D3-D5 and Task Card design decisions aligned)
+    Last updated: 2025-06-05 (All 8 Open Design Decisions D1–D8 resolved — session update: D# prefixes, Decision labels, Sprint Board ✅)
   </p>
 
 </div>

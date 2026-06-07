@@ -1,0 +1,46 @@
+name: governance-watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+    - cron: "10 1 * * *"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  bypass-expire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Expire stale bypass labels
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python scripts/governance/expire_bypass_label.py --hours 24
+
+  board-mapping-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate project board mapping
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/governance/check_project_board_mapping.py \
+            --owner YAHWAN-SHOP \
+            --project-number 1 \
+            --status-field "Status" \
+            --expected "No Status" "Backlog" "Investigate" "Ready for Trial" "In Progress" "Review" "Done"

@@ -1,0 +1,196 @@
+version: 2
+updated_at: 2026-06-04
+
+objectives:
+- Deliver 7-epic plan in 2-week timeline
+- Keep model spend predictable and auditable
+- Route tasks to specialized agents for quality and speed
+- Enforce financial-data safety and fail-closed release behavior
+
+safety:
+  forbidden_paths:
+  - private_data/**
+  - samples/sample_documents/**
+  - '**/*.key'
+  - '**/*.pem'
+  - '**/.env*'
+  forbidden_actions:
+  - direct-production-mutation
+  - deploy-without-evidence
+  - disable-balance-validation
+  require_redaction_for_logs: true
+  require_human_review_for_financial_exports: true
+
+environments:
+  local:
+    default_model: GPT-5.3-Codex
+    fallback_models:
+    - GPT-5 mini
+    - Gemini 2.5 Pro
+    hard_limits:
+      max_context_tokens: 120000
+      max_retries_per_step: 3
+      max_parallel_agents: 4
+      max_tokens_per_call: 12000
+      budget_daily_usd: 20
+      budget_weekly_usd: 120
+  github_coding_agent:
+    default_model: GPT-5.3-Codex
+    fallback_models:
+    - GPT-5 mini
+    - Claude Sonnet 4.6
+    hard_limits:
+      max_context_tokens: 100000
+      max_retries_per_step: 2
+      max_tokens_per_call: 8000
+      budget_daily_usd: 12
+      budget_per_issue_usd: 3
+      require_ci_green_before_merge: true
+      require_issue_link: true
+      max_files_changed_per_pr: 20
+
+routing:
+  by_agent:
+    frontend-ux-agent:
+      model: GPT-5.3-Codex
+      review_required: true
+    data-science-agent:
+      model: GPT-5.3-Codex
+      review_required: true
+
+  by_priority:
+    critical:
+      model: GPT-5.3-Codex
+      review_required: true
+      max_turns: 12
+      run_full_tests: true
+    high:
+      model: GPT-5.3-Codex
+      review_required: true
+      max_turns: 8
+      run_full_tests: true
+    medium:
+      model: GPT-5 mini
+      review_required: true
+      max_turns: 6
+      run_full_tests: false
+    low:
+      model: GPT-5 mini
+      review_required: false
+      max_turns: 4
+      run_full_tests: false
+
+  by_phase:
+    "1":
+      preferred_agents:
+      - backend-extraction-agent
+      - qa-risk-agent
+      - data-science-agent
+    "2":
+      preferred_agents:
+      - frontend-ux-agent
+      - project-orchestrator-agent
+    "3":
+      preferred_agents:
+      - frontend-ux-agent
+      - dba-agent
+    "4":
+      preferred_agents:
+      - devops-release-agent
+      - github-project-ops-agent
+      - dba-agent
+
+  by_epic:
+    "1":
+      agent: project-orchestrator-agent
+      skills:
+      - cost-timeline-optimizer
+    "2":
+      agent: frontend-ux-agent
+      skills:
+      - professional-ui-system
+    "3":
+      agent: frontend-ux-agent
+      skills:
+      - professional-ui-system
+    "4":
+      agent: devops-release-agent
+      skills:
+      - cost-timeline-optimizer
+    "5":
+      agent: backend-extraction-agent
+      skills:
+      - cost-timeline-optimizer
+      - data-science-experimentation
+    "6":
+      agent: data-science-agent
+      skills:
+      - cost-timeline-optimizer
+      - data-science-experimentation
+    "7":
+      agent: dba-agent
+      skills:
+      - prepare-github-project
+      - dba-performance-guardrails
+
+assignment_rules:
+- when:
+    labels_any:
+    - priority:critical
+  then:
+    reviewers_required: 1
+    run_full_tests: true
+    require_evidence: true
+    block_merge_without_checklist: true
+
+- when:
+    labels_any:
+    - phase:4
+  then:
+    deploy_guardrails_ref: Piboonsak/Openclaw/docs/cicd/README.md
+    run_smoke_tests: true
+    require_rollback_plan: true
+
+- when:
+    labels_any:
+    - epic:2
+    - epic:3
+  then:
+    enforce_professional_design: true
+    ui_snapshot_required: true
+
+- when:
+    labels_any:
+    - epic:5
+    - epic:6
+  then:
+    require_accuracy_report: true
+    block_on_balance_mismatch: true
+
+cost_controls:
+  token_budget:
+    daily_usd_cap: 20
+    weekly_usd_cap: 120
+  strategies:
+  - Prefer retrieval from existing docs before long generation
+  - Use mini model for markdown formatting/refactoring tasks
+  - Escalate to full model only on architecture, RCA, critical bugs
+  - Stop after 3 failed attempts and request human decision
+  - For issue/project bulk operations, chunk in batches of 10
+
+timeline_controls:
+  cadence:
+    standup_every: 24h
+    risk_review_every: 48h
+  sla:
+    critical_issue_first_response_hours: 2
+    high_issue_first_response_hours: 6
+    medium_issue_first_response_hours: 24
+
+outputs:
+  mandatory_per_task:
+  - acceptance_checklist
+  - tests_or_validation_proof
+  - change_summary
+  - next_action
+  - risk_and_rollback_note

@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+echo "Running agent/skill markdown validation..."
+npm run --silent validate:agents-skills
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+  echo ""
+  echo "Commit blocked: agent/skill validation failed."
+  echo "Fix issues, then re-commit."
+  exit $STATUS
+fi
+
+exit 0

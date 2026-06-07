@@ -10,6 +10,10 @@
     "test": "pytest tests/ --cov",
     "lint": "ruff check src/ && mypy src/",
     "format": "ruff format src/",
+    "validate:agents-skills": "node scripts/validate-agent-skill-docs.mjs",
+    "sync:agent-defs": "node scripts/sync-agent-definitions.mjs",
+    "setup:hooks": "node scripts/setup-git-hooks.mjs",
+    "prepare": "npm run setup:hooks",
     "docker:dev": "docker-compose -f docker/docker-compose.dev.yml up",
     "docker:prod": "docker-compose -f docker/docker-compose.prod.yml up -d"
   },

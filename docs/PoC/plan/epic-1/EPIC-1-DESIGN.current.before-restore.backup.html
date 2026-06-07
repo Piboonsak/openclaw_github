@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Epic 1 - AI Agent Governance for ai-accounting-copilot</title>
+  <style>
+    :root{--bg:#f3f5fa;--panel:#fff;--panel-2:#f8faff;--text:#172033;--muted:#5f6b85;--ok:#067647;--warn:#b54708;--bad:#b42318;--accent:#173fcf;--line:#dbe2f0;--chip:#ebf1ff;--red-bg:#fef0f0;--green-bg:#ecfdf3;--amber-bg:#fff7e8}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Segoe UI",Tahoma,sans-serif;background:radial-gradient(circle at top left,rgba(23,63,207,.12),transparent 35%),linear-gradient(180deg,#f8faff 0%,#f3f5fa 100%);color:var(--text);line-height:1.45}
+    .wrap{max-width:1360px;margin:0 auto;padding:24px}
+    a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    h1{font-size:1.95rem;margin:0 0 10px;letter-spacing:-.02em}
+    h2{font-size:1.1rem;color:#344054;margin:28px 0 10px}
+    h3{font-size:1rem;color:var(--accent);margin:16px 0 8px}
+    h4{font-size:.9rem;color:#344054;margin:8px 0 6px}
+    p,li{font-size:.92rem;color:var(--text)}
+    code{font-family:"Consolas","JetBrains Mono",monospace;background:#eff4ff;border:1px solid #d9e5ff;border-radius:5px;padding:1px 6px;color:#1d2c4f;font-size:.88em}
+    pre{font-family:"Consolas","JetBrains Mono",monospace;background:#eff4ff;border:1px solid #d9e5ff;border-radius:8px;padding:12px;color:#1d2c4f;font-size:.78rem;overflow-x:auto;line-height:1.55;margin-top:8px;white-space:pre}
+    table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.88rem}
+    th,td{border:1px solid var(--line);padding:10px 8px;vertical-align:top;text-align:left}
+    th{background:#f9fbff;color:#344054;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em}
+    ul,ol{margin-left:20px;margin-top:6px}
+    .hero{background:linear-gradient(135deg,#1733a5 0%,#2353ea 68%,#4c77ff 100%);border:1px solid #c7d7ff;border-radius:20px;padding:28px;color:#fff;box-shadow:0 18px 42px rgba(23,51,165,.22);margin-bottom:18px}
+    .hero p{margin:0;max-width:900px;opacity:.94;color:#fff}.hero .muted{color:rgba(255,255,255,.88)}.hero code{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28);color:#fff}.hero a{color:#fff;text-decoration:underline;text-decoration-color:rgba(255,255,255,.45)}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:4px 10px;font-size:.82rem;white-space:nowrap}
+    .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:14px}.kpi div{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:10px;padding:10px;text-align:center}.kpi strong{display:block;font-size:1.5rem;color:#fff}.kpi span{color:#fff;font-size:.9rem}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:12px;box-shadow:0 6px 18px rgba(20,32,61,.05)}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}@media(min-width:860px){.grid.col2{grid-template-columns:1fr 1fr}.grid.col3{grid-template-columns:1fr 1fr 1fr}}
+    .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.76rem;font-weight:600;margin-right:4px}.tag-101{background:#1e3a5f;color:#93c5fd}.tag-102{background:#7f1d1d;color:#fca5a5}.tag-103{background:#1c4532;color:#86efac}.tag-104{background:#3b1f5f;color:#c4b5fd}.tag-risk-h{background:#7f1d1d;color:#fca5a5}.tag-risk-m{background:#78350f;color:#fcd34d}.tag-risk-l{background:#1c4532;color:#86efac}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.74rem;font-weight:700}.pill-ok{background:#ecfdf3;color:#067647}.pill-warn{background:#fff7e8;color:#b54708}.pill-bad{background:#fef0f0;color:#b42318}
+    .ok{color:var(--ok);font-weight:700}.warn{color:var(--warn);font-weight:700}.bad{color:var(--bad);font-weight:700}.muted{color:var(--muted)}.sn{color:var(--accent);font-weight:700;margin-right:6px}
+    .mermaid-wrap{background:#f8faff;border:1px solid #dbe2f0;border-radius:10px;padding:18px;margin-top:10px;overflow-x:auto}
+    details{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:10px}details[open]{border-color:var(--accent)}summary{cursor:pointer;padding:10px 12px;font-weight:700;color:var(--accent);font-size:.82rem}details .inner{padding:0 12px 12px}
+    .footer{margin-top:32px;color:var(--muted);font-size:.84rem;border-top:1px solid var(--line);padding-top:14px}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded",()=>{mermaid.initialize({startOnLoad:true,theme:"base",themeVariables:{background:"#f8faff",primaryColor:"#ebf1ff",primaryTextColor:"#172033",primaryBorderColor:"#173fcf",lineColor:"#5f6b85",secondaryColor:"#ecfdf3",tertiaryColor:"#fef0f0",fontSize:"14px"},flowchart:{curve:"basis",padding:16,htmlLabels:true}});});
+  </script>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <h1>Epic 1 - AI Agent Governance</h1>
+    <p class="muted">Repo: <code>YAHWAN-SHOP/ai-accounting-copilot</code> | Source spec: <code>AI-Dev-Factory / factory-gap-closure-governance.html</code></p>
+    <p style="margin-top:8px">Make AI agents able to develop the <strong>AI Pre-Accounting Copilot PoC</strong> end-to-end without runaway loops, fake done, scope creep, or token burn.</p>
+    <div class="chips"><span class="chip">MCP-first intake</span><span class="chip">State file source of truth</span><span class="chip">GraphQL project sync</span><span class="chip">Policy-based assignment</span><span class="chip">Close-with-proof</span></div>
+    <div class="kpi"><div><strong>4 days</strong><span>Day 1-4 of Week 1</span></div><div><strong>4 tasks</strong><span>TASK-101/102/103/104</span></div><div><strong>18/18</strong><span>Pain points closed</span></div><div><strong>$0 default</strong><span>Copilot for coding</span></div></div>
+    <p class="muted" style="margin-top:10px;font-size:.86rem">Control surface: <a href="https://github.com/YAHWAN-SHOP/ai-accounting-copilot/issues">Issues</a> - <a href="https://github.com/orgs/YAHWAN-SHOP/projects/1/views/2">Project board</a></p>
+  </section>
+
+  <h2><span class="sn">&sect;0</span> What changed in this design</h2>
+  <div class="card">
+    <p>This Epic 1 design is now explicit about the real operating mode: users normally work from VS Code, NongKung, Copilot Chat, and GitHub MCP/GraphQL. GitHub Issue UI is supported, but it is not the primary path.</p>
+    <p style="margin-top:8px"><strong>Current repo reality:</strong> <code>task-intake.yml</code>, <code>intake-sync.yml</code>, <code>intake_to_state.py</code>, and policy-based GraphQL assignment are design targets for TASK-101. They are not assumed to already exist.</p>
+  </div>
+
+  <h2><span class="sn">&sect;1</span> End-to-end operating model</h2>
+  <div class="card">
+    <div class="mermaid-wrap"><pre class="mermaid">flowchart TD
+  U["Human in VS Code / NongKung"] --> D["AI drafts Q1-Q8"]
+  D --> H{"Human confirms<br/>scope + AC?"}
+  H -- no --> HOLD["Keep issue status:draft"]
+  H -- yes --> MCP["GitHub MCP / GraphQL<br/>create or update issue"]
+  MCP --> I["GitHub issue body<br/>same contract as task-intake.yml"]
+  I --> SYNC["intake-sync.yml"]
+  SYNC --> STATE[(".agent/state/TASK-ID.json")]
+  STATE --> POL["policy_dispatch.py<br/>reads model-policy.yaml"]
+  POL --> BOARD["Move Projects v2 status"]
+  POL --> ASSIGN{"ready + budget + KI-075 ok?"}
+  ASSIGN -- yes --> BOT["GraphQL assign copilot[bot]"]
+  ASSIGN -- no --> WAIT["Ready for Trial / needs-human"]
+  BOT --> PR["Agent PR"]
+  PR --> GATE["agent_gate.yml"]
+  GATE --> CLOSE["merge -> deploy -> health -> closed-with-proof"]</pre></div>
+  </div>
+
+  <h2><span class="sn">&sect;2</span> Pain points coverage</h2>
+  <div class="card">
+    <table><thead><tr><th>Group</th><th>Failure mode</th><th>Closed by</th><th>Mechanism</th></tr></thead><tbody>
+      <tr><td>Intake</td><td>Agent guesses requirement or scope</td><td><span class="tag tag-101">TASK-101</span></td><td>Q1-Q8 issue contract + state schema</td></tr>
+      <tr><td>Scope</td><td>Agent edits wrong files</td><td><span class="tag tag-102">TASK-102</span></td><td>Scope gate checks allowed/forbidden globs</td></tr>
+      <tr><td>Evidence</td><td>Fake done / no test output</td><td><span class="tag tag-102">TASK-102</span></td><td>Evidence gate binds AC to raw output</td></tr>
+      <tr><td>Looping</td><td>Retry same bug or burn tokens</td><td><span class="tag tag-103">TASK-103</span></td><td>min action check + failure classifier</td></tr>
+      <tr><td>Closure</td><td>PR merged but not deployed or verified</td><td><span class="tag tag-104">TASK-104</span></td><td>deploy gate + health + close-with-proof</td></tr>
+    </tbody></table>
+  </div>
+
+  <h2><span class="sn">&sect;3</span> <span class="tag tag-101">TASK-101</span> Governance State + MCP Intake</h2>
+  <div class="card">
+    <p><strong>Owner</strong>: DevOps / Governance - <strong>Risk</strong>: <span class="tag tag-risk-m">MEDIUM</span> - <strong>Duration</strong>: ~2 days</p>
+    <h3>Purpose</h3>
+    <p>Create the intake system that turns a human request into a validated issue, a committed state file, synchronized labels, project-board movement, and optional Copilot assignment.</p>
+
+    <h3>Deliverables</h3>
+    <pre>.agent/state/_schema.json
+.agent/state/TASK-&lt;ID&gt;.json
+.github/ISSUE_TEMPLATE/task-intake.yml
+.github/workflows/intake-sync.yml
+scripts/agent_state.py
+scripts/intake_to_state.py
+scripts/governance/policy_dispatch.py
+scripts/governance/project_graphql.py
+scripts/governance/assign_copilot.py
+tests/governance/test_state.py
+tests/governance/test_intake.py
+tests/governance/test_policy_dispatch.py</pre>
+
+    <h3>Actual workflow - no GitHub UI required</h3>
+    <table><thead><tr><th>Step</th><th>Actor</th><th>Action</th><th>Stop condition</th></tr></thead><tbody>
+      <tr><td>1</td><td>Human</td><td>Says the task in VS Code, for example <code>create TASK-501 OCR extraction</code> or <code>make issues from this epic HTML</code>.</td><td>No code edits yet.</td></tr>
+      <tr><td>2</td><td>AI orchestrator</td><td>Drafts Q1-Q8 from the user request, epic HTML, repo paths, and <code>model-policy.yaml</code>.</td><td>Must not silently finalize scope or AC.</td></tr>
+      <tr><td>3</td><td>Human</td><td>Confirms or edits scope + acceptance criteria.</td><td>If not confirmed, keep <code>status:draft</code>.</td></tr>
+      <tr><td>4</td><td>MCP / GraphQL</td><td>Creates issue with deterministic Q1-Q8 markdown body.</td><td>If API fails, do not assign agent.</td></tr>
+      <tr><td>5</td><td>intake-sync</td><td>Parses issue, writes state JSON, syncs labels and board column.</td><td>Invalid state removes <code>status:ready</code>.</td></tr>
+      <tr><td>6</td><td>policy dispatcher</td><td>Reads policy and assigns Copilot only when ready.</td><td>HIGH/CRITICAL routes to human approval.</td></tr>
+    </tbody></table>
+
+    <h3>Q1-Q8 ownership</h3>
+    <table><thead><tr><th>Field</th><th>AI can draft?</th><th>Source</th><th>Human confirm?</th></tr></thead><tbody>
+      <tr><td>task_id</td><td>Yes</td><td>User text or next ID</td><td>Only if generated</td></tr>
+      <tr><td>risk_tier</td><td>Yes</td><td>Policy, files, labels, phase</td><td>Yes for HIGH/CRITICAL</td></tr>
+      <tr><td>model_tier</td><td>Yes</td><td>Policy routing</td><td>Only for cost/risk exception</td></tr>
+      <tr><td>allowed_scope</td><td>Draft only</td><td>Epic docs + repo paths</td><td><strong>Yes</strong></td></tr>
+      <tr><td>forbidden_scope</td><td>Draft only</td><td>Policy defaults + sensitive paths</td><td><strong>Yes</strong></td></tr>
+      <tr><td>acceptance_criteria</td><td>Draft only</td><td>User intent + epic/task spec</td><td><strong>Yes</strong></td></tr>
+      <tr><td>max_loops</td><td>Yes</td><td>Default 5, max 10</td><td>No unless overridden</td></tr>
+      <tr><td>escalation_policy</td><td>Yes</td><td>Risk and category</td><td>Yes for bypass/deploy/security</td></tr>
+    </tbody></table>
+
+    <details><summary>Design code: task-intake.yml</summary><div class="inner"><pre>name: Governance task intake
+description: Create an AI-governed implementation task
+title: "TASK-&lt;ID&gt;: &lt;short task title&gt;"
+labels: ["governance:intake", "status:draft"]
+body:
+  - type: input
+    id: task_id
+    attributes: { label: "Q1 Task ID", description: "Example TASK-501" }
+    validations: { required: true }
+  - type: dropdown
+    id: risk_tier
+    attributes: { label: "Q2 Risk tier", options: [LOW, MEDIUM, HIGH, CRITICAL] }
+    validations: { required: true }
+  - type: dropdown
+    id: model_tier
+    attributes: { label: "Q3 Model tier", options: [tier-1-opus, tier-2a-copilot, tier-2b-sonnet, tier-3-gemini] }
+    validations: { required: true }
+  - type: textarea
+    id: allowed_scope
+    attributes: { label: "Q4 Allowed scope", description: "One glob per line" }
+    validations: { required: true }
+  - type: textarea
+    id: forbidden_scope
+    attributes: { label: "Q5 Forbidden scope", description: "Parser adds default forbidden paths" }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance_criteria
+    attributes: { label: "Q6 Acceptance criteria", description: "id | description | test_fn or manual-proof" }
+    validations: { required: true }
+  - type: input
+    id: max_loops
+    attributes: { label: "Q7 Max loops", value: "5" }
+    validations: { required: true }
+  - type: dropdown
+    id: escalation_policy
+    attributes: { label: "Q8 Escalation policy", options: [human, ai-debate, stop] }
+    validations: { required: true }</pre></div></details>
+
+    <details><summary>Design code: MCP issue body contract</summary><div class="inner"><pre>## Q1 Task ID
+TASK-501
+
+## Q2 Risk tier
+MEDIUM
+
+## Q3 Model tier
+tier-2a-copilot
+
+## Q4 Allowed scope
+src/backend/ml/**
+tests/ml/**
+.agent/evidence/TASK-501/**
+
+## Q5 Forbidden scope
+private_data/**
+.env*
+config/secrets/**
+
+## Q6 Acceptance criteria
+ac_ocr_runs | sample PDF returns extracted text | test_ocr_runs_on_sample
+ac_conf_score | each extracted field has confidence | test_confidence_attached
+
+## Q7 Max loops
+5
+
+## Q8 Escalation policy
+human</pre></div></details>
+
+    <details><summary>Design code: intake_to_state.py</summary><div class="inner"><pre>def parse_issue_body(body: str) -&gt; dict:
+    fields = extract_q_sections(body, expected=["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8"])
+    state = {
+        "task_id": parse_task_id(fields["Q1"]),
+        "risk_tier": parse_enum(fields["Q2"], ["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+        "model_tier": parse_model(fields["Q3"]),
+        "allowed_scope": parse_globs(fields["Q4"]),
+        "forbidden_scope": merge_default_forbidden(parse_globs(fields["Q5"])),
+        "acceptance_criteria": parse_ac_rows(fields["Q6"]),
+        "max_loops": clamp_int(fields["Q7"], default=5, maximum=10),
+        "escalation_policy": parse_enum(fields["Q8"], ["human", "ai-debate", "stop"]),
+        "status": "PENDING",
+        "run_count": 0,
+        "last_action": "intake-created"
+    }
+    validate_state_or_raise(state)
+    return state</pre></div></details>
+
+    <details><summary>Design code: MCP / GraphQL policy dispatch</summary><div class="inner"><pre>def dispatch(issue, state, policy):
+    route = resolve_route(
+        epic=issue.label_value("epic"),
+        phase=issue.label_value("phase"),
+        priority=issue.label_value("priority"),
+        risk=state["risk_tier"],
+        policy=policy,
+    )
+    sync_labels(issue, {"model": route.model, "agent": route.agent, "risk": state["risk_tier"].lower()})
+    move_project_status(issue, map_state_to_column(state["status"]))
+    if can_assign_copilot(issue, state, route):
+        graphql_assign_copilot(issue.node_id)
+        move_project_status(issue, "In Progress")
+    else:
+        move_project_status(issue, "Ready for Trial")
+        comment(issue, route.block_reason)</pre></div></details>
+
+    <details><summary>Design code: intake-sync.yml</summary><div class="inner"><pre>name: intake-sync
+on:
+  issues: { types: [opened, edited, labeled, unlabeled, assigned] }
+  workflow_dispatch:
+    inputs:
+      issue_number: { required: true }
+permissions:
+  contents: write
+  issues: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python scripts/intake_to_state.py --issue "$ISSUE_NUMBER"
+        env:
+          GITHUB_TOKEN: $&#123;&#123; secrets.GITHUB_TOKEN &#125;&#125;
+          ISSUE_NUMBER: $&#123;&#123; github.event.issue.number || inputs.issue_number &#125;&#125;
+      - run: python scripts/governance/policy_dispatch.py --issue "$ISSUE_NUMBER"
+        env:
+          GITHUB_TOKEN: $&#123;&#123; secrets.GITHUB_TOKEN &#125;&#125;
+          PROJECT_OWNER: YAHWAN-SHOP
+          PROJECT_NUMBER: "1"
+          ISSUE_NUMBER: $&#123;&#123; github.event.issue.number || inputs.issue_number &#125;&#125;</pre></div></details>
+  </div>
+
+  <h2><span class="sn">&sect;4</span> <span class="tag tag-102">TASK-102</span> CI Gate Pipeline</h2>
+  <div class="card">
+    <p>Implements blocking CI checks: quality, scope, evidence, and HDR/AI business-vs-code review.</p>
+    <table><thead><tr><th>Layer</th><th>Script</th><th>Blocks on</th></tr></thead><tbody>
+      <tr><td>Quality</td><td><code>agent_gate.yml</code></td><td>lint/type/test failure</td></tr>
+      <tr><td>Scope</td><td><code>scripts/gates/check_scope.py</code></td><td>Files outside allowed scope or inside forbidden scope</td></tr>
+      <tr><td>Evidence</td><td><code>scripts/gates/check_evidence.py</code></td><td>Missing raw output or AC test binding</td></tr>
+      <tr><td>HDR</td><td><code>scripts/gates/check_hdr_review.py</code></td><td>Business logic and code logic do not match</td></tr>
+    </tbody></table>
+  </div>
+
+  <h2><span class="sn">&sect;5</span> <span class="tag tag-103">TASK-103</span> Local Enforcement + Model Policy</h2>
+  <div class="card">
+    <p><code>model-policy.yaml</code> is a routing and guardrail source, not an auto-assigner by itself. TASK-101 reads it to assign; TASK-103 reads it to classify failure, narrow retry scope, and control model escalation.</p>
+    <table><thead><tr><th>Policy input</th><th>Used by</th><th>Effect</th></tr></thead><tbody>
+      <tr><td>priority/risk</td><td>policy dispatcher</td><td>model tier, reviewer, test depth</td></tr>
+      <tr><td>epic/phase</td><td>policy dispatcher</td><td>preferred specialist agent</td></tr>
+      <tr><td>failure category</td><td>classifier</td><td>escalate, narrow scope, model bump</td></tr>
+      <tr><td>budget</td><td>dispatcher/classifier</td><td>hold assignment when over cap</td></tr>
+    </tbody></table>
+  </div>
+
+  <h2><span class="sn">&sect;5.5</span> <span class="tag tag-104">TASK-104</span> PR to Production Closure</h2>
+  <div class="card">
+    <p>Closes the lifecycle after PR creation: stale PR detection, conflict handling, deploy gate, health verification, auto-revert on failure, and known-issue fingerprint reuse.</p>
+    <pre>PR opened -> gates -> merge -> deploy dispatch -> /health -> state=VERIFIED -> closed-with-proof
+Failure -> incident issue + revert when needed + KI fingerprint update</pre>
+  </div>
+
+  <h2><span class="sn">&sect;6</span> Execution Order</h2>
+  <div class="card"><pre>Day 1 AM  TASK-101 schema + agent_state.py + issue template
+Day 1 PM  TASK-101 intake-sync + policy_dispatch + GraphQL board/assign
+Day 2     TASK-102 gates + branch protection
+Day 3     TASK-103 pre-commit + classifier + policy validation
+Day 4     TASK-104 closure loop + smoke/negative tests</pre></div>
+
+  <h2><span class="sn">&sect;7</span> Definition of Done</h2>
+  <div class="card"><ul>
+    <li>Seed issue TASK-501 flows from MCP issue creation to state file, board sync, Copilot assignment, PR, gates, merge, deploy, health, and closed-with-proof.</li>
+    <li>A bad PR is blocked by scope, evidence, and HDR gates.</li>
+    <li>Bypass labels auto-expire within 24 hours and leave audit comments.</li>
+    <li>Board mapping check catches renamed/missing project columns.</li>
+    <li>HIGH/CRITICAL tasks require human approval before merge.</li>
+  </ul></div>
+
+  <h2><span class="sn">&sect;7.5</span> Fast Pilot Readiness - ทำแค่นี้รอดไหม?</h2>
+  <div class="card">
+    <p><strong>คำตอบสั้น:</strong> รอดสำหรับ PoC เร่งด่วนได้ ถ้าเปิด 3 guardrails บังคับทันที และยอมให้ส่วนที่เหลือเป็น shadow mode ชั่วคราว. ไม่รอดถ้าปล่อยให้ bypass, issue intake, หรือ board automation เป็น manual ล้วน.</p>
+    <h3>Minimum guardrails ที่ต้อง active ตั้งแต่วันแรก</h3>
+    <table><thead><tr><th>Guardrail</th><th>ต้องทำจริง</th><th>ถ้าไม่ทำจะติดอะไร</th></tr></thead><tbody>
+      <tr><td>Forbidden paths</td><td>Hard fail for <code>private_data/**</code>, <code>.env*</code>, secrets, commercial data</td><td>Customer data or secrets leak into PR/evidence</td></tr>
+      <tr><td>Evidence required</td><td>Every PR needs raw output or manual proof bound to AC</td><td>AI says done without running anything</td></tr>
+      <tr><td>Bypass expires</td><td><code>bypass:governance</code> expires after 24h with audit comment</td><td>Temporary bypass becomes permanent default</td></tr>
+    </tbody></table>
+    <h3>อะไรยังติดเยอะ</h3>
+    <div class="grid col2">
+      <article class="card" style="margin-top:0;background:var(--red-bg);border-color:#f5c2c2"><h4 class="bad">High friction</h4><ul><li><code>task-intake.yml</code> and <code>intake-sync.yml</code> are not created yet.</li><li>MCP issue body must match the Issue Form contract exactly.</li><li>Copilot assignment needs GraphQL and KI-075 precheck.</li><li>Projects v2 column rename can break automation unless mapping is checked daily.</li><li>Workflow state commits must avoid trigger loops.</li></ul></article>
+      <article class="card" style="margin-top:0;background:var(--green-bg);border-color:#b7e4c7"><h4 class="ok">Low friction</h4><ul><li>Keep governance code isolated in <code>.agent/</code>, <code>scripts/governance/</code>, and <code>scripts/gates/</code>.</li><li>Let AI draft Q1-Q8, but require human confirmation for scope + AC.</li><li>Hard fail forbidden paths and missing evidence immediately.</li><li>Run HDR/AI business review in shadow mode until false positives are understood.</li></ul></article>
+    </div>
+    <h3>Rollout switchboard</h3>
+    <table><thead><tr><th>Phase</th><th>Mode</th><th>Meaning</th><th>Exit condition</th></tr></thead><tbody>
+      <tr><td>Day 0</td><td><span class="pill pill-warn">shadow</span></td><td>All gates comment, forbidden paths hard fail</td><td>Seed issue parses into state</td></tr>
+      <tr><td>Day 1</td><td><span class="pill pill-ok">hard</span></td><td>Scope + evidence block merge</td><td>One good PR passes, one bad PR blocks</td></tr>
+      <tr><td>Day 2</td><td><span class="pill pill-warn">mixed</span></td><td>HDR comments; HIGH/CRITICAL requires human</td><td>False positives reviewed</td></tr>
+      <tr><td>Day 3+</td><td><span class="pill pill-ok">hard</span></td><td>Full gate + board sync + assignment + closure loop</td><td>TASK-501 verified close-with-proof</td></tr>
+    </tbody></table>
+    <p style="margin-top:12px;color:var(--warn);font-weight:700">Decision: shadow mode is only calibration. Production-ready Epic 1 means state sync, evidence gate, board mapping, bypass expiry, and close-with-proof are enforced.</p>
+  </div>
+
+  <h2><span class="sn">&sect;8</span> Practical Add-ons Already Scaffolded</h2>
+  <div class="card"><table><thead><tr><th>File</th><th>Purpose</th><th>Mode</th></tr></thead><tbody>
+    <tr><td><code>.agent/templates/high-risk-advisory.md</code></td><td>3-provider advisory template for HIGH/CRITICAL PRs</td><td>Manual / PR comment</td></tr>
+    <tr><td><code>scripts/governance/expire_bypass_label.py</code></td><td>Expire stale <code>bypass:governance</code> labels after 24h</td><td>Hourly workflow / CLI</td></tr>
+    <tr><td><code>scripts/governance/check_project_board_mapping.py</code></td><td>Verify Project #1 Status mapping</td><td>Daily workflow / CLI</td></tr>
+    <tr><td><code>.github/workflows/governance-watch.yml</code></td><td>Runs bypass expiry and board mapping checks</td><td>GitHub Actions</td></tr>
+  </tbody></table></div>
+
+  <div class="footer"><p><strong>Updated:</strong> 2026-06-07 - MCP-first workflow, TASK-101 design code, GraphQL assignment design, and readable fast-pilot readiness review.</p></div>
+</div>
+</body>
+</html>
