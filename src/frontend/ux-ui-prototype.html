@@ -568,6 +568,8 @@
     },
   };
 
+  const TEMP_REMOVED_COMPANY_KEYWORDS = ['ฤทธิ์ล้ำเลิศ'];
+
   const SAMPLE_FILES = [
     { id:'f01', name:'INV-Metro-Electric-001.pdf',    size:2.1, folder:'2026-05-Invoices',  sellerTax:'0105566111111', sellerName:'Metro Electric Co.,Ltd',               buyerTax:'0105559123456', netAmt:10000, vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:97, invNo:'INV-2605-001',   invDate:'2026-05-12' },
     { id:'f02', name:'INV-Metro-Electric-002.pdf',    size:1.8, folder:'2026-05-Invoices',  sellerTax:'0105566111111', sellerName:'Metro Electric Co.,Ltd',               buyerTax:'0105559123456', netAmt:8500,  vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:95, invNo:'INV-2605-002',   invDate:'2026-05-13' },
@@ -699,10 +701,70 @@
           <td class="col-actions">
             <button type="button" class="btn-text edit-company-btn" data-company-id="${escapeAttr(c.id)}">Edit</button>
             <button type="button" class="btn-text coa-company-btn" data-company-id="${escapeAttr(c.id)}">COA</button>
+            ${DEFAULT_COMPANIES.some(base => base.id === c.id)
+              ? ''
+              : `<button type="button" class="btn-text delete-company-btn" data-company-id="${escapeAttr(c.id)}">Delete</button>`}
           </td>
         </tr>
       `)
       .join('');
+  }
+
+  function handleDeleteCompany(companyId) {
+    const index = COMPANIES.findIndex(c => c.id === companyId);
+    if (index < 0) return;
+    const company = COMPANIES[index];
+    const canDelete = !DEFAULT_COMPANIES.some(base => base.id === companyId);
+    if (!canDelete) {
+      showToast('Default company cannot be deleted', 'warn');
+      return;
+    }
+    if (!window.confirm(`Delete company "${company.name}" and related COA?`)) return;
+
+    COMPANIES.splice(index, 1);
+    delete COA[companyId];
+    if (state.mappingRules && state.mappingRules[companyId]) {
+      delete state.mappingRules[companyId];
+    }
+    if (state.selectedCompanyId === companyId) {
+      state.selectedCompanyId = COMPANIES[0]?.id || '';
+    }
+    persistCompanies();
+    persistCOA();
+    syncCompanyUi(state.selectedCompanyId);
+    if ($('companySelect')) $('companySelect').value = state.selectedCompanyId;
+    applyCompanySelection(state.selectedCompanyId);
+    showToast('Company removed', 'ok');
+  }
+
+  function purgeTemporarilyRemovedCompanies() {
+    const removedIds = [];
+    for (let i = COMPANIES.length - 1; i >= 0; i -= 1) {
+      const company = COMPANIES[i];
+      const name = String(company?.name || '').toLowerCase();
+      const shouldRemove = TEMP_REMOVED_COMPANY_KEYWORDS.some(keyword =>
+        name.includes(String(keyword).toLowerCase())
+      );
+      if (!shouldRemove) continue;
+      removedIds.push(company.id);
+      COMPANIES.splice(i, 1);
+    }
+
+    if (!removedIds.length) return 0;
+
+    removedIds.forEach((companyId) => {
+      delete COA[companyId];
+      if (state.mappingRules && state.mappingRules[companyId]) {
+        delete state.mappingRules[companyId];
+      }
+      if (state.selectedCompanyId === companyId) {
+        state.selectedCompanyId = '';
+      }
+    });
+
+    persistCompanies();
+    persistCOA();
+    return removedIds.length;
   }
 
   function syncCompanyUi(selectedId = state.selectedCompanyId) {
@@ -2038,6 +2100,10 @@
     }
     if (button.classList.contains('coa-company-btn')) {
       handleOpenCompanyCoa(companyId);
+      return;
+    }
+    if (button.classList.contains('delete-company-btn')) {
+      handleDeleteCompany(companyId);
     }
   });
   $('addCompanyBtn').addEventListener('click', () => {
@@ -2429,9 +2495,13 @@
   function svgDoc()   { return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`; }
 
   /* ─── INIT ─── */
+  const removedCount = purgeTemporarilyRemovedCompanies();
   syncCompanyUi();
   syncCoaRuleCompanyDefaults();
   setStep(1);
+  if (removedCount > 0) {
+    showToast(`Removed ${removedCount} temporary company profile(s)`, 'warn');
+  }
 }());
 </script>
 </body>
