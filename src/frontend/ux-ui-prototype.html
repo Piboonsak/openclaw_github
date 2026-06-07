@@ -148,6 +148,7 @@
                 </button>
               </div>
               <div class="pdf-zoom-controls" id="pdfZoomControls">
+                <button type="button" class="btn-sm btn-ghost" id="previewWidthToggle" aria-label="Toggle preview width">Normal</button>
                 <button type="button" class="btn-icon" id="previewZoomOut" aria-label="Zoom out">-</button>
                 <span class="pdf-zoom-level mono" id="previewZoomLevel">100%</span>
                 <button type="button" class="btn-icon" id="previewZoomIn" aria-label="Zoom in">+</button>
@@ -636,6 +637,7 @@
       dragStartX: 0,
       dragStartY: 0,
       enabled: false,
+      wide: true,
     },
     coaMode: 'csv',
     coaRule: {
@@ -1748,6 +1750,16 @@
     $('pdfZoomControls').classList.toggle('is-disabled', !enabled);
   }
 
+  function applyPreviewWidthMode() {
+    const viewer = $('pdfViewer');
+    const toggle = $('previewWidthToggle');
+    if (!viewer || !toggle) return;
+
+    viewer.classList.toggle('is-wide', state.preview.wide);
+    toggle.textContent = state.preview.wide ? 'Normal' : 'Wide x3';
+    toggle.title = state.preview.wide ? 'Switch to normal width' : 'Switch to 3x width';
+  }
+
   function updatePreviewTransform() {
     const img = $('previewImage');
     if (!img) {
@@ -1896,6 +1908,12 @@
     if (!state.preview.enabled) return;
     resetPreviewTransform();
   });
+  $('previewWidthToggle').addEventListener('click', () => {
+    state.preview.wide = !state.preview.wide;
+    applyPreviewWidthMode();
+  });
+
+  applyPreviewWidthMode();
 
   $('approveHeaderBtn').addEventListener('click', () => {
     const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();

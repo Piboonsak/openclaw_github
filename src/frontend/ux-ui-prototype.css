@@ -1151,6 +1151,7 @@ input[type="checkbox"]:focus-visible {
   grid-template-columns: 240px 1fr;
   gap: var(--sp-4);
   min-height: 560px;
+  overflow-x: auto;
 }
 
 .doc-list-panel {
@@ -1202,7 +1203,8 @@ input[type="checkbox"]:focus-visible {
   gap: var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  overflow: hidden;
+  overflow: auto;
+  min-width: 1360px;
 }
 
 /* ─── PDF Viewer Mock ─── */
@@ -1213,6 +1215,10 @@ input[type="checkbox"]:focus-visible {
   flex-direction: column;
   border-right: 1px solid var(--line);
   background: var(--surface);
+}
+
+.pdf-viewer.is-wide {
+  width: 840px;
 }
 .pdf-header {
   display: flex;
@@ -1248,7 +1254,12 @@ input[type="checkbox"]:focus-visible {
   color: var(--muted);
 }
 .pdf-page-indicator { font-size: var(--text-xs); color: var(--muted); white-space: nowrap; }
-.pdf-canvas { flex: 1; padding: var(--sp-4) var(--sp-3); overflow-y: auto; }
+.pdf-canvas {
+  flex: 1;
+  padding: var(--sp-4) var(--sp-3);
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+}
 
 .preview-stage {
   width: 100%;
@@ -1269,7 +1280,7 @@ input[type="checkbox"]:focus-visible {
   justify-content: center;
   cursor: grab;
   touch-action: none;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .preview-viewport.is-dragging {
@@ -1319,6 +1330,7 @@ input[type="checkbox"]:focus-visible {
 /* ─── Scan Form ─── */
 .scan-form {
   flex: 1;
+  min-width: 520px;
   padding: var(--sp-4);
   overflow-y: auto;
   display: flex;
