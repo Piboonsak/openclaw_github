@@ -1214,6 +1214,8 @@ input[type="checkbox"]:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
   padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--line);
   background: var(--bg);
@@ -1227,8 +1229,59 @@ input[type="checkbox"]:focus-visible {
   max-width: 140px;
 }
 .pdf-nav { display: flex; align-items: center; gap: var(--sp-2); }
+.pdf-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pdf-zoom-controls.is-disabled {
+  opacity: 0.5;
+}
+.pdf-zoom-level {
+  min-width: 42px;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
 .pdf-page-indicator { font-size: var(--text-xs); color: var(--muted); white-space: nowrap; }
 .pdf-canvas { flex: 1; padding: var(--sp-4) var(--sp-3); overflow-y: auto; }
+
+.preview-stage {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.preview-viewport {
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.preview-viewport.is-dragging {
+  cursor: grabbing;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+  transform-origin: center center;
+  transition: transform 90ms ease-out;
+}
 
 /* Simulated invoice */
 .sim-doc {
@@ -1280,11 +1333,28 @@ input[type="checkbox"]:focus-visible {
   font-weight: 600;
   font-size: var(--text-base);
 }
+.scan-confidence-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
 .scan-confidence {
   font-size: var(--text-xs);
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 99px;
+}
+.scan-confidence-info {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
 }
 .conf-high { background: var(--ok-soft); color: var(--ok); }
 .conf-med  { background: var(--warn-soft); color: var(--warn); }
@@ -1586,6 +1656,20 @@ input[type="checkbox"]:focus-visible {
 }
 .settings-section-title { font-weight: 600; font-size: var(--text-base); }
 
+.settings-inline-form {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.settings-inline-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
 .settings-table {
   width: 100%;
   border-collapse: collapse;
@@ -1616,6 +1700,7 @@ input[type="checkbox"]:focus-visible {
   color: var(--muted);
 }
 .coa-dropzone:hover, .coa-dropzone:focus-visible { border-color: var(--accent); background: var(--accent-soft); outline: none; }
+.coa-dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
 .coa-dropzone-text { font-size: var(--text-sm); font-weight: 500; margin-top: var(--sp-2); }
 .coa-dropzone-hint { font-size: var(--text-xs); color: var(--muted); margin-top: var(--sp-1); }
 
@@ -1624,6 +1709,74 @@ input[type="checkbox"]:focus-visible {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--sp-3);
+}
+
+.coa-mode-switch {
+  display: inline-flex;
+  gap: var(--sp-1);
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.coa-mode-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: transparent;
+}
+
+.coa-progress-wrap {
+  margin-top: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-3);
+  background: var(--surface);
+}
+
+.coa-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: color-mix(in oklab, var(--line) 70%, white 30%);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.coa-progress-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  transition: width 0.25s var(--ease);
+}
+
+.coa-progress-label {
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.status-chip.auto {
+  background: color-mix(in oklab, var(--ok) 18%, white 82%);
+  color: color-mix(in oklab, var(--ok) 65%, black 35%);
+}
+
+.status-chip.review {
+  background: color-mix(in oklab, var(--warn) 20%, white 80%);
+  color: color-mix(in oklab, var(--warn) 65%, black 35%);
+}
+
+.status-chip.human_edit {
+  background: color-mix(in oklab, var(--danger) 18%, white 82%);
+  color: color-mix(in oklab, var(--danger) 65%, black 35%);
 }
 
 /* ─── Toast ─── */

@@ -1,0 +1,5 @@
+purchase_invoice:
+  journal_code: PV
+  debit_account: "5040"
+  vat_input_account: "1154"
+  credit_account: "2195"

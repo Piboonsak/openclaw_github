@@ -52,8 +52,6 @@
         <label class="field-label" for="companySelect">Processing for Company <span class="required-mark">*</span></label>
         <select class="field-select" id="companySelect" aria-required="true">
           <option value="">— Select company before uploading —</option>
-          <option value="co-1" data-taxid="0105559123456">บริษัท ยะวัน เทค จำกัด (Tax ID: 0105559123456)</option>
-          <option value="co-2" data-taxid="0105559654321">บริษัท ยะวัน เทรดดิ้ง จำกัด (Tax ID: 0105559654321)</option>
         </select>
         <span class="field-hint" id="companyHint" aria-live="polite"></span>
       </div>
@@ -149,6 +147,12 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               </div>
+              <div class="pdf-zoom-controls" id="pdfZoomControls">
+                <button type="button" class="btn-icon" id="previewZoomOut" aria-label="Zoom out">-</button>
+                <span class="pdf-zoom-level mono" id="previewZoomLevel">100%</span>
+                <button type="button" class="btn-icon" id="previewZoomIn" aria-label="Zoom in">+</button>
+                <button type="button" class="btn-sm btn-ghost" id="previewReset">Reset</button>
+              </div>
             </div>
             <div class="pdf-canvas" id="pdfCanvas">
               <div class="invoice-sim" id="invoiceSim"></div>
@@ -158,7 +162,10 @@
           <form class="scan-form" id="scanForm" novalidate>
             <div class="scan-form-header">
               <span class="scan-doc-type" id="scanDocType">Invoice</span>
-              <span class="scan-confidence" id="scanConfidence"></span>
+              <div class="scan-confidence-wrap">
+                <span class="scan-confidence" id="scanConfidence"></span>
+                <button type="button" class="scan-confidence-info" id="scanConfidenceInfo" aria-label="Confidence details" title=""></button>
+              </div>
             </div>
 
             <div class="field-grid-2">
@@ -340,7 +347,24 @@
       <div class="settings-tab-content" id="tabCompanies">
         <div class="settings-section-header">
           <span class="settings-section-title">Company Profiles</span>
-          <button type="button" class="btn btn-primary btn-sm">+ Add Company</button>
+          <button type="button" class="btn btn-primary btn-sm" id="addCompanyBtn">+ Add Company</button>
+        </div>
+        <div class="settings-inline-form hidden" id="addCompanyPanel">
+          <div class="field-grid-2">
+            <div class="field-group">
+              <label class="field-label" for="newCompanyName">Company Name</label>
+              <input type="text" class="field-input" id="newCompanyName" placeholder="บริษัท ฤทธิล้ำเลิศ จำกัด" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="newCompanyTaxId">Tax ID</label>
+              <input type="text" class="field-input mono" id="newCompanyTaxId" maxlength="13" placeholder="0105559123456" />
+            </div>
+          </div>
+          <div class="settings-inline-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="addCompanySaveBtn">Save Company</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="addCompanyCancelBtn">Cancel</button>
+          </div>
+          <span class="field-hint" id="addCompanyHint" aria-live="polite"></span>
         </div>
         <table class="settings-table">
           <thead>
@@ -350,56 +374,108 @@
               <th class="col-actions">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>บริษัท ยะวัน เทค จำกัด</td>
-              <td class="mono">0105559123456</td>
-              <td class="col-actions">
-                <button type="button" class="btn-text">Edit</button>
-                <button type="button" class="btn-text">COA</button>
-              </td>
-            </tr>
-            <tr>
-              <td>บริษัท ยะวัน เทรดดิ้ง จำกัด</td>
-              <td class="mono">0105559654321</td>
-              <td class="col-actions">
-                <button type="button" class="btn-text">Edit</button>
-                <button type="button" class="btn-text">COA</button>
-              </td>
-            </tr>
-          </tbody>
+          <tbody id="settingsCompaniesBody"></tbody>
         </table>
       </div>
 
       <div class="settings-tab-content hidden" id="tabCoa">
         <div class="settings-section-header">
-          <span class="settings-section-title">Chart of Accounts Import</span>
-          <button type="button" class="btn btn-ghost btn-sm">↓ Download Template</button>
+          <span class="settings-section-title">Chart of Accounts</span>
+          <div class="coa-mode-switch" role="tablist" aria-label="COA mode">
+            <button type="button" class="btn btn-ghost btn-sm coa-mode-btn active" data-coa-mode="csv">CSV Import</button>
+            <button type="button" class="btn btn-ghost btn-sm coa-mode-btn" data-coa-mode="generator">Rule Generator</button>
+          </div>
         </div>
 
         <div class="field-group" style="margin-bottom:var(--sp-4)">
-          <label class="field-label" for="coaCompanySelect">Import COA for</label>
-          <select class="field-select" id="coaCompanySelect">
-            <option value="co-1">บริษัท ยะวัน เทค จำกัด</option>
-            <option value="co-2">บริษัท ยะวัน เทรดดิ้ง จำกัด</option>
-          </select>
+          <label class="field-label" for="coaCompanySelect">Company</label>
+          <select class="field-select" id="coaCompanySelect"></select>
         </div>
 
-        <div class="coa-dropzone" id="coaDropzone" tabindex="0" role="button" aria-label="Drop COA CSV here">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-          <p class="coa-dropzone-text">Drop COA CSV here or click to browse</p>
-          <p class="coa-dropzone-hint">Expected columns: <span class="mono">account_code, account_name, account_type</span></p>
-        </div>
-
-        <div class="coa-preview hidden" id="coaPreview">
-          <div class="coa-preview-header">
-            <span class="preview-label">Preview (first 5 rows)</span>
-            <button type="button" class="btn btn-primary btn-sm" id="importCoaBtn">Import COA</button>
+        <div id="coaCsvMode">
+          <div class="settings-section-header" style="margin-top:0">
+            <span class="settings-section-title">Import from CSV</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="downloadCoaTemplateBtn">↓ Download Template</button>
           </div>
-          <table class="settings-table" style="margin-top:var(--sp-3)">
-            <thead><tr><th>Code</th><th>Account Name</th><th>Type</th></tr></thead>
-            <tbody id="coaPreviewBody"></tbody>
-          </table>
+          <div class="coa-dropzone" id="coaDropzone" tabindex="0" role="button" aria-label="Drop COA CSV here">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <p class="coa-dropzone-text">Drop COA CSV here or click to browse</p>
+            <p class="coa-dropzone-hint">Expected columns: <span class="mono">account_code, account_name, account_type</span></p>
+          </div>
+          <span class="field-hint" id="coaImportHint" aria-live="polite"></span>
+
+          <div class="coa-preview hidden" id="coaPreview">
+            <div class="coa-preview-header">
+              <span class="preview-label">Preview (first 5 rows)</span>
+              <button type="button" class="btn btn-primary btn-sm" id="importCoaBtn">Import COA</button>
+            </div>
+            <table class="settings-table" style="margin-top:var(--sp-3)">
+              <thead><tr><th>Code</th><th>Account Name</th><th>Type</th></tr></thead>
+              <tbody id="coaPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="coaGeneratorMode" class="hidden">
+          <div class="settings-section-header" style="margin-top:0">
+            <span class="settings-section-title">Generate from PDF + DOCX</span>
+            <span class="field-hint">5-stage background pipeline</span>
+          </div>
+
+          <div class="field-grid-2">
+            <div class="coa-dropzone" id="coaRulePdfDropzone" tabindex="0" role="button" aria-label="Drop COA PDF here">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              <p class="coa-dropzone-text">Drop COA PDF</p>
+              <p class="coa-dropzone-hint" id="coaRulePdfLabel">No file selected</p>
+            </div>
+            <div class="coa-dropzone" id="coaRuleDocxDropzone" tabindex="0" role="button" aria-label="Drop mapping DOCX here">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+              <p class="coa-dropzone-text">Drop GL Mapping DOCX</p>
+              <p class="coa-dropzone-hint" id="coaRuleDocxLabel">No file selected</p>
+            </div>
+          </div>
+
+          <div class="field-grid-2" style="margin-top:var(--sp-4)">
+            <div class="field-group">
+              <label class="field-label" for="coaRuleCompanyName">Company Name</label>
+              <input type="text" class="field-input" id="coaRuleCompanyName" placeholder="บริษัท ฤทธิ์ล้ำเลิศ จำกัด" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="coaRuleBusinessType">Business Type</label>
+              <select class="field-select" id="coaRuleBusinessType">
+                <option value="service">Service</option>
+                <option value="trading">Trading</option>
+                <option value="manufacturing">Manufacturing</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="settings-inline-actions" style="margin-top:var(--sp-4)">
+            <button type="button" class="btn btn-primary btn-sm" id="coaGenerateRulesBtn">▶ Generate Rules</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="coaDownloadYamlBtn" disabled>↓ Download YAML</button>
+          </div>
+          <span class="field-hint" id="coaRuleHint" aria-live="polite"></span>
+
+          <div class="coa-progress-wrap hidden" id="coaRuleProgressWrap">
+            <div class="coa-progress-bar"><div class="coa-progress-fill" id="coaRuleProgressFill"></div></div>
+            <div class="coa-progress-label" id="coaRuleProgressLabel">0%</div>
+            <table class="settings-table" style="margin-top:var(--sp-3)">
+              <thead><tr><th>Stage</th><th>Status</th><th>Time</th></tr></thead>
+              <tbody id="coaRuleStageBody"></tbody>
+            </table>
+          </div>
+
+          <div class="coa-preview hidden" id="coaRuleResultWrap">
+            <div class="coa-preview-header">
+              <span class="preview-label">Generated Rules Confidence</span>
+              <button type="button" class="btn btn-primary btn-sm" id="coaApproveRulesBtn">✓ Approve & Save</button>
+            </div>
+            <table class="settings-table" style="margin-top:var(--sp-3)">
+              <thead><tr><th>Rule ID</th><th>Confidence</th><th>Status</th></tr></thead>
+              <tbody id="coaRuleConfidenceBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -413,12 +489,12 @@
   'use strict';
 
   /* ─── SAMPLE DATA ─── */
-  const COMPANIES = [
+  const DEFAULT_COMPANIES = [
     { id: 'co-1', name: 'บริษัท ยะวัน เทค จำกัด', taxId: '0105559123456' },
     { id: 'co-2', name: 'บริษัท ยะวัน เทรดดิ้ง จำกัด', taxId: '0105559654321' },
   ];
 
-  const COA = {
+  const DEFAULT_COA = {
     'co-1': [
       { code: '1001', name: 'เงินสด', type: 'asset' },
       { code: '1101', name: 'ลูกหนี้การค้า', type: 'asset' },
@@ -453,6 +529,37 @@
     ],
   };
 
+  const STORAGE_KEY_COMPANIES = 'ledgerflow_companies';
+  const STORAGE_KEY_COA = 'ledgerflow_coa';
+
+  function loadStoredJson(key, fallback) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return JSON.parse(JSON.stringify(fallback));
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object'
+        ? parsed
+        : JSON.parse(JSON.stringify(fallback));
+    } catch {
+      return JSON.parse(JSON.stringify(fallback));
+    }
+  }
+
+  const COMPANIES = loadStoredJson(STORAGE_KEY_COMPANIES, DEFAULT_COMPANIES);
+  const COA = loadStoredJson(STORAGE_KEY_COA, DEFAULT_COA);
+
+  function persistCompanies() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_COMPANIES, JSON.stringify(COMPANIES));
+    } catch {}
+  }
+
+  function persistCOA() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_COA, JSON.stringify(COA));
+    } catch {}
+  }
+
   const MAPPING_RULES = {
     'co-1': {
       'Metro Electric Co.,Ltd_Invoice': '5040',
@@ -480,8 +587,11 @@
   const state = {
     currentStep: 1,
     selectedCompanyId: '',
+    editingCompanyId: '',
+    uploadedFiles: [],
     confirmedFiles: [],
     processedFiles: [],
+    processResultsById: {},
     scanCurrentIndex: 0,
     approvedScan: new Set(),
     confirmedMapping: new Set(),
@@ -492,6 +602,26 @@
       'Debit_Amount','Credit_Amount','Line_Description',
       'Target_Company_TaxID','Seller_TaxID','WHT_Rate',
     ]),
+    preview: {
+      scale: 1,
+      translateX: 0,
+      translateY: 0,
+      minScale: 0.4,
+      maxScale: 4,
+      dragging: false,
+      dragStartX: 0,
+      dragStartY: 0,
+      enabled: false,
+    },
+    coaMode: 'csv',
+    coaRule: {
+      pdfFile: null,
+      docxFile: null,
+      jobId: '',
+      pollingTimer: null,
+      result: null,
+      yamlText: '',
+    },
   };
 
   /* ─── HELPERS ─── */
@@ -500,6 +630,486 @@
   const fmtMB = mb => mb >= 1 ? `${mb.toFixed(1)} MB` : `${(mb * 1000).toFixed(0)} KB`;
   const getCompany = () => COMPANIES.find(c => c.id === state.selectedCompanyId) || null;
   const getCOA = () => COA[state.selectedCompanyId] || [];
+  const getActiveFiles = () => (state.uploadedFiles.length ? state.uploadedFiles : SAMPLE_FILES);
+  const API_ORIGIN = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : '';
+
+  function apiUrl(path) {
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return API_ORIGIN ? `${API_ORIGIN}${normalized}` : normalized;
+  }
+
+  function escapeAttr(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function getNextCompanyId() {
+    const maxId = COMPANIES.reduce((max, company) => {
+      const match = /^co-(\d+)$/.exec(company.id || '');
+      if (!match) return max;
+      return Math.max(max, Number(match[1]));
+    }, 0);
+    return `co-${maxId + 1}`;
+  }
+
+  function deepCopy(value) {
+    return JSON.parse(JSON.stringify(value || []));
+  }
+
+  function renderCompanySelectors(selectedId = state.selectedCompanyId) {
+    const companySelect = $('companySelect');
+    const coaSelect = $('coaCompanySelect');
+    const validSelectedId = COMPANIES.some(c => c.id === selectedId) ? selectedId : '';
+
+    if (companySelect) {
+      companySelect.innerHTML = '<option value="">— Select company before uploading —</option>' + COMPANIES
+        .map(c => `<option value="${escapeAttr(c.id)}" data-taxid="${escapeAttr(c.taxId)}">${escapeHtml(c.name)} (Tax ID: ${escapeHtml(c.taxId)})</option>`)
+        .join('');
+      companySelect.value = validSelectedId;
+    }
+
+    if (coaSelect) {
+      coaSelect.innerHTML = COMPANIES
+        .map(c => `<option value="${escapeAttr(c.id)}">${escapeHtml(c.name)}</option>`)
+        .join('');
+      coaSelect.value = validSelectedId || COMPANIES[0]?.id || '';
+    }
+  }
+
+  function renderSettingsCompaniesTable() {
+    const tbody = $('settingsCompaniesBody');
+    if (!tbody) return;
+    tbody.innerHTML = COMPANIES
+      .map(c => `
+        <tr>
+          <td>${escapeHtml(c.name)}</td>
+          <td class="mono">${escapeHtml(c.taxId)}</td>
+          <td class="col-actions">
+            <button type="button" class="btn-text edit-company-btn" data-company-id="${escapeAttr(c.id)}">Edit</button>
+            <button type="button" class="btn-text coa-company-btn" data-company-id="${escapeAttr(c.id)}">COA</button>
+          </td>
+        </tr>
+      `)
+      .join('');
+  }
+
+  function syncCompanyUi(selectedId = state.selectedCompanyId) {
+    renderCompanySelectors(selectedId);
+    renderSettingsCompaniesTable();
+  }
+
+  function clearAddCompanyForm() {
+    state.editingCompanyId = '';
+    $('newCompanyName').value = '';
+    $('newCompanyTaxId').value = '';
+    $('addCompanySaveBtn').textContent = 'Save Company';
+    $('addCompanyHint').textContent = '';
+    $('addCompanyHint').className = 'field-hint';
+  }
+
+  function openCompanyEditor(companyId) {
+    const company = COMPANIES.find(c => c.id === companyId);
+    if (!company) return;
+    state.editingCompanyId = companyId;
+    $('newCompanyName').value = company.name;
+    $('newCompanyTaxId').value = company.taxId;
+    $('addCompanySaveBtn').textContent = 'Update Company';
+    $('addCompanyHint').textContent = 'Editing selected company profile.';
+    $('addCompanyHint').className = 'field-hint';
+    $('addCompanyPanel').classList.remove('hidden');
+    $('newCompanyName').focus();
+  }
+
+  function showSettingsTab(tabName) {
+    document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.add('hidden'));
+    document.querySelector(`.settings-tab[data-tab="${tabName}"]`)?.classList.add('active');
+    const panel = $('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+    panel?.classList.remove('hidden');
+  }
+
+  function renderCoaPreviewRows(rows, limit = 5) {
+    const tbody = $('coaPreviewBody');
+    if (!tbody) return;
+    tbody.innerHTML = rows.slice(0, limit).map(row => (
+      `<tr><td class="mono">${escapeHtml(row.code)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.type)}</td></tr>`
+    )).join('');
+    $('coaPreview').classList.toggle('hidden', rows.length === 0);
+  }
+
+  function setCoaImportHint(message, level = 'info') {
+    const hint = $('coaImportHint');
+    if (!hint) return;
+    hint.textContent = message || '';
+    hint.className = level === 'warn' ? 'field-hint field-hint--warn'
+      : level === 'ok' ? 'field-hint field-hint--ok'
+      : 'field-hint';
+  }
+
+  function updateCoaImportButtonState() {
+    const btn = $('importCoaBtn');
+    if (!btn) return;
+    const pendingRows = Array.isArray(state.pendingCoaImport) ? state.pendingCoaImport : [];
+    btn.disabled = pendingRows.length === 0;
+  }
+
+  function setCoaMode(mode) {
+    state.coaMode = mode === 'generator' ? 'generator' : 'csv';
+    document.querySelectorAll('.coa-mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.coaMode === state.coaMode);
+    });
+    $('coaCsvMode')?.classList.toggle('hidden', state.coaMode !== 'csv');
+    $('coaGeneratorMode')?.classList.toggle('hidden', state.coaMode !== 'generator');
+  }
+
+  function setCoaRuleHint(message, level = 'info') {
+    const hint = $('coaRuleHint');
+    if (!hint) return;
+    hint.textContent = message || '';
+    hint.className = level === 'warn' ? 'field-hint field-hint--warn'
+      : level === 'ok' ? 'field-hint field-hint--ok'
+      : 'field-hint';
+  }
+
+  function syncCoaRuleCompanyDefaults() {
+    const company = COMPANIES.find(item => item.id === ($('coaCompanySelect')?.value || state.selectedCompanyId));
+    const companyNameInput = $('coaRuleCompanyName');
+    if (companyNameInput && !companyNameInput.value.trim()) {
+      companyNameInput.value = company?.name || '';
+    }
+  }
+
+  function renderRuleProgress(stages = []) {
+    const tbody = $('coaRuleStageBody');
+    if (!tbody) return;
+    tbody.innerHTML = stages.map(stage => {
+      const duration = stage.duration_ms == null ? '-' : `${(Number(stage.duration_ms || 0) / 1000).toFixed(1)}s`;
+      return `<tr><td>${escapeHtml(stage.label || `Stage ${stage.stage}`)}</td><td>${escapeHtml(stage.status || '')}</td><td class="mono">${escapeHtml(duration)}</td></tr>`;
+    }).join('');
+  }
+
+  function renderRuleResult(result) {
+    const tbody = $('coaRuleConfidenceBody');
+    if (!tbody) return;
+    const rows = Array.isArray(result?.rules_confidence) ? result.rules_confidence : [];
+    tbody.innerHTML = rows.map(item => {
+      const status = String(item.status || '').toLowerCase();
+      const score = Number(item.confidence || 0).toFixed(1);
+      return `<tr><td class="mono">${escapeHtml(item.rule_id || '-')}</td><td class="mono">${escapeHtml(score)}%</td><td><span class="status-chip ${escapeAttr(status)}">${escapeHtml(status || 'unknown')}</span></td></tr>`;
+    }).join('');
+    $('coaRuleResultWrap')?.classList.toggle('hidden', rows.length === 0);
+  }
+
+  function stopRuleProgressPolling() {
+    if (state.coaRule.pollingTimer) {
+      clearInterval(state.coaRule.pollingTimer);
+      state.coaRule.pollingTimer = null;
+    }
+  }
+
+  function detectLikelyMojibake(text) {
+    const sample = String(text || '').slice(0, 5000);
+    const replacementCount = (sample.match(/�/g) || []).length;
+    const unknownGlyphCount = (sample.match(/[ÃÂÐÑ]/g) || []).length;
+    return replacementCount >= 2 || unknownGlyphCount >= 6;
+  }
+
+  async function decodeCsvFile(file) {
+    const buffer = await file.arrayBuffer();
+    const utf8Text = new TextDecoder('utf-8').decode(buffer);
+    if (!detectLikelyMojibake(utf8Text)) {
+      return { text: utf8Text, encoding: 'utf-8' };
+    }
+
+    // Fallback for Thai Excel/ANSI exports.
+    try {
+      const thaiText = new TextDecoder('windows-874').decode(buffer);
+      return { text: thaiText, encoding: 'windows-874' };
+    } catch {
+      return { text: utf8Text, encoding: 'utf-8' };
+    }
+  }
+
+  function parseCoaCsv(text) {
+    const lines = String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (!lines.length) {
+      return { rows: [], errors: ['CSV file is empty.'] };
+    }
+
+    const splitCsvLine = (line, delimiter = ',') => {
+      const out = [];
+      let current = '';
+      let inQuotes = false;
+      for (let index = 0; index < line.length; index += 1) {
+        const ch = line[index];
+        if (ch === '"') {
+          if (inQuotes && line[index + 1] === '"') {
+            current += '"';
+            index += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === delimiter && !inQuotes) {
+          out.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      out.push(current.trim());
+      return out.map(value => value.replace(/^"|"$/g, ''));
+    };
+
+    const delimiters = [',', ';', '\t'];
+    const delimiter = delimiters
+      .map(d => ({
+        d,
+        count: (lines[0].split(d).length + (lines[1] ? lines[1].split(d).length : 0)),
+      }))
+      .sort((a, b) => b.count - a.count)[0].d;
+
+    const normalizeHeader = value => value.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+    const headerValues = splitCsvLine(lines[0], delimiter).map(normalizeHeader);
+    const aliasMap = {
+      account_code: ['account_code', 'accountcode', 'code', 'เลขบัญชี', 'รหัสบัญชี'],
+      account_name: ['account_name', 'accountname', 'name', 'ชื่อบัญชี'],
+      account_type: ['account_type', 'accounttype', 'type', 'ประเภทบัญชี'],
+    };
+
+    const findIndex = (canonical) => {
+      const aliases = aliasMap[canonical] || [];
+      return headerValues.findIndex(h => aliases.includes(h));
+    };
+
+    const codeIndex = findIndex('account_code');
+    const nameIndex = findIndex('account_name');
+    const typeIndex = findIndex('account_type');
+
+    const errors = [];
+    if (codeIndex < 0 || nameIndex < 0) {
+      errors.push('Missing required columns. Required: account_code, account_name');
+      errors.push('Optional column: account_type (asset/liability/equity/revenue/expense)');
+      return { rows: [], errors };
+    }
+
+    if (lines.length < 2) {
+      return { rows: [], errors: ['CSV has header but no data rows.'] };
+    }
+
+    const validTypes = new Set(['asset', 'liability', 'equity', 'revenue', 'expense']);
+    const rows = [];
+
+    for (let lineNo = 2; lineNo <= lines.length; lineNo += 1) {
+      const line = lines[lineNo - 1];
+      if (!line) continue;
+      const cols = splitCsvLine(line, delimiter);
+
+      const code = String(cols[codeIndex] || '').trim();
+      const name = String(cols[nameIndex] || '').trim();
+      let type = String(typeIndex >= 0 ? (cols[typeIndex] || '') : '').trim().toLowerCase();
+      if (!type) type = 'expense';
+
+      if (!code || !name) {
+        errors.push(`Line ${lineNo}: account_code and account_name are required.`);
+        continue;
+      }
+      if (!validTypes.has(type)) {
+        errors.push(`Line ${lineNo}: account_type must be one of asset/liability/equity/revenue/expense.`);
+        continue;
+      }
+      if (detectLikelyMojibake(`${code} ${name}`)) {
+        errors.push(`Line ${lineNo}: text looks corrupted, please export CSV as UTF-8.`);
+        continue;
+      }
+
+      rows.push({ code, name, type });
+    }
+
+    if (!rows.length && !errors.length) {
+      errors.push('No valid COA rows found.');
+    }
+
+    return { rows, errors };
+  }
+
+  function handleEditCompany(companyId) {
+    openCompanyEditor(companyId);
+  }
+
+  function handleOpenCompanyCoa(companyId) {
+    showSettingsTab('coa');
+    if ($('coaCompanySelect')) $('coaCompanySelect').value = companyId;
+    renderCoaPreviewRows(COA[companyId] || [], 10);
+  }
+
+  function toNumber(value, fallback = 0) {
+    const n = Number(String(value ?? '').replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function toOptionalNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(String(value).replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function computeDisplayedConfidence(payloadFields, extractionMeta, extractionConfidenceMap) {
+    const ocrConf = Math.max(0, Math.min(1, toNumber(extractionMeta?.ocr_confidence, 0.75)));
+
+    const confidenceValues = Object.values(extractionConfidenceMap || {})
+      .map(v => toNumber(v, 0))
+      .filter(v => Number.isFinite(v));
+    const fieldConf = confidenceValues.length
+      ? confidenceValues.reduce((sum, val) => sum + val, 0) / confidenceValues.length
+      : 0.6;
+
+    const requiredKeys = [
+      'invoice_number',
+      'invoice_date',
+      'seller_name',
+      'buyer_name',
+      'seller_tax_id',
+      'buyer_tax_id',
+      'total_amount',
+      'wht_amount',
+      'amount_paid',
+    ];
+    const presentCount = requiredKeys.filter(key => String(payloadFields?.[key] || '').trim().length > 0).length;
+    const completeness = presentCount / requiredKeys.length;
+
+    const combined = (ocrConf * 0.25) + (fieldConf * 0.45) + (completeness * 0.30);
+    const percent = Math.round(Math.max(0, Math.min(1, combined)) * 100);
+
+    return {
+      percent,
+      detail: `OCR ${Math.round(ocrConf * 100)}% | Extraction ${Math.round(fieldConf * 100)}% | Complete ${presentCount}/${requiredKeys.length}`,
+    };
+  }
+
+  function inferKnownWhtRate(baseAmount, whtAmount) {
+    if (baseAmount <= 0 || whtAmount <= 0) return 0;
+    const estimatedRate = (whtAmount / baseAmount) * 100;
+    const knownRates = [1, 3, 5];
+    let nearest = knownRates[0];
+    let minDiff = Math.abs(estimatedRate - nearest);
+    for (const rate of knownRates.slice(1)) {
+      const diff = Math.abs(estimatedRate - rate);
+      if (diff < minDiff) {
+        minDiff = diff;
+        nearest = rate;
+      }
+    }
+    return minDiff <= 1 ? nearest : 0;
+  }
+
+  function normalizeUploadedFiles(fileList) {
+    return Array.from(fileList).map((file, i) => {
+      const stem = file.name.replace(/\.[^/.]+$/, '');
+      return {
+        id: `u${Date.now()}-${i}`,
+        name: file.name,
+        size: file.size / (1024 * 1024),
+        folder: 'Uploaded',
+        sellerTax: '',
+        sellerName: stem,
+        buyerTax: getCompany()?.taxId || '',
+        netAmt: 0,
+        vatRate: 7,
+        whtRate: 0,
+        discount: 0,
+        docType: 'Invoice',
+        confidence: 80,
+        invNo: stem.slice(0, 24) || `INV-UP-${i + 1}`,
+        invDate: new Date().toISOString().slice(0, 10),
+        _rawFile: file,
+        _previewUrl: URL.createObjectURL(file),
+      };
+    });
+  }
+
+  async function runBackendProcess(fileItem) {
+    if (!fileItem?._rawFile) return null;
+    const formData = new FormData();
+    formData.append('file', fileItem._rawFile, fileItem._rawFile.name);
+    const res = await fetch(apiUrl('/api/process'), { method: 'POST', body: formData });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status} ${errText.slice(0, 120)}`);
+    }
+    return await res.json();
+  }
+
+  function applyBackendResultToFile(fileItem, payload) {
+    if (!payload) return;
+    state.processResultsById[fileItem.id] = payload;
+    fileItem._backend = payload;
+    fileItem._backendSourceFile = payload.source_file || fileItem._backendSourceFile;
+
+    const fields = payload.fields || {};
+    const extraction = payload.extraction || {};
+    const extractionConfidenceMap = extraction.confidence_per_field || {};
+    const journal = payload.journal || {};
+    const postings = Array.isArray(journal.postings) ? journal.postings : [];
+
+    const expenseLine = postings.find(p => p.line_type === 'expense' && toNumber(p.debit) > 0);
+    const vatLine = postings.find(p => p.line_type === 'vat' && toNumber(p.debit) > 0);
+    const creditLine = postings.find(p => toNumber(p.credit) > 0);
+    const totalAmount = toNumber(fields.total_amount, 0);
+    const extractedWhtAmount = toOptionalNumber(fields.wht_amount);
+    const extractedWhtRate = toOptionalNumber(fields.wht_rate);
+
+    const backendInvNo = String(fields.invoice_number || '').trim();
+    if (backendInvNo.length >= 4 || /[A-Za-z-]/.test(backendInvNo)) {
+      fileItem.invNo = backendInvNo;
+    }
+    fileItem.invDate = fields.invoice_date || fileItem.invDate;
+    fileItem.sellerName = fields.vendor_name || fileItem.sellerName;
+    fileItem.sellerTax = fields.seller_tax_id || fileItem.sellerTax;
+    fileItem.buyerTax = fields.buyer_tax_id || fileItem.buyerTax;
+    fileItem.buyerName = fields.buyer_name || fileItem.buyerName || '';
+    if (expenseLine) {
+      fileItem.netAmt = toNumber(expenseLine.debit);
+    } else if (totalAmount > 0 && vatLine) {
+      fileItem.netAmt = Math.max(0, totalAmount - toNumber(vatLine.debit));
+    } else if (totalAmount > 0) {
+      fileItem.netAmt = totalAmount;
+    }
+    fileItem.vatRate = fileItem.vatRate || 7;
+    fileItem.discount = fileItem.discount || 0;
+    fileItem._vatAmt = vatLine ? toNumber(vatLine.debit) : 0;
+    fileItem._whtAmt = extractedWhtAmount !== null && extractedWhtAmount > 0
+      ? extractedWhtAmount
+      : null;
+
+    if (extractedWhtRate !== null && extractedWhtRate >= 0) {
+      fileItem.whtRate = extractedWhtRate;
+    } else if (fileItem._whtAmt && fileItem.netAmt > 0) {
+      fileItem.whtRate = inferKnownWhtRate(fileItem.netAmt, fileItem._whtAmt);
+    } else {
+      fileItem.whtRate = fileItem.whtRate || 0;
+    }
+
+    fileItem._creditAmt = creditLine
+      ? toNumber(creditLine.credit)
+      : toNumber(journal?.totals?.credit, totalAmount);
+    fileItem._grossAmt = fileItem._creditAmt || (fileItem.netAmt + fileItem._vatAmt);
+
+    const confidenceInfo = computeDisplayedConfidence(fields, extraction?.meta || {}, extractionConfidenceMap);
+    fileItem.confidence = confidenceInfo.percent;
+    fileItem._confidenceDetail = confidenceInfo.detail;
+  }
 
   function isMismatch(f) {
     const co = getCompany();
@@ -527,23 +1137,70 @@
   function buildVouchers(files) {
     return files.map((f, i) => {
       const net = f.netAmt - (f.discount || 0);
-      const vat = f.vatRate > 0 ? parseFloat((net * f.vatRate / 100).toFixed(2)) : 0;
-      const wht = f.whtRate > 0 ? parseFloat((net * f.whtRate / 100).toFixed(2)) : 0;
+      const vat = f._vatAmt !== undefined && f._vatAmt !== null && f._vatAmt > 0 ? f._vatAmt : (f.vatRate > 0 ? parseFloat((net * f.vatRate / 100).toFixed(2)) : 0);
+      const wht = f._whtAmt !== undefined && f._whtAmt !== null && f._whtAmt > 0
+        ? toNumber(f._whtAmt, 0)
+        : (f.whtRate > 0 ? parseFloat((net * f.whtRate / 100).toFixed(2)) : 0);
       const gross = net + vat - wht;
 
-      const ruleKey = `${f.sellerName}_${f.docType}`;
-      const rules = state.mappingRules[state.selectedCompanyId] || {};
-      const recCode = rules[ruleKey] || inferExpenseCode(f);
+      let expenseCode = '';
+      let vatCode = '1151';
+      let apCode = '2110';
+      let whtCode = '2150';
+
+      if (f._backend?.journal?.postings?.length) {
+        const postings = f._backend.journal.postings;
+        const expLine = postings.find(p => p.line_type === 'expense');
+        const vLine = postings.find(p => p.line_type === 'vat');
+        const aLine = postings.find(p => p.line_type === 'ap');
+        if (expLine?.account_code) expenseCode = String(expLine.account_code);
+        if (vLine?.account_code) vatCode = String(vLine.account_code);
+        if (aLine?.account_code) apCode = String(aLine.account_code);
+      }
+
+      if (!expenseCode) {
+        const ruleKey = `${f.sellerName}_${f.docType}`;
+        const rules = state.mappingRules[state.selectedCompanyId] || {};
+        expenseCode = rules[ruleKey] || inferExpenseCode(f);
+      }
 
       const lines = [];
-      lines.push({ type:'Dr', code:recCode,  label:getLabelForCode(recCode),       amount:net,   isEditable:true });
-      if (vat > 0) lines.push({ type:'Dr', code:'1151', label:'ภาษีซื้อ 7%',            amount:vat,   isEditable:false });
-      lines.push({ type:'Cr', code:'2110', label:'เจ้าหนี้การค้า',              amount:gross, isEditable:false });
-      if (wht > 0) lines.push({ type:'Cr', code:'2150', label:`ภาษีหัก ณ ที่จ่าย ${f.whtRate}%`, amount:wht,   isEditable:false });
+      lines.push({ type: 'Dr', code: expenseCode, label: getLabelForCode(expenseCode), amount: net, isEditable: true });
+      if (vat > 0) {
+        lines.push({ type: 'Dr', code: vatCode, label: getLabelForCode(vatCode), amount: vat, isEditable: false });
+      }
+      lines.push({ type: 'Cr', code: apCode, label: getLabelForCode(apCode), amount: gross, isEditable: false });
+      if (wht > 0) {
+        lines.push({ type: 'Cr', code: whtCode, label: getLabelForCode(whtCode), amount: wht, isEditable: false });
+      }
 
-      const voucherNo = `AP2605${String(i+1).padStart(3,'0')}`;
-      return { fileId:f.id, voucherNo, date:f.invDate, vendor:f.sellerName, gross, lines };
+      const voucherNo = f.invNo || `AP2605${String(i + 1).padStart(3, '0')}`;
+      return { fileId: f.id, voucherNo, date: f.invDate, vendor: f.sellerName, gross, lines };
     });
+  }
+
+  async function downloadExcelFromBackend() {
+    if (!state.vouchers.length) return false;
+    try {
+      const res = await fetch(apiUrl('/api/export-excel'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state.vouchers),
+      });
+      if (!res.ok) return false;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'double_entry_ledgers.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /* ─── NAVIGATION ─── */
@@ -576,8 +1233,8 @@
   });
 
   /* ─── STEP 1: COMPANY + UPLOAD ─── */
-  $('companySelect').addEventListener('change', function () {
-    state.selectedCompanyId = this.value;
+  function applyCompanySelection(companyId) {
+    state.selectedCompanyId = companyId || '';
     const co = getCompany();
     const hint = $('companyHint');
     const dz = $('dropzone');
@@ -591,6 +1248,8 @@
       $('dropzoneText').textContent = 'Drag & drop files here';
       $('dropzoneSub').innerHTML = 'or <button type="button" class="link-btn" id="browseBtn">browse your computer</button> — Folder upload supported';
       document.getElementById('browseBtn')?.addEventListener('click', () => $('fileInput').click());
+      if ($('coaCompanySelect')) $('coaCompanySelect').value = co.id;
+      syncCoaRuleCompanyDefaults();
       renderFileList();
     } else {
       hint.textContent = '';
@@ -602,13 +1261,59 @@
       $('dropzoneSub').textContent = 'Folder upload is supported';
       $('fileList').innerHTML = '';
     }
+  }
+
+  $('companySelect').addEventListener('change', function () {
+    applyCompanySelection(this.value);
+  });
+
+  $('coaCompanySelect').addEventListener('change', function () {
+    const companyId = this.value || '';
+    if ($('companySelect')) $('companySelect').value = companyId;
+    if ($('coaRuleCompanyName')) $('coaRuleCompanyName').value = '';
+    applyCompanySelection(companyId);
+  });
+
+  $('dropzone').addEventListener('click', () => {
+    if ($('dropzone').dataset.disabled === 'true') return;
+    $('fileInput').click();
+  });
+
+  $('dropzone').addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if ($('dropzone').dataset.disabled === 'true') return;
+    $('dropzone').classList.add('dragover');
+  });
+
+  $('dropzone').addEventListener('dragleave', () => {
+    $('dropzone').classList.remove('dragover');
+  });
+
+  $('dropzone').addEventListener('drop', (e) => {
+    e.preventDefault();
+    $('dropzone').classList.remove('dragover');
+    if ($('dropzone').dataset.disabled === 'true') return;
+    const files = e.dataTransfer?.files;
+    if (!files || !files.length) return;
+    state.uploadedFiles = normalizeUploadedFiles(files);
+    renderFileList();
+    showToast(`Loaded ${state.uploadedFiles.length} file(s)`, 'ok');
+  });
+
+  $('fileInput').addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    state.uploadedFiles = normalizeUploadedFiles(files);
+    renderFileList();
+    showToast(`Loaded ${state.uploadedFiles.length} file(s)`, 'ok');
   });
 
   function renderFileList() {
     const co = getCompany();
+    const files = getActiveFiles();
     const ul = $('fileList');
     ul.innerHTML = '';
-    SAMPLE_FILES.forEach(f => {
+    files.forEach(f => {
       const bad = isMismatch(f);
       const li = document.createElement('li');
       li.className = 'file-row';
@@ -629,10 +1334,11 @@
   /* ─── STEP 2: FOLDER TREE ─── */
   function renderStep2() {
     const co = getCompany();
+    const filesInput = getActiveFiles();
     const container = $('folderTree');
     container.innerHTML = '';
     const folders = {};
-    SAMPLE_FILES.forEach(f => { (folders[f.folder] = folders[f.folder] || []).push(f); });
+    filesInput.forEach(f => { (folders[f.folder] = folders[f.folder] || []).push(f); });
 
     Object.entries(folders).forEach(([folder, files]) => {
       const mismatches = files.filter(f => isMismatch(f)).length;
@@ -673,7 +1379,7 @@
     container.addEventListener('change', updateSelectCount);
     updateSelectCount();
 
-    const mmCount = SAMPLE_FILES.filter(f => isMismatch(f)).length;
+    const mmCount = filesInput.filter(f => isMismatch(f)).length;
     const alert = $('mismatchAlert');
     if (mmCount > 0) {
       alert.style.display = '';
@@ -685,28 +1391,27 @@
   }
 
   function updateSelectCount() {
+    const filesInput = getActiveFiles();
     const checked = document.querySelectorAll('.file-check:checked');
     $('selectCount').textContent = `${checked.length} files selected`;
     const totalMB = Array.from(checked).reduce((sum, cb) => {
-      const f = SAMPLE_FILES.find(x => x.id === cb.dataset.id);
+      const f = filesInput.find(x => x.id === cb.dataset.id);
       return f ? sum + f.size : sum;
     }, 0);
     $('summaryText').textContent = `${checked.length} files · ${totalMB.toFixed(1)} MB`;
-    state.confirmedFiles = SAMPLE_FILES.filter(f => {
+    state.confirmedFiles = filesInput.filter(f => {
       const cb = document.querySelector(`.file-check[data-id="${f.id}"]`);
       return cb && cb.checked;
     });
   }
 
   /* ─── STEP 3: PROCESSING ─── */
-  let procTimer = null;
-  function startProcessing() {
-    if (state.confirmedFiles.length === 0) state.confirmedFiles = [...SAMPLE_FILES];
+  async function startProcessing() {
+    if (state.confirmedFiles.length === 0) state.confirmedFiles = [...getActiveFiles()];
     state.processedFiles = [];
     const body = $('processTableBody');
     body.innerHTML = '';
     const STAGES = ['OCR','Classify','Extract','Map COA'];
-    const fileStates = state.confirmedFiles.map(f => ({ file:f, stage:-1, done:false }));
 
     state.confirmedFiles.forEach(f => {
       const tr = document.createElement('tr');
@@ -718,39 +1423,46 @@
       body.appendChild(tr);
     });
 
-    let fi = 0, si = 0;
-    function tick() {
-      if (fi >= fileStates.length) {
-        $('processProgress').textContent = `All ${state.confirmedFiles.length} documents processed.`;
-        state.processedFiles = [...state.confirmedFiles];
-        clearInterval(procTimer);
-        return;
-      }
-      const fs = fileStates[fi];
-      const f = fs.file;
-      const sName = STAGES[si];
-      const bar = document.getElementById(`sb-${f.id}-${sName.replace(' ','')}`);
+    const fillStage = (fileId, stageName) => {
+      const bar = document.getElementById(`sb-${fileId}-${stageName.replace(' ','')}`);
+      if (bar) bar.querySelector('.stage-bar-fill').style.width = '100%';
+    };
+
+    for (let i = 0; i < state.confirmedFiles.length; i++) {
+      const f = state.confirmedFiles[i];
       const statusEl = $(`ps-${f.id}`);
-      statusEl.innerHTML = `<span class="status-chip status-running">${sName}…</span>`;
-      if (bar) requestAnimationFrame(() => { bar.querySelector('.stage-bar-fill').style.width = '100%'; });
-      const total = fileStates.length;
-      const done = fileStates.filter(x => x.done).length;
-      $('processProgress').textContent = `Processing ${done + 1} of ${total}…`;
-      si++;
-      if (si >= STAGES.length) {
-        si = 0; fi++;
-        fs.done = true;
-        statusEl.innerHTML = '<span class="status-chip status-done">✓ Done</span>';
-        state.processedFiles.push(f);
+      $('processProgress').textContent = `Processing ${i + 1} of ${state.confirmedFiles.length}…`;
+      statusEl.innerHTML = '<span class="status-chip status-running">Processing…</span>';
+
+      let usedBackend = false;
+      let fallbackReason = '';
+      try {
+        fillStage(f.id, 'OCR');
+        const payload = await runBackendProcess(f);
+        fillStage(f.id, 'Classify');
+        fillStage(f.id, 'Extract');
+        fillStage(f.id, 'Map COA');
+        if (payload) {
+          usedBackend = true;
+          applyBackendResultToFile(f, payload);
+        }
+      } catch (err) {
+        fallbackReason = String(err?.message || err || 'Fallback mode');
+        console.warn('Backend process fallback for file:', f.name, err);
       }
+
+      statusEl.innerHTML = usedBackend
+        ? '<span class="status-chip status-done">✓ Done (API)</span>'
+        : `<span class="status-chip status-running" title="${escapeAttr(fallbackReason)}">Done (Fallback)</span>`;
+      state.processedFiles.push(f);
     }
-    clearInterval(procTimer);
-    procTimer = setInterval(tick, 320);
+
+    $('processProgress').textContent = `All ${state.confirmedFiles.length} documents processed.`;
   }
 
   /* ─── STEP 4: SCAN REVIEW ─── */
   function renderStep4() {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     state.scanCurrentIndex = 0;
     renderDocNav(files);
     loadScanForm(files[0]);
@@ -784,7 +1496,7 @@
 
   function loadScanForm(f) {
     if (!f) return;
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     const idx = files.findIndex(x => x.id === f.id);
     $('pdfFilename').textContent = f.name;
     $('pdfPageIndicator').textContent = `${idx + 1} / ${files.length}`;
@@ -793,22 +1505,33 @@
     const confEl = $('scanConfidence');
     confEl.textContent = `${f.confidence}% confidence`;
     confEl.className = `scan-confidence ${f.confidence >= 90 ? 'conf-high' : f.confidence >= 75 ? 'conf-med' : 'conf-low'}`;
+    $('scanConfidenceInfo').textContent = 'i';
+    $('scanConfidenceInfo').title = f._confidenceDetail || 'Confidence blends OCR quality and extracted-field completeness.';
 
-    const vat = f.vatRate > 0 ? parseFloat(((f.netAmt - (f.discount||0)) * f.vatRate / 100).toFixed(2)) : 0;
-    const wht = f.whtRate > 0 ? parseFloat(((f.netAmt - (f.discount||0)) * f.whtRate / 100).toFixed(2)) : 0;
+    const net = toNumber(f.netAmt, 0);
+    const vat = f._vatAmt !== undefined && f._vatAmt !== null
+      ? toNumber(f._vatAmt, 0)
+      : (f.vatRate > 0 ? parseFloat(((net - (f.discount || 0)) * f.vatRate / 100).toFixed(2)) : 0);
+    const wht = f._whtAmt !== undefined && f._whtAmt !== null && f._whtAmt > 0
+      ? toNumber(f._whtAmt, 0)
+      : (f.whtRate > 0 ? parseFloat(((net - (f.discount || 0)) * f.whtRate / 100).toFixed(2)) : 0);
+    const gross = f._grossAmt !== undefined && f._grossAmt !== null
+      ? toNumber(f._grossAmt, 0)
+      : net + vat;
+    const whtRateValue = Number.isFinite(toNumber(f.whtRate, NaN)) ? Math.round(toNumber(f.whtRate, 0)) : 0;
 
     $('scanInvDate').value = f.invDate || '';
     $('scanInvNo').value = f.invNo || '';
     $('scanSellerTax').value = f.sellerTax || '';
     $('scanSellerName').value = f.sellerName || '';
     $('scanBuyerTax').value = f.buyerTax || '';
-    $('scanBuyerName').value = '';
-    $('scanNet').value = fmt(f.netAmt);
+    $('scanBuyerName').value = f.buyerName || '';
+    $('scanNet').value = fmt(net);
     $('scanVat').value = fmt(vat);
-    $('scanWhtRate').value = f.whtRate;
+    $('scanWhtRate').value = ['0', '1', '3', '5'].includes(String(whtRateValue)) ? String(whtRateValue) : '0';
     $('scanWht').value = fmt(wht);
     $('scanDiscount').value = fmt(f.discount || 0);
-    $('scanGross').value = fmt(f.netAmt + vat);
+    $('scanGross').value = fmt(gross);
 
     const co = getCompany();
     const st = $('scanBuyerTaxStatus');
@@ -822,7 +1545,7 @@
       }
     }
 
-    renderPdfSim(f, vat);
+    renderDocumentPreview(f, net, vat, gross);
 
     const approved = state.approvedScan.has(f.id);
     const btn = $('approveHeaderBtn');
@@ -830,7 +1553,125 @@
     btn.className = approved ? 'btn btn-ok' : 'btn btn-primary';
   }
 
-  function renderPdfSim(f, vat) {
+  function setPreviewControlsEnabled(enabled) {
+    state.preview.enabled = enabled;
+    $('previewZoomIn').disabled = !enabled;
+    $('previewZoomOut').disabled = !enabled;
+    $('previewReset').disabled = !enabled;
+    $('pdfZoomControls').classList.toggle('is-disabled', !enabled);
+  }
+
+  function updatePreviewTransform() {
+    const img = $('previewImage');
+    if (!img) {
+      $('previewZoomLevel').textContent = '100%';
+      return;
+    }
+    img.style.transform = `translate(${state.preview.translateX}px, ${state.preview.translateY}px) scale(${state.preview.scale})`;
+    $('previewZoomLevel').textContent = `${Math.round(state.preview.scale * 100)}%`;
+  }
+
+  function resetPreviewTransform() {
+    state.preview.scale = 1;
+    state.preview.translateX = 0;
+    state.preview.translateY = 0;
+    state.preview.dragging = false;
+    updatePreviewTransform();
+  }
+
+  function setPreviewScale(nextScale) {
+    const clamped = Math.min(state.preview.maxScale, Math.max(state.preview.minScale, nextScale));
+    state.preview.scale = clamped;
+    if (clamped <= 1) {
+      state.preview.translateX = 0;
+      state.preview.translateY = 0;
+    }
+    updatePreviewTransform();
+  }
+
+  function bindPreviewInteractions() {
+    const viewport = $('previewViewport');
+    if (!viewport) return;
+
+    viewport.addEventListener('wheel', (event) => {
+      if (!state.preview.enabled) return;
+      event.preventDefault();
+      const nextScale = state.preview.scale + (event.deltaY < 0 ? 0.12 : -0.12);
+      setPreviewScale(nextScale);
+    }, { passive: false });
+
+    viewport.addEventListener('pointerdown', (event) => {
+      if (!state.preview.enabled || event.button !== 0 || state.preview.scale <= 1) return;
+      state.preview.dragging = true;
+      state.preview.dragStartX = event.clientX - state.preview.translateX;
+      state.preview.dragStartY = event.clientY - state.preview.translateY;
+      viewport.classList.add('is-dragging');
+      if (typeof viewport.setPointerCapture === 'function') {
+        try {
+          viewport.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignore pointer-capture errors from non-standard or synthetic pointer flows.
+        }
+      }
+    });
+
+    viewport.addEventListener('pointermove', (event) => {
+      if (!state.preview.dragging) return;
+      state.preview.translateX = event.clientX - state.preview.dragStartX;
+      state.preview.translateY = event.clientY - state.preview.dragStartY;
+      updatePreviewTransform();
+    });
+
+    viewport.addEventListener('pointerup', (event) => {
+      if (!state.preview.dragging) return;
+      state.preview.dragging = false;
+      viewport.classList.remove('is-dragging');
+      if (typeof viewport.releasePointerCapture === 'function') {
+        try {
+          viewport.releasePointerCapture(event.pointerId);
+        } catch {
+          // Ignore pointer-capture errors from non-standard or synthetic pointer flows.
+        }
+      }
+    });
+
+    viewport.addEventListener('pointercancel', () => {
+      state.preview.dragging = false;
+      viewport.classList.remove('is-dragging');
+    });
+  }
+
+  function renderImagePreview(src, alt) {
+    $('invoiceSim').innerHTML = `
+      <div class="preview-stage">
+        <div class="preview-viewport" id="previewViewport">
+          <img id="previewImage" class="preview-image" src="${src}" alt="${alt}" draggable="false" />
+        </div>
+      </div>
+    `;
+    setPreviewControlsEnabled(true);
+    resetPreviewTransform();
+    bindPreviewInteractions();
+  }
+
+  function renderDocumentPreview(f, net, vat, gross) {
+    const previewUrl = f._previewUrl || '';
+    const ext = (f.name || '').split('.').pop()?.toLowerCase() || '';
+
+    if (ext === 'pdf' && f._backendSourceFile) {
+      const source = encodeURIComponent(f._backendSourceFile);
+      const imgUrl = `${apiUrl('/api/preview-first-page')}?file_path=${source}&_t=${Date.now()}`;
+      renderImagePreview(imgUrl, f.name);
+      return;
+    }
+
+    if (previewUrl && ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
+      renderImagePreview(previewUrl, f.name);
+      return;
+    }
+
+    setPreviewControlsEnabled(false);
+    resetPreviewTransform();
     $('invoiceSim').innerHTML = `
       <div class="sim-doc">
         <div class="sim-header">
@@ -848,16 +1689,29 @@
         </div>
         <div class="sim-line"></div>
         <div class="sim-amounts">
-          <div class="sim-row"><span>Base Amount</span><span class="mono">${fmt(f.netAmt)}</span></div>
+          <div class="sim-row"><span>Base Amount</span><span class="mono">${fmt(net)}</span></div>
           ${vat > 0 ? `<div class="sim-row"><span>VAT 7%</span><span class="mono">${fmt(vat)}</span></div>` : ''}
-          <div class="sim-row sim-total"><span>Total</span><span class="mono">${fmt(f.netAmt + vat)}</span></div>
+          <div class="sim-row sim-total"><span>Total</span><span class="mono">${fmt(gross)}</span></div>
         </div>
       </div>
     `;
   }
 
+  $('previewZoomIn').addEventListener('click', () => {
+    if (!state.preview.enabled) return;
+    setPreviewScale(state.preview.scale + 0.2);
+  });
+  $('previewZoomOut').addEventListener('click', () => {
+    if (!state.preview.enabled) return;
+    setPreviewScale(state.preview.scale - 0.2);
+  });
+  $('previewReset').addEventListener('click', () => {
+    if (!state.preview.enabled) return;
+    resetPreviewTransform();
+  });
+
   $('approveHeaderBtn').addEventListener('click', () => {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     const f = files[state.scanCurrentIndex];
     if (!f) return;
     state.approvedScan.add(f.id);
@@ -867,7 +1721,7 @@
   });
 
   $('scanNextBtn').addEventListener('click', () => {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     if (state.scanCurrentIndex < files.length - 1) {
       state.scanCurrentIndex++;
       renderDocNav(files);
@@ -876,7 +1730,7 @@
   });
 
   $('approveAllScan').addEventListener('click', () => {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     files.forEach(f => state.approvedScan.add(f.id));
     renderDocNav(files);
     loadScanForm(files[state.scanCurrentIndex]);
@@ -884,17 +1738,17 @@
   });
 
   $('pdfPrev').addEventListener('click', () => {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     if (state.scanCurrentIndex > 0) { state.scanCurrentIndex--; renderDocNav(files); loadScanForm(files[state.scanCurrentIndex]); }
   });
   $('pdfNext').addEventListener('click', () => {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     if (state.scanCurrentIndex < files.length - 1) { state.scanCurrentIndex++; renderDocNav(files); loadScanForm(files[state.scanCurrentIndex]); }
   });
 
   /* ─── STEP 5: MAPPING REVIEW ─── */
   function renderStep5() {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     state.vouchers = buildVouchers(files);
     const list = $('voucherList');
     list.innerHTML = '';
@@ -1003,7 +1857,7 @@
     state.confirmedMapping.add(vno);
     const v = state.vouchers.find(x => x.voucherNo === vno);
     if (v) {
-      const f = SAMPLE_FILES.find(x => x.id === v.fileId);
+      const f = getActiveFiles().find(x => x.id === v.fileId);
       if (f) {
         const key = `${f.sellerName}_${f.docType}`;
         const drLine = v.lines.find(l => l.isEditable);
@@ -1035,11 +1889,11 @@
 
   /* ─── STEP 6: EXPORT ─── */
   function buildExportRows() {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     if (!state.vouchers.length) state.vouchers = buildVouchers(files);
     const co = getCompany();
     return state.vouchers.flatMap(v => {
-      const f = SAMPLE_FILES.find(x => x.id === v.fileId);
+      const f = getActiveFiles().find(x => x.id === v.fileId);
       return v.lines.map(line => ({
         Voucher_No: v.voucherNo,
         Date: v.date,
@@ -1059,7 +1913,7 @@
   }
 
   function renderStep6() {
-    const files = state.processedFiles.length > 0 ? state.processedFiles : SAMPLE_FILES;
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     if (!state.vouchers.length) state.vouchers = buildVouchers(files);
 
     const totalDr = state.vouchers.flatMap(v => v.lines).filter(l => l.type === 'Dr').reduce((s, l) => s + l.amount, 0);
@@ -1099,7 +1953,7 @@
     container.appendChild(table);
   }
 
-  function exportCSV() {
+  async function exportCSV() {
     const cols = Array.from(state.exportColumns);
     const allLines = buildExportRows();
 
@@ -1115,7 +1969,7 @@
     msg.className = `export-validate-msg ${balanced ? 'ok' : 'warn'}`;
 
     const rawLines = state.vouchers.flatMap(v => {
-      const f = SAMPLE_FILES.find(x => x.id === v.fileId);
+      const f = getActiveFiles().find(x => x.id === v.fileId);
       const co = getCompany();
       return v.lines.map(line => ({
         Voucher_No: v.voucherNo, Date: v.date, Book_Code: 'AP',
@@ -1140,7 +1994,9 @@
     a.href = url; a.download = 'Express-Journal.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('CSV downloaded', 'ok');
+
+    const excelOk = await downloadExcelFromBackend();
+    showToast(excelOk ? 'CSV + Excel downloaded' : 'CSV downloaded', 'ok');
   }
 
   $('exportBtn').addEventListener('click', exportCSV);
@@ -1159,21 +2015,391 @@
   });
   document.querySelectorAll('.settings-tab').forEach(tab => {
     tab.addEventListener('click', function () {
-      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.add('hidden'));
-      this.classList.add('active');
-      $('tab' + this.dataset.tab.charAt(0).toUpperCase() + this.dataset.tab.slice(1)).classList.remove('hidden');
+      showSettingsTab(this.dataset.tab);
     });
   });
-  $('coaDropzone').addEventListener('click', () => {
-    const coa = getCOA();
-    if (!coa.length) { showToast('Select a company first', 'warn'); return; }
-    const tbody = $('coaPreviewBody');
-    tbody.innerHTML = coa.slice(0, 5).map(c => `<tr><td class="mono">${c.code}</td><td>${c.name}</td><td>${c.type}</td></tr>`).join('');
-    $('coaPreview').classList.remove('hidden');
+  $('settingsCompaniesBody').addEventListener('click', function (event) {
+    const button = event.target.closest('button[data-company-id]');
+    if (!button) return;
+    const companyId = button.dataset.companyId || '';
+    if (button.classList.contains('edit-company-btn')) {
+      handleEditCompany(companyId);
+      return;
+    }
+    if (button.classList.contains('coa-company-btn')) {
+      handleOpenCompanyCoa(companyId);
+    }
   });
+  $('addCompanyBtn').addEventListener('click', () => {
+    clearAddCompanyForm();
+    $('addCompanyPanel').classList.remove('hidden');
+    $('newCompanyName').focus();
+  });
+  $('addCompanyCancelBtn').addEventListener('click', () => {
+    $('addCompanyPanel').classList.add('hidden');
+    clearAddCompanyForm();
+  });
+  $('newCompanyTaxId').addEventListener('input', function () {
+    this.value = String(this.value || '').replace(/\D/g, '').slice(0, 13);
+  });
+  $('addCompanySaveBtn').addEventListener('click', () => {
+    const name = String($('newCompanyName').value || '').trim();
+    const taxId = String($('newCompanyTaxId').value || '').replace(/\D/g, '');
+    const hint = $('addCompanyHint');
+    const editingCompanyId = state.editingCompanyId;
+
+    if (!name || taxId.length !== 13) {
+      hint.textContent = 'Please enter company name and a 13-digit Tax ID.';
+      hint.className = 'field-hint field-hint--warn';
+      showToast('Invalid company profile', 'warn');
+      return;
+    }
+
+    const duplicateName = COMPANIES.some(c => c.id !== editingCompanyId && c.name.toLowerCase() === name.toLowerCase());
+    if (duplicateName) {
+      hint.textContent = 'Company name already exists.';
+      hint.className = 'field-hint field-hint--warn';
+      showToast('Duplicate company name', 'warn');
+      return;
+    }
+
+    const duplicateTax = COMPANIES.find(c => c.id !== editingCompanyId && c.taxId === taxId);
+
+    if (editingCompanyId) {
+      const company = COMPANIES.find(c => c.id === editingCompanyId);
+      if (!company) {
+        showToast('Company no longer exists', 'warn');
+        clearAddCompanyForm();
+        return;
+      }
+      company.name = name;
+      company.taxId = taxId;
+      persistCompanies();
+      syncCompanyUi(editingCompanyId);
+      if ($('companySelect')) $('companySelect').value = editingCompanyId;
+      applyCompanySelection(editingCompanyId);
+      hint.textContent = duplicateTax
+        ? `Updated. Tax ID already used by ${duplicateTax.name}`
+        : 'Company updated successfully.';
+      hint.className = duplicateTax ? 'field-hint field-hint--warn' : 'field-hint field-hint--ok';
+      showToast(duplicateTax ? 'Company updated with duplicate Tax ID' : 'Company updated', duplicateTax ? 'warn' : 'ok');
+    } else {
+      const newId = getNextCompanyId();
+      const seedCoa = getCOA().length ? getCOA() : (COA['co-1'] || []);
+
+      COMPANIES.push({ id: newId, name, taxId });
+      COA[newId] = deepCopy(seedCoa);
+      if (!state.mappingRules[newId]) state.mappingRules[newId] = {};
+      persistCompanies();
+      persistCOA();
+
+      syncCompanyUi(newId);
+      if ($('companySelect')) $('companySelect').value = newId;
+      applyCompanySelection(newId);
+
+      hint.textContent = duplicateTax
+        ? `Added. Tax ID already used by ${duplicateTax.name}`
+        : 'Company added successfully.';
+      hint.className = duplicateTax ? 'field-hint field-hint--warn' : 'field-hint field-hint--ok';
+      showToast(duplicateTax ? 'Company added with duplicate Tax ID' : 'Company added', duplicateTax ? 'warn' : 'ok');
+    }
+
+    $('addCompanyPanel').classList.add('hidden');
+    clearAddCompanyForm();
+  });
+  const coaFileInput = document.createElement('input');
+  coaFileInput.type = 'file';
+  coaFileInput.accept = '.csv,text/csv';
+  coaFileInput.hidden = true;
+  document.body.appendChild(coaFileInput);
+
+  const coaRulePdfInput = document.createElement('input');
+  coaRulePdfInput.type = 'file';
+  coaRulePdfInput.accept = '.pdf,application/pdf';
+  coaRulePdfInput.hidden = true;
+  document.body.appendChild(coaRulePdfInput);
+
+  const coaRuleDocxInput = document.createElement('input');
+  coaRuleDocxInput.type = 'file';
+  coaRuleDocxInput.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  coaRuleDocxInput.hidden = true;
+  document.body.appendChild(coaRuleDocxInput);
+
+  state.pendingCoaImport = [];
+  updateCoaImportButtonState();
+  setCoaImportHint('Upload CSV then review preview before importing.');
+  setCoaRuleHint('Upload COA PDF + mapping DOCX then click Generate Rules.');
+  setCoaMode('csv');
+
+  document.querySelectorAll('.coa-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setCoaMode(btn.dataset.coaMode || 'csv'));
+  });
+
+  function setRuleFileLabel(type, file) {
+    if (type === 'pdf') {
+      state.coaRule.pdfFile = file || null;
+      $('coaRulePdfLabel').textContent = file ? `${file.name} (${fmtMB(file.size / (1024 * 1024))})` : 'No file selected';
+    } else {
+      state.coaRule.docxFile = file || null;
+      $('coaRuleDocxLabel').textContent = file ? `${file.name} (${fmtMB(file.size / (1024 * 1024))})` : 'No file selected';
+    }
+  }
+
+  function bindRuleDropzone(dropzoneId, inputEl, type) {
+    const dropzone = $(dropzoneId);
+    if (!dropzone) return;
+    dropzone.addEventListener('click', () => inputEl.click());
+    dropzone.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      inputEl.click();
+    });
+    dropzone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dropzone.classList.remove('dragover');
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      setRuleFileLabel(type, file);
+    });
+  }
+
+  bindRuleDropzone('coaRulePdfDropzone', coaRulePdfInput, 'pdf');
+  bindRuleDropzone('coaRuleDocxDropzone', coaRuleDocxInput, 'docx');
+
+  coaRulePdfInput.addEventListener('change', function () {
+    setRuleFileLabel('pdf', this.files?.[0] || null);
+    this.value = '';
+  });
+  coaRuleDocxInput.addEventListener('change', function () {
+    setRuleFileLabel('docx', this.files?.[0] || null);
+    this.value = '';
+  });
+
+  $('coaDropzone').addEventListener('click', () => {
+    coaFileInput.click();
+  });
+  $('coaDropzone').addEventListener('dragover', (event) => {
+    event.preventDefault();
+    $('coaDropzone').classList.add('dragover');
+  });
+  $('coaDropzone').addEventListener('dragleave', () => {
+    $('coaDropzone').classList.remove('dragover');
+  });
+  $('coaDropzone').addEventListener('drop', (event) => {
+    event.preventDefault();
+    $('coaDropzone').classList.remove('dragover');
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    coaFileInput.files = dt.files;
+    coaFileInput.dispatchEvent(new Event('change'));
+  });
+  $('coaDropzone').addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    coaFileInput.click();
+  });
+  $('downloadCoaTemplateBtn').addEventListener('click', () => {
+    const template = [
+      'account_code,account_name,account_type',
+      '1001,เงินสด,asset',
+      '1101,ลูกหนี้การค้า,asset',
+      '2100,เจ้าหนี้การค้า,liability',
+      '4001,รายได้จากการขาย,revenue',
+      '5001,ค่าใช้จ่ายสำนักงาน,expense',
+    ].join('\r\n');
+    const blob = new Blob(['\ufeff' + template], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'coa-template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('COA template downloaded', 'ok');
+  });
+
+  async function refreshRuleGenerationResult(jobId) {
+    const response = await fetch(apiUrl(`/api/v1/rules/generate/${encodeURIComponent(jobId)}/result`));
+    if (!response.ok) throw new Error(`Result request failed: ${response.status}`);
+    const result = await response.json();
+    state.coaRule.result = result;
+    state.coaRule.yamlText = String(result.yaml_content || '');
+    renderRuleResult(result);
+    $('coaDownloadYamlBtn').disabled = !state.coaRule.yamlText;
+    const flags = Array.isArray(result.flags) ? result.flags : [];
+    if (flags.length) {
+      setCoaRuleHint(flags.join(' | '), 'warn');
+    } else {
+      setCoaRuleHint(`Generation completed. Confidence ${result.overall_confidence ?? '-'}%`, 'ok');
+    }
+  }
+
+  async function pollRuleGenerationJob(jobId) {
+    const response = await fetch(apiUrl(`/api/v1/rules/generate/${encodeURIComponent(jobId)}/progress`));
+    if (!response.ok) throw new Error(`Progress request failed: ${response.status}`);
+    const progress = await response.json();
+    $('coaRuleProgressWrap')?.classList.remove('hidden');
+    $('coaRuleProgressFill').style.width = `${Number(progress.progress_pct || 0)}%`;
+    $('coaRuleProgressLabel').textContent = `${Number(progress.progress_pct || 0)}% • ${progress.stage_label || ''}`;
+    renderRuleProgress(progress.stages || []);
+
+    if (progress.status === 'failed') {
+      stopRuleProgressPolling();
+      const message = progress.error?.message || 'Rule generation failed';
+      setCoaRuleHint(message, 'warn');
+      showToast('Rule generation failed', 'err');
+      return;
+    }
+    if (progress.status === 'done') {
+      stopRuleProgressPolling();
+      await refreshRuleGenerationResult(jobId);
+      showToast('Rule generation completed', 'ok');
+    }
+  }
+
+  async function startRuleGeneration() {
+    const companyId = $('coaCompanySelect').value || state.selectedCompanyId;
+    const companyName = String($('coaRuleCompanyName')?.value || '').trim();
+    const businessType = $('coaRuleBusinessType')?.value || 'service';
+    const pdfFile = state.coaRule.pdfFile;
+    const docxFile = state.coaRule.docxFile;
+
+    if (!companyId) {
+      setCoaRuleHint('Please select company profile first.', 'warn');
+      return;
+    }
+    if (!companyName) {
+      setCoaRuleHint('Please fill company name.', 'warn');
+      return;
+    }
+    if (!pdfFile || !docxFile) {
+      setCoaRuleHint('Please upload both COA PDF and mapping DOCX.', 'warn');
+      return;
+    }
+
+    stopRuleProgressPolling();
+    $('coaRuleResultWrap')?.classList.add('hidden');
+    $('coaDownloadYamlBtn').disabled = true;
+    state.coaRule.result = null;
+    state.coaRule.yamlText = '';
+
+    const form = new FormData();
+    form.append('company_id', companyId);
+    form.append('company_name', companyName);
+    form.append('business_type', businessType);
+    form.append('provider', 'anthropic');
+    form.append('model', 'claude-sonnet-4-6-20250601');
+    form.append('coa_file', pdfFile, pdfFile.name);
+    form.append('mapping_file', docxFile, docxFile.name);
+
+    setCoaRuleHint('Submitting files for generation...', 'info');
+    const response = await fetch(apiUrl('/api/v1/rules/generate'), { method: 'POST', body: form });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Generate request failed (${response.status}): ${detail}`);
+    }
+    const payload = await response.json();
+    state.coaRule.jobId = String(payload.job_id || '');
+    setCoaRuleHint(`Job ${state.coaRule.jobId} started`, 'ok');
+    $('coaRuleProgressWrap')?.classList.remove('hidden');
+    state.coaRule.pollingTimer = setInterval(() => {
+      pollRuleGenerationJob(state.coaRule.jobId).catch((error) => {
+        stopRuleProgressPolling();
+        setCoaRuleHint(String(error.message || error), 'warn');
+      });
+    }, 1500);
+    await pollRuleGenerationJob(state.coaRule.jobId);
+  }
+
+  $('coaGenerateRulesBtn').addEventListener('click', async () => {
+    try {
+      await startRuleGeneration();
+    } catch (error) {
+      setCoaRuleHint(String(error.message || error), 'warn');
+      showToast('Failed to start rule generation', 'err');
+    }
+  });
+
+  $('coaApproveRulesBtn').addEventListener('click', async () => {
+    const jobId = state.coaRule.jobId;
+    if (!jobId) {
+      setCoaRuleHint('No generation job to approve.', 'warn');
+      return;
+    }
+    const response = await fetch(apiUrl(`/api/v1/rules/generate/${encodeURIComponent(jobId)}/approve`), { method: 'POST' });
+    if (!response.ok) {
+      setCoaRuleHint('Approve request failed.', 'warn');
+      return;
+    }
+    setCoaRuleHint('Rules approved and saved.', 'ok');
+    showToast('Rules approved', 'ok');
+  });
+
+  $('coaDownloadYamlBtn').addEventListener('click', () => {
+    if (!state.coaRule.yamlText) {
+      setCoaRuleHint('No YAML generated yet.', 'warn');
+      return;
+    }
+    const companyId = $('coaCompanySelect').value || state.selectedCompanyId || 'company';
+    const blob = new Blob([state.coaRule.yamlText], { type: 'text/yaml;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `rule_coa_${companyId}.yaml`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+
+  coaFileInput.addEventListener('change', async function () {
+    const file = this.files?.[0];
+    if (!file) return;
+    const decoded = await decodeCsvFile(file);
+    const parsed = parseCoaCsv(decoded.text);
+    if (!parsed.rows.length) {
+      state.pendingCoaImport = [];
+      renderCoaPreviewRows([]);
+      updateCoaImportButtonState();
+      setCoaImportHint(parsed.errors.slice(0, 2).join(' ') || 'No valid COA rows found in CSV.', 'warn');
+      showToast('COA file format is invalid', 'warn');
+      this.value = '';
+      return;
+    }
+    state.pendingCoaImport = parsed.rows;
+    renderCoaPreviewRows(parsed.rows, 8);
+    updateCoaImportButtonState();
+    const warningSuffix = parsed.errors.length ? ` (${parsed.errors.length} row(s) skipped)` : '';
+    setCoaImportHint(`File: ${file.name} | encoding: ${decoded.encoding} | valid rows: ${parsed.rows.length}${warningSuffix}`, parsed.errors.length ? 'warn' : 'ok');
+    showToast(`Loaded ${parsed.rows.length} COA rows${warningSuffix}`, parsed.errors.length ? 'warn' : 'ok');
+    this.value = '';
+  });
+
   $('importCoaBtn').addEventListener('click', () => {
-    $('coaPreview').classList.add('hidden');
+    const companyId = $('coaCompanySelect').value || state.selectedCompanyId;
+    const pendingRows = Array.isArray(state.pendingCoaImport) ? state.pendingCoaImport : [];
+    if (!companyId) {
+      showToast('Select a company first', 'warn');
+      return;
+    }
+    if (!pendingRows.length) {
+      showToast('Choose a COA CSV before importing', 'warn');
+      return;
+    }
+    COA[companyId] = deepCopy(pendingRows);
+    persistCOA();
+    state.pendingCoaImport = [];
+    renderCoaPreviewRows(COA[companyId] || [], 8);
+    updateCoaImportButtonState();
+    setCoaImportHint('COA imported successfully.', 'ok');
     showToast('COA imported successfully', 'ok');
   });
 
@@ -1193,6 +2419,8 @@
   function svgDoc()   { return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`; }
 
   /* ─── INIT ─── */
+  syncCompanyUi();
+  syncCoaRuleCompanyDefaults();
   setStep(1);
 }());
 </script>

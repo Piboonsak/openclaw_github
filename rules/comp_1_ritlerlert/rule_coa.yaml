@@ -1,0 +1,453 @@
+# =============================================================================
+# rule_coa.yaml — บริษัท ฤทธิ์ล้ำเลิศฯ (กิจการให้บริการ)
+# =============================================================================
+# ใช้สำหรับ: PoC Phase 1 testing — validate ML pipeline COA mapping output
+# Source: ฤทธิ์ล้ำเลิศ การบันทึกบัญชี.docx
+# Last updated: 2026-06-03
+# =============================================================================
+
+company:
+  name: "บริษัท ฤทธิ์ล้ำเลิศ จำกัด"
+  short_name: "ฤทธิ์ล้ำเลิศ"
+  tax_id: "" # TODO: fill from actual registration
+  business_type: "service" # กิจการให้บริการ
+  notes: "ไม่ต้องทำรายงานสินค้า (no inventory report)"
+
+# =============================================================================
+# Chart of Accounts — key accounts used in journal entry rules
+# =============================================================================
+chart_of_accounts:
+# --- Assets (1xxx) ---
+- code: "1111-00"
+  name: "เงินสด"
+  type: asset
+- code: "1113-01"
+  name: "ธนาคาร"
+  type: asset
+- code: "1130-01"
+  name: "ลูกหนี้การค้า"
+  type: asset
+- code: "1151-02"
+  name: "ภาษีถูกหัก ณ ที่จ่าย"
+  type: asset
+- code: "1154-00"
+  name: "ภาษีซื้อ"
+  type: asset
+- code: "1155-00"
+  name: "ภาษีซื้อไม่ถึงกำหนด"
+  type: asset
+
+# --- Liabilities (2xxx) ---
+- code: "2120-01"
+  name: "เจ้าหนี้การค้า"
+  type: liability
+- code: "2131-09"
+  name: "ค่าใช้จ่ายค้างจ่าย"
+  type: liability
+- code: "2132-02"
+  name: "ภาษีหัก ณ ที่จ่าย (บุคคลธรรมดา)"
+  type: liability
+- code: "2132-03"
+  name: "ภาษีหัก ณ ที่จ่าย (นิติบุคคล)"
+  type: liability
+- code: "2135-00"
+  name: "ภาษีขาย"
+  type: liability
+- code: "2136-00"
+  name: "ภาษีขายรอเรียกเก็บ"
+  type: liability
+- code: "2138-00"
+  name: "เงินยืมกรรมการ"
+  type: liability
+
+# --- Revenue (4xxx) ---
+- code: "4100-01"
+  name: "รายได้บริการ"
+  type: revenue
+
+# --- Expenses (5xxx) ---
+- code: "5130-01"
+  name: "ซื้อวัสดุอุปกรณ์"
+  type: expense
+# Note: ค่าใช้จ่ายอื่นๆ ใช้รหัส 5xxx-xx ตามผังบัญชีของบริษัท
+
+# =============================================================================
+# Journal Entry Rules — double-entry patterns by transaction type
+# =============================================================================
+journal_entry_rules:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rule 1: การบันทึกขายเงินเชื่อ (Credit Sale)
+# ─────────────────────────────────────────────────────────────────────────────
+- rule_id: "RRL-SALE-CREDIT"
+  name: "การบันทึกขายเงินเชื่อ"
+  description: "บันทึกรายได้บริการเมื่อออกใบแจ้งหนี้ (ไม่ต้องทำรายงานสินค้า)"
+  document_types:
+  - "Invoice"
+  - "Tax Invoice"
+  transaction_type: "sale_credit"
+  book_code: "AR"
+  conditions:
+    has_vat: true
+    vat_type: "deferred" # ภาษีขายรอเรียกเก็บ
+  entries:
+  - side: debit
+    account_code: "1130-01"
+    account_name: "ลูกหนี้การค้า"
+    amount_field: "gross_amount"
+    description: "ลูกหนี้การค้า = net + VAT"
+  - side: credit
+    account_code: "4100-01"
+    account_name: "รายได้บริการ"
+    amount_field: "net_amount"
+    description: "รายได้บริการก่อน VAT"
+  - side: credit
+    account_code: "2136-00"
+    account_name: "ภาษีขายรอเรียกเก็บ"
+    amount_field: "vat_amount"
+    description: "VAT 7% รอเรียกเก็บ"
+  validation:
+    balance_check: "debit_total == credit_total"
+    formula: "gross_amount == net_amount + vat_amount"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rule 2: การบันทึกรับชำระ (Receive Payment)
+# ─────────────────────────────────────────────────────────────────────────────
+- rule_id: "RRL-RECEIVE-PAYMENT"
+  name: "การบันทึกรับชำระ"
+  description: "บันทึกเมื่อลูกค้าชำระเงิน — กลับรายการภาษีขายรอเรียกเก็บเป็นภาษีขาย"
+  document_types:
+  - "Receipt"
+  - "Payment Voucher"
+  transaction_type: "receive_payment"
+  book_code: "RV"
+  conditions:
+    has_vat: true
+    has_wht: true # ลูกค้าหักภาษี ณ ที่จ่าย
+    vat_type: "recognize" # กลับจาก deferred เป็นภาษีขาย
+  entries:
+  - side: debit
+    account_code: "1113-01"
+    account_name: "ธนาคาร"
+    amount_field: "net_received"
+    description: "เงินรับสุทธิเข้าธนาคาร"
+  - side: debit
+    account_code: "2136-00"
+    account_name: "ภาษีขายรอเรียกเก็บ"
+    amount_field: "vat_amount"
+    description: "กลับรายการ VAT deferred"
+  - side: debit
+    account_code: "1151-02"
+    account_name: "ภาษีถูกหัก ณ ที่จ่าย"
+    amount_field: "wht_amount"
+    description: "WHT ที่ลูกค้าหัก"
+    condition: "wht_amount > 0"
+  - side: credit
+    account_code: "1130-01"
+    account_name: "ลูกหนี้การค้า"
+    amount_field: "receivable_amount"
+    description: "ตัดยอดลูกหนี้"
+  - side: credit
+    account_code: "2135-00"
+    account_name: "ภาษีขาย"
+    amount_field: "vat_amount"
+    description: "รับรู้ภาษีขาย"
+  validation:
+    balance_check: "debit_total == credit_total"
+    formula: "net_received + wht_amount == receivable_amount"
+    note: "receivable_amount = original invoice gross (net + vat)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rule 3: การบันทึกซื้อวัสดุอุปกรณ์ (Purchase Supplies via P/O)
+# ─────────────────────────────────────────────────────────────────────────────
+- rule_id: "RRL-PURCHASE-SUPPLIES"
+  name: "การบันทึกซื้อวัสดุอุปกรณ์"
+  description: "ตั้งเจ้าหนี้ด้วยการดึงเอกสาร P/O มาทำรายการ"
+  document_types:
+  - "Invoice"
+  - "Tax Invoice"
+  - "Purchase Order"
+  transaction_type: "purchase_supplies"
+  book_code: "AP"
+  conditions:
+    has_vat: true
+    payment_method: "credit" # ตั้งเจ้าหนี้
+    source_document: "P/O"
+  entries:
+  - side: debit
+    account_code: "5130-01"
+    account_name: "ซื้อวัสดุอุปกรณ์"
+    amount_field: "net_amount"
+    description: "มูลค่าวัสดุอุปกรณ์ก่อน VAT"
+  - side: debit
+    account_code: "1154-00"
+    account_name: "ภาษีซื้อ"
+    amount_field: "vat_amount"
+    description: "ภาษีซื้อ 7%"
+  - side: credit
+    account_code: "2120-01"
+    account_name: "เจ้าหนี้การค้า"
+    amount_field: "gross_amount"
+    description: "ยอดเจ้าหนี้ (net + VAT)"
+  validation:
+    balance_check: "debit_total == credit_total"
+    formula: "gross_amount == net_amount + vat_amount"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rule 4: การบันทึกค่าใช้จ่าย (สด) — Cash Expense
+# ─────────────────────────────────────────────────────────────────────────────
+- rule_id: "RRL-EXPENSE-CASH"
+  name: "การบันทึกค่าใช้จ่าย (สด)"
+  description: "จ่ายเงินสดหรือเงินยืมกรรมการ พร้อมหักภาษี ณ ที่จ่าย"
+  document_types:
+  - "Invoice"
+  - "Tax Invoice"
+  - "Receipt"
+  - "Bill"
+  transaction_type: "expense_cash"
+  book_code: "PV"
+  conditions:
+    has_vat: true
+    payment_method: "cash"
+  entries:
+  - side: debit
+    account_code: "5xxx-xx"
+    account_name: "ค่าใช้จ่าย (ตามผังบัญชี)"
+    amount_field: "net_amount"
+    description: "ค่าใช้จ่ายตามประเภท — ML ต้อง map account code"
+    is_variable: true # account code varies per vendor/expense type
+  - side: debit
+    account_code: "1154-00"
+    account_name: "ภาษีซื้อ"
+    amount_field: "vat_amount"
+    description: "ภาษีซื้อ 7%"
+    condition: "vat_type == 'normal'"
+    alternatives:
+    - condition: "vat_type == 'deferred'"
+      account_code: "1155-00"
+      account_name: "ภาษีซื้อไม่ถึงกำหนด"
+  - side: credit
+    account_code: "1111-00"
+    account_name: "เงินสด"
+    amount_field: "payment_amount"
+    description: "จ่ายเป็นเงินสด"
+    alternatives:
+    - condition: "payment_source == 'director_loan'"
+      account_code: "2138-00"
+      account_name: "เงินยืมกรรมการ"
+  - side: credit
+    account_code: "2132-03"
+    account_name: "ภาษีหัก ณ ที่จ่าย (นิติบุคคล)"
+    amount_field: "wht_amount"
+    description: "WHT หักจากนิติบุคคล"
+    condition: "wht_amount > 0 and seller_type == 'corporate'"
+    alternatives:
+    - condition: "wht_amount > 0 and seller_type == 'individual'"
+      account_code: "2132-02"
+      account_name: "ภาษีหัก ณ ที่จ่าย (บุคคลธรรมดา)"
+  validation:
+    balance_check: "debit_total == credit_total"
+    formula: "payment_amount + wht_amount == net_amount + vat_amount"
+    note: "payment_amount = gross - wht"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rule 5: การบันทึกค่าใช้จ่าย (เชื่อ) — Credit Expense
+# ─────────────────────────────────────────────────────────────────────────────
+- rule_id: "RRL-EXPENSE-CREDIT"
+  name: "การบันทึกค่าใช้จ่าย (เชื่อ)"
+  description: "ตั้งเจ้าหนี้การค้า หรือค่าใช้จ่ายค้างจ่าย พร้อมหักภาษี ณ ที่จ่าย"
+  document_types:
+  - "Invoice"
+  - "Tax Invoice"
+  - "Bill"
+  transaction_type: "expense_credit"
+  book_code: "AP"
+  conditions:
+    has_vat: true
+    payment_method: "credit"
+  entries:
+  - side: debit
+    account_code: "5xxx-xx"
+    account_name: "ค่าใช้จ่าย (ตามผังบัญชี)"
+    amount_field: "net_amount"
+    description: "ค่าใช้จ่ายตามประเภท — ML ต้อง map account code"
+    is_variable: true # account code varies per vendor/expense type
+  - side: debit
+    account_code: "1154-00"
+    account_name: "ภาษีซื้อ"
+    amount_field: "vat_amount"
+    description: "ภาษีซื้อ 7%"
+    condition: "vat_type == 'normal'"
+    alternatives:
+    - condition: "vat_type == 'deferred'"
+      account_code: "1155-00"
+      account_name: "ภาษีซื้อไม่ถึงกำหนด"
+  - side: credit
+    account_code: "2120-01"
+    account_name: "เจ้าหนี้การค้า"
+    amount_field: "payable_amount"
+    description: "ตั้งเจ้าหนี้การค้า"
+    alternatives:
+    - condition: "payable_type == 'accrued'"
+      account_code: "2131-09"
+      account_name: "ค่าใช้จ่ายค้างจ่าย"
+  - side: credit
+    account_code: "2132-03"
+    account_name: "ภาษีหัก ณ ที่จ่าย (นิติบุคคล)"
+    amount_field: "wht_amount"
+    description: "WHT หักจากนิติบุคคล"
+    condition: "wht_amount > 0 and seller_type == 'corporate'"
+    alternatives:
+    - condition: "wht_amount > 0 and seller_type == 'individual'"
+      account_code: "2132-02"
+      account_name: "ภาษีหัก ณ ที่จ่าย (บุคคลธรรมดา)"
+  validation:
+    balance_check: "debit_total == credit_total"
+    formula: "payable_amount + wht_amount == net_amount + vat_amount"
+    note: "payable_amount = net + vat - wht"
+
+# =============================================================================
+# WHT Rate Reference (อัตราภาษีหัก ณ ที่จ่าย)
+# =============================================================================
+wht_rates:
+- rate: 1
+  description: "ค่าโฆษณา, ค่าประกันภัย"
+- rate: 2
+  description: "ค่าจ้างทำของ (บุคคลธรรมดา)"
+- rate: 3
+  description: "ค่าบริการ, ค่าเช่า, ค่าจ้างทำของ (นิติบุคคล)"
+- rate: 5
+  description: "ค่าเช่าอสังหาริมทรัพย์"
+
+# =============================================================================
+# Test Scenarios — expected outputs for PoC validation
+# =============================================================================
+test_scenarios:
+
+- scenario_id: "TEST-RRL-001"
+  rule_ref: "RRL-EXPENSE-CREDIT"
+  description: "ซื้อวัสดุอุปกรณ์จาก vendor นิติบุคคล มี VAT 7% + WHT 3%"
+  input:
+    document_type: "Tax Invoice"
+    seller_name: "บริษัท เอบีซี จำกัด"
+    seller_type: "corporate"
+    net_amount: 10000.00
+    vat_rate: 7
+    vat_amount: 700.00
+    wht_rate: 3
+    wht_amount: 300.00
+    gross_amount: 10700.00
+    payment_method: "credit"
+    vat_type: "normal"
+  expected_entries:
+  - side: debit
+    account_code: "5130-01"
+    amount: 10000.00
+  - side: debit
+    account_code: "1154-00"
+    amount: 700.00
+  - side: credit
+    account_code: "2120-01"
+    amount: 10400.00
+  - side: credit
+    account_code: "2132-03"
+    amount: 300.00
+
+- scenario_id: "TEST-RRL-002"
+  rule_ref: "RRL-SALE-CREDIT"
+  description: "ออกใบแจ้งหนี้ค่าบริการ มี VAT 7% (ภาษีขายรอเรียกเก็บ)"
+  input:
+    document_type: "Tax Invoice"
+    buyer_name: "บริษัท ลูกค้า จำกัด"
+    net_amount: 50000.00
+    vat_rate: 7
+    vat_amount: 3500.00
+    gross_amount: 53500.00
+  expected_entries:
+  - side: debit
+    account_code: "1130-01"
+    amount: 53500.00
+  - side: credit
+    account_code: "4100-01"
+    amount: 50000.00
+  - side: credit
+    account_code: "2136-00"
+    amount: 3500.00
+
+- scenario_id: "TEST-RRL-003"
+  rule_ref: "RRL-EXPENSE-CASH"
+  description: "จ่ายค่าบริการเป็นเงินสดให้บุคคลธรรมดา มี WHT 3% ไม่มี VAT"
+  input:
+    document_type: "Receipt"
+    seller_name: "นาย สมชาย ใจดี"
+    seller_type: "individual"
+    net_amount: 5000.00
+    vat_rate: 0
+    vat_amount: 0.00
+    wht_rate: 3
+    wht_amount: 150.00
+    payment_method: "cash"
+    payment_source: "cash"
+  expected_entries:
+  - side: debit
+    account_code: "5xxx-xx"
+    amount: 5000.00
+    note: "ML must determine specific expense account"
+  - side: credit
+    account_code: "1111-00"
+    amount: 4850.00
+  - side: credit
+    account_code: "2132-02"
+    amount: 150.00
+
+- scenario_id: "TEST-RRL-004"
+  rule_ref: "RRL-PURCHASE-SUPPLIES"
+  description: "ซื้อวัสดุอุปกรณ์ตาม P/O ตั้งเจ้าหนี้ มี VAT 7%"
+  input:
+    document_type: "Tax Invoice"
+    seller_name: "บริษัท อุปกรณ์ไทย จำกัด"
+    net_amount: 20000.00
+    vat_rate: 7
+    vat_amount: 1400.00
+    gross_amount: 21400.00
+    payment_method: "credit"
+    source_document: "P/O"
+  expected_entries:
+  - side: debit
+    account_code: "5130-01"
+    amount: 20000.00
+  - side: debit
+    account_code: "1154-00"
+    amount: 1400.00
+  - side: credit
+    account_code: "2120-01"
+    amount: 21400.00
+
+- scenario_id: "TEST-RRL-005"
+  rule_ref: "RRL-RECEIVE-PAYMENT"
+  description: "รับชำระจากลูกค้า ลูกค้าหัก WHT 3% — กลับภาษีขายรอเรียกเก็บ"
+  input:
+    document_type: "Receipt"
+    buyer_name: "บริษัท ลูกค้า จำกัด"
+    receivable_amount: 53500.00
+    net_amount: 50000.00
+    vat_amount: 3500.00
+    wht_rate: 3
+    wht_amount: 1500.00
+    net_received: 52000.00
+  expected_entries:
+  - side: debit
+    account_code: "1113-01"
+    amount: 52000.00
+  - side: debit
+    account_code: "2136-00"
+    amount: 3500.00
+  - side: debit
+    account_code: "1151-02"
+    amount: 1500.00
+  - side: credit
+    account_code: "1130-01"
+    amount: 53500.00
+  - side: credit
+    account_code: "2135-00"
+    amount: 3500.00
