@@ -76,6 +76,8 @@ async def process(
         "text": "\n".join(
             [b.get("text", "") for b in ctx.ocr_output.get("blocks", [])]
         ),
+        "ocr_warnings": ctx.ocr_output.get("warnings", []),
+        "ocr_degraded": bool(ctx.ocr_output.get("warnings")),
         "fields": fields,
         "validation": validation,
         "extraction": ctx.extraction_output,

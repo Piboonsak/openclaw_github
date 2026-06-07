@@ -1140,6 +1140,10 @@ input[type="checkbox"]:focus-visible {
 .status-waiting { background: var(--line); color: var(--muted); }
 .status-running { background: var(--accent-soft); color: var(--accent); }
 .status-done    { background: var(--ok-soft); color: var(--ok); }
+.status-degraded {
+  background: color-mix(in oklab, var(--warn) 20%, white 80%);
+  color: color-mix(in oklab, var(--warn) 70%, black 30%);
+}
 
 /* ─── Review Split (Step 4) ─── */
 .review-split {

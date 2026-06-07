@@ -1439,6 +1439,8 @@
       statusEl.innerHTML = '<span class="status-chip status-running">Processing…</span>';
 
       let usedBackend = false;
+      let degradedOcr = false;
+      let degradedReason = '';
       let fallbackReason = '';
       try {
         fillStage(f.id, 'OCR');
@@ -1448,6 +1450,8 @@
         fillStage(f.id, 'Map COA');
         if (payload) {
           usedBackend = true;
+          degradedOcr = Boolean(payload.ocr_degraded);
+          degradedReason = Array.isArray(payload.ocr_warnings) ? payload.ocr_warnings.join(' | ') : '';
           applyBackendResultToFile(f, payload);
         }
       } catch (err) {
@@ -1456,7 +1460,9 @@
       }
 
       statusEl.innerHTML = usedBackend
-        ? '<span class="status-chip status-done">✓ Done (API)</span>'
+        ? degradedOcr
+          ? `<span class="status-chip status-degraded" title="${escapeAttr(degradedReason || 'OCR degraded mode')}">⚠ Degraded OCR</span>`
+          : '<span class="status-chip status-done">✓ Done (API)</span>'
         : `<span class="status-chip status-running" title="${escapeAttr(fallbackReason)}">Done (Fallback)</span>`;
       state.processedFiles.push(f);
     }
