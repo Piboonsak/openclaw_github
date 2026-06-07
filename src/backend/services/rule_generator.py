@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RULES_ROOT = REPO_ROOT / "rules"
 DEFAULT_SCHEMA_PATH = DEFAULT_RULES_ROOT / "rule_schema.json"
 DEFAULT_MODELS = {
+    "openrouter": "openai/gpt-4o-mini",
     "anthropic": "claude-sonnet-4-20250514",
     "openai": "gpt-4o-mini",
 }
@@ -118,6 +119,37 @@ def _call_openai(prompt: str, system: str, model: str) -> str:
     return (completion.choices[0].message.content or "").strip()
 
 
+def _call_openrouter(prompt: str, system: str, model: str) -> str:
+    try:
+        from openai import OpenAI  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError(
+            "OpenAI SDK is not installed. Run: pip install openai"
+        ) from exc
+
+    api_key = settings.OPENROUTER_API_KEY or ""
+    if not api_key:
+        raise RuntimeError("OPENROUTER_API_KEY is not set.")
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url=settings.OPENROUTER_BASE_URL,
+        default_headers={
+            "HTTP-Referer": "https://ai-accounting-copilot.local",
+            "X-Title": "ai-accounting-copilot",
+        },
+    )
+    completion = client.chat.completions.create(
+        model=model,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    return (completion.choices[0].message.content or "").strip()
+
+
 def _is_auth_error(message: str) -> bool:
     lowered = message.lower()
     return (
@@ -135,6 +167,8 @@ def _resolve_model(provider: str, model: str) -> str:
     # If caller sends a provider-specific model for the other backend, use safe default.
     if provider == "openai" and "claude" in chosen.lower():
         return DEFAULT_MODELS[provider]
+    if provider == "openrouter" and chosen.lower().startswith("claude"):
+        return "anthropic/claude-3.5-sonnet"
     if provider == "anthropic" and "gpt" in chosen.lower():
         return DEFAULT_MODELS[provider]
     return chosen
@@ -143,22 +177,31 @@ def _resolve_model(provider: str, model: str) -> str:
 def _provider_order(provider: str) -> list[str]:
     normalized = (provider or "").strip().lower()
     if normalized in {"", "auto"}:
-        return ["anthropic", "openai"]
+        return ["openrouter", "anthropic", "openai"]
+    if normalized == "openrouter":
+        return ["openrouter", "anthropic", "openai"]
     if normalized == "openai":
-        return ["openai", "anthropic"]
-    return ["anthropic", "openai"]
+        return ["openai", "openrouter", "anthropic"]
+    return ["anthropic", "openrouter", "openai"]
 
 
 def _call_llm(provider: str, prompt: str, system: str, model: str) -> str:
     errors: list[str] = []
     for candidate in _provider_order(provider):
         candidate_model = _resolve_model(candidate, model)
-        has_key = bool(settings.ANTHROPIC_API_KEY) if candidate == "anthropic" else bool(settings.OPENAI_API_KEY)
+        if candidate == "anthropic":
+            has_key = bool(settings.ANTHROPIC_API_KEY)
+        elif candidate == "openai":
+            has_key = bool(settings.OPENAI_API_KEY)
+        else:
+            has_key = bool(settings.OPENROUTER_API_KEY)
         if not has_key:
             errors.append(f"{candidate}: missing API key")
             continue
 
         try:
+            if candidate == "openrouter":
+                return _call_openrouter(prompt, system, candidate_model)
             if candidate == "openai":
                 return _call_openai(prompt, system, candidate_model)
             return _call_anthropic(prompt, system, candidate_model)
@@ -166,13 +209,14 @@ def _call_llm(provider: str, prompt: str, system: str, model: str) -> str:
             message = str(exc)
             errors.append(f"{candidate}: {message}")
             # For non-auth hard failures, stop immediately when provider was explicit.
-            if (provider or "").strip().lower() not in {"", "auto"} and not _is_auth_error(message):
+            if (provider or "").strip().lower() not in {
+                "",
+                "auto",
+            } and not _is_auth_error(message):
                 break
             continue
 
-    raise RuntimeError(
-        "LLM call failed for all providers. " + " | ".join(errors)
-    )
+    raise RuntimeError("LLM call failed for all providers. " + " | ".join(errors))
 
 
 def _load_validator(schema_path: Path) -> Draft202012Validator:

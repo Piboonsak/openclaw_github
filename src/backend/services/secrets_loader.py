@@ -72,14 +72,16 @@ def _load_env_key(target_name: str, value: str) -> bool:
 
 
 def load_llm_keys() -> dict[str, bool]:
-    """Load Anthropic and OpenAI keys from local files when env vars are absent."""
+    """Load Anthropic, OpenAI, and OpenRouter keys from local files."""
     anthropic_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)
     openai_path = _resolve_path("OPENAI_KEY_FILE", DEFAULT_OPENAI_KEY_FILE)
 
     anthropic_value = _read_key_value_file(anthropic_path, "ANTHROPIC_API_KEY")
+    openrouter_value = _read_key_value_file(anthropic_path, "OPENROUTER_API_KEY")
     openai_value = _read_openai_key_file(openai_path)
 
     return {
         "ANTHROPIC_API_KEY": _load_env_key("ANTHROPIC_API_KEY", anthropic_value),
         "OPENAI_API_KEY": _load_env_key("OPENAI_API_KEY", openai_value),
+        "OPENROUTER_API_KEY": _load_env_key("OPENROUTER_API_KEY", openrouter_value),
     }
