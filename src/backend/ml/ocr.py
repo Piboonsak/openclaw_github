@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,34 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 _PADDLE_OCR_INSTANCE: Any | None = None
+_LOW_CONF_THRESHOLD = 0.55
+_MIN_ALNUM_RATIO = 0.30
+
+
+def _preprocess_image_for_ocr(image_obj: Any) -> Any:
+    """Apply lightweight preprocessing for scanned documents before OCR."""
+    image = image_obj.convert("L")
+    image_ops = importlib.import_module("PIL.ImageOps")
+    image_filter = importlib.import_module("PIL.ImageFilter")
+    image = image_ops.autocontrast(image, cutoff=2)
+    image = image.filter(image_filter.MedianFilter(size=3))
+    return image
+
+
+def _looks_garbled(blocks: list[dict[str, Any]]) -> bool:
+    if not blocks:
+        return True
+
+    text = "".join(str(block.get("text", "")) for block in blocks)
+    if not text.strip():
+        return True
+
+    conf_values = [float(block.get("confidence", 0.0)) for block in blocks]
+    avg_conf = sum(conf_values) / max(len(conf_values), 1)
+    alnum_chars = re.findall(r"[A-Za-z0-9ก-๙]", text)
+    alnum_ratio = len(alnum_chars) / max(len(text), 1)
+
+    return avg_conf < _LOW_CONF_THRESHOLD or alnum_ratio < _MIN_ALNUM_RATIO
 
 
 def _sha256_file(file_path: Path) -> str:
@@ -148,16 +177,20 @@ def _extract_text_blocks_with_preferred_engine(
     image_obj: Any, id_offset: int = 0
 ) -> list[dict[str, Any]]:
     paddle_exc: Exception | None = None
+    preprocessed = _preprocess_image_for_ocr(image_obj)
 
     try:
-        paddle_blocks = _extract_text_blocks_with_paddle(image_obj, id_offset=id_offset)
-        if paddle_blocks:
+        paddle_blocks = _extract_text_blocks_with_paddle(
+            preprocessed, id_offset=id_offset
+        )
+        if paddle_blocks and not _looks_garbled(paddle_blocks):
             return paddle_blocks
+        paddle_exc = RuntimeError("PaddleOCR output quality below threshold")
     except RuntimeError as exc:
         paddle_exc = exc
 
     try:
-        return _extract_text_blocks_with_tesseract(image_obj, id_offset=id_offset)
+        return _extract_text_blocks_with_tesseract(preprocessed, id_offset=id_offset)
     except RuntimeError as tesseract_exc:
         if paddle_exc is not None:
             raise RuntimeError(
@@ -346,7 +379,9 @@ def run_ocr(file_path: str, cache_root: Path | None = None) -> dict[str, Any]:
         else:
             blocks = _extract_text_blocks_for_image_file(source)
     except RuntimeError as exc:
-        if not (_is_tesseract_unavailable_error(exc) or _is_paddle_unavailable_error(exc)):
+        if not (
+            _is_tesseract_unavailable_error(exc) or _is_paddle_unavailable_error(exc)
+        ):
             raise
         # Keep pipeline alive on developer machines without OCR engines.
         blocks = _fallback_blocks_when_ocr_unavailable(source)

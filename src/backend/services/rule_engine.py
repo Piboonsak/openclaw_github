@@ -23,6 +23,19 @@ SCORE_WEIGHTS = {
     "vat_type": 10,
     "has_wht": 10,
 }
+VARIABLE_ACCOUNT_KEYWORDS = {
+    "ค่าไฟ": ("5040", "ค่าไฟฟ้า"),
+    "ไฟฟ้า": ("5040", "ค่าไฟฟ้า"),
+    "electric": ("5040", "Electricity Expense"),
+    "ค่าเช่า": ("5045", "ค่าเช่า"),
+    "rent": ("5045", "Rent Expense"),
+    "fuel": ("5020", "Fuel Expense"),
+    "น้ำมัน": ("5020", "Fuel Expense"),
+    "office": ("5080", "Office Supplies Expense"),
+    "เครื่องเขียน": ("5080", "Office Supplies Expense"),
+    "ads": ("5100", "Advertising Expense"),
+    "โฆษณา": ("5100", "Advertising Expense"),
+}
 
 
 def validate_required_fields(fields: dict, required_fields: list[str]) -> dict:
@@ -122,6 +135,10 @@ def _looks_like_corporate(name: str) -> bool:
 def _detect_document_type(source_text: str) -> str:
     lowered = source_text.lower()
     candidates = (
+        ("รายงานรับ", "Receipts Report"),
+        ("รายงานจ่าย", "Payments Report"),
+        ("receipt report", "Receipts Report"),
+        ("payment report", "Payments Report"),
         ("payment voucher", "Payment Voucher"),
         ("purchase order", "Purchase Order"),
         ("p/o", "Purchase Order"),
@@ -336,6 +353,32 @@ def _select_account_for_entry(
     }
 
 
+def resolve_variable_account(
+    selected: dict[str, Any], context: dict[str, Any]
+) -> dict[str, Any]:
+    """Resolve variable placeholders using seller/source text keyword mapping."""
+    account_code = str(selected.get("account_code", "")).strip()
+    account_name = str(selected.get("account_name", "")).strip()
+
+    if account_code and "xxx" not in account_code.lower():
+        return selected
+
+    source_text = _coalesce_text(
+        context.get("source_text"),
+        context.get("seller_name"),
+        context.get("vendor_name"),
+    ).lower()
+
+    for keyword, mapped in VARIABLE_ACCOUNT_KEYWORDS.items():
+        if keyword in source_text:
+            return {
+                "account_code": mapped[0],
+                "account_name": mapped[1],
+            }
+
+    return selected
+
+
 def _resolve_amount(field_name: str, context: dict[str, Any]) -> float:
     return round(_to_float(context.get(field_name)), 2)
 
@@ -409,6 +452,8 @@ def _build_payload_from_rule(
         )
         if selected is None:
             continue
+
+        selected = resolve_variable_account(selected, context)
 
         amount = _resolve_amount(entry.amount_field, context)
         if amount <= 0:
