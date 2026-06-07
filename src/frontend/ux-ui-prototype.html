@@ -2487,6 +2487,31 @@
       return;
     }
 
+    const existingCompany = COMPANIES.find(c => c.id === companyId);
+    const existingName = (existingCompany?.name || '').trim();
+    if (existingName && existingName !== companyName) {
+      const ok = window.confirm(
+        `Company "${existingName}" already exists for ID ${companyId}.\n\n` +
+        `Overwrite its name to "${companyName}"?\n\n` +
+        `Click Cancel to keep the existing name and revert the input.`
+      );
+      if (!ok) {
+        if ($('coaRuleCompanyName')) $('coaRuleCompanyName').value = existingName;
+        setCoaRuleHint(`Kept existing company name: ${existingName}`, 'info');
+        return;
+      }
+    }
+    upsertCompanyProfile({
+      id: companyId,
+      name: companyName,
+      taxId: existingCompany?.taxId || '',
+    });
+    persistCompanies();
+    syncCompanyUi(companyId);
+    if ($('companySelect')) $('companySelect').value = companyId;
+    if ($('coaCompanySelect')) $('coaCompanySelect').value = companyId;
+    applyCompanySelection(companyId);
+
     stopRuleProgressPolling();
     $('coaRuleResultWrap')?.classList.add('hidden');
     $('coaDownloadYamlBtn').disabled = true;
