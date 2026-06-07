@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./ux-ui-prototype.css" />
+  <link rel="stylesheet" href="/static/ux-ui-prototype.css?v=20260608b" />
 </head>
 <body>
 
@@ -637,7 +637,7 @@
       dragStartX: 0,
       dragStartY: 0,
       enabled: false,
-      wide: true,
+      wide: false,
     },
     coaMode: 'csv',
     coaRule: {
@@ -1752,10 +1752,12 @@
 
   function applyPreviewWidthMode() {
     const viewer = $('pdfViewer');
+    const detailPanel = $('scanDetailPanel');
     const toggle = $('previewWidthToggle');
-    if (!viewer || !toggle) return;
+    if (!viewer || !toggle || !detailPanel) return;
 
     viewer.classList.toggle('is-wide', state.preview.wide);
+    detailPanel.classList.toggle('is-wide-preview', state.preview.wide);
     toggle.textContent = state.preview.wide ? 'Normal' : 'Wide x3';
     toggle.title = state.preview.wide ? 'Switch to normal width' : 'Switch to 3x width';
   }

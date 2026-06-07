@@ -1151,7 +1151,6 @@ input[type="checkbox"]:focus-visible {
   grid-template-columns: 240px 1fr;
   gap: var(--sp-4);
   min-height: 560px;
-  overflow-x: auto;
 }
 
 .doc-list-panel {
@@ -1199,26 +1198,32 @@ input[type="checkbox"]:focus-visible {
 }
 
 .scan-detail-panel {
-  display: flex;
+  --pdf-pane-width: 280px;
+  display: grid;
+  grid-template-columns: var(--pdf-pane-width) minmax(520px, 1fr);
   gap: var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  overflow: auto;
-  min-width: 1360px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* ─── PDF Viewer Mock ─── */
 .pdf-viewer {
-  width: 280px;
-  flex-shrink: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--line);
   background: var(--surface);
+  min-width: 0;
 }
 
 .pdf-viewer.is-wide {
-  width: 840px;
+  width: 100%;
+}
+
+.scan-detail-panel.is-wide-preview {
+  --pdf-pane-width: 840px;
 }
 .pdf-header {
   display: flex;
@@ -1280,7 +1285,7 @@ input[type="checkbox"]:focus-visible {
   justify-content: center;
   cursor: grab;
   touch-action: none;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .preview-viewport.is-dragging {
@@ -1879,8 +1884,13 @@ input[type="checkbox"]:focus-visible {
 /* ─── Responsive additions ─── */
 @media (max-width: 800px) {
   .review-split { grid-template-columns: 1fr; }
-  .pdf-viewer { width: 100%; height: 260px; }
-  .scan-detail-panel { flex-direction: column; }
+  .scan-detail-panel {
+    grid-template-columns: 1fr;
+    --pdf-pane-width: 100%;
+    overflow: hidden;
+  }
+  .pdf-viewer { width: 100%; height: 260px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .scan-form { min-width: 0; }
   .field-grid-2 { grid-template-columns: 1fr; }
   .amounts-grid { grid-template-columns: 1fr 1fr; }
 }
