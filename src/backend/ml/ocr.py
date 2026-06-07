@@ -19,6 +19,7 @@ DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 _PADDLE_OCR_INSTANCE: Any | None = None
 _LOW_CONF_THRESHOLD = 0.55
 _MIN_ALNUM_RATIO = 0.30
+OCR_SCHEMA_VERSION = "v2"
 # Bumped from 2.0 (≈144 DPI) so Thai diacritics survive PaddleOCR/Tesseract;
 # override via OCR_RENDER_SCALE for tuning per environment.
 OCR_RENDER_SCALE = float(os.environ.get("OCR_RENDER_SCALE", "3.0"))
@@ -79,14 +80,13 @@ def _extract_text_blocks_for_text_file(file_path: Path) -> list[dict[str, Any]]:
 
 
 def _fallback_blocks_when_ocr_unavailable(file_path: Path) -> list[dict[str, Any]]:
-    """Return a minimal block so downstream pipeline can continue in degraded mode."""
-    stem = file_path.stem.strip() or "unknown_document"
+    """Return a neutral degraded block without leaking filename into extracted fields."""
     return [
         {
             "id": 0,
-            "text": stem,
-            "confidence": 0.2,
-            "bbox": [0, 0, max(len(stem) * 8, 80), 24],
+            "text": "",
+            "confidence": 0.0,
+            "bbox": [0, 0, 80, 24],
         }
     ]
 
@@ -380,8 +380,9 @@ def run_ocr(file_path: str, cache_root: Path | None = None) -> dict[str, Any]:
 
     if artifact_path.exists():
         cached = json.loads(artifact_path.read_text(encoding="utf-8"))
-        cached["cache_hit"] = True
-        return cached
+        if cached.get("schema_version") == OCR_SCHEMA_VERSION:
+            cached["cache_hit"] = True
+            return cached
 
     suffix = source.suffix.lower()
     warnings: list[str] = []
@@ -400,7 +401,7 @@ def run_ocr(file_path: str, cache_root: Path | None = None) -> dict[str, Any]:
         # Keep pipeline alive on developer machines without OCR engines.
         blocks = _fallback_blocks_when_ocr_unavailable(source)
         warnings.append(
-            "OCR engines are unavailable (PaddleOCR/Tesseract). OCR ran in degraded mode using filename fallback text."
+            "OCR engines are unavailable (PaddleOCR/Tesseract). OCR ran in degraded mode without source text fallback."
         )
 
     # Weight by text length so single-char noise blocks don't dominate the
@@ -416,7 +417,7 @@ def run_ocr(file_path: str, cache_root: Path | None = None) -> dict[str, Any]:
     )
 
     payload = {
-        "schema_version": "v1",
+        "schema_version": OCR_SCHEMA_VERSION,
         "source_file": str(source),
         "sha256": sha,
         "blocks": blocks,

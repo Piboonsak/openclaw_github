@@ -18,22 +18,54 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v8"
+EXTRACTION_SCHEMA_VERSION = "v15"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
 )
+DOC_NO_STRONG_RE = re.compile(
+    r"(?:เลขที่เอกสาร|เลขที่ใบ(?:กำกับ|แจ้งหนี้)?|document\s*no\.?|doc(?:ument)?\s*no\.?|invoice\s*no\.?|inv\.?\s*no\.?|voucher\s*no\.?)\s*[:：#-]?\s*([A-Za-z0-9ก-๙][A-Za-z0-9ก-๙\-_/\.]{2,40})",
+    re.IGNORECASE,
+)
+DOC_NO_WEAK_RE = re.compile(
+    r"(?:เลขที่|no\.?)\s*[:：#-]\s*([A-Za-z0-9ก-๙][A-Za-z0-9ก-๙\-_/\.]{2,40})",
+    re.IGNORECASE,
+)
+DATE_LABEL_RE = re.compile(
+    r"(?:วันที่ออก|วันที่เอกสาร|วันที่|date\s*issued|invoice\s*date|document\s*date|date)\s*[:：]?\s*",
+    re.IGNORECASE,
+)
 DATE_YMD_RE = re.compile(r"\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b")
 DATE_DMY_RE = re.compile(r"\b(\d{1,2})[-/](\d{1,2})[-/](20\d{2})\b")
-AMOUNT_RE = re.compile(
-    r"(?<!\d)(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d)"
-)
+DATE_NUMERIC_RE = re.compile(r"(?<!\d)(\d{1,4})[-/](\d{1,2})[-/](\d{1,4})(?!\d)")
+DATE_THAI_MONTH_RE = re.compile(r"(?<!\d)(\d{1,2})\s*([ก-๙\.]{2,16})\s*(\d{2,4})(?!\d)")
+AMOUNT_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+\.\d{1,2}|\d{1,9})(?!\d)")
 VENDOR_RE = re.compile(r"(?:vendor|supplier|ผู้ขาย|บริษัท)[:\s]*([^\n]+)", re.IGNORECASE)
 SELLER_RE = re.compile(
-    r"(?:ผู้ขาย|seller|vendor|supplier)\s*[:：]\s*([^\n]+)", re.IGNORECASE
+    r"(?:ผู้ขาย|seller|vendor|supplier|from|จาก)\s*[:：]?\s*([^\n]+)", re.IGNORECASE
 )
-BUYER_RE = re.compile(r"(?:ลูกค้า|ผู้ซื้อ|buyer|bill\s*to)\s*[:：]\s*([^\n]+)", re.IGNORECASE)
+BUYER_RE = re.compile(
+    r"(?:ลูกค้า|ผู้ซื้อ|นามลูกค้า|buyer|bill\s*to|sold\s*to|customer\s*name|customer)\s*[:：]?\s*([^\n]+)",
+    re.IGNORECASE,
+)
 TAX_ID_RE = re.compile(r"(?<!\d)(\d{13})(?!\d)")
+COMPANY_HEADER_RE = re.compile(
+    r"^(?:บริษัท|ห้างหุ้นส่วน|ห้าง|ร้าน|โรงงาน|company|co\.?,?\s*ltd|partnership|p\.?l\.?c\.?)\b.*",
+    re.IGNORECASE,
+)
+COMPANY_NAME_LINE_RE = re.compile(
+    r"(?:จำกัด|จํากัด|มหาชน|co\.?\s*,?\s*ltd\.?|company\s+limited|public\s+company\s+limited|p\.?l\.?c\.?)",
+    re.IGNORECASE,
+)
+LABEL_PREFIX_STRIP_RE = re.compile(
+    r"^\s*(?:ผู้ขาย|ลูกค้า|ผู้ซื้อ|นามลูกค้า|seller|buyer|customer(?:\s*name)?|bill\s*to|sold\s*to|from)\s*[:：]?\s*",
+    re.IGNORECASE,
+)
+NAME_NOISE_PREFIX_RE = re.compile(r"^(?:[A-Z]{1,4}\d{2,}|C\d{3,}|CUS\d+)\s*", re.IGNORECASE)
+NAME_TRAILING_NOISE_RE = re.compile(
+    r"\s*(?:=|:)?\s*(?:เลขที่เอกสาร|เลขที่ภาษี|ที่อยู่|โทรศัพท์|อีเมล|email|tel|วันที่ออก|tax\s*id)\b.*$",
+    re.IGNORECASE,
+)
 PERCENT_RE = re.compile(r"(\d{1,2}(?:\.\d+)?)\s*%")
 WHT_RATE_FALLBACK_RE = re.compile(r"หัก\s*(\d{1,2}(?:\.\d+)?)\s*%", re.IGNORECASE)
 WHT_LINE_HINT_RE = re.compile(
@@ -42,6 +74,10 @@ WHT_LINE_HINT_RE = re.compile(
 )
 PAID_LINE_HINT_RE = re.compile(
     r"(?:เงิน.*ช(?:ำ|ํา)ระ|ยอด.*ช(?:ำ|ํา)ระ|paid\s*amount|amount\s*paid)",
+    re.IGNORECASE,
+)
+WHT_BASE_HINT_RE = re.compile(
+    r"(?:มูลค่า(?:ที่)?คำนวณภาษี|มูลค่า(?:ที่)?คํานวณภาษี|ฐานภาษี|taxable\s*amount|before\s*tax)",
     re.IGNORECASE,
 )
 TOTAL_KEYWORDS = (
@@ -79,6 +115,44 @@ DOC_TYPE_HINTS: tuple[tuple[str, str], ...] = (
     ("ใบเสร็จ", "Receipt"),
 )
 
+COMPANY_NAME_CORRECTIONS: tuple[tuple[str, str], ...] = (
+    ("บริษัทฤทธิ์ล้าเลิศเอ็นจิเนียริ่ง", "บริษัทฤทธิ์ล้ำเลิศเอ็นจิเนียริ่ง"),
+    ("บริษัท ฤทธิ์ล้าเลิศเอ็นจิเนียริ่ง", "บริษัท ฤทธิ์ล้ำเลิศเอ็นจิเนียริ่ง"),
+)
+
+TAX_ID_CANONICAL_COMPANIES: dict[str, str] = {
+    "0125561025189": "บริษัท ฤทธิ์ล้ำเลิศ เอ็นจิเนียริ่ง จำกัด",
+    "0105565189488": "บริษัท ทีเค.นอนสติ๊ก จำกัด",
+}
+
+COMMON_WHT_RATES: tuple[float, ...] = (1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 15.0)
+THAI_MONTHS: dict[str, int] = {
+    "มค": 1,
+    "มกราคม": 1,
+    "กพ": 2,
+    "กุมภาพันธ์": 2,
+    "มีค": 3,
+    "มีนาคม": 3,
+    "เมย": 4,
+    "เมษายน": 4,
+    "พค": 5,
+    "พฤษภาคม": 5,
+    "มิย": 6,
+    "มิถุนายน": 6,
+    "กค": 7,
+    "กรกฎาคม": 7,
+    "สค": 8,
+    "สิงหาคม": 8,
+    "กย": 9,
+    "กันยายน": 9,
+    "ตค": 10,
+    "ตุลาคม": 10,
+    "พย": 11,
+    "พฤศจิกายน": 11,
+    "ธค": 12,
+    "ธันวาคม": 12,
+}
+
 
 def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8", errors="ignore")).hexdigest()
@@ -99,7 +173,44 @@ def _normalize_ocr_text(raw_text: str) -> str:
     return normalized
 
 
+def _looks_like_id_token(token: str) -> bool:
+    cleaned = token.replace(",", "").strip()
+    if not cleaned:
+        return True
+    if "." in cleaned:
+        return False
+    return cleaned.isdigit() and len(cleaned) >= 12
+
+
+def _line_amount_candidates(line: str) -> list[float]:
+    values: list[float] = []
+    for raw_match in AMOUNT_RE.findall(line):
+        if _looks_like_id_token(raw_match):
+            continue
+        try:
+            value = float(_normalize_number(raw_match))
+        except ValueError:
+            continue
+        if value >= 1e10:
+            continue
+        values.append(value)
+    return values
+
+
 def _extract_invoice_date(raw_text: str) -> str:
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    for line in lines[:60]:
+        if not DATE_LABEL_RE.search(line):
+            continue
+        labeled_date = _extract_date_from_snippet(line)
+        if labeled_date:
+            return labeled_date
+
+    for line in lines[:60]:
+        candidate = _extract_date_from_snippet(line)
+        if candidate:
+            return candidate
+
     ymd = DATE_YMD_RE.search(raw_text)
     if ymd:
         year, month, day = ymd.groups()
@@ -113,27 +224,89 @@ def _extract_invoice_date(raw_text: str) -> str:
     return ""
 
 
+def _normalize_year(year: int) -> int:
+    if year >= 2400:
+        return year - 543
+    if year < 100:
+        return 2000 + year
+    return year
+
+
+def _safe_date(year: int, month: int, day: int) -> str:
+    if not (1 <= month <= 12 and 1 <= day <= 31 and 1900 <= year <= 2100):
+        return ""
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def _extract_date_from_snippet(text: str) -> str:
+    numeric = DATE_NUMERIC_RE.search(text)
+    if numeric:
+        a, b, c = [int(x) for x in numeric.groups()]
+        if a > 31:
+            return _safe_date(_normalize_year(a), b, c)
+        return _safe_date(_normalize_year(c), b, a)
+
+    thai_date = DATE_THAI_MONTH_RE.search(text)
+    if thai_date:
+        day_str, month_token, year_str = thai_date.groups()
+        month_key = re.sub(r"[^ก-๙]", "", month_token)
+        month = THAI_MONTHS.get(month_key, 0)
+        if month:
+            return _safe_date(_normalize_year(int(year_str)), month, int(day_str))
+
+    return ""
+
+
+def _clean_invoice_number(value: str) -> str:
+    candidate = (value or "").strip().strip(" .,:;|=")
+    candidate = re.split(
+        r"\s*(?:วันที่ออก|วันที่|date|อ้างอิง|ref(?:erence)?|ที่อยู่|โทร|email)\b",
+        candidate,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip(" .,:;|=")
+    return candidate
+
+
+def _extract_invoice_number(raw_text: str) -> str:
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+
+    for line in lines[:120]:
+        for match in DOC_NO_STRONG_RE.finditer(line):
+            candidate = _clean_invoice_number(match.group(1))
+            if candidate and re.search(r"\d", candidate):
+                return candidate
+
+    weak_address_noise = ("ถนน", "แขวง", "เขต", "จังหวัด", "อำเภอ", "ตำบล", "หมู่", "ซอย")
+    for line in lines[:120]:
+        if any(token in line for token in weak_address_noise):
+            continue
+        for match in DOC_NO_WEAK_RE.finditer(line):
+            candidate = _clean_invoice_number(match.group(1))
+            if candidate and re.search(r"\d", candidate):
+                return candidate
+
+    invoice_match = INVOICE_RE.search(raw_text)
+    if invoice_match:
+        candidate = _clean_invoice_number(invoice_match.group(1))
+        if candidate and re.search(r"\d", candidate):
+            return candidate
+
+    return ""
+
+
 def _extract_total_amount(raw_text: str) -> str:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
 
     keyword_candidates: list[float] = []
     currency_candidates: list[float] = []
-    all_candidates: list[float] = []
-
     for line in lines:
         normalized_line = line.lower().replace("฿", " ")
-        amount_matches = [_normalize_number(match) for match in AMOUNT_RE.findall(line)]
-        values = []
-        for value in amount_matches:
-            try:
-                values.append(float(value))
-            except ValueError:
-                continue
+        values = _line_amount_candidates(line)
 
         if not values:
             continue
 
-        all_candidates.extend(values)
         if any(keyword in normalized_line for keyword in TOTAL_KEYWORDS):
             keyword_candidates.extend(values)
         if "บาท" in line or "thb" in normalized_line or "baht" in normalized_line:
@@ -143,8 +316,6 @@ def _extract_total_amount(raw_text: str) -> str:
         return f"{max(keyword_candidates):.2f}"
     if currency_candidates:
         return f"{max(currency_candidates):.2f}"
-    if all_candidates:
-        return f"{max(all_candidates):.2f}"
     return ""
 
 
@@ -156,12 +327,7 @@ def _extract_amount_from_labeled_lines(raw_text: str, hint_re: re.Pattern[str]) 
         if not hint_re.search(line):
             continue
 
-        values: list[float] = []
-        for match in AMOUNT_RE.findall(line):
-            try:
-                values.append(float(_normalize_number(match)))
-            except ValueError:
-                continue
+        values = _line_amount_candidates(line)
 
         if not values:
             continue
@@ -173,6 +339,156 @@ def _extract_amount_from_labeled_lines(raw_text: str, hint_re: re.Pattern[str]) 
             candidates.append(values[-1])
 
     return f"{max(candidates):.2f}" if candidates else ""
+
+
+def _clean_party_name(value: str) -> str:
+    name = (value or "").strip()
+    name = name.lstrip(" :：-=.\t")
+    name = LABEL_PREFIX_STRIP_RE.sub("", name).strip()
+    name = NAME_NOISE_PREFIX_RE.sub("", name)
+    name = NAME_TRAILING_NOISE_RE.sub("", name)
+    name = TAX_ID_RE.sub("", name).strip(" \t:.-")
+    name = re.sub(r"\s+[A-Z]{2,5}$", "", name).strip()
+    return name
+
+
+def _canonicalize_company_name(name: str, tax_id: str = "") -> str:
+    normalized = re.sub(r"\s+", " ", (name or "")).strip()
+    mapped = TAX_ID_CANONICAL_COMPANIES.get((tax_id or "").strip(), "")
+    if not normalized and mapped:
+        return mapped
+    if not normalized:
+        return ""
+
+    normalized = normalized.replace("จํากัด", "จำกัด")
+    for broken, fixed in COMPANY_NAME_CORRECTIONS:
+        if broken in normalized:
+            normalized = normalized.replace(broken, fixed)
+
+    if mapped:
+        # Use canonical legal name for known tax IDs to stabilize vendor/buyer keys.
+        return mapped
+
+    return normalized
+
+
+def _extract_base_amount_candidates(raw_text: str) -> list[float]:
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    candidates: list[float] = []
+    for line in lines:
+        if not WHT_BASE_HINT_RE.search(line):
+            continue
+        for value in _line_amount_candidates(line):
+            if value > 0:
+                candidates.append(value)
+    return candidates
+
+
+def _infer_wht_rate_from_amounts(raw_text: str, wht_amount: str, total_amount: str) -> str:
+    if not wht_amount:
+        return ""
+
+    try:
+        wht_value = float(_normalize_number(wht_amount))
+    except ValueError:
+        return ""
+    if wht_value <= 0:
+        return ""
+
+    base_candidates = _extract_base_amount_candidates(raw_text)
+    if total_amount:
+        try:
+            total_value = float(_normalize_number(total_amount))
+        except ValueError:
+            total_value = 0.0
+        if total_value > wht_value:
+            base_candidates.append(total_value)
+
+    best_rate: float | None = None
+    best_distance = 999.0
+    for base in base_candidates:
+        if base <= wht_value:
+            continue
+        raw_rate = (wht_value / base) * 100.0
+        for expected in COMMON_WHT_RATES:
+            distance = abs(raw_rate - expected)
+            if distance < best_distance:
+                best_distance = distance
+                best_rate = expected
+
+    if best_rate is None or best_distance > 0.5:
+        return ""
+    return f"{best_rate:.2f}".rstrip("0").rstrip(".")
+
+
+def _has_wht_context(raw_text: str) -> bool:
+    if WHT_LINE_HINT_RE.search(raw_text):
+        return True
+    compact = re.sub(r"\s+", "", raw_text)
+    return any(
+        keyword in compact
+        for keyword in (
+            "หักณที่จ่าย",
+            "ถูกหักณที่จ่าย",
+            "ภาษีหักณที่จ่าย",
+            "withholdingtax",
+        )
+    )
+
+
+def _has_paid_context(raw_text: str) -> bool:
+    if PAID_LINE_HINT_RE.search(raw_text):
+        return True
+    compact = re.sub(r"\s+", "", raw_text)
+    return any(
+        keyword in compact
+        for keyword in (
+            "จำนวนเงินที่ชำระ",
+            "ยอดชำระ",
+            "amountpaid",
+        )
+    )
+
+
+def _looks_like_company_name(line: str) -> bool:
+    if not line:
+        return False
+    return bool(COMPANY_HEADER_RE.match(line) or COMPANY_NAME_LINE_RE.search(line))
+
+
+def _extract_name_near_tax_id(
+    lines: list[str],
+    tax_id: str,
+    lookback: int = 4,
+    lookahead: int = 2,
+) -> str:
+    if not tax_id:
+        return ""
+    for idx, line in enumerate(lines):
+        if tax_id not in line:
+            continue
+
+        same_line = _clean_party_name(line.replace(tax_id, ""))
+        if _looks_like_company_name(same_line) and len(same_line) >= 4:
+            return same_line
+
+        for offset in range(1, lookback + 1):
+            check_idx = idx - offset
+            if check_idx < 0:
+                break
+            candidate = _clean_party_name(lines[check_idx])
+            if _looks_like_company_name(candidate) and len(candidate) >= 4:
+                return candidate
+
+        for offset in range(1, lookahead + 1):
+            check_idx = idx + offset
+            if check_idx >= len(lines):
+                break
+            candidate = _clean_party_name(lines[check_idx])
+            if _looks_like_company_name(candidate) and len(candidate) >= 4:
+                return candidate
+
+    return ""
 
 
 def _extract_wht_rate(raw_text: str) -> str:
@@ -215,23 +531,23 @@ def _extract_party_info(raw_text: str) -> dict[str, str]:
 
     seller_match = SELLER_RE.search(raw_text)
     if seller_match:
-        seller_name = seller_match.group(1).strip()
+        seller_name = _clean_party_name(seller_match.group(1))
 
     buyer_match = BUYER_RE.search(raw_text)
     if buyer_match:
-        buyer_name = buyer_match.group(1).strip()
+        buyer_name = _clean_party_name(buyer_match.group(1))
 
     for idx, line in enumerate(lines):
         line_context = f"{line} {lines[idx + 1] if idx + 1 < len(lines) else ''}"
         if not seller_tax_id and re.search(
-            r"(ผู้ขาย|seller|vendor|supplier)", line, re.IGNORECASE
+            r"(ผู้ขาย|seller|vendor|supplier|from|จาก)", line, re.IGNORECASE
         ):
             ids = TAX_ID_RE.findall(line_context)
             if ids:
                 seller_tax_id = ids[0]
 
         if not buyer_tax_id and re.search(
-            r"(ลูกค้า|ผู้ซื้อ|buyer|bill\s*to)", line, re.IGNORECASE
+            r"(ลูกค้า|ผู้ซื้อ|นามลูกค้า|buyer|bill\s*to|sold\s*to|customer)", line, re.IGNORECASE
         ):
             ids = TAX_ID_RE.findall(line_context)
             if ids:
@@ -247,6 +563,21 @@ def _extract_party_info(raw_text: str) -> dict[str, str]:
     if not buyer_tax_id and len(unique_tax_ids) > 1:
         buyer_tax_id = unique_tax_ids[1]
 
+    if not seller_name and seller_tax_id:
+        seller_name = _extract_name_near_tax_id(lines, seller_tax_id)
+    if not buyer_name and buyer_tax_id:
+        buyer_name = _extract_name_near_tax_id(lines, buyer_tax_id)
+
+    if not seller_name:
+        for line in lines[:25]:
+            candidate = _clean_party_name(line)
+            if _looks_like_company_name(candidate) and len(candidate) >= 4:
+                seller_name = candidate
+                break
+
+    if buyer_name and seller_name and buyer_name.strip() == seller_name.strip():
+        buyer_name = ""
+
     return {
         "seller_name": seller_name,
         "buyer_name": buyer_name,
@@ -255,14 +586,106 @@ def _extract_party_info(raw_text: str) -> dict[str, str]:
     }
 
 
+def _line_join_with_bbox_tokens(tokens: list[dict[str, Any]]) -> str:
+    if not tokens:
+        return ""
+
+    ordered = sorted(tokens, key=lambda item: int(item.get("bbox", [0, 0, 0, 0])[0]))
+    parts: list[str] = []
+    prev_bbox: list[int] | None = None
+
+    for token in ordered:
+        text = str(token.get("text", "")).strip()
+        bbox = token.get("bbox", [0, 0, 0, 0])
+        if not text or len(bbox) < 4:
+            continue
+
+        if prev_bbox is not None and parts:
+            gap = int(bbox[0]) - int(prev_bbox[2])
+            prev_h = max(int(prev_bbox[3]) - int(prev_bbox[1]), 1)
+            curr_h = max(int(bbox[3]) - int(bbox[1]), 1)
+            # Insert space only when there is a clear visual gap.
+            if gap > max(10, int(min(prev_h, curr_h) * 0.8)):
+                parts.append(" ")
+
+        parts.append(text)
+        prev_bbox = [int(v) for v in bbox[:4]]
+
+    return "".join(parts).strip()
+
+
+def _reconstruct_lines_from_blocks(blocks: list[dict[str, Any]]) -> list[str]:
+    prepared: list[dict[str, Any]] = []
+    for block in blocks:
+        text = str(block.get("text", "")).strip()
+        bbox = block.get("bbox")
+        if not text or not isinstance(bbox, list) or len(bbox) < 4:
+            continue
+
+        x1, y1, x2, y2 = [int(v) for v in bbox[:4]]
+        prepared.append(
+            {
+                "text": text,
+                "bbox": [x1, y1, x2, y2],
+                "page": int(block.get("page", 1)),
+                "yc": (y1 + y2) / 2.0,
+            }
+        )
+
+    if not prepared:
+        return []
+
+    lines: list[str] = []
+    pages = sorted({item["page"] for item in prepared})
+    for page in pages:
+        page_blocks = [item for item in prepared if item["page"] == page]
+        page_blocks.sort(key=lambda item: (item["yc"], item["bbox"][0]))
+
+        line_groups: list[dict[str, Any]] = []
+        for token in page_blocks:
+            if not line_groups:
+                line_groups.append({"yc": token["yc"], "tokens": [token]})
+                continue
+
+            current = line_groups[-1]
+            heights = [
+                max(int(t["bbox"][3]) - int(t["bbox"][1]), 1)
+                for t in current["tokens"]
+            ]
+            median_h = sorted(heights)[len(heights) // 2]
+            y_tolerance = max(10.0, median_h * 0.55)
+
+            if abs(token["yc"] - float(current["yc"])) <= y_tolerance:
+                current["tokens"].append(token)
+                # Keep centroid stable as we append more tokens in same visual line.
+                current["yc"] = (
+                    float(current["yc"]) * (len(current["tokens"]) - 1) + token["yc"]
+                ) / len(current["tokens"])
+            else:
+                line_groups.append({"yc": token["yc"], "tokens": [token]})
+
+        for group in line_groups:
+            line_text = _line_join_with_bbox_tokens(group["tokens"])
+            if line_text:
+                lines.append(line_text)
+
+    return lines
+
+
 def _join_ocr_text(ocr_output: dict[str, Any]) -> str:
-    return "\n".join(
-        str(block.get("text", "")).strip() for block in ocr_output.get("blocks", [])
-    )
+    blocks = [
+        block
+        for block in ocr_output.get("blocks", [])
+        if str(block.get("text", "")).strip()
+    ]
+    reconstructed = _reconstruct_lines_from_blocks(blocks)
+    if reconstructed:
+        return "\n".join(reconstructed)
+    return "\n".join(str(block.get("text", "")).strip() for block in blocks)
 
 
 def _extract_with_rules(raw_text: str) -> dict[str, Any]:
-    invoice_match = INVOICE_RE.search(raw_text)
+    invoice_number = _extract_invoice_number(raw_text)
     vendor_match = VENDOR_RE.search(raw_text)
     invoice_date = _extract_invoice_date(raw_text)
     total_amount = _extract_total_amount(raw_text)
@@ -270,16 +693,29 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
     wht_amount = _extract_amount_from_labeled_lines(raw_text, WHT_LINE_HINT_RE)
     wht_rate = _extract_wht_rate(raw_text)
     amount_paid = _extract_amount_from_labeled_lines(raw_text, PAID_LINE_HINT_RE)
+    if not wht_rate and _has_wht_context(raw_text):
+        wht_rate = _infer_wht_rate_from_amounts(raw_text, wht_amount, total_amount)
+
+    seller_name = _canonicalize_company_name(
+        party_info["seller_name"],
+        party_info["seller_tax_id"],
+    )
+    buyer_name = _canonicalize_company_name(
+        party_info["buyer_name"],
+        party_info["buyer_tax_id"],
+    )
+    vendor_from_label = vendor_match.group(1).strip() if vendor_match else ""
+    vendor_name = _canonicalize_company_name(
+        seller_name or vendor_from_label,
+        party_info["seller_tax_id"],
+    )
 
     fields = {
-        "invoice_number": (invoice_match.group(1).strip() if invoice_match else ""),
+        "invoice_number": invoice_number,
         "invoice_date": _normalize_date(invoice_date) if invoice_date else "",
-        "vendor_name": (
-            party_info["seller_name"]
-            or (vendor_match.group(1).strip() if vendor_match else "")
-        ),
-        "seller_name": party_info["seller_name"],
-        "buyer_name": party_info["buyer_name"],
+        "vendor_name": vendor_name,
+        "seller_name": seller_name,
+        "buyer_name": buyer_name,
         "seller_tax_id": party_info["seller_tax_id"],
         "buyer_tax_id": party_info["buyer_tax_id"],
         "total_amount": total_amount,
@@ -364,16 +800,26 @@ def run_extraction(
             return cached
 
     rule_result = _extract_with_rules(raw_text)
-    alt_pass_text = "\n".join(line.strip() for line in raw_text.splitlines() if line.strip())
-    alt_result = _extract_with_rules(alt_pass_text)
-    agreement_score = _multi_pass_agreement(
-        rule_result["fields"], alt_result["fields"]
+    alt_pass_text = "\n".join(
+        line.strip() for line in raw_text.splitlines() if line.strip()
     )
+    alt_result = _extract_with_rules(alt_pass_text)
+    agreement_score = _multi_pass_agreement(rule_result["fields"], alt_result["fields"])
     rule_result["fields"]["doc_type"] = _infer_doc_type(raw_text)
 
-    low_conf_fields = [
-        key for key, value in rule_result["confidence"].items() if float(value) < 0.8
-    ]
+    optional_expected = {
+        "wht_rate": _has_wht_context(raw_text),
+        "wht_amount": _has_wht_context(raw_text),
+        "amount_paid": _has_paid_context(raw_text),
+    }
+    low_conf_fields: list[str] = []
+    for key, value in rule_result["confidence"].items():
+        if float(value) >= 0.8:
+            continue
+        if key in optional_expected and not optional_expected[key]:
+            continue
+        low_conf_fields.append(key)
+
     if agreement_score < 0.5 and "agreement_score" not in low_conf_fields:
         low_conf_fields.append("agreement_score")
 
@@ -408,6 +854,7 @@ def run_extraction(
             "ocr_confidence": ocr_conf,
             "page_count": page_count,
             "agreement_score": agreement_score,
+            "optional_fields_expected": optional_expected,
         },
     }
 
