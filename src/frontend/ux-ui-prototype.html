@@ -1043,6 +1043,10 @@
     if (!fileItem?._rawFile) return null;
     const formData = new FormData();
     formData.append('file', fileItem._rawFile, fileItem._rawFile.name);
+    const companyId = $('companySelect')?.value || $('coaCompanySelect')?.value || state.selectedCompanyId || '';
+    if (companyId) {
+      formData.append('company_id', companyId);
+    }
     const res = await fetch(apiUrl('/api/process'), { method: 'POST', body: formData });
     if (!res.ok) {
       const errText = await res.text();
