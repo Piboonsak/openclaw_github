@@ -1,4 +1,6 @@
 Pillow>=10.0.0
+paddleocr>=2.8.1
+paddlepaddle>=3.0.0
 # System dependency (required for image/scanned PDF OCR):
 # install Tesseract OCR 5.5+ on host OS (not a pip package)
 pytesseract>=0.3.10
