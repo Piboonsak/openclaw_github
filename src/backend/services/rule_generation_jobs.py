@@ -9,7 +9,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.backend.services.rule_generator import approve_generated_rules, run_rule_generation_job
+from src.backend.services.rule_generator import (
+    approve_generated_rules,
+    run_rule_generation_job,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 JOBS_ROOT = REPO_ROOT / "rules" / "_jobs"
@@ -99,8 +102,14 @@ class RuleGenerationJobStore:
                     stage_state["status"] = status
                     if duration_ms is not None:
                         stage_state["duration_ms"] = duration_ms
-                    stage_state["label"] = _STAGE_LABELS.get(stage, stage_state.get("label", ""))
-                elif stage_state["stage"] < stage and stage_state["status"] in {"queued", "pending", "running"}:
+                    stage_state["label"] = _STAGE_LABELS.get(
+                        stage, stage_state.get("label", "")
+                    )
+                elif stage_state["stage"] < stage and stage_state["status"] in {
+                    "queued",
+                    "pending",
+                    "running",
+                }:
                     stage_state["status"] = "done"
             job["updated_at"] = datetime.now(UTC).isoformat()
             self._persist(job_id)
@@ -147,17 +156,24 @@ class RuleGenerationJobStore:
             return
 
         request = dict(job["request"])
+        loop = asyncio.get_running_loop()
+
+        def _schedule_progress_update(kwargs: dict[str, Any]) -> None:
+            task = self.update_progress(
+                job_id,
+                progress_pct=int(kwargs.get("progress_pct", 0)),
+                stage=int(kwargs.get("stage", 1)),
+                status=str(kwargs.get("status", "running")),
+                duration_ms=int(kwargs["duration_ms"])
+                if kwargs.get("duration_ms") is not None
+                else None,
+            )
+            asyncio.create_task(task)
 
         def progress_cb(**kwargs: Any) -> None:
-            asyncio.create_task(
-                self.update_progress(
-                    job_id,
-                    progress_pct=int(kwargs.get("progress_pct", 0)),
-                    stage=int(kwargs.get("stage", 1)),
-                    status=str(kwargs.get("status", "running")),
-                    duration_ms=int(kwargs["duration_ms"]) if kwargs.get("duration_ms") is not None else None,
-                )
-            )
+            # run_rule_generation_job executes in a worker thread; marshal updates back
+            # onto the main event loop so create_task has a running loop context.
+            loop.call_soon_threadsafe(_schedule_progress_update, dict(kwargs))
 
         try:
             result = await asyncio.to_thread(
