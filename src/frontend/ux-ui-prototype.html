@@ -532,6 +532,8 @@
   const STORAGE_KEY_COMPANIES = 'ledgerflow_companies';
   const STORAGE_KEY_COA = 'ledgerflow_coa';
   const STORAGE_KEY_MAPPING_RULES = 'ledgerflow_mapping_rules';
+  const STORAGE_KEY_COA_RULE_JOBS = 'ledgerflow_coa_rule_jobs';
+  const STORAGE_KEY_SELECTED_COMPANY = 'ledgerflow_selected_company';
 
   function loadStoredJson(key, fallback) {
     try {
@@ -557,6 +559,8 @@
   const COMPANIES = loadStoredJson(STORAGE_KEY_COMPANIES, DEFAULT_COMPANIES);
   const COA = loadStoredJson(STORAGE_KEY_COA, DEFAULT_COA);
   const STORED_MAPPING_RULES = loadStoredJson(STORAGE_KEY_MAPPING_RULES, MAPPING_RULES);
+  const STORED_COA_RULE_JOBS = loadStoredJson(STORAGE_KEY_COA_RULE_JOBS, {});
+  const STORED_SELECTED_COMPANY = String(window.localStorage.getItem(STORAGE_KEY_SELECTED_COMPANY) || '');
 
   function persistCompanies() {
     try {
@@ -573,6 +577,18 @@
   function persistMappingRules() {
     try {
       window.localStorage.setItem(STORAGE_KEY_MAPPING_RULES, JSON.stringify(state.mappingRules || {}));
+    } catch {}
+  }
+
+  function persistCoaRuleJobs() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_COA_RULE_JOBS, JSON.stringify(state.coaRule.jobsByCompany || {}));
+    } catch {}
+  }
+
+  function persistSelectedCompany() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_SELECTED_COMPANY, String(state.selectedCompanyId || ''));
     } catch {}
   }
 
@@ -594,7 +610,7 @@
   /* ─── STATE ─── */
   const state = {
     currentStep: 1,
-    selectedCompanyId: '',
+    selectedCompanyId: COMPANIES.some(c => c.id === STORED_SELECTED_COMPANY) ? STORED_SELECTED_COMPANY : '',
     editingCompanyId: '',
     uploadedFiles: [],
     confirmedFiles: [],
@@ -629,6 +645,7 @@
       pollingTimer: null,
       result: null,
       yamlText: '',
+      jobsByCompany: JSON.parse(JSON.stringify(STORED_COA_RULE_JOBS)),
     },
   };
 
@@ -903,6 +920,77 @@
     if (state.coaRule.pollingTimer) {
       clearInterval(state.coaRule.pollingTimer);
       state.coaRule.pollingTimer = null;
+    }
+  }
+
+  function getCoaRuleJobMeta(companyId) {
+    if (!companyId) return null;
+    const meta = state.coaRule.jobsByCompany?.[companyId];
+    return meta && typeof meta === 'object' ? meta : null;
+  }
+
+  function upsertCoaRuleJobMeta(companyId, patch = {}) {
+    if (!companyId) return;
+    const current = getCoaRuleJobMeta(companyId) || {};
+    state.coaRule.jobsByCompany[companyId] = {
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+    persistCoaRuleJobs();
+  }
+
+  async function restoreCoaRuleState(companyId) {
+    const meta = getCoaRuleJobMeta(companyId);
+    const jobId = String(meta?.jobId || '');
+    if (!companyId || !jobId) return;
+
+    state.coaRule.jobId = jobId;
+    try {
+      const progressResponse = await fetch(apiUrl(`/api/v1/rules/generate/${encodeURIComponent(jobId)}/progress`));
+      if (!progressResponse.ok) return;
+      const progress = await progressResponse.json();
+
+      $('coaRuleProgressWrap')?.classList.remove('hidden');
+      $('coaRuleProgressFill').style.width = `${Number(progress.progress_pct || 0)}%`;
+      $('coaRuleProgressLabel').textContent = `${Number(progress.progress_pct || 0)}% • ${progress.stage_label || ''}`;
+      renderRuleProgress(progress.stages || []);
+
+      if (progress.status === 'failed') {
+        $('coaRuleResultWrap')?.classList.add('hidden');
+        $('coaDownloadYamlBtn').disabled = true;
+        setCoaRuleHint(progress.error?.message || 'Last generation failed.', 'warn');
+        upsertCoaRuleJobMeta(companyId, { status: 'failed', approved: false });
+        return;
+      }
+
+      if (progress.status === 'done') {
+        await refreshRuleGenerationResult(jobId);
+        const resultResponse = await fetch(apiUrl(`/api/v1/rules/generate/${encodeURIComponent(jobId)}/result`));
+        const resultPayload = resultResponse.ok ? await resultResponse.json() : {};
+        const approved = Boolean(resultPayload?.approved || meta?.approved);
+        upsertCoaRuleJobMeta(companyId, {
+          status: approved ? 'approved' : 'done',
+          approved,
+        });
+        if (approved) {
+          setCoaRuleHint('Rules approved and saved.', 'ok');
+        }
+        return;
+      }
+
+      setCoaRuleHint(`Resuming job ${jobId}...`, 'info');
+      if (!state.coaRule.pollingTimer) {
+        state.coaRule.pollingTimer = setInterval(() => {
+          pollRuleGenerationJob(jobId).catch((error) => {
+            stopRuleProgressPolling();
+            setCoaRuleHint(String(error.message || error), 'warn');
+          });
+        }, 1500);
+      }
+      await pollRuleGenerationJob(jobId);
+    } catch {
+      setCoaRuleHint(`Failed to restore last job (${jobId}).`, 'warn');
     }
   }
 
@@ -1326,6 +1414,7 @@
   /* ─── STEP 1: COMPANY + UPLOAD ─── */
   function applyCompanySelection(companyId) {
     state.selectedCompanyId = companyId || '';
+    persistSelectedCompany();
     const co = getCompany();
     const hint = $('companyHint');
     const dz = $('dropzone');
@@ -1363,6 +1452,7 @@
     if ($('companySelect')) $('companySelect').value = companyId;
     if ($('coaRuleCompanyName')) $('coaRuleCompanyName').value = '';
     applyCompanySelection(companyId);
+    restoreCoaRuleState(companyId).catch(() => {});
   });
 
   $('dropzone').addEventListener('click', () => {
@@ -2363,12 +2453,16 @@
       stopRuleProgressPolling();
       const message = progress.error?.message || 'Rule generation failed';
       setCoaRuleHint(message, 'warn');
+      const companyId = $('coaCompanySelect')?.value || state.selectedCompanyId || '';
+      upsertCoaRuleJobMeta(companyId, { jobId, status: 'failed', approved: false });
       showToast('Rule generation failed', 'err');
       return;
     }
     if (progress.status === 'done') {
       stopRuleProgressPolling();
       await refreshRuleGenerationResult(jobId);
+      const companyId = $('coaCompanySelect')?.value || state.selectedCompanyId || '';
+      upsertCoaRuleJobMeta(companyId, { jobId, status: 'done' });
       showToast('Rule generation completed', 'ok');
     }
   }
@@ -2416,6 +2510,11 @@
     }
     const payload = await response.json();
     state.coaRule.jobId = String(payload.job_id || '');
+    upsertCoaRuleJobMeta(companyId, {
+      jobId: state.coaRule.jobId,
+      status: String(payload.status || 'queued'),
+      approved: false,
+    });
     setCoaRuleHint(`Job ${state.coaRule.jobId} started`, 'ok');
     $('coaRuleProgressWrap')?.classList.remove('hidden');
     state.coaRule.pollingTimer = setInterval(() => {
@@ -2450,6 +2549,8 @@
     if (state.coaRule.result) {
       syncGeneratedRuleResultToLocalState(state.coaRule.result);
     }
+    const companyId = $('coaCompanySelect')?.value || state.selectedCompanyId || '';
+    upsertCoaRuleJobMeta(companyId, { jobId, status: 'approved', approved: true });
     setCoaRuleHint('Rules approved and saved.', 'ok');
     showToast('Rules approved', 'ok');
   });
@@ -2532,6 +2633,7 @@
   /* ─── INIT ─── */
   syncCompanyUi();
   syncCoaRuleCompanyDefaults();
+  restoreCoaRuleState($('coaCompanySelect')?.value || state.selectedCompanyId || '').catch(() => {});
   setStep(1);
 }());
 </script>
