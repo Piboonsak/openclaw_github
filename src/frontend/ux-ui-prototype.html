@@ -531,6 +531,7 @@
 
   const STORAGE_KEY_COMPANIES = 'ledgerflow_companies';
   const STORAGE_KEY_COA = 'ledgerflow_coa';
+  const STORAGE_KEY_MAPPING_RULES = 'ledgerflow_mapping_rules';
 
   function loadStoredJson(key, fallback) {
     try {
@@ -545,8 +546,17 @@
     }
   }
 
+  const MAPPING_RULES = {
+    'co-1': {
+      'Metro Electric Co.,Ltd_Invoice': '5040',
+      'PTT Retail Co.,Ltd_Invoice': '5020',
+      'Office Depot (Thailand) Co.,Ltd_Invoice': '5080',
+    },
+  };
+
   const COMPANIES = loadStoredJson(STORAGE_KEY_COMPANIES, DEFAULT_COMPANIES);
   const COA = loadStoredJson(STORAGE_KEY_COA, DEFAULT_COA);
+  const STORED_MAPPING_RULES = loadStoredJson(STORAGE_KEY_MAPPING_RULES, MAPPING_RULES);
 
   function persistCompanies() {
     try {
@@ -560,15 +570,11 @@
     } catch {}
   }
 
-  const MAPPING_RULES = {
-    'co-1': {
-      'Metro Electric Co.,Ltd_Invoice': '5040',
-      'PTT Retail Co.,Ltd_Invoice': '5020',
-      'Office Depot (Thailand) Co.,Ltd_Invoice': '5080',
-    },
-  };
-
-  const TEMP_REMOVED_COMPANY_KEYWORDS = ['ฤทธิ์ล้ำเลิศ'];
+  function persistMappingRules() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_MAPPING_RULES, JSON.stringify(state.mappingRules || {}));
+    } catch {}
+  }
 
   const SAMPLE_FILES = [
     { id:'f01', name:'INV-Metro-Electric-001.pdf',    size:2.1, folder:'2026-05-Invoices',  sellerTax:'0105566111111', sellerName:'Metro Electric Co.,Ltd',               buyerTax:'0105559123456', netAmt:10000, vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:97, invNo:'INV-2605-001',   invDate:'2026-05-12' },
@@ -597,7 +603,7 @@
     scanCurrentIndex: 0,
     approvedScan: new Set(),
     confirmedMapping: new Set(),
-    mappingRules: JSON.parse(JSON.stringify(MAPPING_RULES)),
+    mappingRules: JSON.parse(JSON.stringify(STORED_MAPPING_RULES)),
     vouchers: [],
     exportColumns: new Set([
       'Voucher_No','Date','Book_Code','Account_Code',
@@ -731,45 +737,64 @@
     }
     persistCompanies();
     persistCOA();
+    persistMappingRules();
     syncCompanyUi(state.selectedCompanyId);
     if ($('companySelect')) $('companySelect').value = state.selectedCompanyId;
     applyCompanySelection(state.selectedCompanyId);
     showToast('Company removed', 'ok');
   }
 
-  function purgeTemporarilyRemovedCompanies() {
-    const removedIds = [];
-    for (let i = COMPANIES.length - 1; i >= 0; i -= 1) {
-      const company = COMPANIES[i];
-      const name = String(company?.name || '').toLowerCase();
-      const shouldRemove = TEMP_REMOVED_COMPANY_KEYWORDS.some(keyword =>
-        name.includes(String(keyword).toLowerCase())
-      );
-      if (!shouldRemove) continue;
-      removedIds.push(company.id);
-      COMPANIES.splice(i, 1);
-    }
-
-    if (!removedIds.length) return 0;
-
-    removedIds.forEach((companyId) => {
-      delete COA[companyId];
-      if (state.mappingRules && state.mappingRules[companyId]) {
-        delete state.mappingRules[companyId];
-      }
-      if (state.selectedCompanyId === companyId) {
-        state.selectedCompanyId = '';
-      }
-    });
-
-    persistCompanies();
-    persistCOA();
-    return removedIds.length;
-  }
-
   function syncCompanyUi(selectedId = state.selectedCompanyId) {
     renderCompanySelectors(selectedId);
     renderSettingsCompaniesTable();
+  }
+
+  function upsertCompanyProfile(company) {
+    if (!company || !company.id) return;
+    const existing = COMPANIES.find(item => item.id === company.id);
+    if (existing) {
+      existing.name = company.name || existing.name;
+      existing.taxId = company.taxId || existing.taxId;
+      return;
+    }
+    COMPANIES.push({
+      id: company.id,
+      name: company.name || company.id,
+      taxId: company.taxId || '',
+    });
+  }
+
+  function syncGeneratedRuleResultToLocalState(result) {
+    const companyId = $('coaCompanySelect')?.value || state.selectedCompanyId || '';
+    if (!companyId || !result) return;
+
+    const companyName = String($('coaRuleCompanyName')?.value || '').trim();
+    const currentCompany = COMPANIES.find(item => item.id === companyId);
+    upsertCompanyProfile({
+      id: companyId,
+      name: companyName || currentCompany?.name || companyId,
+      taxId: currentCompany?.taxId || '',
+    });
+
+    const accountRows = Array.isArray(result.accounts_confidence)
+      ? result.accounts_confidence.map(item => ({
+          code: String(item.code || '').trim(),
+          name: String(item.name || '').trim(),
+          type: String(item.type || 'expense').trim().toLowerCase(),
+        })).filter(item => item.code && item.name)
+      : [];
+
+    if (accountRows.length) {
+      COA[companyId] = deepCopy(accountRows);
+      persistCOA();
+    }
+
+    persistCompanies();
+    syncCompanyUi(companyId);
+    if ($('companySelect')) $('companySelect').value = companyId;
+    if ($('coaCompanySelect')) $('coaCompanySelect').value = companyId;
+    applyCompanySelection(companyId);
+    renderCoaPreviewRows(COA[companyId] || [], 8);
   }
 
   function clearAddCompanyForm() {
@@ -1936,6 +1961,7 @@
         if (drLine) {
           if (!state.mappingRules[state.selectedCompanyId]) state.mappingRules[state.selectedCompanyId] = {};
           state.mappingRules[state.selectedCompanyId][key] = drLine.code;
+          persistMappingRules();
           console.log(`[ML UPSERT] company=${state.selectedCompanyId} key="${key}" → ${drLine.code}`);
         }
       }
@@ -2168,6 +2194,7 @@
       if (!state.mappingRules[newId]) state.mappingRules[newId] = {};
       persistCompanies();
       persistCOA();
+      persistMappingRules();
 
       syncCompanyUi(newId);
       if ($('companySelect')) $('companySelect').value = newId;
@@ -2308,6 +2335,7 @@
     const result = await response.json();
     state.coaRule.result = result;
     state.coaRule.yamlText = String(result.yaml_content || '');
+    syncGeneratedRuleResultToLocalState(result);
     renderRuleResult(result);
     $('coaDownloadYamlBtn').disabled = !state.coaRule.yamlText;
     const flags = Array.isArray(result.flags) ? result.flags : [];
@@ -2415,6 +2443,9 @@
       setCoaRuleHint('Approve request failed.', 'warn');
       return;
     }
+    if (state.coaRule.result) {
+      syncGeneratedRuleResultToLocalState(state.coaRule.result);
+    }
     setCoaRuleHint('Rules approved and saved.', 'ok');
     showToast('Rules approved', 'ok');
   });
@@ -2495,13 +2526,9 @@
   function svgDoc()   { return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`; }
 
   /* ─── INIT ─── */
-  const removedCount = purgeTemporarilyRemovedCompanies();
   syncCompanyUi();
   syncCoaRuleCompanyDefaults();
   setStep(1);
-  if (removedCount > 0) {
-    showToast(`Removed ${removedCount} temporary company profile(s)`, 'warn');
-  }
 }());
 </script>
 </body>
