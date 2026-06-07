@@ -25,6 +25,7 @@ _STAGE_LABELS = {
     4: "Generating journal entry rules",
     5: "Validating & writing rule file",
 }
+JOB_TIMEOUT_SECONDS = 180
 
 
 class RuleGenerationJobStore:
@@ -93,7 +94,13 @@ class RuleGenerationJobStore:
     ) -> None:
         async with self._lock:
             job = self._jobs[job_id]
-            job["status"] = "processing" if status not in {"failed", "done"} else status
+            # Job lifecycle is controlled by mark_done/mark_failed.
+            # Stage-level "done" means only the current stage is complete,
+            # not the whole job.
+            if status == "failed":
+                job["status"] = "failed"
+            elif job.get("status") != "done":
+                job["status"] = "processing"
             job["progress_pct"] = max(0, min(100, int(progress_pct)))
             job["current_stage"] = stage
             job["stage_label"] = _STAGE_LABELS.get(stage, job.get("stage_label", ""))
@@ -176,20 +183,30 @@ class RuleGenerationJobStore:
             loop.call_soon_threadsafe(_schedule_progress_update, dict(kwargs))
 
         try:
-            result = await asyncio.to_thread(
-                run_rule_generation_job,
-                job_id=job_id,
-                company_id=request["company_id"],
-                company_name=request["company_name"],
-                tax_id=request.get("tax_id", ""),
-                business_type=request["business_type"],
-                coa_file=Path(request["coa_file_path"]),
-                mapping_file=Path(request["mapping_file_path"]),
-                provider=request.get("provider", "auto"),
-                model=request.get("model", ""),
-                progress_callback=progress_cb,
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    run_rule_generation_job,
+                    job_id=job_id,
+                    company_id=request["company_id"],
+                    company_name=request["company_name"],
+                    tax_id=request.get("tax_id", ""),
+                    business_type=request["business_type"],
+                    coa_file=Path(request["coa_file_path"]),
+                    mapping_file=Path(request["mapping_file_path"]),
+                    provider=request.get("provider", "auto"),
+                    model=request.get("model", ""),
+                    progress_callback=progress_cb,
+                ),
+                timeout=JOB_TIMEOUT_SECONDS,
             )
             await self.mark_done(job_id, result)
+        except asyncio.TimeoutError as exc:  # pragma: no cover
+            await self.mark_failed(
+                job_id,
+                RuntimeError(
+                    f"Rule generation timed out after {JOB_TIMEOUT_SECONDS} seconds"
+                ),
+            )
         except Exception as exc:  # pragma: no cover
             await self.mark_failed(job_id, exc)
 

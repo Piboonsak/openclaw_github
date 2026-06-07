@@ -2333,6 +2333,10 @@
     const response = await fetch(apiUrl(`/api/v1/rules/generate/${encodeURIComponent(jobId)}/result`));
     if (!response.ok) throw new Error(`Result request failed: ${response.status}`);
     const result = await response.json();
+    if (result.status !== 'done') {
+      setCoaRuleHint(`Job ${jobId} is still ${result.status || 'processing'}...`, 'info');
+      return;
+    }
     state.coaRule.result = result;
     state.coaRule.yamlText = String(result.yaml_content || '');
     syncGeneratedRuleResultToLocalState(result);

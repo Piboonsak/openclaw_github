@@ -26,6 +26,7 @@ DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-20250514",
     "openai": "gpt-4o-mini",
 }
+LLM_REQUEST_TIMEOUT_SECONDS = 45
 
 
 def _now_ms() -> int:
@@ -81,7 +82,7 @@ def _call_anthropic(prompt: str, system: str, model: str) -> str:
     api_key = settings.ANTHROPIC_API_KEY or ""
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is not set.")
-    client = Anthropic(api_key=api_key)
+    client = Anthropic(api_key=api_key, timeout=LLM_REQUEST_TIMEOUT_SECONDS)
     response = client.messages.create(
         model=model,
         temperature=0,
@@ -111,6 +112,7 @@ def _call_openai(prompt: str, system: str, model: str) -> str:
     completion = client.chat.completions.create(
         model=model,
         temperature=0,
+        timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
@@ -142,6 +144,7 @@ def _call_openrouter(prompt: str, system: str, model: str) -> str:
     completion = client.chat.completions.create(
         model=model,
         temperature=0,
+        timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
@@ -528,10 +531,17 @@ def run_rule_generation_job(
         provider, stage4_prompt, "Return only valid YAML.", model
     )
     stage4_payload_first = yaml.safe_load(_strip_code_fence(stage4_raw_first)) or {}
-    stage4_raw_second = _call_llm(
-        provider, stage4_prompt, "Return only valid YAML.", model
-    )
-    stage4_payload_second = yaml.safe_load(_strip_code_fence(stage4_raw_second)) or {}
+    try:
+        stage4_raw_second = _call_llm(
+            provider, stage4_prompt, "Return only valid YAML.", model
+        )
+        stage4_payload_second = yaml.safe_load(_strip_code_fence(stage4_raw_second)) or {}
+    except Exception:
+        # Keep generation usable even when the optional second-pass confidence probe fails.
+        stage4_raw_second = ""
+        stage4_payload_second = {
+            "journal_entry_rules": stage4_payload_first.get("journal_entry_rules", [])
+        }
     journal_rules = stage4_payload_first.get("journal_entry_rules", []) or []
     if not isinstance(journal_rules, list) or not journal_rules:
         raise RuntimeError("Stage 4 returned no journal_entry_rules.")
