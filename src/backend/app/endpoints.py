@@ -14,8 +14,8 @@ from fastapi.responses import FileResponse, Response
 
 from src.backend.pipeline.orchestrator import run_pipeline, select_model
 from src.backend.services.export_service import create_excel_ledger
-from src.backend.services.rule_generation_jobs import RULE_GENERATION_JOBS
 from src.backend.services.rule_engine import validate_required_fields
+from src.backend.services.rule_generation_jobs import RULE_GENERATION_JOBS
 
 router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -168,8 +168,8 @@ async def generate_rules(
     company_id: str = Form(...),
     company_name: str = Form(...),
     business_type: str = Form("service"),
-    provider: str = Form("anthropic"),
-    model: str = Form("claude-sonnet-4-6-20250601"),
+    provider: str = Form("auto"),
+    model: str = Form(""),
     coa_file: UploadFile = File(...),
     mapping_file: UploadFile = File(...),
 ) -> dict[str, Any]:

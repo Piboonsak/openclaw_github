@@ -185,8 +185,8 @@ class RuleGenerationJobStore:
                 business_type=request["business_type"],
                 coa_file=Path(request["coa_file_path"]),
                 mapping_file=Path(request["mapping_file_path"]),
-                provider=request.get("provider", "anthropic"),
-                model=request.get("model", "claude-sonnet-4-6-20250601"),
+                provider=request.get("provider", "auto"),
+                model=request.get("model", ""),
                 progress_callback=progress_cb,
             )
             await self.mark_done(job_id, result)
