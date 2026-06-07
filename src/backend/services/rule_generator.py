@@ -28,7 +28,11 @@ def _now_ms() -> int:
 
 
 def _join_ocr_blocks(ocr_output: dict[str, Any]) -> str:
-    return "\n".join(str(block.get("text", "")).strip() for block in ocr_output.get("blocks", []) if str(block.get("text", "")).strip())
+    return "\n".join(
+        str(block.get("text", "")).strip()
+        for block in ocr_output.get("blocks", [])
+        if str(block.get("text", "")).strip()
+    )
 
 
 def _extract_docx_text(docx_path: Path) -> str:
@@ -62,7 +66,12 @@ def _strip_code_fence(text: str) -> str:
 
 
 def _call_anthropic(prompt: str, system: str, model: str) -> str:
-    from anthropic import Anthropic  # type: ignore
+    try:
+        from anthropic import Anthropic  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError(
+            "Anthropic SDK is not installed. Run: pip install anthropic"
+        ) from exc
 
     api_key = settings.ANTHROPIC_API_KEY or ""
     if not api_key:
@@ -75,11 +84,18 @@ def _call_anthropic(prompt: str, system: str, model: str) -> str:
         system=system,
         messages=[{"role": "user", "content": prompt}],
     )
-    return "\n".join(getattr(item, "text", "") for item in response.content if getattr(item, "type", "") == "text").strip()
+    return "\n".join(
+        getattr(item, "text", "")
+        for item in response.content
+        if getattr(item, "type", "") == "text"
+    ).strip()
 
 
 def _call_openai(prompt: str, system: str, model: str) -> str:
-    from openai import OpenAI  # type: ignore
+    try:
+        from openai import OpenAI  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError("OpenAI SDK is not installed. Run: pip install openai") from exc
 
     api_key = settings.OPENAI_API_KEY or ""
     if not api_key:
@@ -140,7 +156,12 @@ COA source text:
 """.strip()
 
 
-def _build_stage4_prompt(company_name: str, business_type: str, mapping_text: str, coa_payload: dict[str, Any]) -> str:
+def _build_stage4_prompt(
+    company_name: str,
+    business_type: str,
+    mapping_text: str,
+    coa_payload: dict[str, Any],
+) -> str:
     coa_yaml = yaml.safe_dump(
         {
             "company": coa_payload.get("company", {}),
@@ -193,7 +214,9 @@ def _normalize_rule(rule: dict[str, Any]) -> str:
     return json.dumps(rule, ensure_ascii=False, sort_keys=True)
 
 
-def _multi_pass_scores(first_rules: list[dict[str, Any]], second_rules: list[dict[str, Any]]) -> dict[str, int]:
+def _multi_pass_scores(
+    first_rules: list[dict[str, Any]], second_rules: list[dict[str, Any]]
+) -> dict[str, int]:
     second_index = {str(rule.get("rule_id", "")): rule for rule in second_rules}
     scores: dict[str, int] = {}
     for rule in first_rules:
@@ -224,8 +247,12 @@ def _balance_structure_score(rule: dict[str, Any]) -> int:
     entries = rule.get("entries", []) or []
     if not entries:
         return 0
-    debit_count = sum(1 for entry in entries if str(entry.get("side", "")).lower() == "debit")
-    credit_count = sum(1 for entry in entries if str(entry.get("side", "")).lower() == "credit")
+    debit_count = sum(
+        1 for entry in entries if str(entry.get("side", "")).lower() == "debit"
+    )
+    credit_count = sum(
+        1 for entry in entries if str(entry.get("side", "")).lower() == "credit"
+    )
     has_formula = bool(rule.get("validation", {}).get("balance_check"))
     return 100 if debit_count > 0 and credit_count > 0 and has_formula else 0
 
@@ -255,8 +282,17 @@ def _source_coverage_score(rule: dict[str, Any], source_text: str) -> int:
     return int(round((hits / total) * 100))
 
 
-def _overall_confidence(llm_self: int, agreement: int, cross_ref: int, balance: int, coverage: int) -> float:
-    return round((llm_self * 0.30) + (agreement * 0.25) + (cross_ref * 0.20) + (balance * 0.15) + (coverage * 0.10), 1)
+def _overall_confidence(
+    llm_self: int, agreement: int, cross_ref: int, balance: int, coverage: int
+) -> float:
+    return round(
+        (llm_self * 0.30)
+        + (agreement * 0.25)
+        + (cross_ref * 0.20)
+        + (balance * 0.15)
+        + (coverage * 0.10),
+        1,
+    )
 
 
 def _confidence_status(score: float) -> str:
@@ -268,10 +304,18 @@ def _confidence_status(score: float) -> str:
 
 
 def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(yaml.safe_dump(payload, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    path.write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
 
 
-def _build_validation_report(company_name: str, generated_path: Path, rule_count: int, account_count: int, flagged_rules: list[str]) -> str:
+def _build_validation_report(
+    company_name: str,
+    generated_path: Path,
+    rule_count: int,
+    account_count: int,
+    flagged_rules: list[str],
+) -> str:
     lines = [
         f"# Validation Report — {company_name}",
         "",
@@ -319,7 +363,9 @@ def run_rule_generation_job(
     stage_started = _now_ms()
     shutil.copy2(coa_file, source_root / "coa_upload.pdf")
     shutil.copy2(mapping_file, source_root / "mapping_upload.docx")
-    progress_callback(stage=1, status="done", progress_pct=10, duration_ms=_now_ms() - stage_started)
+    progress_callback(
+        stage=1, status="done", progress_pct=10, duration_ms=_now_ms() - stage_started
+    )
 
     stage_started = _now_ms()
     progress_callback(stage=2, status="running", progress_pct=15)
@@ -328,7 +374,9 @@ def run_rule_generation_job(
     mapping_text = _extract_docx_text(mapping_file)
     if not coa_text.strip():
         raise RuntimeError("COA PDF yielded no readable text.")
-    progress_callback(stage=2, status="done", progress_pct=30, duration_ms=_now_ms() - stage_started)
+    progress_callback(
+        stage=2, status="done", progress_pct=30, duration_ms=_now_ms() - stage_started
+    )
 
     stage_started = _now_ms()
     progress_callback(stage=3, status="running", progress_pct=35)
@@ -363,25 +411,40 @@ def run_rule_generation_job(
         "business_type": company_payload.get("business_type") or business_type,
         "notes": company_payload.get("notes", ""),
     }
-    progress_callback(stage=3, status="done", progress_pct=55, duration_ms=_now_ms() - stage_started)
+    progress_callback(
+        stage=3, status="done", progress_pct=55, duration_ms=_now_ms() - stage_started
+    )
 
     stage_started = _now_ms()
     progress_callback(stage=4, status="running", progress_pct=60)
-    stage4_prompt = _build_stage4_prompt(company_name, business_type, mapping_text, {"company": company_payload, "chart_of_accounts": normalized_accounts})
-    stage4_raw_first = _call_llm(provider, stage4_prompt, "Return only valid YAML.", model)
+    stage4_prompt = _build_stage4_prompt(
+        company_name,
+        business_type,
+        mapping_text,
+        {"company": company_payload, "chart_of_accounts": normalized_accounts},
+    )
+    stage4_raw_first = _call_llm(
+        provider, stage4_prompt, "Return only valid YAML.", model
+    )
     stage4_payload_first = yaml.safe_load(_strip_code_fence(stage4_raw_first)) or {}
-    stage4_raw_second = _call_llm(provider, stage4_prompt, "Return only valid YAML.", model)
+    stage4_raw_second = _call_llm(
+        provider, stage4_prompt, "Return only valid YAML.", model
+    )
     stage4_payload_second = yaml.safe_load(_strip_code_fence(stage4_raw_second)) or {}
     journal_rules = stage4_payload_first.get("journal_entry_rules", []) or []
     if not isinstance(journal_rules, list) or not journal_rules:
         raise RuntimeError("Stage 4 returned no journal_entry_rules.")
-    agreement_scores = _multi_pass_scores(journal_rules, stage4_payload_second.get("journal_entry_rules", []) or [])
+    agreement_scores = _multi_pass_scores(
+        journal_rules, stage4_payload_second.get("journal_entry_rules", []) or []
+    )
     llm_confidence_map = {
         str(item.get("rule_id", "")).strip(): int(float(item.get("confidence", 80)))
         for item in (stage4_payload_first.get("rule_confidence", []) or [])
         if str(item.get("rule_id", "")).strip()
     }
-    progress_callback(stage=4, status="done", progress_pct=85, duration_ms=_now_ms() - stage_started)
+    progress_callback(
+        stage=4, status="done", progress_pct=85, duration_ms=_now_ms() - stage_started
+    )
 
     stage_started = _now_ms()
     progress_callback(stage=5, status="running", progress_pct=90)
@@ -434,16 +497,29 @@ def run_rule_generation_job(
         "job_id": job_id,
         "company_id": company_id,
         "company_name": company_name,
-        "overall_confidence": round(sum(item["confidence"] for item in rules_confidence) / max(len(rules_confidence), 1), 1),
+        "overall_confidence": round(
+            sum(item["confidence"] for item in rules_confidence)
+            / max(len(rules_confidence), 1),
+            1,
+        ),
         "accounts": account_confidence,
         "rules": rules_confidence,
         "flags": [f"{len(flags)} rules below 90% threshold"] if flags else [],
         "generated_at_ms": _now_ms(),
     }
     _write_yaml(draft_path, payload)
-    confidence_path.write_text(json.dumps(confidence_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    confidence_path.write_text(
+        json.dumps(confidence_payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     validation_report_path.write_text(
-        _build_validation_report(company_name, draft_path, len(journal_rules), len(normalized_accounts), flags),
+        _build_validation_report(
+            company_name,
+            draft_path,
+            len(journal_rules),
+            len(normalized_accounts),
+            flags,
+        ),
         encoding="utf-8",
     )
     generation_log = {
@@ -459,8 +535,13 @@ def run_rule_generation_job(
         "draft_path": str(draft_path),
         "active_path": str(active_path),
     }
-    generation_log_path.write_text(json.dumps(generation_log, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    progress_callback(stage=5, status="done", progress_pct=100, duration_ms=_now_ms() - stage_started)
+    generation_log_path.write_text(
+        json.dumps(generation_log, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    progress_callback(
+        stage=5, status="done", progress_pct=100, duration_ms=_now_ms() - stage_started
+    )
 
     return {
         "job_id": job_id,
@@ -492,7 +573,9 @@ def load_rule_text(path: str | Path) -> str:
     return Path(path).read_text(encoding="utf-8")
 
 
-def save_rule_text(path: str | Path, yaml_text: str, schema_path: Path | None = None) -> dict[str, Any]:
+def save_rule_text(
+    path: str | Path, yaml_text: str, schema_path: Path | None = None
+) -> dict[str, Any]:
     payload = yaml.safe_load(yaml_text)
     if not isinstance(payload, dict):
         raise RuntimeError("Edited YAML root must be a mapping.")
