@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v18"
+EXTRACTION_SCHEMA_VERSION = "v19"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
@@ -92,6 +92,14 @@ PAID_LINE_HINT_RE = re.compile(
 )
 WHT_BASE_HINT_RE = re.compile(
     r"(?:มูลค่า(?:ที่)?คำนวณภาษี|มูลค่า(?:ที่)?คํานวณภาษี|ฐานภาษี|taxable\s*amount|before\s*tax)",
+    re.IGNORECASE,
+)
+VAT_LINE_HINT_RE = re.compile(
+    r"(?:ภาษีมูลค่าเพิ่ม|ภาษี\s*มูลค่าเพิ่ม|vat|ภาษีขาย|ภาษีซื้อ|ภาษี\s*\d+\s*%)",
+    re.IGNORECASE,
+)
+NET_LINE_HINT_RE = re.compile(
+    r"(?:มูลค่าสินค้าก่อนภาษี|มูลค่าก่อนภาษี|net\s*amount|amount\s*before\s*tax|subtotal|รวมสินค้า)",
     re.IGNORECASE,
 )
 TOTAL_KEYWORDS = (
@@ -452,6 +460,95 @@ def _extract_amount_from_labeled_lines(raw_text: str, hint_re: re.Pattern[str]) 
     return f"{max(candidates):.2f}" if candidates else ""
 
 
+def _extract_vat_amount(raw_text: str) -> str:
+    """Extract VAT amount from labeled lines, excluding net/subtotal rows (ก่อนภาษี).
+    
+    Searches for lines matching VAT_LINE_HINT_RE but filters out lines containing
+    ก่อนภาษี (before tax/net) to avoid extracting net amount.
+    """
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    candidates: list[float] = []
+
+    for line in lines:
+        # Skip lines that mention "before tax" (net amount, not VAT)
+        if "ก่อนภาษี" in line or "ก่อนค่าภาษี" in line or "before tax" in line.lower():
+            continue
+
+        if not VAT_LINE_HINT_RE.search(line):
+            continue
+
+        values = _line_amount_candidates(line)
+        if not values:
+            continue
+
+        likely_amounts = [value for value in values if value >= 1.0]
+        if likely_amounts:
+            candidates.append(likely_amounts[-1])
+        else:
+            candidates.append(values[-1])
+
+    return f"{max(candidates):.2f}" if candidates else ""
+
+
+def _extract_net_amount(raw_text: str) -> str:
+    """Extract net amount (before VAT) from labeled lines.
+    
+    Searches for lines mentioning มูลค่าสินค้าก่อนภาษี, net amount, subtotal, etc.
+    Returns the largest amount found on matching lines.
+    """
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    candidates: list[float] = []
+
+    for line in lines:
+        if not NET_LINE_HINT_RE.search(line):
+            continue
+
+        values = _line_amount_candidates(line)
+        if not values:
+            continue
+
+        likely_amounts = [value for value in values if value >= 10.0]
+        if likely_amounts:
+            candidates.append(likely_amounts[-1])
+        else:
+            candidates.append(values[-1])
+
+    return f"{max(candidates):.2f}" if candidates else ""
+
+
+def _extract_vat_rate(raw_text: str) -> str:
+    """Extract VAT rate percentage.
+    
+    Looks for explicit VAT rate mentions (e.g., "ภาษี 7%", "VAT 7%").
+    Returns "7" as default if VAT context is present but no explicit rate found.
+    """
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+
+    for line in lines:
+        if not VAT_LINE_HINT_RE.search(line):
+            continue
+
+        rate_match = PERCENT_RE.search(line)
+        if rate_match:
+            try:
+                rate_val = float(rate_match.group(1))
+                if 0.0 < rate_val < 100.0:
+                    return f"{rate_val:.2f}".rstrip("0").rstrip(".")
+            except ValueError:
+                pass
+
+    # Default to 7% if VAT context present but no explicit rate
+    if VAT_LINE_HINT_RE.search(raw_text):
+        return "7"
+
+    return ""
+
+
+def _has_vat_context(raw_text: str) -> bool:
+    """Check if document has VAT-related keywords suggesting VAT is applicable."""
+    return bool(VAT_LINE_HINT_RE.search(raw_text))
+
+
 def _clean_party_name(value: str) -> str:
     name = (value or "").strip()
     name = name.lstrip(" :：-=.\t")
@@ -477,8 +574,23 @@ def _canonicalize_company_name(name: str, tax_id: str = "") -> str:
             normalized = normalized.replace(broken, fixed)
 
     if mapped:
-        # Use canonical legal name for known tax IDs to stabilize vendor/buyer keys.
-        return mapped
+        # Check if extracted name is significantly different from canonical name.
+        # Only use canonical if they are similar (share > 50% of words).
+        normalized_lower = normalized.lower()
+        mapped_lower = mapped.lower()
+        
+        # Simple word overlap check: if most words in normalized are in mapped, use canonical.
+        normalized_words = set(normalized_lower.split())
+        mapped_words = set(mapped_lower.split())
+        
+        if normalized_words and mapped_words:
+            overlap = len(normalized_words & mapped_words) / max(len(normalized_words), len(mapped_words))
+            if overlap >= 0.5:
+                # High similarity: use canonical legal name for stability.
+                return mapped
+        # Low similarity: keep extracted name to preserve OCR signal (avoid silent correction).
+        # Caller may add warning via name_canonical_mismatch flag.
+        return normalized
 
     return normalized
 
@@ -820,6 +932,9 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
     vendor_match = VENDOR_RE.search(raw_text)
     invoice_date = _extract_invoice_date(raw_text)
     total_amount = _extract_total_amount(raw_text)
+    net_amount = _extract_net_amount(raw_text)
+    vat_amount = _extract_vat_amount(raw_text)
+    vat_rate = _extract_vat_rate(raw_text)
     party_info = _extract_party_info(raw_text)
     wht_amount = _extract_amount_from_labeled_lines(raw_text, WHT_LINE_HINT_RE)
     wht_rate = _extract_wht_rate(raw_text)
@@ -841,6 +956,22 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         party_info["seller_tax_id"],
     )
 
+    # Detect cross-field conflicts: |net + vat - total| > 1.00 THB
+    cross_field_conflict = False
+    cross_field_error = ""
+    if net_amount and vat_amount and total_amount:
+        try:
+            net_val = float(_normalize_number(net_amount))
+            vat_val = float(_normalize_number(vat_amount))
+            total_val = float(_normalize_number(total_amount))
+            
+            calculated_total = round(net_val + vat_val, 2)
+            if abs(calculated_total - total_val) > 1.0:
+                cross_field_conflict = True
+                cross_field_error = f"net({net_val}) + vat({vat_val}) = {calculated_total} != total({total_val})"
+        except ValueError:
+            pass
+
     fields = {
         "invoice_number": invoice_number,
         "invoice_date": _normalize_date(invoice_date) if invoice_date else "",
@@ -849,10 +980,15 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "buyer_name": buyer_name,
         "seller_tax_id": party_info["seller_tax_id"],
         "buyer_tax_id": party_info["buyer_tax_id"],
+        "net_amount": net_amount,
+        "vat_amount": vat_amount,
+        "vat_rate": vat_rate,
         "total_amount": total_amount,
         "wht_rate": wht_rate,
         "wht_amount": wht_amount,
         "amount_paid": amount_paid,
+        "cross_field_conflict": cross_field_conflict,
+        "cross_field_error": cross_field_error,
         "source_text": raw_text,
     }
 
@@ -874,6 +1010,25 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
             else 0.45
         )
 
+    # VAT amount confidence: high if present, but flag for review if VAT context exists but amount is 0
+    vat_amount_conf = 0.3
+    if fields["vat_amount"]:
+        vat_amount_conf = 0.9
+    elif _has_vat_context(raw_text):
+        # VAT context present but amount not extracted: flag for human review
+        vat_amount_conf = 0.4
+    
+    # Net amount confidence: high if present, lower if only inferred from VAT context
+    net_amount_conf = 0.3
+    if fields["net_amount"]:
+        net_amount_conf = 0.9
+    elif fields["vat_amount"] and fields["total_amount"]:
+        net_amount_conf = 0.6  # Can be inferred from vat + total
+    
+    vat_rate_conf = 0.3
+    if fields["vat_rate"]:
+        vat_rate_conf = 0.9 if fields["vat_amount"] else 0.6
+
     confidence = {
         "invoice_number": 0.95 if fields["invoice_number"] else 0.35,
         "invoice_date": 0.95 if fields["invoice_date"] else 0.35,
@@ -882,6 +1037,9 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "buyer_name": buyer_name_conf,
         "seller_tax_id": 0.95 if fields["seller_tax_id"] else 0.3,
         "buyer_tax_id": 0.95 if fields["buyer_tax_id"] else 0.3,
+        "net_amount": net_amount_conf,
+        "vat_amount": vat_amount_conf,
+        "vat_rate": vat_rate_conf,
         "total_amount": 0.9 if fields["total_amount"] else 0.3,
         "wht_rate": 0.9 if fields["wht_rate"] else 0.3,
         "wht_amount": 0.9 if fields["wht_amount"] else 0.3,

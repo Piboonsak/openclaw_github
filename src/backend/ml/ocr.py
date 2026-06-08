@@ -19,23 +19,97 @@ DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 _PADDLE_OCR_INSTANCE: Any | None = None
 _LOW_CONF_THRESHOLD = 0.55
 _MIN_ALNUM_RATIO = 0.30
-OCR_SCHEMA_VERSION = "v2"
+OCR_SCHEMA_VERSION = "v3"
 # Bumped from 2.0 (≈144 DPI) so Thai diacritics survive PaddleOCR/Tesseract;
 # override via OCR_RENDER_SCALE for tuning per environment.
 OCR_RENDER_SCALE = float(os.environ.get("OCR_RENDER_SCALE", "3.0"))
+# Set OCR_DESKEW=1 to enable automatic deskew correction (requires opencv-python-headless).
+OCR_DESKEW = os.environ.get("OCR_DESKEW", "0") == "1"
+# Set OCR_ADAPTIVE_THRESH=1 to enable adaptive binarization for faded/low-contrast scans.
+OCR_ADAPTIVE_THRESH = os.environ.get("OCR_ADAPTIVE_THRESH", "1") == "1"
 # Repo-local tessdata dir: Program Files install ships eng+osd only, so we
 # bundle tha.traineddata here and point Tesseract at it via --tessdata-dir.
 LOCAL_TESSDATA_DIR = Path(os.environ.get("TESSDATA_DIR", str(REPO_ROOT / ".tessdata")))
 
 
+def _deskew_image(image_obj: Any) -> Any:
+    """Deskew a grayscale PIL image using OpenCV moment-based angle detection."""
+    try:
+        cv2 = importlib.import_module("cv2")
+        numpy_module = importlib.import_module("numpy")
+    except ImportError:
+        # opencv-python-headless not available: skip silently.
+        return image_obj
+
+    img_array = numpy_module.array(image_obj)
+    # Invert so text pixels are white (OpenCV moments expect white foreground).
+    _, thresh = cv2.threshold(img_array, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    coords = numpy_module.column_stack(numpy_module.where(thresh > 0))
+    if len(coords) < 10:
+        return image_obj
+    angle = cv2.minAreaRect(coords)[-1]
+    # minAreaRect returns angle in (-90, 0]; skip rotation for tiny skew.
+    if angle < -45:
+        angle = 90 + angle
+    if abs(angle) < 0.5:
+        return image_obj
+    h, w = img_array.shape
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(img_array, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    pil_module = importlib.import_module("PIL.Image")
+    return pil_module.fromarray(rotated)
+
+
+def _adaptive_threshold_image(image_obj: Any) -> Any:
+    """Apply adaptive binarization for faded/low-contrast scans.
+
+    Only activates when mean luminance > 200 (bright faded scan) or < 60 (dark scan).
+    Returns original grayscale image unchanged for normal contrast documents.
+    """
+    try:
+        cv2 = importlib.import_module("cv2")
+        numpy_module = importlib.import_module("numpy")
+    except ImportError:
+        return image_obj
+
+    img_array = numpy_module.array(image_obj)
+    mean_luminance = float(numpy_module.mean(img_array))
+    if 60 <= mean_luminance <= 200:
+        # Normal contrast: autocontrast sufficient, skip adaptive threshold.
+        return image_obj
+
+    binarized = cv2.adaptiveThreshold(
+        img_array, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        blockSize=31,
+        C=10,
+    )
+    pil_module = importlib.import_module("PIL.Image")
+    return pil_module.fromarray(binarized)
+
+
 def _preprocess_image_for_ocr(image_obj: Any) -> Any:
-    """Apply lightweight preprocessing for scanned documents before OCR."""
+    """Apply preprocessing for scanned documents before OCR.
+
+    Pipeline (each step is optional and env-gated):
+    1. Grayscale conversion
+    2. Autocontrast (always on — preserves Thai tone mark strokes)
+    3. Deskew via OpenCV (gated: OCR_DESKEW=1)
+    4. Adaptive threshold for faded scans (gated: OCR_ADAPTIVE_THRESH=1, auto-skips normal docs)
+    """
     image = image_obj.convert("L")
     image_ops = importlib.import_module("PIL.ImageOps")
     # MedianFilter(size=3) used to be applied here; it blurred small Thai tone
     # marks and vowels into the baseline, which hurt PaddleOCR recall on
     # scanned receipts. Plain autocontrast preserves stroke detail.
-    return image_ops.autocontrast(image, cutoff=2)
+    image = image_ops.autocontrast(image, cutoff=2)
+    if OCR_DESKEW:
+        image = _deskew_image(image)
+    if OCR_ADAPTIVE_THRESH:
+        image = _adaptive_threshold_image(image)
+    return image
 
 
 def _looks_garbled(blocks: list[dict[str, Any]]) -> bool:
