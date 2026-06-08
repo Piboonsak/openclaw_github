@@ -210,14 +210,21 @@
   HUMAN["Human review<br>HIGH / CRITICAL<br>(needs approved-by-human)"]
   AUTOMERGE["Auto-merge<br>LOW / MEDIUM"]
 
-  subgraph T104["TASK-104 &mdash; PR &rarr; Production Closure"]
+  subgraph T104["TASK-104 &mdash; PR &rarr; Production Closure (deploy lifecycle)"]
     direction TB
-    CLOSURE["closure-loop.yml<br>(dispatch on merge)"]
-    DEPLOY["deploy gate /<br>post-merge-deploy.yml"]
-    HEALTH{"/health == 200?"}
-    INCIDENT["incident issue +<br>revert PR"]
-    CLOSE["close_with_proof.py<br>comment + close issue"]
+    CLOSURE["closure-loop.yml<br>trigger: push.main<br>concurrency: deploy-main"]
+    DISPATCH["workflow_dispatch<br>deploy-vps.yml"]
+    DEPLOYJOB["deploy job runs<br>(build + ship + restart)"]
+    WAITDEPLOY["wait 60s<br>+ curl -fsS /health"]
+    HEALTH{"status=200 AND<br>body.status='ok' ?"}
+    PROOF["close_with_proof.py<br>comment: SHA + run URL +<br>health response time"]
+    CLOSE["GraphQL close issue<br>+ Projects v2 column<br>state:closed-completed"]
     VERIFIED[("state.status = VERIFIED")]
+    FPRINT["compute fingerprint<br>SHA1(error_sig + 3 frames)"]
+    KIMATCH{"match KI in<br>docs/known-issues.md ?"}
+    INCIDENT["open incident issue<br>+ comment KI link"]
+    REVERTPR["create revert PR<br>git revert -m 1 $SHA"]
+    KIAPPEND["append KI-NEW row<br>to docs/known-issues.md"]
     EXPIRE["expire_bypass_label.py<br>(hourly cron)"]
     BOARDCHECK["check_project_board_mapping.py<br>(daily cron)"]
   end
@@ -260,15 +267,24 @@
   RISK -- "LOW/MEDIUM" --> AUTOMERGE
   HUMAN -- "approved" --> AUTOMERGE
 
-  %% T104 closure
-  AUTOMERGE --> CLOSURE
-  CLOSURE -- "PP-15 deploy on merge" --> DEPLOY
-  DEPLOY --> HEALTH
-  HEALTH -- "yes" --> VERIFIED
-  HEALTH -- "no" --> INCIDENT
-  INCIDENT -- "PP-18 update KI" --> FAILDB
-  VERIFIED -- "PP-16 health required" --> CLOSE
-  CLOSE -- "PP-17 close-with-proof" --> STATE
+  %% T104 closure (deploy lifecycle - each PP at its trigger moment)
+  AUTOMERGE -- "merge to main" --> CLOSURE
+  CLOSURE -- "PP-15 auto dispatch<br>(no manual wait)" --> DISPATCH
+  DISPATCH --> DEPLOYJOB
+  DEPLOYJOB -- "on deploy job exit" --> WAITDEPLOY
+  WAITDEPLOY -- "PP-16 health gate<br>(60s timeout)" --> HEALTH
+  HEALTH -- "yes" --> PROOF
+  PROOF -- "PP-17 proof required<br>before close" --> CLOSE
+  CLOSE --> VERIFIED
+  VERIFIED -. "write back" .-> STATE
+  HEALTH -- "no / timeout" --> FPRINT
+  FPRINT -- "PP-18 fingerprint<br>lookup" --> KIMATCH
+  KIMATCH -- "yes" --> INCIDENT
+  KIMATCH -- "no" --> KIAPPEND
+  KIAPPEND --> INCIDENT
+  KIAPPEND -. "new KI row" .-> FAILDB
+  INCIDENT --> REVERTPR
+  REVERTPR -. "reopen PR cycle" .-> PR
 
   %% Guardrail crons (T104)
   EXPIRE -. "guardrail: 24h bypass" .-> POLICY
@@ -286,39 +302,148 @@
   class STATE,VERIFIED state
   class GA,GB,GC,GD t102
   class MINACT,CLASSIFY,FAILDB t103
-  class CLOSURE,DEPLOY,CLOSE,EXPIRE,BOARDCHECK t104
+  class CLOSURE,DISPATCH,DEPLOYJOB,WAITDEPLOY,PROOF,CLOSE,FPRINT,KIAPPEND,REVERTPR,EXPIRE,BOARDCHECK t104
   class BLOCKED,INCIDENT,HUMAN bad</div>
   </div>
-  <h3>วิธีอ่าน diagram (cheatsheet)</h3>
+  <h3>How it works &middot; How to use &middot; How to implement (Mermaid view)</h3>
+  <div class="card" style="margin-top:8px">
+    <h4 style="margin-top:0">How it works + How to use (operator flow)</h4>
+    <div class="mermaid-wrap" style="height:420px">
+      <div class="mermaid">flowchart LR
+        A["1) User request in VS Code"] --> B["2) T101 Intake\nQ1-Q8 + state file"]
+        B --> C{"Ready + policy pass?"}
+        C -- "No" --> C1["Draft / needs-human"]
+        C -- "Yes" --> D["3) Agent opens PR"]
+        D --> E["4) T103 local hook\nmin_action_check"]
+        E --> F["5) T102 CI gates\nA/B/C/D"]
+        F --> G{"All gates green?"}
+        G -- "No" --> H["T103 classify_failure\nretry narrow or escalate"]
+        H --> D
+        G -- "Yes" --> I{"Risk tier"}
+        I -- "HIGH/CRITICAL" --> J["Human approve"]
+        J --> K["Merge to main"]
+        I -- "LOW/MEDIUM" --> K
+        K --> L["6) T104 closure-loop\ndispatch deploy"]
+        L --> M{"/health ok?"}
+        M -- "Yes" --> N["close_with_proof\nstate=VERIFIED"]
+        M -- "No" --> O["Fingerprint KI\nincident + revert PR"]
+
+        classDef t101 fill:#1e3a5f,stroke:#93c5fd,color:#dbeafe
+        classDef t102 fill:#7f1d1d,stroke:#fca5a5,color:#fee2e2
+        classDef t103 fill:#1c4532,stroke:#86efac,color:#dcfce7
+        classDef t104 fill:#3b1f5f,stroke:#c4b5fd,color:#ede9fe
+        classDef neutral fill:#334155,stroke:#94a3b8,color:#e2e8f0
+        classDef bad fill:#1c0f0f,stroke:#ef4444,color:#fca5a5
+
+        class B,C,C1 t101
+        class E,H t103
+        class F t102
+        class L,M,N,O t104
+        class A,D,G,I,J,K neutral
+        class O bad
+      </div>
+    </div>
+    <p class="muted" style="font-size:.87rem;margin-top:8px">อ่านจากซ้ายไปขวา: ผู้ใช้สั่งงาน &rarr; intake &rarr; PR &rarr; gate &rarr; merge &rarr; deploy. ถ้า fail จะวนกลับแบบมีการจำกัด scope; ถ้าผ่านจะปิดงานพร้อมหลักฐาน.</p>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <h4 style="margin-top:0">T104 deploy path แยกชัด: success vs failure</h4>
+    <div class="grid col2" style="gap:10px">
+      <div class="card" style="margin-top:0">
+        <h5 style="margin:0 0 6px">Success path (PP-15,16,17)</h5>
+        <div class="mermaid-wrap" style="height:250px">
+          <div class="mermaid">flowchart TD
+            S1["Merge to main"] --> S2["PP-15\nclosure-loop dispatch"]
+            S2 --> S3["deploy job"]
+            S3 --> S4["PP-16\nwait + /health gate"]
+            S4 --> S5{"200 + body ok?"}
+            S5 -- "Yes" --> S6["PP-17\nclose_with_proof"]
+            S6 --> S7["state=VERIFIED + close issue"]
+
+            classDef t104 fill:#3b1f5f,stroke:#c4b5fd,color:#ede9fe
+            classDef state fill:#0b3a4a,stroke:#0ea5e9,color:#e0f2fe
+            class S1,S2,S3,S4,S5,S6 t104
+            class S7 state
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:0">
+        <h5 style="margin:0 0 6px">Failure path (PP-18)</h5>
+        <div class="mermaid-wrap" style="height:250px">
+          <div class="mermaid">flowchart TD
+            F1["Merge to main"] --> F2["dispatch deploy"]
+            F2 --> F3{"/health fail or timeout"}
+            F3 -- "No" --> F4["success path"]
+            F3 -- "Yes" --> F5["PP-18\ncompute fingerprint"]
+            F5 --> F6{"KI match?"}
+            F6 -- "Yes" --> F7["incident + KI link"]
+            F6 -- "No" --> F8["append KI-NEW"]
+            F8 --> F7
+            F7 --> F9["create revert PR"]
+            F9 --> F10["back to PR cycle"]
+
+            classDef t104 fill:#3b1f5f,stroke:#c4b5fd,color:#ede9fe
+            classDef bad fill:#1c0f0f,stroke:#ef4444,color:#fca5a5
+            class F1,F2,F3,F5,F6,F8,F10 t104
+            class F7,F9 bad
+            class F4 t104
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.87rem;margin-top:8px">สรุปง่าย: ถ้า health ผ่านจะจบที่ <code>VERIFIED + close_with_proof</code>; ถ้า health ไม่ผ่านจะเข้าทาง fingerprint + KI + revert เพื่อป้องกันปิดงานปลอม.</p>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <h4 style="margin-top:0">How to implement (developer roadmap)</h4>
+    <div class="mermaid-wrap" style="height:360px">
+      <div class="mermaid">flowchart TD
+        P1["TASK-101\nCreate intake + state"] --> P2["TASK-102\nCreate gate scripts + workflow"]
+        P2 --> P3["TASK-103\nLocal hook + failure classifier"]
+        P3 --> P4["TASK-104\nClosure loop + health + proof"]
+        P4 --> P5["Smoke test\nTASK-501 end-to-end"]
+
+        P1 -. "Files" .-> F1["task-intake.yml\nintake-sync.yml\nagent_state.py"]
+        P2 -. "Files" .-> F2["agent_gate.yml\ncheck_scope.sh\ncheck_evidence.py\ncheck_hdr_review.py"]
+        P3 -. "Files" .-> F3["min_action_check.py\nclassify_failure.py\nfailure-categories.yaml"]
+        P4 -. "Files" .-> F4["closure-loop.yml\nclose_with_proof.py\nknown-issues.md"]
+
+        classDef t101 fill:#1e3a5f,stroke:#93c5fd,color:#dbeafe
+        classDef t102 fill:#7f1d1d,stroke:#fca5a5,color:#fee2e2
+        classDef t103 fill:#1c4532,stroke:#86efac,color:#dcfce7
+        classDef t104 fill:#3b1f5f,stroke:#c4b5fd,color:#ede9fe
+        classDef neutral fill:#334155,stroke:#94a3b8,color:#e2e8f0
+
+        class P1,F1 t101
+        class P2,F2 t102
+        class P3,F3 t103
+        class P4,F4 t104
+        class P5 neutral
+      </div>
+    </div>
+    <p class="muted" style="font-size:.87rem;margin-top:8px">ลงมือทำตามลำดับ 101 &rarr; 102 &rarr; 103 &rarr; 104 จะปลอดภัยสุด เพราะแต่ละ task เป็นฐานให้ task ถัดไป.</p>
+  </div>
+
   <div class="grid col2">
-    <div class="card" style="margin-top:0">
-      <h4>การไหลของ task หนึ่งใบ</h4>
+    <div class="card" style="margin-top:10px">
+      <h4>อธิบายตาม diagram แบบสั้นที่สุด</h4>
       <ol style="margin-left:20px">
-        <li><strong>T101 Intake:</strong> Human + AI ร่วมร่าง Q1-Q8 &rarr; MCP สร้าง issue &rarr; <code>intake-sync.yml</code> เขียน <code>state/TASK-ID.json</code> (single source of truth)</li>
-        <li><strong>T101 Dispatch:</strong> <code>policy_dispatch.py</code> อ่าน <code>model-policy.yaml</code> &rarr; ตัดสินว่า assign Copilot bot ได้ไหม</li>
-        <li><strong>T103 Local:</strong> Agent commit &rarr; <code>min_action_check.py</code> บล็อก plan-only ก่อน push</li>
-        <li><strong>T102 CI:</strong> PR เปิด &rarr; 4 layers (A&rarr;B&rarr;C&rarr;D) ต้องเขียวทุกชั้น</li>
-        <li><strong>T103 Failure:</strong> Gate แดง &rarr; <code>classify_failure.py</code> ตัดสินใจ retry แคบ หรือ escalate</li>
-        <li><strong>T104 Closure:</strong> Merge &rarr; <code>closure-loop.yml</code> deploy &rarr; <code>/health</code> &rarr; <code>close_with_proof.py</code> &rarr; state=VERIFIED</li>
+        <li>เริ่มที่ <strong>T101</strong> เพื่อให้ requirement กลายเป็น state มาตรฐาน</li>
+        <li><strong>T103 local hook</strong> กัน commit กลวงก่อนเข้า PR</li>
+        <li><strong>T102 gates</strong> กัน scope/fake done/business mismatch ใน CI</li>
+        <li><strong>T103 classify</strong> ทำให้ตอน fail ไม่ retry แบบมั่ว</li>
+        <li><strong>T104</strong> บังคับ deploy + health + proof ก่อนปิดงาน</li>
       </ol>
     </div>
-    <div class="card" style="margin-top:0">
-      <h4>Edge label = ปิด pain point ตัวไหน</h4>
+    <div class="card" style="margin-top:10px">
+      <h4>Pain points map (ย่อ)</h4>
       <ul style="margin-left:20px">
-        <li><strong>PP-1,4</strong> External memory &rarr; state file</li>
-        <li><strong>PP-2,3</strong> Schema-enforced intake form</li>
-        <li><strong>PP-5</strong> Model tier policy &rarr; ห้ามใช้ tier ผิด</li>
-        <li><strong>PP-6,11</strong> Layer D AI Decision Router &rarr; ไม่ต้องรอคนทุก PR</li>
-        <li><strong>PP-7</strong> Layer B scope guard &rarr; ห้ามแตะ private_data</li>
-        <li><strong>PP-8,9</strong> Layer C evidence &rarr; raw log บังคับ</li>
-        <li><strong>PP-10</strong> Layer A ruff/mypy/pytest</li>
-        <li><strong>PP-12</strong> <code>min_action_check</code> ห้าม plan-only commit</li>
-        <li><strong>PP-13,14</strong> <code>classify_failure</code> narrow context, escalate ของอันตราย</li>
-        <li><strong>PP-15</strong> deploy dispatch on merge</li>
-        <li><strong>PP-16</strong> health 200 required ก่อน VERIFIED</li>
-        <li><strong>PP-17</strong> close-with-proof comment</li>
-        <li><strong>PP-18</strong> KI fingerprint update on incident</li>
+        <li><strong>T101</strong> ปิด PP-1..5</li>
+        <li><strong>T102</strong> ปิด PP-6..11</li>
+        <li><strong>T103</strong> ปิด PP-12..14</li>
+        <li><strong>T104</strong> ปิด PP-15..18</li>
       </ul>
+      <p class="muted" style="font-size:.86rem">จุดสำคัญของ deploy อยู่ใน T104: dispatch อัตโนมัติ, health gate, close-with-proof, และ KI fingerprint.</p>
     </div>
   </div>
 </div>
@@ -361,6 +486,91 @@
   <p><strong>Owner</strong>: DevOps / Governance &middot; <strong>Risk</strong>: <span class="tag tag-risk-m">MEDIUM</span> &middot; <strong>Duration</strong>: ~2 days &middot; <strong>Closes</strong>: pain points 1&ndash;5</p>
   <h3>Purpose</h3>
   <p>Create the intake system that turns a human request into a validated issue, a committed state file, synchronized labels, project-board movement, and optional Copilot assignment.</p>
+
+  <h3>Q1-Q8 มาจากไหน (ไม่ได้โผล่เอง)</h3>
+  <div class="card" style="margin-top:8px">
+    <div class="mermaid-wrap" style="height:250px">
+      <div class="mermaid">flowchart LR
+        I1["Input A: user chat\n'ทำ TASK-501 ...'"] --> D["AI drafts Q1-Q8"]
+        I2["Input B: Epic/Task spec\n(AC, scope, constraints)"] --> D
+        I3["Input C: repo policy\nmodel-policy + forbidden paths"] --> D
+        D --> C{"Human confirm?"}
+        C -- "No" --> R["AI asks follow-up\nเฉพาะช่องที่ยังไม่ชัด"]
+        R --> D
+        C -- "Yes" --> F["Write Issue Form Q1-Q8\n(task-intake.yml)"]
+        F --> P["intake_to_state.py parse\n-> .agent/state/TASK-ID.json"]
+        P --> V{"Schema valid?"}
+        V -- "No" --> B["status:invalid\nremove status:ready"]
+        V -- "Yes" --> G["policy_dispatch + assign bot"]
+
+        classDef src fill:#334155,stroke:#94a3b8,color:#e2e8f0
+        classDef t101 fill:#1e3a5f,stroke:#93c5fd,color:#dbeafe
+        classDef bad fill:#1c0f0f,stroke:#ef4444,color:#fca5a5
+        class I1,I2,I3 src
+        class D,C,R,F,P,V,G t101
+        class B bad
+      </div>
+    </div>
+    <p class="muted" style="font-size:.86rem;margin-top:8px">แกนสำคัญ: AI <strong>draft</strong> จากหลายแหล่ง แต่ไม่ finalize เอง. ช่องสำคัญ (scope/AC/risk สูง) ต้องมีจุด <strong>Human confirm</strong> ก่อนเสมอ.</p>
+
+    <table style="margin-top:8px;font-size:.87rem">
+      <thead><tr><th>Q</th><th>แหล่งที่มา (source)</th><th>AI ทำอะไร</th><th>คนต้องยืนยันไหม</th></tr></thead>
+      <tbody>
+        <tr><td>Q1 task_id</td><td>จากคำสั่ง user หรือเลข task ถัดไป</td><td>เดา prefix + normalize ให้ตรง <code>TASK-###</code></td><td>ยืนยันถ้า AI generate เอง</td></tr>
+        <tr><td>Q2 risk_tier</td><td>ไฟล์ที่จะโดน + policy + ประเภทงาน</td><td>จัดชั้น LOW/MEDIUM/HIGH/CRITICAL</td><td><strong>ต้องยืนยัน</strong> เมื่อ HIGH/CRITICAL</td></tr>
+        <tr><td>Q3 model_tier</td><td><code>config/model-policy.yaml</code></td><td>เลือก tier ตาม policy</td><td>ยืนยันเมื่อ override policy</td></tr>
+        <tr><td>Q4 allowed_scope</td><td>user intent + epic spec + repo paths</td><td>draft glob files/folders ที่ควรแตะ</td><td><strong>ต้องยืนยัน</strong></td></tr>
+        <tr><td>Q5 forbidden_scope</td><td>policy defaults + sensitive paths</td><td>เติม guardrails เช่น <code>.env*</code>, <code>config/secrets/**</code></td><td><strong>ต้องยืนยัน</strong></td></tr>
+        <tr><td>Q6 acceptance_criteria</td><td>goal ของ user + spec AC</td><td>แตกเป็นรายการ <code>id|desc|test</code></td><td><strong>ต้องยืนยัน</strong></td></tr>
+        <tr><td>Q7 max_loops</td><td>default ระบบ</td><td>ใส่ค่า default 5 (max 10)</td><td>ไม่ต้องยืนยันถ้าใช้ default</td></tr>
+        <tr><td>Q8 escalation_policy</td><td>risk + ประเภทงาน</td><td>เสนอ human / ai-debate / stop</td><td>ยืนยันเมื่อเป็น bypass/security/deploy</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>How it works &middot; How to use &middot; How to implement</h3>
+  <div class="grid col2">
+    <article class="card">
+      <h4>How it works</h4>
+      <p style="font-size:.92rem;line-height:1.55">ทุกครั้งที่ user พิมพ์ &ldquo;ทำ TASK-NNN&hellip;&rdquo; ใน VS Code/NongKung, AI orchestrator จะ draft Q1-Q8 &rarr; user ยืนยัน &rarr; MCP/GraphQL สร้าง issue พร้อม body มาตรฐาน &rarr; workflow <code>intake-sync.yml</code> ดึง body มา parse ผ่าน <code>intake_to_state.py</code> &rarr; เขียน <code>.agent/state/&lt;TASK-ID&gt;.json</code> (validate ด้วย <code>_schema.json</code>) &rarr; <code>policy_dispatch.py</code> อ่าน <code>model-policy.yaml</code> เพื่อตัดสินว่าจะส่งให้ Copilot tier ไหน &rarr; ถ้า ready ใช้ <code>assign_copilot.py</code> (GraphQL only, KI-075) assign bot.</p>
+      <p class="muted" style="font-size:.85rem;margin-top:8px">Output: state file ที่ AI agent อ่านได้ตลอดเวลา + Projects v2 card อยู่ column ตามจริง + label sync ตรง.</p>
+    </article>
+    <article class="card">
+      <h4>How to use (operator)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>เปิด VS Code &rarr; chat บอก: <code>สร้าง TASK-501 OCR extraction</code></li>
+        <li>AI draft Q1-Q8 ใน chat &rarr; ตรวจ scope/AC แล้วพิมพ์ <code>confirm</code></li>
+        <li>รอ MCP สร้าง issue + <code>intake-sync.yml</code> รัน (~30s) จะเห็น label <code>status:ready</code></li>
+        <li>เช็ค <code>.agent/state/TASK-501.json</code> ว่าถูก commit เข้า branch แล้ว</li>
+        <li>Bot จะรับงานเอง (LOW/MEDIUM auto, HIGH/CRITICAL รอ approve)</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>How to implement (developer)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>เขียน <code>.agent/state/_schema.json</code> (JSON Schema draft-2020-12, ดู Q1-Q8 contract)</li>
+        <li>สร้าง <code>scripts/agent_state.py</code> CLI: <code>init / update / get / lock</code> + file lock</li>
+        <li>สร้าง <code>.github/ISSUE_TEMPLATE/task-intake.yml</code> ทั้ง 8 fields + required</li>
+        <li>สร้าง <code>scripts/intake_to_state.py</code> regex parse + validate via schema</li>
+        <li>สร้าง <code>.github/workflows/intake-sync.yml</code> trigger <code>issues.opened/edited</code></li>
+        <li>สร้าง <code>scripts/governance/policy_dispatch.py</code> + <code>assign_copilot.py</code> (GraphQL mutations)</li>
+        <li>เขียน tests ใน <code>tests/governance/</code> ครอบทุก AC (~7 tests)</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>Pain points covered (PP-1 &rarr; PP-5)</h4>
+      <table style="font-size:.86rem">
+        <thead><tr><th>PP</th><th>File / Module</th><th>Mechanism</th><th>เมื่อไหร่</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1</strong> Context loss</td><td><code>.agent/state/&lt;ID&gt;.json</code> + <code>agent_state.py</code></td><td>เขียน state file ทุก loop &mdash; แทน chat memory</td><td>หลัง LLM call ทุกครั้ง + ตอน agent restart</td></tr>
+          <tr><td><strong>2</strong> Forgetting requirements</td><td><code>task-intake.yml</code> (Q6) + <code>intake_to_state.py</code></td><td>Form บังคับ <code>acceptance_criteria[]</code>; parser regex จับ <code>id&vert;desc&vert;test</code> &mdash; ว่าง = schema fail</td><td>On <code>issues.opened/edited</code></td></tr>
+          <tr><td><strong>3</strong> Skipping scope</td><td><code>task-intake.yml</code> Q4/Q5 + <code>_schema.json</code></td><td>Schema บังคับ Q1-Q8 + <code>allowed_scope</code>/<code>forbidden_scope</code> required</td><td>On issue create + intake-sync validate</td></tr>
+          <tr><td><strong>4</strong> Cannot resume</td><td><code>agent_state.py</code> (<code>lock()</code>, <code>run_count</code>, <code>max_loops=5</code>)</td><td>File-level lock; <code>run_count++</code> ก่อน LLM call &rarr; restart ต่อจากจุดเดิม</td><td>ทุก action + ตอน boot agent</td></tr>
+          <tr><td><strong>5</strong> Wrong model tier</td><td><code>model-policy.yaml</code> + <code>policy_dispatch.py</code></td><td>Policy mandate tier ต่อ task; dispatcher reject ถ้าไม่ตรง + cap <code>tier-1-opus</code> 3/sprint</td><td>เมื่อ issue <code>status:ready</code></td></tr>
+        </tbody>
+      </table>
+    </article>
+  </div>
 
   <h3>Deliverables</h3>
   <pre>.agent/
@@ -620,6 +830,51 @@ jobs:
   <h3>Purpose</h3>
   <p>Implement the 4 security layers as CI hard gates in a single workflow <code>agent_gate.yml</code>. Every PR must pass all four to be merge-eligible.</p>
 
+  <h3>How it works &middot; How to use &middot; How to implement</h3>
+  <div class="grid col2">
+    <article class="card">
+      <h4>How it works</h4>
+      <p style="font-size:.92rem;line-height:1.55">Agent push PR &rarr; GitHub trigger <code>agent_gate.yml</code> &rarr; 4 layers รันตามลำดับ: <strong>A</strong> (<code>check_scope.sh</code>) diff vs <code>state.allowed_scope</code> &rarr; <strong>B</strong> (<code>check_evidence.py</code>) ตรวจ <code>evidence.md</code> มี Raw Output + AC test PASSED ครบ &rarr; <strong>C</strong> (<code>check_hdr_review.py</code>) เรียก AI sonnet review &ldquo;business vs code logic ตรงไหม&rdquo; &rarr; <strong>D</strong> ruff+mypy+pytest. ถ้าผ่านทั้ง 4 + risk LOW/MEDIUM &rarr; auto-merge; HIGH/CRITICAL ต้องมี label <code>approved-by-human</code>.</p>
+      <p class="muted" style="font-size:.85rem;margin-top:8px">Output: PR ที่ผ่าน gate การันตี &mdash; ไม่ออกนอก scope, ไม่ fake done, business ตรง intent, code รันได้จริง.</p>
+    </article>
+    <article class="card">
+      <h4>How to use (operator)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>เปิด PR ปกติ (agent ทำเอง หรือ human push)</li>
+        <li>ดู Checks tab &mdash; เห็น 4 jobs: <code>scope</code>, <code>evidence</code>, <code>hdr-ai-review</code>, <code>quality</code></li>
+        <li>ถ้า fail: อ่าน annotation ที่ระบุไฟล์/บรรทัด</li>
+        <li>ถ้า HDR verdict = <code>ไม่ตรง</code>: ดู <code>mismatches[]</code> ใน comment แล้วแก้</li>
+        <li>HIGH/CRITICAL: gate จะรอ label <code>approved-by-human</code> &mdash; human reviewer แปะให้</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>How to implement (developer)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>สร้าง <code>scripts/gates/check_scope.sh</code> &mdash; <code>git diff --name-only origin/main...HEAD</code> + glob match</li>
+        <li>สร้าง <code>scripts/gates/check_evidence.py</code> &mdash; parse 3 sections + AC binding</li>
+        <li>เขียน <code>.github/prompts/hdr-review.prompt.md</code> &mdash; ขอ JSON strict output</li>
+        <li>สร้าง <code>scripts/gates/check_hdr_review.py</code> &mdash; เรียก AI + validate JSON + apply hard rules</li>
+        <li>สร้าง <code>.github/workflows/agent_gate.yml</code> &mdash; 4 jobs + <code>concurrency: gate-PR#</code></li>
+        <li>Settings &rarr; Branches &rarr; require 4 status checks + dismiss stale reviews</li>
+        <li>เขียน <code>tests/governance/test_gates.py</code> ~260 LOC ครอบทุก AC</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>Pain points covered (PP-6 &rarr; PP-11)</h4>
+      <table style="font-size:.86rem">
+        <thead><tr><th>PP</th><th>File / Module</th><th>Mechanism</th><th>เมื่อไหร่</th></tr></thead>
+        <tbody>
+          <tr><td><strong>6</strong> Human bottleneck</td><td><code>hdr_gate.py</code> (Layer C)</td><td>AI Decision Router (tier-2b sonnet) ออก verdict + risk &mdash; LOW/MEDIUM auto-approve</td><td>On <code>pull_request.opened/synchronize</code></td></tr>
+          <tr><td><strong>7</strong> Scope creep</td><td><code>check_scope.sh</code> (Layer A)</td><td><code>git diff</code> vs <code>allowed_scope</code>/<code>forbidden_scope</code> glob &mdash; ผิด exit 1 ระบุไฟล์</td><td>ทุก push ใน PR</td></tr>
+          <tr><td><strong>8</strong> Fake/mock integration</td><td><code>check_evidence.py</code> (Layer B)</td><td>AC id <code>int_*</code> ต้องเจอ <code>docker compose</code>/<code>docker run</code> + raw stdout ใน <code>evidence.md</code></td><td>PR check, Layer B step</td></tr>
+          <tr><td><strong>9</strong> Fake &ldquo;done&rdquo;</td><td><code>check_evidence.py</code> (Layer B)</td><td>AC ที่มี field <code>test</code> &rarr; regex <code>&lt;test_fn&gt;\s.*PASSED</code> ใน Raw Output; ขาด 1 = exit 1</td><td>PR check, Layer B</td></tr>
+          <tr><td><strong>10</strong> PR doesn&rsquo;t run</td><td><code>agent_gate.yml</code> (Layer D)</td><td><code>ruff</code> &rarr; <code>mypy</code> &rarr; <code>pytest -q --maxfail=1</code>; fail ขั้นไหน = gate fail</td><td>PR open/synchronize</td></tr>
+          <tr><td><strong>11</strong> Business mismatch</td><td><code>hdr_gate.py</code> (Layer C)</td><td>AI compare <code>business_logic_summary</code> vs <code>code_logic_summary</code> &mdash; <code>mismatches[]</code> ไม่ว่าง = fail + label <code>needs-rework</code></td><td>Layer C (หลัง A/B/D)</td></tr>
+        </tbody>
+      </table>
+    </article>
+  </div>
+
   <div class="grid col2">
     <article class="card">
       <h4>Layer A &mdash; Scope Lock</h4>
@@ -721,6 +976,49 @@ Hard rules:
   <h3>Purpose</h3>
   <p>Stop bad commits <strong>before</strong> they reach CI. When CI fails, classify so the fix-agent gets a <strong>narrow</strong> retry scope instead of the whole repo.</p>
 
+  <h3>How it works &middot; How to use &middot; How to implement</h3>
+  <div class="grid col2">
+    <article class="card">
+      <h4>How it works</h4>
+      <p style="font-size:.92rem;line-height:1.55"><strong>2 ส่วน:</strong> (1) <em>Local pre-commit hook</em> &mdash; ก่อน commit จะรัน <code>min_action_check.py</code> เช็คว่ามี real code change (src/tests/scripts/config/docker) ไม่ใช่ log/plan ล้วน; ถ้าไม่มี = block. (2) <em>CI failure classifier</em> &mdash; เมื่อ <code>agent_gate.yml</code> fail, <code>classify-on-failure.yml</code> เรียก <code>classify_failure.py</code> parse log ผ่าน regex ใน <code>failure-categories.yaml</code> &rarr; หมวด dangerous (hmac/migration/permission) = escalate human; safe (type/unit/lint) = ออก <code>narrow_scope</code> ส่ง fix-agent.</p>
+      <p class="muted" style="font-size:.85rem;margin-top:8px">Output: ไม่มี commit เปล่า + fix-agent ได้ context แคบ (200 บรรทัด log + ไฟล์ที่เกี่ยว) ไม่ใช่ทั้ง repo.</p>
+    </article>
+    <article class="card">
+      <h4>How to use (operator)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>รัน <code>node scripts/setup-git-hooks.mjs</code> 1 ครั้ง &rarr; ติดตั้ง hook</li>
+        <li>เขียน code &rarr; <code>git commit</code> ปกติ &mdash; hook รัน <code>min_action_check</code></li>
+        <li>ถ้าโดน block ด้วยเหตุผล plan-only: stage ไฟล์ <code>src/**</code> หรือ <code>tests/**</code> เพิ่ม</li>
+        <li>ถ้า blocked จริง (รอ external): set <code>state.status=BLOCKED</code> + เขียน <code>## Blocker</code> section &rarr; commit ผ่าน</li>
+        <li>ตอน CI fail: ดู PR comment จาก <code>classify-on-failure.yml</code> &mdash; ถ้า escalate = หยุด, รอ human; ถ้า narrow_scope = แก้เฉพาะที่ระบุ</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>How to implement (developer)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>เขียน <code>scripts/min_action_check.py</code> &mdash; list staged + glob match + override logic</li>
+        <li>เขียน <code>scripts/hooks/pre-commit</code> &mdash; เรียก <code>min_action_check</code> + <code>ruff format --diff</code></li>
+        <li>เขียน <code>scripts/setup-git-hooks.mjs</code> &mdash; set <code>core.hooksPath=scripts/hooks</code></li>
+        <li>เขียน <code>config/failure-categories.yaml</code> &mdash; 10 categories + regex + escalate flag</li>
+        <li>เขียน <code>scripts/classify_failure.py</code> &mdash; load yaml + regex match + ออก JSON</li>
+        <li>เขียน <code>config/model-policy.yaml</code> &mdash; 4 tiers + hard_rules</li>
+        <li>เขียน <code>.github/workflows/classify-on-failure.yml</code> &mdash; trigger on agent_gate fail</li>
+        <li>เขียน tests ~10 รายการครอบทุก AC + edge cases</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>Pain points covered (PP-12 &rarr; PP-14)</h4>
+      <table style="font-size:.86rem">
+        <thead><tr><th>PP</th><th>File / Module</th><th>Mechanism</th><th>เมื่อไหร่</th></tr></thead>
+        <tbody>
+          <tr><td><strong>12</strong> Plan-only commits</td><td><code>min_action_check.py</code> + <code>.githooks/pre-commit</code></td><td>List staged &mdash; ถ้าทั้งหมดอยู่ใน <code>.agent/logs/**</code>, <code>.agent/state/**</code> (ไม่มี src/tests) = exit 1. Override: <code>state.status=BLOCKED</code> + <code>## Blocker</code></td><td>Local <code>git commit</code> (pre-commit hook)</td></tr>
+          <tr><td><strong>13</strong> Wrong-fix loop</td><td><code>classify_failure.py</code> + <code>failure-categories.yaml</code></td><td>Regex หมวด dangerous (<code>alembic.util.exc</code>, <code>hmac&vert;signature</code>, <code>403&vert;401</code>, fallback) &rarr; <code>escalate=true</code> ห้าม retry</td><td>On CI gate fail (<code>classify-on-failure.yml</code>)</td></tr>
+          <tr><td><strong>14</strong> Wide context burn</td><td><code>classify_failure.py</code> field <code>narrow_scope</code></td><td>หมวด safe-retry &rarr; <code>narrow_scope = [error_file, +touched files]</code> + <code>evidence_excerpt</code> 200 บรรทัด</td><td>หลัง classify, ก่อน dispatch fix-agent</td></tr>
+        </tbody>
+      </table>
+    </article>
+  </div>
+
   <h3>Deliverables</h3>
   <pre>scripts/
 &#9500;&#9472;&#9472; min_action_check.py             # Layer D -- pre-commit
@@ -818,6 +1116,52 @@ hard_rules:
   <p>Close the lifecycle after PR creation: stale PR detection, conflict handling, deploy gate, health verification, auto-revert on failure, and known-issue fingerprint reuse.</p>
   <div class="flow-box">PR opened -&gt; gates pass -&gt; merge -&gt; deploy dispatch -&gt; /health -&gt; state=VERIFIED -&gt; closed-with-proof
 Failure -&gt; incident issue + revert when needed + KI fingerprint update</div>
+
+  <h3>How it works &middot; How to use &middot; How to implement</h3>
+  <div class="grid col2">
+    <article class="card">
+      <h4>How it works</h4>
+      <p style="font-size:.92rem;line-height:1.55">PR merge เข้า <code>main</code> &rarr; <code>closure-loop.yml</code> trigger &rarr; dispatch deploy workflow ทันที (ไม่รอ manual, ใช้ <code>concurrency: deploy-main</code> กัน double) &rarr; deploy done &rarr; <code>curl -fsS $DEPLOY_URL/health</code> ต้องได้ 200 + body <code>&quot;status&quot;:&quot;ok&quot;</code> ภายใน 60s &rarr; ถ้า pass: <code>close_with_proof.py</code> comment SHA + run URL + health time แล้วปิด issue ด้วย <code>state:closed-completed</code>; ถ้า fail: คำนวณ KI fingerprint <code>SHA1(error+stack)</code> &rarr; match DB ใน <code>docs/known-issues.md</code> &rarr; เปิด incident + revert PR. Background: hourly cron expire <code>bypass:governance</code> &gt; 24h, daily cron ตรวจ Projects v2 column mapping.</p>
+      <p class="muted" style="font-size:.85rem;margin-top:8px">Output: ไม่มี PR ที่ merge แล้วลืม deploy, ไม่มี deploy ที่ไม่ healthy ผ่านไปได้, issue ปิดมี proof ทุกครั้ง.</p>
+    </article>
+    <article class="card">
+      <h4>How to use (operator)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>Merge PR ปกติ (auto-merge หรือ manual) &mdash; ไม่ต้องไปกด deploy</li>
+        <li>ดู Actions tab &mdash; <code>closure-loop.yml</code> รัน &rarr; deploy &rarr; health check</li>
+        <li>เมื่อจบ: เปิด issue เดิม &mdash; เห็น comment <code>VERIFIED</code> + SHA + URL + health time</li>
+        <li>ถ้า health fail: incident issue ใหม่จะถูกเปิด พร้อม KI-XXX link (ถ้า match) + revert PR</li>
+        <li>ห้าม dispatch deploy เองด้วยมือ &mdash; ใช้ revert PR แทน</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>How to implement (developer)</h4>
+      <ol style="font-size:.92rem;line-height:1.6;padding-left:18px;margin:0">
+        <li>เขียน <code>.github/workflows/closure-loop.yml</code> &mdash; <code>on: push: branches: [main]</code> + dispatch deploy + health step + close step</li>
+        <li>เขียน <code>scripts/governance/close_with_proof.py</code> &mdash; GraphQL close issue + comment + Projects v2 move</li>
+        <li>เขียน fingerprint logic &mdash; <code>SHA1(error_sig + 3 stack frames)</code> + lookup <code>docs/known-issues.md</code></li>
+        <li>สร้าง <code>scripts/governance/expire_bypass_label.py</code> &mdash; GraphQL list label + age check</li>
+        <li>สร้าง <code>scripts/governance/check_project_board_mapping.py</code> &mdash; GraphQL query Status column</li>
+        <li>สร้าง <code>.github/workflows/governance-watch.yml</code> &mdash; hourly + daily schedule</li>
+        <li>เขียน revert PR generator &mdash; <code>git revert -m 1 $SHA</code> + auto-open PR</li>
+        <li>เขียน tests 6 รายการตาม AC</li>
+      </ol>
+    </article>
+    <article class="card">
+      <h4>Pain points covered (PP-15 &rarr; PP-18 + Guardrails)</h4>
+      <table style="font-size:.86rem">
+        <thead><tr><th>PP</th><th>File / Module</th><th>Mechanism</th><th>เมื่อไหร่</th></tr></thead>
+        <tbody>
+          <tr><td><strong>15</strong> PR not deployed</td><td><code>closure-loop.yml</code></td><td>Trigger <code>on: push: branches: [main]</code> &rarr; dispatch deploy workflow ทันที + <code>concurrency: deploy-main</code></td><td>ทันทีหลัง merge</td></tr>
+          <tr><td><strong>16</strong> Unhealthy deploy</td><td><code>closure-loop.yml</code> health step</td><td><code>curl -fsS $DEPLOY_URL/health</code> &rarr; status 200 + body <code>&quot;status&quot;:&quot;ok&quot;</code> ภายใน 60s; ไม่ผ่าน &rarr; incident branch</td><td>Post-deploy step</td></tr>
+          <tr><td><strong>17</strong> Closed without proof</td><td><code>close_with_proof.py</code></td><td>ปิดเฉพาะหลัง health=200; comment ต้องมี SHA + deploy run URL + health response time + <code>state:closed-completed</code></td><td>Job สุดท้ายของ closure-loop</td></tr>
+          <tr><td><strong>18</strong> Repeat failures</td><td><code>docs/known-issues.md</code> + fingerprint logic</td><td>Fingerprint = <code>SHA1(error_sig + 3 stack frames)</code>; match DB &rarr; link KI-XXX; ไม่เจอ &rarr; append KI-NEW + open incident + revert PR</td><td>On health fail (incident branch)</td></tr>
+          <tr><td><em>Guard</em> Bypass expiry</td><td><code>expire_bypass_label.py</code></td><td>List label <code>bypass:governance</code> + <code>created_at &lt; now-24h</code> &rarr; remove + audit comment</td><td><strong>Hourly cron</strong></td></tr>
+          <tr><td><em>Guard</em> Board mapping</td><td><code>check_project_board_mapping.py</code></td><td>GraphQL list Status column names+order เทียบ expected JSON &mdash; mismatch alert</td><td><strong>Daily cron</strong></td></tr>
+        </tbody>
+      </table>
+    </article>
+  </div>
 
   <h3>Deliverables</h3>
   <pre>.github/workflows/
@@ -936,56 +1280,99 @@ Day 4 EOD  End-to-end smoke test: TASK-501 OCR seed issue full lifecycle</div>
 <h2><span class="sn">&sect;9</span> Session Log &mdash; สิ่งที่ทำเสร็จในการสนทนานี้</h2>
 <div class="card">
   <p class="muted" style="font-size:.85rem;margin-bottom:10px">บันทึกสิ่งที่ AI Agent (GitHub Copilot / Claude Sonnet 4.6) สร้างหรือแก้ไขจริงในเซสชั่นนี้ &mdash; session ID: <code>17d61bb8-e85b-4f5f-a959-a8e9168bc819</code></p>
+  <p style="margin-bottom:10px">Epic 1 fast-pilot readiness ตอนนี้มีของที่สร้างเสร็จจริงตาม task แล้วดังนี้: TASK-101 ทำ state schema + intake flow, TASK-102 ทำ state-aware gates + CI wiring, TASK-103 ทำ pre-commit action lock + test suite, และ TASK-EPIC-1-7-5 ทำ state/evidence smoke artifacts สำหรับ sign-off.</p>
   <table>
     <thead><tr><th>#</th><th>ไฟล์ / สิ่งที่ทำ</th><th>สถานะ</th><th>รายละเอียด</th></tr></thead>
     <tbody>
       <tr>
         <td>1</td>
-        <td><code>docs/PoC/plan/epic-1/EPIC-1-DESIGN.html</code></td>
+        <td><code>.agent/state/_schema.json</code></td>
         <td><span class="pill pill-ok">DONE</span></td>
-        <td>Rebuilt จาก dark-theme backup &mdash; 50,900 bytes, 4 tasks, 18 pain points, Layer C AI Decision Router, &sect;7.5, &sect;8, Mermaid diagram ครบ. เขียนด้วย PowerShell <code>Set-Content</code> เพราะไฟล์เดิม corrupt</td>
+        <td>Schema หลักของ TASK state: task_id, status, risk_tier, model_tier, allowed_scope, forbidden_scope, acceptance_criteria, max_loops, run_count, last_action, escalation_policy, timestamps</td>
       </tr>
       <tr>
         <td>2</td>
-        <td><code>docs/PoC/plan/epic-1/EPIC-1-DESIGN-new.prompts.md</code></td>
+        <td><code>.agent/README.md</code></td>
         <td><span class="pill pill-ok">DONE</span></td>
-        <td>สร้าง 12 prompts (P0&ndash;P12) จัดหมวดหมู่ชัดเจนให้ AI สร้าง HTML ได้ตั้งแต่ต้น: P0 Master Context, P1 CSS System, P2 Hero+&sect;0, P3 Mermaid, P4 Pain points, P5 TASK-101, P6 TASK-102, P7 TASK-103, P8 TASK-104, P9 Exec+DoD, P10 FastPilot, P11 Add-ons+Footer, P12 Assembly rules</td>
+        <td>คู่มือ state lifecycle, evidence contract, forbidden paths, bypass policy, และวิธีติดตั้ง pre-commit hook</td>
       </tr>
       <tr>
         <td>3</td>
-        <td><code>docs/PoC/plan/epic-1/EPIC-1-DESIGN-new.html</code></td>
+        <td><code>.agent/state/TASK-501.json</code></td>
         <td><span class="pill pill-ok">DONE</span></td>
-        <td>สร้างไฟล์นี้ (51,908 bytes) ตาม prompts ที่จัดทำ &mdash; dark theme ครบ, sections &sect;0&ndash;&sect;8, Mermaid, Google Fonts, 18 pain points, 4 tasks พร้อม AC table ทุก task</td>
+        <td>Seed TASK สำหรับ OCR smoke path; validated against schema และใช้เป็นตัวอย่างให้ gates / evidence flow</td>
       </tr>
       <tr>
         <td>4</td>
-        <td><code>scripts/governance/expire_bypass_label.py</code></td>
+        <td><code>scripts/agent_state.py</code></td>
         <td><span class="pill pill-ok">DONE</span></td>
-        <td>Script หมดอายุ <code>bypass:governance</code> label หลัง 24h, <code>--dry-run</code> flag, pagination, audit comment</td>
+        <td>CLI สำหรับ validate / get / update / init state file ด้วย JSON Schema Draft 2020-12</td>
       </tr>
       <tr>
         <td>5</td>
-        <td><code>scripts/governance/check_project_board_mapping.py</code></td>
+        <td><code>.github/ISSUE_TEMPLATE/task-intake.yml</code></td>
         <td><span class="pill pill-ok">DONE</span></td>
-        <td>Script ตรวจ Projects v2 column names/order, <code>--allow-extra</code> flag, GraphQL org/user owner</td>
+        <td>Q1-Q8 questionnaire template สำหรับเปิด TASK โดยมี task_id, risk/model tier, scope, AC, max loops, escalation policy</td>
       </tr>
       <tr>
         <td>6</td>
-        <td><code>.agent/templates/high-risk-advisory.md</code></td>
+        <td><code>.github/ISSUE_TEMPLATE/blocker.yml</code></td>
         <td><span class="pill pill-ok">DONE</span></td>
-        <td>Template advisory 3-provider สำหรับ HIGH/CRITICAL PRs (Provider A/B/C + cross-provider summary + merge gate)</td>
+        <td>Blocker report form สำหรับเปลี่ยน TASK เป็น <code>BLOCKED</code> พร้อมเหตุผล, severity, และ unblock plan</td>
       </tr>
       <tr>
         <td>7</td>
-        <td><code>.github/workflows/governance-watch.yml</code></td>
+        <td><code>scripts/intake_to_state.py</code></td>
         <td><span class="pill pill-ok">DONE</span></td>
-        <td>Workflow cron: bypass expiry (hourly) + board mapping check (daily)</td>
+        <td>Parser ที่อ่าน Q1-Q8 issue body แล้วเขียน state JSON, พร้อม rework comment ตอน validation fail</td>
       </tr>
       <tr>
         <td>8</td>
-        <td>ค้นหา tool-call image files (<code>.jpe</code>)</td>
-        <td><span class="pill pill-warn">N/A</span></td>
-        <td>ค้นหาใน VS Code workspace storage (<code>f6cc8657...</code>) ครบทุก folder &mdash; ไม่พบ <code>.jpe</code> files. Tool call results ในเซสชั่นนี้เก็บเป็น <code>content.txt</code> เท่านั้น (ไม่มี screenshot/image attachment)</td>
+        <td><code>.github/workflows/intake-sync.yml</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>Issue sync workflow: parse Q1-Q8 intake, commit state file, open PR, add labels, และโพสต์ comment ตอน validation fail</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td><code>scripts/gates/_common.py</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>Shared gate helpers: resolve TASK_ID, load state, read global forbidden paths, glob matching, changed/staged file helpers</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td><code>scripts/gates/check_scope.py</code> + <code>scripts/check_scope.sh</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>Scope gate บังคับ allowed_scope/forbidden_scope และ shim shell wrapper ไปยัง Python gate</td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td><code>scripts/gates/check_evidence.py</code> + <code>scripts/check_evidence.py</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>Evidence gate บังคับ 3 sections + AC-PASS binding + docker requirement สำหรับ int_ AC; shim เดิมยังเรียก gate ตัวใหม่ได้</td>
+      </tr>
+      <tr>
+        <td>12</td>
+        <td><code>scripts/min_action_check.py</code> + <code>.githooks/pre-commit</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>Pre-commit action lock กัน plan-only commit; hook เพิ่ม step ตรวจ action file ก่อน commit</td>
+      </tr>
+      <tr>
+        <td>13</td>
+        <td><code>.github/workflows/agent_gate.yml</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>CI gate หลัก: resolve TASK_ID จาก PR title, concurrency <code>gate-${{ pr.number }}</code>, ruff + pytest, scope gate, evidence gate, HDR advisory</td>
+      </tr>
+      <tr>
+        <td>14</td>
+        <td><code>tests/governance/</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>ชุดทดสอบครอบ schema, intake parser, scope gate, evidence gate, min_action_check รวม 36 tests ผ่าน</td>
+      </tr>
+      <tr>
+        <td>15</td>
+        <td><code>.agent/evidence/TASK-EPIC-1-7-5/evidence.md</code> + <code>.agent/state/TASK-EPIC-1-7-5.json</code></td>
+        <td><span class="pill pill-ok">DONE</span></td>
+        <td>Smoke evidence สำหรับ sign-off: state validates, intake dry-run, scope gate fail on forbidden path, evidence gate pass, min_action pass-through, pytest 36/36</td>
       </tr>
     </tbody>
   </table>
