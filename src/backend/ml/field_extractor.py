@@ -20,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v24"
+EXTRACTION_SCHEMA_VERSION = "v26"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
@@ -371,6 +371,32 @@ def _clean_invoice_number(value: str) -> str:
     return candidate
 
 
+def _looks_like_noisy_invoice_number(value: str) -> bool:
+    candidate = str(value or "").strip()
+    if not candidate:
+        return True
+    if len(candidate) > 24:
+        return True
+    lowered = candidate.lower()
+    noise_tokens = (
+        "หมู่",
+        "ถนน",
+        "ซอย",
+        "แขวง",
+        "เขต",
+        "จังหวัด",
+        "ที่อยู่",
+        "address",
+        "โทร",
+        "email",
+    )
+    if any(token in lowered for token in noise_tokens):
+        return True
+    if candidate.count(" ") >= 2:
+        return True
+    return False
+
+
 def _is_tax_id_like(value: str) -> bool:
     cleaned = re.sub(r"\D", "", value or "")
     return len(cleaned) == 13
@@ -403,20 +429,20 @@ def _valid_invoice_no_candidate(line: str, candidate: str) -> bool:
     return True
 
 
-def _extract_invoice_number(raw_text: str) -> str:
+def _extract_invoice_number_with_source(raw_text: str) -> tuple[str, str]:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
 
     for line in lines[:120]:
         for match in DOC_NO_STRONG_RE.finditer(line):
             candidate = _clean_invoice_number(match.group(1))
             if _valid_invoice_no_candidate(line, candidate):
-                return candidate
+                return candidate, "strong_label"
 
     for line in lines[:120]:
         for match in BILL_NO_RE.finditer(line):
             candidate = _clean_invoice_number(match.group(1))
             if _valid_invoice_no_candidate(line, candidate):
-                return candidate
+                return candidate, "bill_label"
 
     weak_address_noise = ("ถนน", "แขวง", "เขต", "จังหวัด", "อำเภอ", "ตำบล", "หมู่", "ซอย")
     for line in lines[:120]:
@@ -425,7 +451,7 @@ def _extract_invoice_number(raw_text: str) -> str:
         for match in DOC_NO_WEAK_RE.finditer(line):
             candidate = _clean_invoice_number(match.group(1))
             if _valid_invoice_no_candidate(line, candidate):
-                return candidate
+                return candidate, "weak_label"
 
     for line in lines[:120]:
         line_l = line.lower()
@@ -434,15 +460,19 @@ def _extract_invoice_number(raw_text: str) -> str:
         for match in DOC_NO_SOFT_RE.finditer(line):
             candidate = _clean_invoice_number(match.group(1))
             if _valid_invoice_no_candidate(line, candidate):
-                return candidate
+                return candidate, "soft_label"
 
     invoice_match = INVOICE_RE.search(raw_text)
     if invoice_match:
         candidate = _clean_invoice_number(invoice_match.group(1))
         if _valid_invoice_no_candidate(raw_text, candidate):
-            return candidate
+            return candidate, "fallback"
 
-    return ""
+    return "", "missing"
+
+
+def _extract_invoice_number(raw_text: str) -> str:
+    return _extract_invoice_number_with_source(raw_text)[0]
 
 
 def _extract_total_amount(raw_text: str) -> str:
@@ -1088,7 +1118,7 @@ def _join_ocr_text(ocr_output: dict[str, Any]) -> str:
 
 
 def _extract_with_rules(raw_text: str) -> dict[str, Any]:
-    invoice_number = _extract_invoice_number(raw_text)
+    invoice_number, invoice_number_source = _extract_invoice_number_with_source(raw_text)
     vendor_match = VENDOR_RE.search(raw_text)
     invoice_date = _extract_invoice_date(raw_text)
     total_amount = _extract_total_amount(raw_text)
@@ -1197,6 +1227,7 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "canonical_seller_applied": canonical_seller_applied,
         "canonical_buyer_applied": canonical_buyer_applied,
         "source_text": raw_text,
+        "invoice_number_source": invoice_number_source,
     }
 
     field_validation_warnings: list[str] = []
@@ -1268,14 +1299,36 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
     if fields["net_amount"]:
         net_amount_conf = 0.9
     elif fields["vat_amount"] and fields["total_amount"]:
-        net_amount_conf = 0.6  # Can be inferred from vat + total
+        net_amount_conf = (
+            0.45  # Inferred values should stay below strict trust threshold
+        )
 
     vat_rate_conf = 0.3
     if fields["vat_rate"]:
         vat_rate_conf = 0.9 if fields["vat_amount"] else 0.6
 
+    invoice_number_conf = 0.95 if fields["invoice_number"] else 0.35
+    source_conf_cap = {
+        "strong_label": 0.95,
+        "bill_label": 0.9,
+        "weak_label": 0.8,
+        "soft_label": 0.65,
+        "fallback": 0.55,
+        "missing": 0.35,
+    }
+    invoice_number_conf = min(
+        invoice_number_conf,
+        source_conf_cap.get(str(fields.get("invoice_number_source") or "missing"), 0.55),
+    )
+    if fields["invoice_number"] and _looks_like_noisy_invoice_number(
+        str(fields["invoice_number"])
+    ):
+        invoice_number_conf = min(invoice_number_conf, 0.45)
+
+    total_amount_conf = 0.9 if fields["total_amount"] else 0.3
+
     confidence = {
-        "invoice_number": 0.95 if fields["invoice_number"] else 0.35,
+        "invoice_number": invoice_number_conf,
         "invoice_date": 0.95 if fields["invoice_date"] else 0.35,
         "vendor_name": 0.9 if fields["vendor_name"] else 0.4,
         "seller_name": seller_name_conf,
@@ -1285,7 +1338,7 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "net_amount": net_amount_conf,
         "vat_amount": vat_amount_conf,
         "vat_rate": vat_rate_conf,
-        "total_amount": 0.9 if fields["total_amount"] else 0.3,
+        "total_amount": total_amount_conf,
         "wht_rate": 0.9 if fields["wht_rate"] else 0.3,
         "wht_amount": 0.9 if fields["wht_amount"] else 0.3,
         "amount_paid": 0.9 if fields["amount_paid"] else 0.3,
@@ -1299,6 +1352,47 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         str(fields["invoice_date"]), raw_text
     ):
         confidence["invoice_date"] = min(float(confidence["invoice_date"]), 0.5)
+
+    if fields["total_amount"] and not _value_in_ocr(
+        str(fields["total_amount"]), raw_text
+    ):
+        confidence["total_amount"] = min(float(confidence["total_amount"]), 0.5)
+    if fields["vat_amount"] and not _value_in_ocr(str(fields["vat_amount"]), raw_text):
+        confidence["vat_amount"] = min(float(confidence["vat_amount"]), 0.5)
+
+    if fields["cross_field_conflict"]:
+        confidence["total_amount"] = min(float(confidence["total_amount"]), 0.45)
+        confidence["vat_amount"] = min(float(confidence["vat_amount"]), 0.45)
+        confidence["net_amount"] = min(float(confidence["net_amount"]), 0.45)
+
+    if fields["vat_math_mismatch"]:
+        confidence["vat_amount"] = min(float(confidence["vat_amount"]), 0.4)
+        confidence["total_amount"] = min(float(confidence["total_amount"]), 0.55)
+
+    try:
+        rate_raw = str(fields.get("vat_rate") or "").strip()
+        total_val = float(_normalize_number(str(fields.get("total_amount") or "0")))
+        vat_val = float(_normalize_number(str(fields.get("vat_amount") or "0")))
+        net_raw = str(fields.get("net_amount") or "").strip()
+        net_val = float(_normalize_number(net_raw)) if net_raw else 0.0
+
+        if rate_raw and total_val > 0 and vat_val > 0:
+            rate = float(rate_raw)
+            expected_vat_from_total = total_val * (rate / (100.0 + rate))
+            errors = [abs(expected_vat_from_total - vat_val)]
+            if net_val > 0:
+                expected_vat_from_net = net_val * (rate / 100.0)
+                errors.append(abs(expected_vat_from_net - vat_val))
+
+            min_error = min(errors)
+            tolerance = max(3.0, total_val * 0.05)
+            if min_error > tolerance:
+                confidence["vat_amount"] = min(float(confidence["vat_amount"]), 0.45)
+                confidence["total_amount"] = min(
+                    float(confidence["total_amount"]), 0.55
+                )
+    except ValueError:
+        pass
 
     return {"fields": fields, "confidence": confidence}
 

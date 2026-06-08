@@ -68,7 +68,17 @@ def _compute_overall_confidence(
     present = sum(1 for k in required_keys if str(fields.get(k) or "").strip())
     completeness = present / len(required_keys)
 
-    return ocr_conf * 0.25 + field_conf * 0.45 + completeness * 0.30
+    overall = ocr_conf * 0.25 + field_conf * 0.45 + completeness * 0.30
+
+    has_low_critical = any(
+        isinstance(confidence.get(key), (int, float))
+        and float(confidence.get(key, 0.0)) < CONFIDENCE_ESCALATION_THRESHOLD
+        for key in required_keys
+    )
+    if has_low_critical:
+        overall = min(overall, CONFIDENCE_ESCALATION_THRESHOLD - 0.01)
+
+    return overall
 
 
 async def run_pipeline(
@@ -121,7 +131,9 @@ async def run_pipeline(
             low_conf_fields = sum(
                 1
                 for k, v in confidence.items()
-                if k not in ("source_text",) and isinstance(v, (int, float)) and v < 0.6
+                if k not in ("source_text",)
+                and isinstance(v, (int, float))
+                and v < CONFIDENCE_ESCALATION_THRESHOLD
             )
             escalate = should_escalate_to_sonnet(
                 page_count=int(meta.get("page_count", 1)),

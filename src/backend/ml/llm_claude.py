@@ -133,11 +133,26 @@ def should_trigger_stage_c(
         return True, "vat_context_present_but_no_vat_amount"
 
     # Count fields with low confidence
+    low_threshold = 0.70
+    critical_fields = {
+        "invoice_number",
+        "invoice_date",
+        "seller_name",
+        "buyer_name",
+        "seller_tax_id",
+        "buyer_tax_id",
+        "net_amount",
+        "vat_amount",
+        "total_amount",
+    }
     low_conf_keys = [
         k
         for k, v in confidence.items()
-        if k not in ("source_text",) and isinstance(v, float) and v < 0.6
+        if k not in ("source_text",) and isinstance(v, float) and v < low_threshold
     ]
+    if any(k in critical_fields for k in low_conf_keys):
+        return True, f"critical_field_below_{low_threshold:.2f}: {low_conf_keys}"
+
     if len(low_conf_keys) >= 2:
         return True, f"low_confidence_fields: {low_conf_keys}"
 
