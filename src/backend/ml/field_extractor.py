@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v17"
+EXTRACTION_SCHEMA_VERSION = "v18"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
@@ -132,11 +132,20 @@ DOC_TYPE_HINTS: tuple[tuple[str, str], ...] = (
 COMPANY_NAME_CORRECTIONS: tuple[tuple[str, str], ...] = (
     ("บริษัทฤทธิ์ล้าเลิศเอ็นจิเนียริ่ง", "บริษัทฤทธิ์ล้ำเลิศเอ็นจิเนียริ่ง"),
     ("บริษัท ฤทธิ์ล้าเลิศเอ็นจิเนียริ่ง", "บริษัท ฤทธิ์ล้ำเลิศเอ็นจิเนียริ่ง"),
+    ("บรษัท", "บริษัท"),
+    ("บริษ ท", "บริษัท"),
 )
 
 TAX_ID_CANONICAL_COMPANIES: dict[str, str] = {
     "0125561025189": "บริษัท ฤทธิ์ล้ำเลิศ เอ็นจิเนียริ่ง จำกัด",
     "0105565189488": "บริษัท ทีเค.นอนสติ๊ก จำกัด",
+    "0107544000043": "บริษัท โฮม โปรดักส์ เซ็นเตอร์ จำกัด (มหาชน)",
+}
+
+KNOWN_TEMPLATE_TAX_IDS: set[str] = {
+    "0125561025189",
+    "0105565189488",
+    "0107544000043",
 }
 
 COMMON_WHT_RATES: tuple[float, ...] = (1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 15.0)
@@ -558,10 +567,30 @@ def _looks_like_company_name(line: str) -> bool:
     return bool(COMPANY_HEADER_RE.match(line) or COMPANY_NAME_LINE_RE.search(line))
 
 
+def _looks_like_noise_party_name(line: str) -> bool:
+    lowered = (line or "").strip().lower()
+    if not lowered:
+        return True
+    return any(
+        token in lowered
+        for token in (
+            "terms",
+            "condition",
+            "insurance",
+            "policy",
+            "period of",
+            "address",
+            "โทร",
+            "fax",
+            "email",
+        )
+    )
+
+
 def _extract_name_near_tax_id(
     lines: list[str],
     tax_id: str,
-    lookback: int = 4,
+    lookback: int = 8,
     lookahead: int = 2,
 ) -> str:
     if not tax_id:
@@ -827,12 +856,30 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "source_text": raw_text,
     }
 
+    seller_name_conf = 0.35
+    if fields["seller_name"]:
+        seller_name_conf = (
+            0.9
+            if _looks_like_company_name(fields["seller_name"])
+            and not _looks_like_noise_party_name(fields["seller_name"])
+            else 0.45
+        )
+
+    buyer_name_conf = 0.35
+    if fields["buyer_name"]:
+        buyer_name_conf = (
+            0.9
+            if _looks_like_company_name(fields["buyer_name"])
+            and not _looks_like_noise_party_name(fields["buyer_name"])
+            else 0.45
+        )
+
     confidence = {
         "invoice_number": 0.95 if fields["invoice_number"] else 0.35,
         "invoice_date": 0.95 if fields["invoice_date"] else 0.35,
         "vendor_name": 0.9 if fields["vendor_name"] else 0.4,
-        "seller_name": 0.9 if fields["seller_name"] else 0.35,
-        "buyer_name": 0.9 if fields["buyer_name"] else 0.35,
+        "seller_name": seller_name_conf,
+        "buyer_name": buyer_name_conf,
         "seller_tax_id": 0.95 if fields["seller_tax_id"] else 0.3,
         "buyer_tax_id": 0.95 if fields["buyer_tax_id"] else 0.3,
         "total_amount": 0.9 if fields["total_amount"] else 0.3,
@@ -927,11 +974,29 @@ def run_extraction(
 
     ocr_conf = float(ocr_output.get("avg_confidence", 0.0))
     page_count = int(ocr_output.get("page_count", 1))
+    rule_conflict = agreement_score < 0.5
+
+    seller_tax_id = str(rule_result["fields"].get("seller_tax_id") or "").strip()
+    stage_c_triggers = {
+        "template_unknown": bool(seller_tax_id not in KNOWN_TEMPLATE_TAX_IDS),
+        "field_confidence_low": bool(low_conf_fields),
+        "rule_conflict": bool(rule_conflict),
+        "variable_account_needed": False,
+    }
+    stage_c_reasons = [
+        key for key, triggered in stage_c_triggers.items() if triggered
+    ]
+    stage_c = {
+        "triggered": bool(stage_c_reasons),
+        "reasons": stage_c_reasons,
+        "recommended_route": "rule_extractor" if stage_c_reasons else "standard_pipeline",
+    }
+
     escalate = should_escalate_to_sonnet(
         page_count=page_count,
         ocr_confidence=ocr_conf,
         low_confidence_fields=len(low_conf_fields),
-        rule_conflict=False,
+        rule_conflict=rule_conflict,
     )
     model = pick_model(escalate)
 
@@ -947,6 +1012,7 @@ def run_extraction(
         "confidence_per_field": rule_result["confidence"],
         "low_confidence_fields": low_conf_fields,
         "needs_human_review": bool(low_conf_fields),
+        "stage_c": stage_c,
         "cache_hit": False,
         "meta": {
             "escalated_to_sonnet": escalate,
@@ -957,6 +1023,8 @@ def run_extraction(
             "page_count": page_count,
             "agreement_score": agreement_score,
             "optional_fields_expected": optional_expected,
+            "triggers": stage_c_triggers,
+            "decision": stage_c,
         },
     }
 

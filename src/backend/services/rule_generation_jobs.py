@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import traceback
 import uuid
 from datetime import UTC, datetime
@@ -32,6 +33,31 @@ class RuleGenerationJobStore:
     def __init__(self) -> None:
         self._jobs: dict[str, dict[str, Any]] = {}
         self._lock = asyncio.Lock()
+        self._restore_jobs_from_disk()
+
+    def _restore_jobs_from_disk(self) -> None:
+        """Restore persisted jobs so progress/result survives server restarts."""
+        for path in JOBS_ROOT.glob("gen_*.json"):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                # Ignore corrupted snapshots so one bad file does not block startup.
+                continue
+
+            job_id = str(payload.get("job_id") or path.stem)
+            payload["job_id"] = job_id
+
+            # In-flight jobs cannot resume automatically because worker threads
+            # are gone after process restart; mark them recoverably failed.
+            if payload.get("status") in {"queued", "processing"}:
+                payload["status"] = "failed"
+                payload["error"] = {
+                    "message": "Job interrupted by server restart. Please rerun this job.",
+                    "traceback": None,
+                }
+                payload["updated_at"] = datetime.now(UTC).isoformat()
+
+            self._jobs[job_id] = payload
 
     def _persist(self, job_id: str) -> None:
         payload = self._jobs.get(job_id)

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/ux-ui-prototype.css?v=20260608b" />
+  <link rel="stylesheet" href="/static/ux-ui-prototype.css?v=20260608h" />
 </head>
 <body>
 
@@ -536,6 +536,49 @@
   const STORAGE_KEY_COA_RULE_JOBS = 'ledgerflow_coa_rule_jobs';
   const STORAGE_KEY_SELECTED_COMPANY = 'ledgerflow_selected_company';
 
+  const RESET_PARAM_SAFE = 'resetDemo';
+  const RESET_PARAM_FULL = 'resetAllDemo';
+  const RESET_PARAM_RESTORE = 'restoreDemo';
+  const STORAGE_KEY_RESET_BACKUP = 'ledgerflow_reset_backup_v1';
+
+  function restoreStateFromBackupIfMissing() {
+    try {
+      const rawBackup = window.localStorage.getItem(STORAGE_KEY_RESET_BACKUP);
+      const backup = rawBackup ? JSON.parse(rawBackup) : null;
+      if (!backup || typeof backup !== 'object') return;
+
+      const keys = [
+        STORAGE_KEY_COMPANIES,
+        STORAGE_KEY_COA,
+        STORAGE_KEY_MAPPING_RULES,
+        STORAGE_KEY_COA_RULE_JOBS,
+        STORAGE_KEY_SELECTED_COMPANY,
+      ];
+
+      keys.forEach(key => {
+        const currentValue = window.localStorage.getItem(key);
+        const backupValue = backup[key];
+        if ((currentValue === null || currentValue === '') && backupValue !== null && backupValue !== undefined && backupValue !== '') {
+          window.localStorage.setItem(key, String(backupValue));
+        }
+      });
+    } catch {}
+  }
+
+  function resetPrototypeStateIfRequested() {
+    try {
+      const currentUrl = new URL(window.location.href);
+      // URL reset params are now ignored to prevent accidental data loss.
+      [RESET_PARAM_SAFE, RESET_PARAM_FULL, RESET_PARAM_RESTORE].forEach(param => {
+        currentUrl.searchParams.delete(param);
+      });
+      window.history.replaceState({}, '', currentUrl.toString());
+    } catch {}
+  }
+
+  restoreStateFromBackupIfMissing();
+  resetPrototypeStateIfRequested();
+
   function loadStoredJson(key, fallback) {
     try {
       const raw = window.localStorage.getItem(key);
@@ -655,6 +698,7 @@
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtMB = mb => mb >= 1 ? `${mb.toFixed(1)} MB` : `${(mb * 1000).toFixed(0)} KB`;
+  const normalizeTaxId = value => String(value || '').replace(/\D/g, '');
   const getCompany = () => COMPANIES.find(c => c.id === state.selectedCompanyId) || null;
   const getCOA = () => COA[state.selectedCompanyId] || [];
   const getActiveFiles = () => (state.uploadedFiles.length ? state.uploadedFiles : SAMPLE_FILES);
@@ -1201,7 +1245,7 @@
         folder: 'Uploaded',
         sellerTax: '',
         sellerName: stem,
-        buyerTax: getCompany()?.taxId || '',
+        buyerTax: '',
         netAmt: 0,
         vatRate: 7,
         whtRate: 0,
@@ -1221,8 +1265,12 @@
     const formData = new FormData();
     formData.append('file', fileItem._rawFile, fileItem._rawFile.name);
     const companyId = $('companySelect')?.value || $('coaCompanySelect')?.value || state.selectedCompanyId || '';
+    const selectedCompanyTaxId = getCompany()?.taxId || '';
     if (companyId) {
       formData.append('company_id', companyId);
+    }
+    if (selectedCompanyTaxId) {
+      formData.append('company_tax_id', selectedCompanyTaxId);
     }
     const res = await fetch(apiUrl('/api/process'), { method: 'POST', body: formData });
     if (!res.ok) {
@@ -1258,7 +1306,7 @@
     fileItem.invDate = fields.invoice_date || fileItem.invDate;
     fileItem.sellerName = fields.vendor_name || fileItem.sellerName;
     fileItem.sellerTax = fields.seller_tax_id || fileItem.sellerTax;
-    fileItem.buyerTax = fields.buyer_tax_id || fileItem.buyerTax;
+    fileItem.buyerTax = String(fields.buyer_tax_id || '').trim();
     fileItem.buyerName = fields.buyer_name || fileItem.buyerName || '';
     if (expenseLine) {
       fileItem.netAmt = toNumber(expenseLine.debit);
@@ -1294,7 +1342,9 @@
 
   function isMismatch(f) {
     const co = getCompany();
-    return f.mismatch === true || (co && f.buyerTax && f.buyerTax !== co.taxId);
+    const buyerTax = normalizeTaxId(f.buyerTax);
+    const companyTax = normalizeTaxId(co?.taxId);
+    return f.mismatch === true || (co && buyerTax && companyTax && buyerTax !== companyTax);
   }
 
   function getLabelForCode(code) {
@@ -1724,8 +1774,13 @@
 
     const co = getCompany();
     const st = $('scanBuyerTaxStatus');
+    const buyerTax = normalizeTaxId(f.buyerTax);
+    const companyTax = normalizeTaxId(co?.taxId);
     if (co) {
-      if (f.buyerTax === co.taxId) {
+      if (!buyerTax) {
+        st.textContent = '— Buyer Tax ID not detected in document';
+        st.className = 'taxid-status taxid-warn';
+      } else if (buyerTax === companyTax) {
         st.textContent = `✓ Matches company Tax ID`;
         st.className = 'taxid-status taxid-ok';
       } else {
@@ -2677,6 +2732,7 @@
 
   /* ─── INIT ─── */
   syncCompanyUi();
+  applyCompanySelection(state.selectedCompanyId);
   syncCoaRuleCompanyDefaults();
   restoreCoaRuleState($('coaCompanySelect')?.value || state.selectedCompanyId || '').catch(() => {});
   setStep(1);

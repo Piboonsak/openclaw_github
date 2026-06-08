@@ -502,6 +502,53 @@ def _build_payload_from_rule(
     }
 
 
+def _merge_stage_c_decision(
+    extraction_output: dict[str, Any],
+    journal_payload: dict[str, Any],
+) -> dict[str, Any]:
+    extraction_meta = extraction_output.get("meta", {})
+    extraction_triggers = extraction_meta.get("triggers", {})
+
+    flags = {str(flag) for flag in journal_payload.get("flags", [])}
+    rule_conflict = bool(
+        journal_payload.get("status") == "UNRESOLVED_RULE"
+        or "ambiguous_rule" in flags
+        or "balance_check_failed" in flags
+        or "unresolved_rule" in flags
+    )
+    variable_account_needed = bool("needs_human_account_pick" in flags)
+
+    trigger_map = {
+        "template_unknown": bool(extraction_triggers.get("template_unknown", False)),
+        "field_confidence_low": bool(
+            extraction_triggers.get("field_confidence_low", False)
+            or extraction_output.get("low_confidence_fields")
+        ),
+        "rule_conflict": rule_conflict,
+        "variable_account_needed": variable_account_needed,
+    }
+    reasons = [key for key, triggered in trigger_map.items() if triggered]
+    stage_c = {
+        "triggered": bool(reasons),
+        "reasons": reasons,
+        "recommended_route": "rule_extractor" if reasons else "standard_pipeline",
+    }
+
+    journal_payload["stage_c"] = stage_c
+    journal_payload.setdefault("meta", {})
+    journal_payload["meta"]["triggers"] = trigger_map
+    journal_payload["meta"]["decision"] = stage_c
+
+    extraction_output["stage_c"] = stage_c
+    extraction_output.setdefault("meta", {})
+    extraction_output["meta"]["triggers"] = {
+        **extraction_output["meta"].get("triggers", {}),
+        **trigger_map,
+    }
+    extraction_output["meta"]["decision"] = stage_c
+    return stage_c
+
+
 def run_journal_router(
     extraction_output: dict[str, Any],
     *,
@@ -543,6 +590,8 @@ def run_journal_router(
             payload["company_id"] = resolved_company_id
     else:
         payload = _fallback_payload(fields, rules, sha)
+
+    _merge_stage_c_decision(extraction_output, payload)
 
     artifact_dir.mkdir(parents=True, exist_ok=True)
     artifact_path.write_text(
