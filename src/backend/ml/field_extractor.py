@@ -112,6 +112,9 @@ TOTAL_KEYWORDS = (
     "ยอดรวม",
     "ยอดสุทธิ",
     "รวมเป็นเงิน",
+    "มูลค่ารวม",
+    "ยอดชำระ",
+    "ยอดเงินรวม",
 )
 
 THAI_PUA_REPLACEMENTS = {
@@ -470,9 +473,11 @@ def _extract_vat_amount(raw_text: str) -> str:
     candidates: list[float] = []
 
     for line in lines:
-        # Skip lines that mention "before tax" (net amount, not VAT)
+        # Skip lines that mention "before tax" (net amount, not VAT) or "no VAT"
         if "ก่อนภาษี" in line or "ก่อนค่าภาษี" in line or "before tax" in line.lower():
             continue
+        if "ไม่มีภาษี" in line or "ไม่ผ่านภาษี" in line:
+            continue  # Skip zero-VAT lines like "มูลค่าสินค้าที่ไม่มีภาษีมูลค่าเพิ่ม"
 
         if not VAT_LINE_HINT_RE.search(line):
             continue
