@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v15"
+EXTRACTION_SCHEMA_VERSION = "v17"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
@@ -31,6 +31,14 @@ DOC_NO_WEAK_RE = re.compile(
     r"(?:เลขที่|no\.?)\s*[:：#-]\s*([A-Za-z0-9ก-๙][A-Za-z0-9ก-๙\-_/\.]{2,40})",
     re.IGNORECASE,
 )
+DOC_NO_SOFT_RE = re.compile(
+    r"(?:เลขที่|inv(?:oice)?\.?\s*no\.?|no\.?)\s*([A-Za-z0-9ก-๙][A-Za-z0-9ก-๙\-_/\.]{2,40})",
+    re.IGNORECASE,
+)
+BILL_NO_RE = re.compile(
+    r"(?:bill\s*no\.?|doc\s*no\.?|reference\s*no\.?|ref\.?\s*no\.?)\s*[:：#-]?\s*([A-Za-z0-9][A-Za-z0-9\-_/\.]{2,40})",
+    re.IGNORECASE,
+)
 DATE_LABEL_RE = re.compile(
     r"(?:วันที่ออก|วันที่เอกสาร|วันที่|date\s*issued|invoice\s*date|document\s*date|date)\s*[:：]?\s*",
     re.IGNORECASE,
@@ -39,6 +47,12 @@ DATE_YMD_RE = re.compile(r"\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b")
 DATE_DMY_RE = re.compile(r"\b(\d{1,2})[-/](\d{1,2})[-/](20\d{2})\b")
 DATE_NUMERIC_RE = re.compile(r"(?<!\d)(\d{1,4})[-/](\d{1,2})[-/](\d{1,4})(?!\d)")
 DATE_THAI_MONTH_RE = re.compile(r"(?<!\d)(\d{1,2})\s*([ก-๙\.]{2,16})\s*(\d{2,4})(?!\d)")
+DATE_ENG_MONTH_RE = re.compile(
+    r"(?i)(?<!\w)(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*(\d{2,4})(?!\w)"
+)
+DATE_ENG_MONTH_RE_REV = re.compile(
+    r"(?i)(?<!\w)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*(\d{1,2})\s*,?\s*(\d{2,4})(?!\w)"
+)
 AMOUNT_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+\.\d{1,2}|\d{1,9})(?!\d)")
 VENDOR_RE = re.compile(r"(?:vendor|supplier|ผู้ขาย|บริษัท)[:\s]*([^\n]+)", re.IGNORECASE)
 SELLER_RE = re.compile(
@@ -152,6 +166,20 @@ THAI_MONTHS: dict[str, int] = {
     "ธค": 12,
     "ธันวาคม": 12,
 }
+ENG_MONTHS: dict[str, int] = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
+}
 
 
 def _sha256_text(text: str) -> str:
@@ -224,10 +252,12 @@ def _extract_invoice_date(raw_text: str) -> str:
     return ""
 
 
-def _normalize_year(year: int) -> int:
+def _normalize_year(year: int, prefer_buddhist_suffix: bool = False) -> int:
     if year >= 2400:
         return year - 543
     if year < 100:
+        if prefer_buddhist_suffix and year >= 50:
+            return (2500 + year) - 543
         return 2000 + year
     return year
 
@@ -239,12 +269,14 @@ def _safe_date(year: int, month: int, day: int) -> str:
 
 
 def _extract_date_from_snippet(text: str) -> str:
+    prefer_buddhist_suffix = bool(re.search(r"[ก-๙]|พ\.?ศ\.?", text, re.IGNORECASE))
+
     numeric = DATE_NUMERIC_RE.search(text)
     if numeric:
         a, b, c = [int(x) for x in numeric.groups()]
         if a > 31:
-            return _safe_date(_normalize_year(a), b, c)
-        return _safe_date(_normalize_year(c), b, a)
+            return _safe_date(_normalize_year(a, prefer_buddhist_suffix), b, c)
+        return _safe_date(_normalize_year(c, prefer_buddhist_suffix), b, a)
 
     thai_date = DATE_THAI_MONTH_RE.search(text)
     if thai_date:
@@ -252,7 +284,33 @@ def _extract_date_from_snippet(text: str) -> str:
         month_key = re.sub(r"[^ก-๙]", "", month_token)
         month = THAI_MONTHS.get(month_key, 0)
         if month:
-            return _safe_date(_normalize_year(int(year_str)), month, int(day_str))
+            return _safe_date(
+                _normalize_year(int(year_str), prefer_buddhist_suffix),
+                month,
+                int(day_str),
+            )
+
+    eng_date = DATE_ENG_MONTH_RE.search(text)
+    if eng_date:
+        day_str, month_token, year_str = eng_date.groups()
+        month = ENG_MONTHS.get(month_token.lower()[:3], 0)
+        if month:
+            return _safe_date(
+                _normalize_year(int(year_str), prefer_buddhist_suffix),
+                month,
+                int(day_str),
+            )
+
+    eng_date_rev = DATE_ENG_MONTH_RE_REV.search(text)
+    if eng_date_rev:
+        month_token, day_str, year_str = eng_date_rev.groups()
+        month = ENG_MONTHS.get(month_token.lower()[:3], 0)
+        if month:
+            return _safe_date(
+                _normalize_year(int(year_str), prefer_buddhist_suffix),
+                month,
+                int(day_str),
+            )
 
     return ""
 
@@ -268,13 +326,48 @@ def _clean_invoice_number(value: str) -> str:
     return candidate
 
 
+def _is_tax_id_like(value: str) -> bool:
+    cleaned = re.sub(r"\D", "", value or "")
+    return len(cleaned) == 13
+
+
+def _valid_invoice_no_candidate(line: str, candidate: str) -> bool:
+    cand = _clean_invoice_number(candidate)
+    if not cand or not re.search(r"\d", cand):
+        return False
+    if len(cand) < 4:
+        return False
+
+    line_l = line.lower()
+    if _is_tax_id_like(cand) and (
+        "taxid" in line_l
+        or "เลขประจําตัวผู้เสียภาษี" in line
+        or "เลขประจำตัวผู้เสียภาษี" in line
+        or "ผู้เสียภาษี" in line
+    ):
+        return False
+
+    # Avoid obvious address numbers captured from noisy OCR.
+    if any(token in line for token in ("ถนน", "แขวง", "เขต", "จังหวัด", "อำเภอ", "ตำบล", "หมู่", "ซอย")):
+        if len(cand) <= 8 and re.fullmatch(r"[A-Za-z0-9]+", cand):
+            return False
+
+    return True
+
+
 def _extract_invoice_number(raw_text: str) -> str:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
 
     for line in lines[:120]:
         for match in DOC_NO_STRONG_RE.finditer(line):
             candidate = _clean_invoice_number(match.group(1))
-            if candidate and re.search(r"\d", candidate):
+            if _valid_invoice_no_candidate(line, candidate):
+                return candidate
+
+    for line in lines[:120]:
+        for match in BILL_NO_RE.finditer(line):
+            candidate = _clean_invoice_number(match.group(1))
+            if _valid_invoice_no_candidate(line, candidate):
                 return candidate
 
     weak_address_noise = ("ถนน", "แขวง", "เขต", "จังหวัด", "อำเภอ", "ตำบล", "หมู่", "ซอย")
@@ -283,13 +376,22 @@ def _extract_invoice_number(raw_text: str) -> str:
             continue
         for match in DOC_NO_WEAK_RE.finditer(line):
             candidate = _clean_invoice_number(match.group(1))
-            if candidate and re.search(r"\d", candidate):
+            if _valid_invoice_no_candidate(line, candidate):
+                return candidate
+
+    for line in lines[:120]:
+        line_l = line.lower()
+        if "taxid" in line_l or "ผู้เสียภาษี" in line:
+            continue
+        for match in DOC_NO_SOFT_RE.finditer(line):
+            candidate = _clean_invoice_number(match.group(1))
+            if _valid_invoice_no_candidate(line, candidate):
                 return candidate
 
     invoice_match = INVOICE_RE.search(raw_text)
     if invoice_match:
         candidate = _clean_invoice_number(invoice_match.group(1))
-        if candidate and re.search(r"\d", candidate):
+        if _valid_invoice_no_candidate(raw_text, candidate):
             return candidate
 
     return ""
