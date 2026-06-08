@@ -1187,26 +1187,37 @@
   }
 
   function computeDisplayedConfidence(payloadFields, extractionMeta, extractionConfidenceMap) {
+    // If backend provides pre-computed overall_confidence, prefer it
+    const backendConf = toNumber(extractionMeta?.overall_confidence, null);
+    if (backendConf !== null && Number.isFinite(backendConf)) {
+      const percent = Math.round(Math.max(0, Math.min(1, backendConf)) * 100);
+      const stageCNote = extractionMeta?.stage_c_applied ? ' | Stage C applied' : '';
+      const sonnetNote = extractionMeta?.escalated_to_sonnet ? ' | Sonnet escalated' : '';
+      return {
+        percent,
+        detail: `Backend confidence ${percent}%${stageCNote}${sonnetNote}`,
+      };
+    }
+
     const ocrConf = Math.max(0, Math.min(1, toNumber(extractionMeta?.ocr_confidence, 0.75)));
 
-    const confidenceValues = Object.values(extractionConfidenceMap || {})
-      .map(v => toNumber(v, 0))
-      .filter(v => Number.isFinite(v));
-    const fieldConf = confidenceValues.length
-      ? confidenceValues.reduce((sum, val) => sum + val, 0) / confidenceValues.length
-      : 0.6;
-
+    // Only average confidence for required fields (not optional fields like amount_paid)
     const requiredKeys = [
       'invoice_number',
       'invoice_date',
       'seller_name',
-      'buyer_name',
       'seller_tax_id',
       'buyer_tax_id',
       'total_amount',
-      'wht_amount',
-      'amount_paid',
     ];
+    const confMap = extractionConfidenceMap || {};
+    const requiredConfValues = requiredKeys
+      .map(k => toNumber(confMap[k], null))
+      .filter(v => v !== null && Number.isFinite(v));
+    const fieldConf = requiredConfValues.length
+      ? requiredConfValues.reduce((sum, val) => sum + val, 0) / requiredConfValues.length
+      : 0.6;
+
     const presentCount = requiredKeys.filter(key => String(payloadFields?.[key] || '').trim().length > 0).length;
     const completeness = presentCount / requiredKeys.length;
 
@@ -1296,6 +1307,9 @@
     const vatLine = postings.find(p => p.line_type === 'vat' && toNumber(p.debit) > 0);
     const creditLine = postings.find(p => toNumber(p.credit) > 0);
     const totalAmount = toNumber(fields.total_amount, 0);
+    const extractedNetAmount = toOptionalNumber(fields.net_amount);
+    const extractedVatAmount = toOptionalNumber(fields.vat_amount);
+    const extractedVatRate = toOptionalNumber(fields.vat_rate);
     const extractedWhtAmount = toOptionalNumber(fields.wht_amount);
     const extractedWhtRate = toOptionalNumber(fields.wht_rate);
 
@@ -1310,14 +1324,28 @@
     fileItem.buyerName = fields.buyer_name || fileItem.buyerName || '';
     if (expenseLine) {
       fileItem.netAmt = toNumber(expenseLine.debit);
+    } else if (extractedNetAmount !== null && extractedNetAmount > 0) {
+      fileItem.netAmt = extractedNetAmount;
     } else if (totalAmount > 0 && vatLine) {
       fileItem.netAmt = Math.max(0, totalAmount - toNumber(vatLine.debit));
+    } else if (totalAmount > 0 && extractedVatAmount !== null && extractedVatAmount > 0) {
+      fileItem.netAmt = Math.max(0, totalAmount - extractedVatAmount);
     } else if (totalAmount > 0) {
       fileItem.netAmt = totalAmount;
     }
-    fileItem.vatRate = fileItem.vatRate || 7;
+    if (extractedVatRate !== null && extractedVatRate >= 0) {
+      fileItem.vatRate = extractedVatRate;
+    } else {
+      fileItem.vatRate = fileItem.vatRate || 7;
+    }
     fileItem.discount = fileItem.discount || 0;
-    fileItem._vatAmt = vatLine ? toNumber(vatLine.debit) : 0;
+    if (vatLine) {
+      fileItem._vatAmt = toNumber(vatLine.debit);
+    } else if (extractedVatAmount !== null && extractedVatAmount > 0) {
+      fileItem._vatAmt = extractedVatAmount;
+    } else {
+      fileItem._vatAmt = 0;
+    }
     fileItem._whtAmt = extractedWhtAmount !== null && extractedWhtAmount > 0
       ? extractedWhtAmount
       : null;
@@ -1333,9 +1361,15 @@
     fileItem._creditAmt = creditLine
       ? toNumber(creditLine.credit)
       : toNumber(journal?.totals?.credit, totalAmount);
-    fileItem._grossAmt = fileItem._creditAmt || (fileItem.netAmt + fileItem._vatAmt);
+    fileItem._grossAmt = fileItem._creditAmt || totalAmount || (fileItem.netAmt + fileItem._vatAmt);
 
-    const confidenceInfo = computeDisplayedConfidence(fields, extraction?.meta || {}, extractionConfidenceMap);
+    const extractionMeta = {
+      ...(extraction?.meta || {}),
+      overall_confidence: payload.overall_confidence ?? extraction?.overall_confidence,
+      stage_c_applied: payload.stage_c_applied ?? extraction?.stage_c_applied,
+      escalated_to_sonnet: payload.escalated_to_sonnet ?? extraction?.escalated_to_sonnet,
+    };
+    const confidenceInfo = computeDisplayedConfidence(fields, extractionMeta, extractionConfidenceMap);
     fileItem.confidence = confidenceInfo.percent;
     fileItem._confidenceDetail = confidenceInfo.detail;
   }

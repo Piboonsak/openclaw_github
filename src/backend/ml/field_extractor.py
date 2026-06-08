@@ -6,7 +6,9 @@ Writes extraction artifacts to `src/backend/ml/cache/{sha256}/extraction_output.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
+import os
 import re
 import unicodedata
 from pathlib import Path
@@ -18,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v19"
+EXTRACTION_SCHEMA_VERSION = "v24"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
@@ -53,7 +55,9 @@ DATE_ENG_MONTH_RE = re.compile(
 DATE_ENG_MONTH_RE_REV = re.compile(
     r"(?i)(?<!\w)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*(\d{1,2})\s*,?\s*(\d{2,4})(?!\w)"
 )
-AMOUNT_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+\.\d{1,2}|\d{1,9})(?!\d)")
+AMOUNT_RE = re.compile(
+    r"(?<![\d.])(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+\.\d{1,2}|\d{1,9})(?!\d)"
+)
 VENDOR_RE = re.compile(r"(?:vendor|supplier|ผู้ขาย|บริษัท)[:\s]*([^\n]+)", re.IGNORECASE)
 SELLER_RE = re.compile(
     r"(?:ผู้ขาย|seller|vendor|supplier|from|จาก)\s*[:：]?\s*([^\n]+)", re.IGNORECASE
@@ -75,9 +79,11 @@ LABEL_PREFIX_STRIP_RE = re.compile(
     r"^\s*(?:ผู้ขาย|ลูกค้า|ผู้ซื้อ|นามลูกค้า|seller|buyer|customer(?:\s*name)?|bill\s*to|sold\s*to|from)\s*[:：]?\s*",
     re.IGNORECASE,
 )
-NAME_NOISE_PREFIX_RE = re.compile(r"^(?:[A-Z]{1,4}\d{2,}|C\d{3,}|CUS\d+)\s*", re.IGNORECASE)
+NAME_NOISE_PREFIX_RE = re.compile(
+    r"^(?:[A-Z]{1,4}\d{2,}|C\d{3,}|CUS\d+)\s*", re.IGNORECASE
+)
 NAME_TRAILING_NOISE_RE = re.compile(
-    r"\s*(?:=|:)?\s*(?:เลขที่เอกสาร|เลขที่ภาษี|ที่อยู่|โทรศัพท์|อีเมล|email|tel|วันที่ออก|tax\s*id)\b.*$",
+    r"\s*(?:=|:)?\s*(?:เลขที่เอกสาร|เลขที่ภาษี|เลขผู้เสียภาษี|เลขประจำตัวผู้เสียภาษี|เลขประจําตัวผู้เสียภาษี|tax\s*id|taxid|ที่อยู่|โทรศัพท์|อีเมล|email|tel|วันที่ออก).*$",
     re.IGNORECASE,
 )
 PERCENT_RE = re.compile(r"(\d{1,2}(?:\.\d+)?)\s*%")
@@ -95,7 +101,7 @@ WHT_BASE_HINT_RE = re.compile(
     re.IGNORECASE,
 )
 VAT_LINE_HINT_RE = re.compile(
-    r"(?:ภาษีมูลค่าเพิ่ม|ภาษี\s*มูลค่าเพิ่ม|vat|ภาษีขาย|ภาษีซื้อ|ภาษี\s*\d+\s*%)",
+    r"(?:ภาษีมูลค่าเพิ่ม|ภาษี\s*มูลค่าเพิ่ม|จำนวนภาษีมูลค่าเพิ่ม|จำนวนภาษี|ยอดภาษี|แยกภาษี|vat|ภาษีขาย|ภาษีซื้อ|ภาษี\s*\d+\s*%)",
     re.IGNORECASE,
 )
 NET_LINE_HINT_RE = re.compile(
@@ -151,12 +157,14 @@ TAX_ID_CANONICAL_COMPANIES: dict[str, str] = {
     "0125561025189": "บริษัท ฤทธิ์ล้ำเลิศ เอ็นจิเนียริ่ง จำกัด",
     "0105565189488": "บริษัท ทีเค.นอนสติ๊ก จำกัด",
     "0107544000043": "บริษัท โฮม โปรดักส์ เซ็นเตอร์ จำกัด (มหาชน)",
+    "0105540006321": "บริษัท แพลนเนท ที แอนด์ เอส จำกัด",
 }
 
 KNOWN_TEMPLATE_TAX_IDS: set[str] = {
     "0125561025189",
     "0105565189488",
     "0107544000043",
+    "0105540006321",
 }
 
 COMMON_WHT_RATES: tuple[float, ...] = (1.0, 1.5, 2.0, 3.0, 5.0, 10.0, 15.0)
@@ -243,6 +251,23 @@ def _line_amount_candidates(line: str) -> list[float]:
             continue
         values.append(value)
     return values
+
+
+def _normalize_match_text(value: str) -> str:
+    normalized = _normalize_ocr_text(value or "")
+    normalized = unicodedata.normalize("NFKC", normalized)
+    normalized = normalized.lower()
+    normalized = re.sub(r"\s+", "", normalized)
+    return normalized
+
+
+def _value_in_ocr(value: str, raw_text: str) -> bool:
+    """Check whether a value can be found in OCR text after normalization."""
+    normalized_value = _normalize_match_text(value)
+    normalized_raw = _normalize_match_text(raw_text)
+    if not normalized_value or not normalized_raw:
+        return False
+    return normalized_value in normalized_raw
 
 
 def _extract_invoice_date(raw_text: str) -> str:
@@ -368,7 +393,10 @@ def _valid_invoice_no_candidate(line: str, candidate: str) -> bool:
         return False
 
     # Avoid obvious address numbers captured from noisy OCR.
-    if any(token in line for token in ("ถนน", "แขวง", "เขต", "จังหวัด", "อำเภอ", "ตำบล", "หมู่", "ซอย")):
+    if any(
+        token in line
+        for token in ("ถนน", "แขวง", "เขต", "จังหวัด", "อำเภอ", "ตำบล", "หมู่", "ซอย")
+    ):
         if len(cand) <= 8 and re.fullmatch(r"[A-Za-z0-9]+", cand):
             return False
 
@@ -465,39 +493,138 @@ def _extract_amount_from_labeled_lines(raw_text: str, hint_re: re.Pattern[str]) 
 
 def _extract_vat_amount(raw_text: str) -> str:
     """Extract VAT amount from labeled lines, excluding net/subtotal rows (ก่อนภาษี).
-    
+
     Searches for lines matching VAT_LINE_HINT_RE but filters out lines containing
     ก่อนภาษี (before tax/net) to avoid extracting net amount.
     """
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
-    candidates: list[float] = []
+    candidates: list[tuple[int, float]] = []
 
     for line in lines:
-        # Skip lines that mention "before tax" (net amount, not VAT) or "no VAT"
-        if "ก่อนภาษี" in line or "ก่อนค่าภาษี" in line or "before tax" in line.lower():
+        line_l = line.lower()
+
+        # Skip lines that mention before-tax contexts or explicit no-VAT contexts.
+        if (
+            "ก่อนภาษี" in line
+            or "ก่อนค่าภาษี" in line
+            or "ก่อนคำนวณภาษี" in line
+            or "ก่อนคํานวณภาษี" in line
+            or "มูลค่าสินค้าก่อน" in line
+            or "before tax" in line_l
+        ):
             continue
-        if "ไม่มีภาษี" in line or "ไม่ผ่านภาษี" in line:
+        if (
+            "ไม่มีภาษี" in line
+            or "ไม่ผ่านภาษี" in line
+            or "ที่ไม่มีภาษี" in line
+            or "non vat" in line_l
+        ):
             continue  # Skip zero-VAT lines like "มูลค่าสินค้าที่ไม่มีภาษีมูลค่าเพิ่ม"
 
         if not VAT_LINE_HINT_RE.search(line):
             continue
 
-        values = _line_amount_candidates(line)
-        if not values:
-            continue
+        candidate: float | None = None
 
-        likely_amounts = [value for value in values if value >= 1.0]
-        if likely_amounts:
-            candidates.append(likely_amounts[-1])
-        else:
-            candidates.append(values[-1])
+        # Prefer amount that appears after VAT label (avoids taking total amount in same line).
+        vat_after_label = re.search(
+            r"(?:ภาษีมูลค่าเพิ่ม|จำนวนภาษีมูลค่าเพิ่ม|จำนวนภาษี|ยอดภาษี|แยกภาษี|vat)[^\d]{0,24}(?:\d{1,2}(?:\.\d+)?\s*%\s*)?([\d,]+\.\d{1,2})",
+            line,
+            re.IGNORECASE,
+        )
+        if vat_after_label:
+            try:
+                parsed = float(_normalize_number(vat_after_label.group(1)))
+                # Reject VAT-rate values (e.g., 7.00 from "ภาษีมูลค่าเพิ่ม 7.00%")
+                rate_indicators = "%" in line or "ร้อยละ" in line or "อัตรา" in line
+                if parsed >= 1.0 and not (parsed <= 20.0 and rate_indicators):
+                    candidate = parsed
+            except ValueError:
+                pass
 
-    return f"{max(candidates):.2f}" if candidates else ""
+        if candidate is None:
+            values = _line_amount_candidates(line)
+            if not values:
+                continue
+
+            likely_amounts = [value for value in values if value >= 1.0]
+            candidate = likely_amounts[-1] if likely_amounts else values[-1]
+
+            # Skip VAT-rate-only lines such as "VAT 7%" or "อัตราภาษีมูลค่าเพิ่มร้อยละ 7"
+            rate_indicators = "%" in line or "ร้อยละ" in line or "อัตรา" in line
+            if rate_indicators and candidate <= 20.0:
+                continue
+
+        score = 0
+        if re.search(
+            r"^\s*(?:ภาษีมูลค่าเพิ่ม|จำนวนภาษีมูลค่าเพิ่ม|จำนวนภาษี|ยอดภาษี|vat)",
+            line,
+            re.IGNORECASE,
+        ):
+            score += 3
+        if "ภาษีมูลค่าเพิ่ม" in line or "vat" in line_l:
+            score += 2
+        if "%" in line:
+            score += 1
+
+        candidates.append((score, candidate))
+
+    if not candidates:
+        return ""
+    best_score, best_value = max(candidates, key=lambda item: (item[0], -item[1]))
+    _ = best_score
+    return f"{best_value:.2f}"
+
+
+def _extract_vat_amount_from_preprocessed_first_page(source_file: str) -> str:
+    """Fallback OCR for VAT amount on low-quality scanned PDFs.
+
+    Some scans lose right-column totals in the primary OCR pass. This fallback re-renders
+    page 1 at higher scale, increases contrast, binarizes the image, then re-runs OCR and
+    applies the same VAT line extractor. It is only used when VAT is missing in primary pass.
+    """
+    path = Path(source_file or "")
+    if not path.exists() or path.suffix.lower() != ".pdf":
+        return ""
+
+    try:
+        pdfium = importlib.import_module("pypdfium2")
+        pil_image_enhance = importlib.import_module("PIL.ImageEnhance")
+        pil_image_filter = importlib.import_module("PIL.ImageFilter")
+        ocr_module = importlib.import_module("src.backend.ml.ocr")
+    except Exception:
+        return ""
+
+    try:
+        render_scale = float(os.environ.get("VAT_FALLBACK_RENDER_SCALE", "6.0"))
+        threshold = int(os.environ.get("VAT_FALLBACK_THRESHOLD", "170"))
+        contrast = float(os.environ.get("VAT_FALLBACK_CONTRAST", "2.8"))
+
+        pdf = pdfium.PdfDocument(str(path))
+        if len(pdf) == 0:
+            return ""
+        page = pdf[0]
+        image = page.render(scale=render_scale).to_pil().convert("L")
+
+        image = pil_image_enhance.Contrast(image).enhance(contrast)
+        image = image.filter(pil_image_filter.SHARPEN)
+        image = image.point(lambda p: 255 if p > threshold else 0)
+
+        blocks = ocr_module._extract_text_blocks_with_preferred_engine(
+            image, id_offset=0
+        )
+        if not blocks:
+            return ""
+
+        fallback_text = _normalize_ocr_text(_join_ocr_text({"blocks": blocks}))
+        return _extract_vat_amount(fallback_text)
+    except Exception:
+        return ""
 
 
 def _extract_net_amount(raw_text: str) -> str:
     """Extract net amount (before VAT) from labeled lines.
-    
+
     Searches for lines mentioning มูลค่าสินค้าก่อนภาษี, net amount, subtotal, etc.
     Returns the largest amount found on matching lines.
     """
@@ -523,7 +650,7 @@ def _extract_net_amount(raw_text: str) -> str:
 
 def _extract_vat_rate(raw_text: str) -> str:
     """Extract VAT rate percentage.
-    
+
     Looks for explicit VAT rate mentions (e.g., "ภาษี 7%", "VAT 7%").
     Returns "7" as default if VAT context is present but no explicit rate found.
     """
@@ -560,6 +687,12 @@ def _clean_party_name(value: str) -> str:
     name = LABEL_PREFIX_STRIP_RE.sub("", name).strip()
     name = NAME_NOISE_PREFIX_RE.sub("", name)
     name = NAME_TRAILING_NOISE_RE.sub("", name)
+    name = re.split(
+        r"(?:เลขผู้เสียภาษี|เลขประจำตัวผู้เสียภาษี|เลขประจําตัวผู้เสียภาษี|tax\s*id|taxid)",
+        name,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip()
     name = TAX_ID_RE.sub("", name).strip(" \t:.-")
     name = re.sub(r"\s+[A-Z]{2,5}$", "", name).strip()
     return name
@@ -583,13 +716,15 @@ def _canonicalize_company_name(name: str, tax_id: str = "") -> str:
         # Only use canonical if they are similar (share > 50% of words).
         normalized_lower = normalized.lower()
         mapped_lower = mapped.lower()
-        
+
         # Simple word overlap check: if most words in normalized are in mapped, use canonical.
         normalized_words = set(normalized_lower.split())
         mapped_words = set(mapped_lower.split())
-        
+
         if normalized_words and mapped_words:
-            overlap = len(normalized_words & mapped_words) / max(len(normalized_words), len(mapped_words))
+            overlap = len(normalized_words & mapped_words) / max(
+                len(normalized_words), len(mapped_words)
+            )
             if overlap >= 0.5:
                 # High similarity: use canonical legal name for stability.
                 return mapped
@@ -612,7 +747,9 @@ def _extract_base_amount_candidates(raw_text: str) -> list[float]:
     return candidates
 
 
-def _infer_wht_rate_from_amounts(raw_text: str, wht_amount: str, total_amount: str) -> str:
+def _infer_wht_rate_from_amounts(
+    raw_text: str, wht_amount: str, total_amount: str
+) -> str:
     if not wht_amount:
         return ""
 
@@ -681,7 +818,24 @@ def _has_paid_context(raw_text: str) -> bool:
 def _looks_like_company_name(line: str) -> bool:
     if not line:
         return False
-    return bool(COMPANY_HEADER_RE.match(line) or COMPANY_NAME_LINE_RE.search(line))
+    if COMPANY_HEADER_RE.match(line):
+        return True
+    # Require explicit company markers; avoid treating generic long text as names.
+    return bool(
+        re.search(
+            r"(?:บริษัท|ห้างหุ้นส่วน|ห้าง|ร้าน|co\.?\s*,?\s*ltd|company\s+limited|public\s+company)",
+            line,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _word_overlap_ratio(left: str, right: str) -> float:
+    left_words = set(str(left or "").strip().lower().split())
+    right_words = set(str(right or "").strip().lower().split())
+    if not left_words or not right_words:
+        return 0.0
+    return len(left_words & right_words) / max(len(left_words), len(right_words))
 
 
 def _looks_like_noise_party_name(line: str) -> bool:
@@ -795,7 +949,9 @@ def _extract_party_info(raw_text: str) -> dict[str, str]:
                 seller_tax_id = ids[0]
 
         if not buyer_tax_id and re.search(
-            r"(ลูกค้า|ผู้ซื้อ|นามลูกค้า|buyer|bill\s*to|sold\s*to|customer)", line, re.IGNORECASE
+            r"(ลูกค้า|ผู้ซื้อ|นามลูกค้า|buyer|bill\s*to|sold\s*to|customer)",
+            line,
+            re.IGNORECASE,
         ):
             ids = TAX_ID_RE.findall(line_context)
             if ids:
@@ -897,8 +1053,7 @@ def _reconstruct_lines_from_blocks(blocks: list[dict[str, Any]]) -> list[str]:
 
             current = line_groups[-1]
             heights = [
-                max(int(t["bbox"][3]) - int(t["bbox"][1]), 1)
-                for t in current["tokens"]
+                max(int(t["bbox"][3]) - int(t["bbox"][1]), 1) for t in current["tokens"]
             ]
             median_h = sorted(heights)[len(heights) // 2]
             y_tolerance = max(10.0, median_h * 0.55)
@@ -955,10 +1110,40 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         party_info["buyer_name"],
         party_info["buyer_tax_id"],
     )
+
+    seller_tax_id = party_info["seller_tax_id"]
+    buyer_tax_id = party_info["buyer_tax_id"]
+    canonical_seller_applied = False
+    canonical_buyer_applied = False
+
+    canonical_seller = TAX_ID_CANONICAL_COMPANIES.get((seller_tax_id or "").strip(), "")
+    canonical_buyer = TAX_ID_CANONICAL_COMPANIES.get((buyer_tax_id or "").strip(), "")
+    seller_overlap = (
+        _word_overlap_ratio(seller_name, canonical_seller) if canonical_seller else 0.0
+    )
+    buyer_overlap = (
+        _word_overlap_ratio(buyer_name, canonical_buyer) if canonical_buyer else 0.0
+    )
+
+    if canonical_seller and (
+        len((seller_name or "").strip()) < 10
+        or not _looks_like_company_name(seller_name)
+        or seller_overlap < 0.4
+    ):
+        seller_name = canonical_seller
+        canonical_seller_applied = True
+    if canonical_buyer and (
+        len((buyer_name or "").strip()) < 10
+        or not _looks_like_company_name(buyer_name)
+        or buyer_overlap < 0.4
+    ):
+        buyer_name = canonical_buyer
+        canonical_buyer_applied = True
+
     vendor_from_label = vendor_match.group(1).strip() if vendor_match else ""
     vendor_name = _canonicalize_company_name(
         seller_name or vendor_from_label,
-        party_info["seller_tax_id"],
+        seller_tax_id,
     )
 
     # Detect cross-field conflicts: |net + vat - total| > 1.00 THB
@@ -969,11 +1154,25 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
             net_val = float(_normalize_number(net_amount))
             vat_val = float(_normalize_number(vat_amount))
             total_val = float(_normalize_number(total_amount))
-            
+
             calculated_total = round(net_val + vat_val, 2)
             if abs(calculated_total - total_val) > 1.0:
                 cross_field_conflict = True
                 cross_field_error = f"net({net_val}) + vat({vat_val}) = {calculated_total} != total({total_val})"
+        except ValueError:
+            pass
+
+    vat_math_mismatch = False
+    if net_amount and vat_amount and total_amount:
+        try:
+            vat_calc = round(
+                float(_normalize_number(total_amount))
+                - float(_normalize_number(net_amount)),
+                2,
+            )
+            vat_val = round(float(_normalize_number(vat_amount)), 2)
+            if abs(vat_calc - vat_val) > 1.0:
+                vat_math_mismatch = True
         except ValueError:
             pass
 
@@ -983,8 +1182,8 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "vendor_name": vendor_name,
         "seller_name": seller_name,
         "buyer_name": buyer_name,
-        "seller_tax_id": party_info["seller_tax_id"],
-        "buyer_tax_id": party_info["buyer_tax_id"],
+        "seller_tax_id": seller_tax_id,
+        "buyer_tax_id": buyer_tax_id,
         "net_amount": net_amount,
         "vat_amount": vat_amount,
         "vat_rate": vat_rate,
@@ -994,42 +1193,83 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "amount_paid": amount_paid,
         "cross_field_conflict": cross_field_conflict,
         "cross_field_error": cross_field_error,
+        "vat_math_mismatch": vat_math_mismatch,
+        "canonical_seller_applied": canonical_seller_applied,
+        "canonical_buyer_applied": canonical_buyer_applied,
         "source_text": raw_text,
     }
 
+    field_validation_warnings: list[str] = []
+
+    def _warn_if_name_suspicious(field_name: str, tax_id_field: str) -> None:
+        value = str(fields.get(field_name) or "").strip()
+        if not value:
+            return
+        if len(value) < 10:
+            field_validation_warnings.append(f"{field_name}:short_name")
+        if not _value_in_ocr(value, raw_text) and not bool(
+            fields.get(f"canonical_{field_name.split('_')[0]}_applied")
+        ):
+            field_validation_warnings.append(f"{field_name}:not_in_ocr")
+        if str(fields.get(tax_id_field) or "").strip() and len(value) < 12:
+            field_validation_warnings.append(f"{field_name}:short_name_with_tax_id")
+
+    _warn_if_name_suspicious("seller_name", "seller_tax_id")
+    _warn_if_name_suspicious("buyer_name", "buyer_tax_id")
+    if fields["vat_amount"] and vat_math_mismatch:
+        field_validation_warnings.append("vat_amount:math_mismatch")
+
+    fields["field_validation_warnings"] = field_validation_warnings
+
     seller_name_conf = 0.35
     if fields["seller_name"]:
-        seller_name_conf = (
-            0.9
-            if _looks_like_company_name(fields["seller_name"])
-            and not _looks_like_noise_party_name(fields["seller_name"])
-            else 0.45
-        )
+        if canonical_seller_applied:
+            seller_name_conf = 0.95
+        elif len(str(fields["seller_name"]).strip()) < 10:
+            seller_name_conf = 0.45
+        elif _looks_like_company_name(
+            fields["seller_name"]
+        ) and not _looks_like_noise_party_name(fields["seller_name"]):
+            seller_name_conf = 0.9
+        else:
+            seller_name_conf = 0.45
+        if not canonical_seller_applied and not _value_in_ocr(
+            str(fields["seller_name"]), raw_text
+        ):
+            seller_name_conf = min(seller_name_conf, 0.5)
 
     buyer_name_conf = 0.35
     if fields["buyer_name"]:
-        buyer_name_conf = (
-            0.9
-            if _looks_like_company_name(fields["buyer_name"])
-            and not _looks_like_noise_party_name(fields["buyer_name"])
-            else 0.45
-        )
+        if canonical_buyer_applied:
+            buyer_name_conf = 0.95
+        elif len(str(fields["buyer_name"]).strip()) < 10:
+            buyer_name_conf = 0.45
+        elif _looks_like_company_name(
+            fields["buyer_name"]
+        ) and not _looks_like_noise_party_name(fields["buyer_name"]):
+            buyer_name_conf = 0.9
+        else:
+            buyer_name_conf = 0.45
+        if not canonical_buyer_applied and not _value_in_ocr(
+            str(fields["buyer_name"]), raw_text
+        ):
+            buyer_name_conf = min(buyer_name_conf, 0.5)
 
     # VAT amount confidence: high if present, but flag for review if VAT context exists but amount is 0
     vat_amount_conf = 0.3
     if fields["vat_amount"]:
-        vat_amount_conf = 0.9
+        vat_amount_conf = 0.4 if vat_math_mismatch else 0.9
     elif _has_vat_context(raw_text):
         # VAT context present but amount not extracted: flag for human review
         vat_amount_conf = 0.4
-    
+
     # Net amount confidence: high if present, lower if only inferred from VAT context
     net_amount_conf = 0.3
     if fields["net_amount"]:
         net_amount_conf = 0.9
     elif fields["vat_amount"] and fields["total_amount"]:
         net_amount_conf = 0.6  # Can be inferred from vat + total
-    
+
     vat_rate_conf = 0.3
     if fields["vat_rate"]:
         vat_rate_conf = 0.9 if fields["vat_amount"] else 0.6
@@ -1050,6 +1290,16 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "wht_amount": 0.9 if fields["wht_amount"] else 0.3,
         "amount_paid": 0.9 if fields["amount_paid"] else 0.3,
     }
+
+    if fields["invoice_number"] and not _value_in_ocr(
+        str(fields["invoice_number"]), raw_text
+    ):
+        confidence["invoice_number"] = min(float(confidence["invoice_number"]), 0.5)
+    if fields["invoice_date"] and not _value_in_ocr(
+        str(fields["invoice_date"]), raw_text
+    ):
+        confidence["invoice_date"] = min(float(confidence["invoice_date"]), 0.5)
+
     return {"fields": fields, "confidence": confidence}
 
 
@@ -1112,6 +1362,23 @@ def run_extraction(
             return cached
 
     rule_result = _extract_with_rules(raw_text)
+    primary_vat = str(rule_result["fields"].get("vat_amount") or "").strip()
+    if not primary_vat and _has_vat_context(raw_text):
+        fallback_vat = _extract_vat_amount_from_preprocessed_first_page(
+            str(ocr_output.get("source_file") or "")
+        )
+        if fallback_vat:
+            rule_result["fields"]["vat_amount"] = fallback_vat
+            rule_result["fields"]["vat_math_mismatch"] = False
+
+            warnings = list(
+                rule_result["fields"].get("field_validation_warnings") or []
+            )
+            warnings = [w for w in warnings if w != "vat_amount:math_mismatch"]
+            rule_result["fields"]["field_validation_warnings"] = warnings
+
+            # Keep confidence slightly below primary OCR, but high enough for non-review flow.
+            rule_result["confidence"]["vat_amount"] = 0.82
     alt_pass_text = "\n".join(
         line.strip() for line in raw_text.splitlines() if line.strip()
     )
@@ -1146,13 +1413,13 @@ def run_extraction(
         "rule_conflict": bool(rule_conflict),
         "variable_account_needed": False,
     }
-    stage_c_reasons = [
-        key for key, triggered in stage_c_triggers.items() if triggered
-    ]
+    stage_c_reasons = [key for key, triggered in stage_c_triggers.items() if triggered]
     stage_c = {
         "triggered": bool(stage_c_reasons),
         "reasons": stage_c_reasons,
-        "recommended_route": "rule_extractor" if stage_c_reasons else "standard_pipeline",
+        "recommended_route": "rule_extractor"
+        if stage_c_reasons
+        else "standard_pipeline",
     }
 
     escalate = should_escalate_to_sonnet(
