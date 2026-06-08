@@ -1,0 +1,40 @@
+name: Governance Blocker
+description: Report a blocker that forces a TASK into the BLOCKED state.
+title: "BLOCKER on TASK-XXX: <short summary>"
+labels: [ "governance:blocker", "status:blocked" ]
+body:
+- type: input
+  id: task_id
+  attributes:
+    label: TASK ID
+    placeholder: TASK-501
+  validations:
+    required: true
+
+- type: textarea
+  id: blocker_reason
+  attributes:
+    label: Blocker reason
+    description: What is blocking the task? Be specific.
+  validations:
+    required: true
+
+- type: dropdown
+  id: severity
+  attributes:
+    label: Severity
+    options:
+    - low
+    - medium
+    - high
+    - critical
+  validations:
+    required: true
+
+- type: textarea
+  id: proposed_unblock
+  attributes:
+    label: Proposed unblock
+    description: What is needed to remove the blocker? Who owns it?
+  validations:
+    required: true

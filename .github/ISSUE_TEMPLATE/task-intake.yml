@@ -1,0 +1,104 @@
+name: TASK Intake (Q1-Q8)
+description: Open a governed work item. The body is parsed into `.agent/state/TASK-<ID>.json` by `intake-sync.yml`.
+title: "TASK-XXX: <short summary>"
+labels: [ "governance:intake", "status:draft" ]
+body:
+- type: markdown
+  attributes:
+    value: |
+      Fill every section. Missing **Q4 Allowed scope**, **Q5 Forbidden scope**, or **Q6 Acceptance criteria**
+      will block state sync and post a `needs-rework` comment.
+
+- type: input
+  id: q1_task_id
+  attributes:
+    label: Q1 Task ID
+    description: Must match `TASK-<ID>` (e.g. `TASK-501`).
+    placeholder: TASK-501
+  validations:
+    required: true
+
+- type: dropdown
+  id: q2_risk_tier
+  attributes:
+    label: Q2 Risk tier
+    options:
+    - LOW
+    - MEDIUM
+    - HIGH
+    - CRITICAL
+  validations:
+    required: true
+
+- type: dropdown
+  id: q3_model_tier
+  attributes:
+    label: Q3 Model tier
+    options:
+    - tier-1-opus
+    - tier-2a-copilot
+    - tier-2b-sonnet
+    - tier-3-gemini
+  validations:
+    required: true
+
+- type: textarea
+  id: q4_allowed_scope
+  attributes:
+    label: Q4 Allowed scope
+    description: One glob per line. Files the agent MAY modify.
+    placeholder: |
+      src/ocr/**
+      tests/test_ocr.py
+      .agent/evidence/TASK-501/**
+    render: text
+  validations:
+    required: true
+
+- type: textarea
+  id: q5_forbidden_scope
+  attributes:
+    label: Q5 Forbidden scope
+    description: One glob per line. Files the agent MUST NOT modify (merged with global forbidden_paths).
+    placeholder: |
+      private_data/**
+      **/.env*
+      config/secrets/**
+    render: text
+  validations:
+    required: true
+
+- type: textarea
+  id: q6_acceptance_criteria
+  attributes:
+    label: Q6 Acceptance criteria
+    description: |
+      One AC per line. Format: `id | description | test_function`.
+      `id` must be snake_case. Omit `| test_function` only for docs/non-test ACs.
+    placeholder: |
+      ac_ocr_runs | sample PDF returns extracted text | test_ocr_runs_on_sample
+      ac_conf_score | each extracted field has confidence | test_confidence_attached
+    render: text
+  validations:
+    required: true
+
+- type: input
+  id: q7_max_loops
+  attributes:
+    label: Q7 Max loops
+    description: Integer 1-20. Default 5.
+    placeholder: "5"
+    value: "5"
+  validations:
+    required: true
+
+- type: dropdown
+  id: q8_escalation_policy
+  attributes:
+    label: Q8 Escalation policy
+    options:
+    - human
+    - ai-debate
+    - stop
+  validations:
+    required: true
