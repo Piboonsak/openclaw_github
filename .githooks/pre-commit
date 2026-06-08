@@ -11,4 +11,18 @@ if [ $STATUS -ne 0 ]; then
   exit $STATUS
 fi
 
+echo ""
+echo "Running governance Action Lock (min_action_check)..."
+PYTHON_BIN="${PYTHON:-python}"
+"$PYTHON_BIN" scripts/min_action_check.py
+ACTION_STATUS=$?
+
+if [ $ACTION_STATUS -ne 0 ]; then
+  echo ""
+  echo "Commit blocked: plan-only / state-only commits are not allowed."
+  echo "Add code/test/script changes, or set status=BLOCKED with a Blocker section."
+  exit $ACTION_STATUS
+fi
+
 exit 0
+

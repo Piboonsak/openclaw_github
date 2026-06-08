@@ -21,6 +21,10 @@ router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+def _normalize_tax_id(value: str | None) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
 @router.get("/health")
 def health() -> dict[str, str]:
     """Check health status of backend."""
@@ -32,6 +36,9 @@ async def process(
     file_path: str | None = Query(None, description="Path to file on disk"),
     company_id: str | None = Form(
         None, description="Company rule context for journal routing"
+    ),
+    company_tax_id: str | None = Form(
+        None, description="Company tax id for buyer tax-id verification"
     ),
     file: UploadFile | None = File(None, description="Uploaded document blob"),
 ) -> dict[str, Any]:
@@ -67,6 +74,16 @@ async def process(
         raise HTTPException(status_code=500, detail=f"Pipeline error: {ctx.error}")
 
     fields = ctx.extraction_output.get("fields", {})
+    buyer_tax_id = _normalize_tax_id(fields.get("buyer_tax_id"))
+    company_tax_norm = _normalize_tax_id(company_tax_id)
+    tax_id_check = {
+        "buyer_tax_id": buyer_tax_id,
+        "company_tax_id": company_tax_norm,
+        "is_match": bool(
+            buyer_tax_id and company_tax_norm and buyer_tax_id == company_tax_norm
+        ),
+        "has_buyer_tax_id": bool(buyer_tax_id),
+    }
     validation = validate_required_fields(
         fields, ["invoice_number", "invoice_date", "total_amount"]
     )
@@ -80,6 +97,13 @@ async def process(
         "ocr_degraded": bool(ctx.ocr_output.get("warnings")),
         "fields": fields,
         "validation": validation,
+        "tax_id_check": tax_id_check,
+        "overall_confidence": ctx.overall_confidence,
+        "stage_c_applied": ctx.stage_c_applied,
+        "escalated_to_sonnet": ctx.escalated_to_sonnet,
+        "stage_c": ctx.journal_output.get("stage_c")
+        or ctx.extraction_output.get("stage_c")
+        or {},
         "extraction": ctx.extraction_output,
         "journal": ctx.journal_output,
         "company_id": ctx.company_id,

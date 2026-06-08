@@ -61,4 +61,11 @@ def get_prototype():
     html = html.replace(
         'href="./ux-ui-prototype.css"', 'href="/static/ux-ui-prototype.css"'
     )
-    return HTMLResponse(html)
+    return HTMLResponse(
+        html,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )

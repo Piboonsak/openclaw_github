@@ -12,6 +12,7 @@ spend cap read from STAGE_C_DAILY_USD_CAP env var (default: $2.00).
 
 Security: API key is read from ANTHROPIC_API_KEY env var only — never hardcoded.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,10 +30,23 @@ You are an AI assistant specialized in extracting fields from Thai accounting do
 correct any missing or incorrect values and return a JSON object with ONLY the fields you
 are confident about. Use empty string "" for fields you cannot determine.
 
+When extracting VAT and tax values, pay special attention to Thai keywords and OCR variants:
+- ภาษีมูลค่าเพิ่ม
+- จำนวนภาษีมูลค่าเพิ่ม
+- จำนวนภาษี
+- ยอดภาษี
+- แยกภาษี
+- VAT
+
+When extracting names, prioritize legal company names for seller_name and buyer_name,
+especially when tax IDs are present.
+
 Return ONLY valid JSON, no markdown, no explanation.
 Fields to extract:
 - invoice_number: string
 - invoice_date: ISO date YYYY-MM-DD or DD/MM/YYYY as found in the document
+- seller_name: legal seller company name string
+- buyer_name: legal buyer company name string
 - seller_tax_id: 13-digit Thai tax ID
 - buyer_tax_id: 13-digit Thai tax ID
 - net_amount: numeric string without commas or currency symbol
@@ -70,7 +84,10 @@ def _budget_allows(estimated_cost_usd: float) -> tuple[bool, str]:
         budget = {"date": today, "spent_usd": 0.0}
 
     if budget["spent_usd"] + estimated_cost_usd > cap:
-        return False, f"Stage C daily budget cap ${cap:.2f} reached (spent ${budget['spent_usd']:.2f})"
+        return (
+            False,
+            f"Stage C daily budget cap ${cap:.2f} reached (spent ${budget['spent_usd']:.2f})",
+        )
     return True, ""
 
 
@@ -90,12 +107,14 @@ def _estimate_cost_usd(prompt_tokens: int, completion_tokens: int, model: str) -
         output_price = 1.25 / 1_000_000  # $1.25/MTok
     else:
         # sonnet-4.x tier
-        input_price = 3.0 / 1_000_000   # $3/MTok
+        input_price = 3.0 / 1_000_000  # $3/MTok
         output_price = 15.0 / 1_000_000  # $15/MTok
     return round(prompt_tokens * input_price + completion_tokens * output_price, 6)
 
 
-def should_trigger_stage_c(fields: dict[str, Any], confidence: dict[str, Any]) -> tuple[bool, str]:
+def should_trigger_stage_c(
+    fields: dict[str, Any], confidence: dict[str, Any]
+) -> tuple[bool, str]:
     """Determine whether Stage C Claude repair should be invoked.
 
     Returns (should_trigger, reason).
@@ -104,22 +123,56 @@ def should_trigger_stage_c(fields: dict[str, Any], confidence: dict[str, Any]) -
         return True, f"cross_field_conflict: {fields.get('cross_field_error', '')}"
 
     # VAT context present but amount not extracted
-    has_vat_context = any([
-        "ภาษีมูลค่าเพิ่ม" in (fields.get("source_text") or ""),
-        "VAT" in (fields.get("source_text") or ""),
-    ])
+    has_vat_context = any(
+        [
+            "ภาษีมูลค่าเพิ่ม" in (fields.get("source_text") or ""),
+            "VAT" in (fields.get("source_text") or ""),
+        ]
+    )
     if has_vat_context and not fields.get("vat_amount"):
         return True, "vat_context_present_but_no_vat_amount"
 
     # Count fields with low confidence
     low_conf_keys = [
-        k for k, v in confidence.items()
+        k
+        for k, v in confidence.items()
         if k not in ("source_text",) and isinstance(v, float) and v < 0.6
     ]
     if len(low_conf_keys) >= 2:
         return True, f"low_confidence_fields: {low_conf_keys}"
 
+    aggressive = os.environ.get("STAGE_C_AGGRESSIVE", "false").strip().lower() == "true"
+    if aggressive:
+        seller_name = str(fields.get("seller_name") or "").strip()
+        buyer_name = str(fields.get("buyer_name") or "").strip()
+        buyer_tax_id = str(fields.get("buyer_tax_id") or "").strip()
+
+        if seller_name and len(seller_name) < 10:
+            return True, "aggressive_short_seller_name"
+        if buyer_name and buyer_tax_id and len(buyer_name) < 10:
+            return True, "aggressive_short_buyer_name_with_tax_id"
+        if bool(fields.get("vat_math_mismatch")):
+            return True, "aggressive_vat_math_mismatch"
+
+        warnings = fields.get("field_validation_warnings") or []
+        if isinstance(warnings, list) and warnings:
+            return True, "aggressive_field_validation_warnings"
+
     return False, ""
+
+
+def _normalize_match_text(value: str) -> str:
+    normalized = str(value or "").lower()
+    normalized = "".join(normalized.split())
+    return normalized
+
+
+def _value_in_ocr(value: str, raw_text: str) -> bool:
+    left = _normalize_match_text(value)
+    right = _normalize_match_text(raw_text)
+    if not left or not right:
+        return False
+    return left in right
 
 
 def call_claude_repair(
@@ -140,7 +193,12 @@ def call_claude_repair(
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-        return {"fields": {}, "confidence": {}, "skipped": True, "skip_reason": "ANTHROPIC_API_KEY not set"}
+        return {
+            "fields": {},
+            "confidence": {},
+            "skipped": True,
+            "skip_reason": "ANTHROPIC_API_KEY not set",
+        }
 
     # Estimate cost before calling (rough: ~800 prompt tokens, ~150 completion tokens).
     selected_model = model or "claude-haiku-4-5-20250514"
@@ -152,10 +210,19 @@ def call_claude_repair(
     try:
         anthropic_module = __import__("anthropic")
     except ImportError:
-        return {"fields": {}, "confidence": {}, "skipped": True, "skip_reason": "anthropic package not installed"}
+        return {
+            "fields": {},
+            "confidence": {},
+            "skipped": True,
+            "skip_reason": "anthropic package not installed",
+        }
 
     # Build user prompt: redact source_text from current_fields to avoid prompt bloat
-    display_fields = {k: v for k, v in current_fields.items() if k not in ("source_text", "cross_field_error")}
+    display_fields = {
+        k: v
+        for k, v in current_fields.items()
+        if k not in ("source_text", "cross_field_error")
+    }
 
     user_prompt = (
         "=== RAW OCR TEXT ===\n"
@@ -175,10 +242,17 @@ def call_claude_repair(
         )
         content = response.content[0].text.strip()
         usage = response.usage
-        actual_cost = _estimate_cost_usd(usage.input_tokens, usage.output_tokens, selected_model)
+        actual_cost = _estimate_cost_usd(
+            usage.input_tokens, usage.output_tokens, selected_model
+        )
         _record_spend(actual_cost)
     except Exception as exc:
-        return {"fields": {}, "confidence": {}, "skipped": True, "skip_reason": f"Claude API error: {exc}"}
+        return {
+            "fields": {},
+            "confidence": {},
+            "skipped": True,
+            "skip_reason": f"Claude API error: {exc}",
+        }
 
     # Parse response
     try:
@@ -189,24 +263,48 @@ def call_claude_repair(
                 content = content[4:]
         repaired = json.loads(content)
     except (json.JSONDecodeError, IndexError):
-        return {"fields": {}, "confidence": {}, "skipped": True, "skip_reason": f"JSON parse failed: {content[:200]}"}
+        return {
+            "fields": {},
+            "confidence": {},
+            "skipped": True,
+            "skip_reason": f"JSON parse failed: {content[:200]}",
+        }
 
-    # Only merge fields where Claude improves confidence by > 0.15
+    # Merge logic: allow Claude to replace values that are low-confidence or suspect.
     improved_fields: dict[str, Any] = {}
     improved_confidence: dict[str, Any] = {}
-    
-    # Claude result always gets 0.80 confidence for non-empty fields
-    claude_base_conf = 0.80
+
+    # Claude result gets 0.85 confidence for non-empty accepted fields.
+    claude_base_conf = 0.85
+
+    warnings = current_fields.get("field_validation_warnings") or []
+    warning_fields: set[str] = set()
+    if isinstance(warnings, list):
+        for item in warnings:
+            text = str(item)
+            if ":" in text:
+                warning_fields.add(text.split(":", 1)[0])
 
     for field_name, new_value in repaired.items():
         if field_name not in current_fields:
             continue  # Don't inject unknown fields
         if not new_value:
             continue  # Skip empty results from Claude
-        
+
         current_conf = current_confidence.get(field_name, 0.0)
-        if isinstance(current_conf, float) and (claude_base_conf - current_conf) > 0.15:
-            # Meaningful improvement: accept Claude's value
+        current_value = str(current_fields.get(field_name) or "")
+        current_in_ocr = _value_in_ocr(current_value, raw_text)
+        has_warning = field_name in warning_fields
+
+        accept = False
+        if has_warning:
+            accept = True
+        elif isinstance(current_conf, float) and current_conf < 0.85:
+            accept = True
+        elif not current_in_ocr:
+            accept = True
+
+        if accept:
             improved_fields[field_name] = str(new_value)
             improved_confidence[field_name] = claude_base_conf
 

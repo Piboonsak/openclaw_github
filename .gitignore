@@ -91,6 +91,11 @@ extracted_data/
 temp/
 tmp/
 
+# Runtime/generated caches
+src/backend/ml/cache/
+src/backend/services/cache/
+.playwright-mcp/
+
 # Customer/accounting data
 samples/sample_documents/*.pdf
 samples/sample_documents/*.png

@@ -1,15 +1,26 @@
 name: Agent Gate Compliance
 
-on:
+"on":
   pull_request:
     branches:
       - main
       - develop
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   gate:
     name: AI Dev Compliance Check
     runs-on: ubuntu-latest
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -27,17 +38,84 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Scope Check
-        run: bash scripts/check_scope.sh
+      - name: Resolve TASK_ID
+        id: resolve_task
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          python - <<'PY'
+          import os, re, sys
+          title = os.environ.get('PR_TITLE') or ''
+          head = os.environ.get('HEAD_REF') or ''
+          m = re.search(r'(TASK-[A-Z0-9-]+)', title.upper())
+          if not m:
+              m = re.search(r'task-([A-Z0-9-]+)', head, re.IGNORECASE)
+              if m:
+                  task_id = f"TASK-{m.group(1).upper()}"
+              else:
+                  print('FAIL: cannot resolve TASK_ID from PR title or branch.')
+                  sys.exit(1)
+          else:
+              task_id = m.group(1)
+          print(f'Resolved TASK_ID={task_id}')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
+              f.write(f'TASK_ID={task_id}\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as f:
+              f.write(f'task_id={task_id}\n')
+          PY
 
-      - name: Evidence Verification
-        run: python scripts/check_evidence.py
+      - name: Validate state file
+        run: python scripts/agent_state.py validate "$TASK_ID"
 
-      - name: Calculate Risk Tier
-        id: risk_gate
+      - name: Layer A - Lint (ruff)
+        continue-on-error: true
+        run: |
+          pip install ruff
+          ruff check src/ scripts/ tests/ || echo "::warning::ruff reported issues (advisory)"
+
+      - name: Layer A - Unit tests (pytest)
+        run: |
+          if [ -d tests ]; then
+            pytest -q --maxfail=1 || (echo "::error::pytest failed" && exit 1)
+          else
+            echo "No tests/ dir; skipping pytest."
+          fi
+
+      - name: Layer B - Scope Lock (state-aware)
+        run: python scripts/gates/check_scope.py
+
+      - name: Layer C - Evidence Contract
+        run: python scripts/gates/check_evidence.py
+
+      - name: Layer C2 - KPI Gate (Epic 5/6)
+        run: python scripts/check_kpi_gate.py --report evaluation/metrics/accuracy_report.json
+
+      - name: Layer D - HDR Risk (advisory, Day-2 mixed mode)
+        id: hdr
+        continue-on-error: true
         run: python scripts/hdr_gate.py
 
-      - name: Evaluate Compliance Status
+      - name: Post HDR advisory comment
+        if: always() && steps.hdr.outputs.risk_tier != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const risk = '${{ steps.hdr.outputs.risk_tier }}';
+            const taskId = '${{ steps.resolve_task.outputs.task_id }}';
+            const note = (risk === 'HIGH' || risk === 'CRITICAL')
+              ? `Risk tier **${risk}** detected. \`approved-by-human\` label will be required at hard-enforcement (currently advisory).`
+              : `Risk tier **${risk}** for ${taskId}. Advisory only at this rollout phase.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `### HDR Risk Advisory\n\n${note}\n\n_Posted by agent_gate.yml. See \`docs/PoC/plan/epic-1/EPIC-1-TASKS-DETAIL.md\` §7.5._`,
+            });
+
+      - name: Summary
+        if: always()
         run: |
-          echo "Compliance Check completed successfully!"
-          echo "Determined Risk Tier score is: ${{ steps.risk_gate.outputs.risk_tier }}"
+          echo "TASK_ID  : $TASK_ID"
+          echo "Risk tier: ${{ steps.hdr.outputs.risk_tier }} (advisory at this rollout phase)"
+

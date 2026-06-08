@@ -6,8 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from src.backend.services.secrets_loader import load_llm_keys
 from src.backend.services.rule_generator import generate_rule_package
+from src.backend.services.secrets_loader import load_llm_keys
 
 
 def parse_args() -> argparse.Namespace:

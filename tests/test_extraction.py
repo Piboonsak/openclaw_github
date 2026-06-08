@@ -35,6 +35,16 @@ class TestExtraction(unittest.TestCase):
         vat = _extract_vat_amount(raw_text)
         self.assertEqual(vat, "130.19")
 
+    def test_extract_vat_amount_skips_before_calculation_line(self):
+        """VAT extractor must not take net amount from 'ก่อนคำนวณภาษี' lines."""
+        raw_text = """
+        มูลค่าสินค้าก่อนคำนวณภาษีมูลค่าเพิ่ม 1,859.81 บาท
+        ภาษีมูลค่าเพิ่ม 7% 130.19 บาท
+        มูลค่ารวม 1,990.00 บาท
+        """
+        vat = _extract_vat_amount(raw_text)
+        self.assertEqual(vat, "130.19")
+
     def test_extract_net_amount_from_labeled_line(self):
         """Test net amount extraction from Thai invoice."""
         raw_text = """
@@ -101,6 +111,68 @@ class TestExtraction(unittest.TestCase):
 
             cached = run_extraction(ocr_output, cache_root=cache_root)
             self.assertTrue(cached["cache_hit"])
+
+    def test_short_buyer_name_has_low_confidence(self):
+        with TemporaryDirectory() as tmp:
+            cache_root = Path(tmp) / "cache"
+            ocr_output = {
+                "sha256": "short-buyer-name",
+                "avg_confidence": 0.92,
+                "page_count": 1,
+                "blocks": [
+                    {"text": "ผู้ขาย: บริษัท ทดสอบ จำกัด เลขผู้เสียภาษี 0999999999999"},
+                    {"text": "ผู้ซื้อ: บริษัท เลขผู้เสียภาษี 0888888888888"},
+                    {"text": "มูลค่าสินค้าก่อนคำนวณภาษีมูลค่าเพิ่ม 1,859.81"},
+                    {"text": "ภาษีมูลค่าเพิ่ม 7% 130.19"},
+                    {"text": "มูลค่ารวม 1,990.00"},
+                ],
+            }
+
+            out = run_extraction(ocr_output, cache_root=cache_root)
+            self.assertLess(out["confidence_per_field"]["buyer_name"], 0.6)
+            warnings = out["fields"].get("field_validation_warnings", [])
+            self.assertTrue(any(w.startswith("buyer_name:") for w in warnings))
+
+    def test_vat_math_mismatch_sets_flag_and_lowers_confidence(self):
+        with TemporaryDirectory() as tmp:
+            cache_root = Path(tmp) / "cache"
+            ocr_output = {
+                "sha256": "vat-math-mismatch",
+                "avg_confidence": 0.9,
+                "page_count": 1,
+                "blocks": [
+                    {"text": "มูลค่าสินค้าก่อนภาษีมูลค่าเพิ่ม 100.00"},
+                    {"text": "ภาษีมูลค่าเพิ่ม 7% 50.00"},
+                    {"text": "มูลค่ารวม 130.00"},
+                ],
+            }
+
+            out = run_extraction(ocr_output, cache_root=cache_root)
+            self.assertTrue(out["fields"]["vat_math_mismatch"])
+            self.assertLessEqual(out["confidence_per_field"]["vat_amount"], 0.4)
+
+    def test_canonical_buyer_name_shortcut_applies(self):
+        with TemporaryDirectory() as tmp:
+            cache_root = Path(tmp) / "cache"
+            ocr_output = {
+                "sha256": "canonical-buyer-shortcut",
+                "avg_confidence": 0.91,
+                "page_count": 1,
+                "blocks": [
+                    {"text": "ผู้ขาย: บริษัท ทีเค.นอนสติ๊ก จำกัด เลขผู้เสียภาษี 0105565189488"},
+                    {"text": "ผู้ซื้อ: บริษัท เลขผู้เสียภาษี 0125561025189"},
+                    {"text": "ภาษีมูลค่าเพิ่ม 7% 373.10"},
+                    {"text": "มูลค่ารวม 5703.10"},
+                ],
+            }
+
+            out = run_extraction(ocr_output, cache_root=cache_root)
+            self.assertEqual(
+                out["fields"]["buyer_name"],
+                "บริษัท ฤทธิ์ล้ำเลิศ เอ็นจิเนียริ่ง จำกัด",
+            )
+            self.assertTrue(out["fields"]["canonical_buyer_applied"])
+            self.assertGreaterEqual(out["confidence_per_field"]["buyer_name"], 0.95)
 
 
 if __name__ == "__main__":

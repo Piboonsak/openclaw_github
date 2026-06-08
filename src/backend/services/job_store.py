@@ -22,12 +22,16 @@ STAGE_LABELS = {
 
 class JobStore:
     def __init__(self, max_workers: int = 2) -> None:
-        self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="rulegen")
+        self._executor = ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="rulegen"
+        )
         self._lock = threading.Lock()
         self._jobs: dict[str, dict[str, Any]] = {}
         DEFAULT_JOBS_ROOT.mkdir(parents=True, exist_ok=True)
 
-    def create_job(self, *, kind: str, meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    def create_job(
+        self, *, kind: str, meta: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         job_id = f"gen_{uuid.uuid4().hex[:12]}"
         snapshot = {
             "job_id": job_id,
@@ -39,7 +43,12 @@ class JobStore:
             "estimated_seconds": 60,
             "meta": deepcopy(meta or {}),
             "stages": [
-                {"stage": idx, "status": "pending", "duration_ms": None, "label": STAGE_LABELS[idx]}
+                {
+                    "stage": idx,
+                    "status": "pending",
+                    "duration_ms": None,
+                    "label": STAGE_LABELS[idx],
+                }
                 for idx in range(1, 6)
             ],
             "result": None,
@@ -72,7 +81,9 @@ class JobStore:
             job["status"] = "processing" if status not in {"failed", "done"} else status
             job["current_stage"] = stage
             job["progress_pct"] = max(0, min(int(progress_pct), 100))
-            job["stage_label"] = stage_label or STAGE_LABELS.get(stage, job.get("stage_label", ""))
+            job["stage_label"] = stage_label or STAGE_LABELS.get(
+                stage, job.get("stage_label", "")
+            )
             for stage_state in job["stages"]:
                 if stage_state["stage"] == stage:
                     stage_state["status"] = status
@@ -80,9 +91,15 @@ class JobStore:
                         stage_state["duration_ms"] = duration_ms
                     if stage_label:
                         stage_state["label"] = stage_label
-                elif stage_state["stage"] < stage and stage_state["status"] in {"pending", "queued", "running"}:
+                elif stage_state["stage"] < stage and stage_state["status"] in {
+                    "pending",
+                    "queued",
+                    "running",
+                }:
                     stage_state["status"] = "done"
-                elif stage_state["stage"] > stage and stage_state["status"] == "pending":
+                elif (
+                    stage_state["stage"] > stage and stage_state["status"] == "pending"
+                ):
                     continue
             if extra:
                 job.setdefault("meta", {}).update(extra)

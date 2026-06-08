@@ -41,5 +41,8 @@
   "bugs": {
     "url": "https://github.com/YAHWAN-SHOP/ai-accounting-copilot/issues"
   },
-  "homepage": "https://github.com/YAHWAN-SHOP/ai-accounting-copilot#readme"
+  "homepage": "https://github.com/YAHWAN-SHOP/ai-accounting-copilot#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
 }

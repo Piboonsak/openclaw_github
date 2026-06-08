@@ -171,6 +171,7 @@ cost_controls:
   token_budget:
     daily_usd_cap: 20
     weekly_usd_cap: 120
+    epic_5_weekly_usd_cap: 50
   strategies:
   - Prefer retrieval from existing docs before long generation
   - Use mini model for markdown formatting/refactoring tasks
