@@ -122,6 +122,79 @@ def _compute_overall_confidence(
     return overall
 
 
+def _to_amount_float(value: Any) -> float | None:
+    text = str(value if value is not None else "").replace(",", "").strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _build_numeric_consistency_alerts(
+    fields: dict[str, Any],
+    reconciliation: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Build mismatch notifications for 5 key numeric fields with recommendations."""
+    checks = reconciliation.get("checks", {}) or {}
+    corrected = reconciliation.get("corrected", {}) or {}
+
+    net = _to_amount_float(fields.get("net_amount"))
+    vat = _to_amount_float(fields.get("vat_amount"))
+    total = _to_amount_float(fields.get("total_amount"))
+    wht = _to_amount_float(fields.get("wht_amount"))
+    wht_rate = _to_amount_float(fields.get("wht_rate"))
+    paid = _to_amount_float(fields.get("amount_paid"))
+    rate = _to_amount_float(fields.get("vat_rate")) or 7.0
+    layout = str(reconciliation.get("layout") or "")
+
+    alerts: list[dict[str, str]] = []
+
+    def _add(field_name: str, current: float | None, recommended: float | None, reason: str) -> None:
+        if recommended is None:
+            return
+        alerts.append(
+            {
+                "field": field_name,
+                "current": "" if current is None else f"{current:.2f}",
+                "recommended": f"{recommended:.2f}",
+                "reason": reason,
+            }
+        )
+
+    if checks.get("total") == "fail":
+        rec_total = _to_amount_float(corrected.get("total_amount"))
+        if rec_total is None and net is not None and vat is not None:
+            rec_total = net + vat
+        _add("total_amount", total, rec_total, "net_plus_vat_mismatch")
+
+    if checks.get("vat") == "fail":
+        rec_vat: float | None = None
+        if layout == "inclusive" and total is not None and rate > 0:
+            rec_vat = total * rate / (100.0 + rate)
+        elif net is not None and rate > 0:
+            rec_vat = net * rate / 100.0
+        elif total is not None and rate > 0:
+            rec_vat = total * rate / (100.0 + rate)
+        _add("vat_amount", vat, rec_vat, "vat_formula_mismatch")
+
+    if checks.get("wht") == "fail":
+        rec_wht: float | None = None
+        if wht_rate and wht_rate > 0:
+            if net is not None:
+                rec_wht = net * wht_rate / 100.0
+            elif total is not None:
+                rec_wht = total * wht_rate / 100.0
+        _add("wht_amount", wht, rec_wht, "wht_formula_mismatch")
+
+    if checks.get("paid") == "fail" and total is not None:
+        rec_paid = total - (wht or 0.0)
+        _add("amount_paid", paid, rec_paid, "paid_not_equal_total_minus_wht")
+
+    return alerts
+
+
 def _backfill_amounts_from_reconciliation(
     fields: dict[str, Any],
     reconciliation: dict[str, Any],
@@ -241,9 +314,13 @@ async def run_pipeline(
                 fields[key] = value
             # Re-reconcile after auto-correction so downstream sees consistent state.
             reconciliation = reconcile_amounts(fields)
+
+        numeric_alerts = _build_numeric_consistency_alerts(fields, reconciliation)
+        fields["numeric_consistency_alerts"] = numeric_alerts
         fields["reconciliation"] = reconciliation
         ctx.extraction_output["reconciliation"] = reconciliation
         ctx.extraction_output["vat_layout"] = reconciliation.get("layout")
+        ctx.extraction_output["numeric_consistency_alerts"] = numeric_alerts
 
         # Buyer tax-id vs company tax-id gate.
         tax_id_match: bool | None = None
@@ -269,6 +346,7 @@ async def run_pipeline(
             "total_is_paid": reconciliation.get("total_is_paid"),
             "tax_id_match": tax_id_match,
             "mismatches": reconciliation.get("mismatches", []),
+            "numeric_consistency_alerts": numeric_alerts,
         }
 
         # Recompute after Stage C repair + reconciliation
