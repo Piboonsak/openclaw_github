@@ -3035,6 +3035,58 @@ POST /api/llm/routing/dry-run
           </div>
         </details>
       </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!-- D10: VAT Layout-Aware Reconciliation & Money-Field Trust Policy -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div class="decision-item">
+        <strong>VAT Layout-Aware Reconciliation &amp; Money-Field Trust Policy</strong>
+        <div class="context">Two new regressions showed a critical trust bug: docs <code>03062026125316</code> and <code>03062026125326</code> had clear printed VAT values, but Stage C replaced them with calculated values. Root cause: the mismatch rule in extraction only validated the exclusive layout (<code>net + vat = total</code>), so valid inclusive docs were marked mismatched, confidence dropped, and Stage C overwrote a correct VAT with a computed value.</div>
+        <div class="recommend">Decision: printed money values are the primary truth. Apply three-layer protection: (1) layout-aware mismatch logic, (2) OCR-presence gate for Stage C money merges, (3) prompt-level prohibition against computing numeric fields.</div>
+        <details>
+          <summary>D10 Design Details — Thai VAT Formula, 3-Layer Defense, and Expected Outcomes (click to expand)</summary>
+          <div>
+            <h4>Thai VAT Formula (must handle both layouts)</h4>
+            <ul style="font-size:0.85rem; line-height:1.7;">
+              <li><strong>Exclusive (บวก VAT):</strong> <code>VAT = Net × 7%</code>, <code>Gross = Net + VAT = Net × 1.07</code></li>
+              <li><strong>Inclusive (ถอด VAT):</strong> <code>VAT = Gross × 7 / 107</code>, <code>Net = Gross × 100 / 107</code></li>
+            </ul>
+            <p style="font-size:0.82rem; color:var(--muted);">
+              Important: <code>Gross × 7%</code> is <em>not</em> the inclusive VAT formula. Using it causes the exact wrong value seen in doc <code>03062026125316</code> (139.30 instead of printed 130.19).
+            </p>
+
+            <h4>Three-Layer Defense</h4>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr><th style="width:24%">Layer</th><th style="width:40%">Change</th><th style="width:36%">Expected Effect</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Layer 1<br>Extractor Gate</strong></td>
+                  <td><code>src/backend/ml/field_extractor.py</code>: change <code>vat_math_mismatch</code> to pass when either exclusive or inclusive arithmetic fits within tolerance.</td>
+                  <td>Inclusive docs no longer get false mismatch flag. Stage C is not triggered for valid printed VAT.</td>
+                </tr>
+                <tr>
+                  <td><strong>Layer 2<br>Router Merge Gate</strong></td>
+                  <td><code>src/backend/ml/llm_router.py</code>: in <code>_merge_improvements()</code>, reject money-field candidate if value is not found in OCR text (<code>_value_in_ocr</code>).</td>
+                  <td>Computed money values from LLM cannot overwrite extracted values.</td>
+                </tr>
+                <tr>
+                  <td><strong>Layer 3<br>Prompt Policy</strong></td>
+                  <td><code>src/backend/ml/llm_claude.py</code>: explicitly forbid deriving or recalculating money fields in Stage C prompt.</td>
+                  <td>Model behavior is aligned with pipeline trust policy before merge-time checks.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h4>Acceptance Targets for Reported Docs</h4>
+            <ul style="font-size:0.85rem; line-height:1.7;">
+              <li><code>03062026125316</code>: keep printed <code>vat_amount=130.19</code>, classify as inclusive layout, <code>reconciled=True</code>.</li>
+              <li><code>03062026125326</code>: keep printed <code>net_amount=5330.00</code>, <code>vat_amount=373.10</code>, classify as exclusive layout, <code>reconciled=True</code>.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
     </div>
   </section>
 

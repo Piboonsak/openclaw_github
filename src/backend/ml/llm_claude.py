@@ -47,6 +47,13 @@ Fields to extract:
 - vat_rate: numeric string (percentage only, e.g. "7")
 - total_amount: numeric string (net + vat)
 - wht_amount: withholding tax amount string (or "" if none)
+
+IMPORTANT - Numeric fields (net_amount, vat_amount, total_amount, wht_amount, amount_paid):
+- Return ONLY values that are literally printed on the document.
+- NEVER compute, derive, or recalculate a value from other fields.
+- If a value is not printed, return "" (empty string).
+- If printed VAT does not equal net*7%, the document may be inclusive (VAT = total*7/107).
+- Keep the printed VAT and do not recompute.
 """
 
 

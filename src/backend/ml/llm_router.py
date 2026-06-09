@@ -376,6 +376,16 @@ def _merge_improvements(
         elif not current_in_ocr:
             accept = True
 
+        if accept and field_name in {
+            "net_amount",
+            "vat_amount",
+            "total_amount",
+            "wht_amount",
+            "amount_paid",
+        }:
+            if not _value_in_ocr(candidate_value, raw_text):
+                accept = False
+
         if accept:
             improved_fields[field_name] = candidate_value
             improved_confidence[field_name] = base_confidence

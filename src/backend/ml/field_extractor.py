@@ -1249,13 +1249,23 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
     vat_math_mismatch = False
     if net_amount and vat_amount and total_amount:
         try:
-            vat_calc = round(
-                float(_normalize_number(total_amount))
-                - float(_normalize_number(net_amount)),
-                2,
-            )
+            net_val = round(float(_normalize_number(net_amount)), 2)
             vat_val = round(float(_normalize_number(vat_amount)), 2)
-            if abs(vat_calc - vat_val) > 1.0:
+            total_val = round(float(_normalize_number(total_amount)), 2)
+
+            rate_pct = 7.0
+            try:
+                if str(vat_rate or "").strip():
+                    rate_pct = float(str(vat_rate).strip())
+            except ValueError:
+                rate_pct = 7.0
+
+            tol = max(1.0, total_val * 0.005)
+            excl_ok = abs(net_val + vat_val - total_val) <= tol
+            incl_vat_expected = round(total_val * rate_pct / (100.0 + rate_pct), 2)
+            incl_ok = abs(vat_val - incl_vat_expected) <= tol
+
+            if not (excl_ok or incl_ok):
                 vat_math_mismatch = True
         except ValueError:
             pass
