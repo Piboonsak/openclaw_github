@@ -5,14 +5,13 @@ Does NOT import from src/backend/ml.
 Sends PDF as base64 document block to Anthropic API.
 """
 
+import argparse
 import base64
 import json
 import os
 import sys
 from pathlib import Path
 from typing import Any, Optional
-
-import anthropic
 
 # ============================================================================
 # Configuration
@@ -25,6 +24,7 @@ JSONL_PATH = PRIVATE_DATA_DIR / "expectations.filled.jsonl"
 
 # Schema version (must match backend)
 EXTRACTION_SCHEMA_VERSION = "v26"
+DEFAULT_MODEL = "claude-haiku-4-5-20250514"
 
 # System prompt for Haiku (request JSON-only response)
 SYSTEM_PROMPT = """You are an expert Thai accounting document processor. 
@@ -95,15 +95,16 @@ def load_pdf_as_base64(pdf_path: Path) -> str:
 
 
 def call_haiku(
-    client: anthropic.Anthropic, pdf_base64: str, doc_id: str
+    client: Any, pdf_base64: str, doc_id: str, model: str
 ) -> Optional[dict[str, Any]]:
     """
     Call Claude Haiku with PDF document block.
     Returns parsed JSON or None on error.
     """
+    response_text = ""
     try:
         message = client.messages.create(
-            model="claude-opus-4-1-20250805",
+            model=model,
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=[
@@ -128,19 +129,29 @@ def call_haiku(
         )
 
         # Parse JSON from response
-        response_text = message.content[0].text
+        text_blocks = [
+            getattr(block, "text", "")
+            for block in message.content
+            if getattr(block, "type", "") == "text"
+        ]
+        response_text = "\n".join(part for part in text_blocks if part).strip()
+        if not response_text:
+            print(f"  ERROR {doc_id}: No text payload in model response")
+            return None
         extracted = json.loads(response_text)
         return extracted
     except json.JSONDecodeError as e:
         print(f"  ERROR {doc_id}: Failed to parse JSON response: {e}")
         print(f"    Response text: {response_text[:200]}")
         return None
-    except anthropic.APIError as e:
+    except Exception as e:
         print(f"  ERROR {doc_id}: API error: {e}")
         return None
 
 
-def merge_extraction(row: dict[str, Any], extracted: dict[str, Any]) -> dict[str, Any]:
+def merge_extraction(
+    row: dict[str, Any], extracted: dict[str, Any], reviewer_model: str
+) -> dict[str, Any]:
     """Merge extracted fields into row, preserving metadata."""
     # Fields to preserve
     preserve_fields = {
@@ -187,14 +198,24 @@ def merge_extraction(row: dict[str, Any], extracted: dict[str, Any]) -> dict[str
 
     # Update metadata
     result["labeling_status"] = "ai_haiku_ground_truth"
-    result["reviewer"] = "claude-opus-4-1-20250805"
-    result["review_note"] = "Re-labeled by claude-opus-4-1-20250805 on 2026-06-09"
+    result["reviewer"] = reviewer_model
+    result["review_note"] = f"Re-labeled by {reviewer_model} on 2026-06-09"
 
     return result
 
 
 def main():
     """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="Relabel Comp_1 PDFs with Claude model"
+    )
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help=f"Anthropic model id (default: {DEFAULT_MODEL})",
+    )
+    args = parser.parse_args()
+
     # Verify paths
     if not JSONL_PATH.exists():
         print(f"ERROR: JSONL not found: {JSONL_PATH}")
@@ -209,8 +230,9 @@ def main():
         print("ERROR: ANTHROPIC_API_KEY not set")
         sys.exit(1)
 
-    client = anthropic.Anthropic(api_key=api_key)
-    print(f"✓ Anthropic client initialized")
+    anthropic_module = __import__("anthropic")
+    client = anthropic_module.Anthropic(api_key=api_key)
+    print(f"✓ Anthropic client initialized (model={args.model})")
 
     # Load JSONL
     rows = load_jsonl(JSONL_PATH)
@@ -247,17 +269,17 @@ def main():
         # Load PDF and call Haiku
         try:
             pdf_base64 = load_pdf_as_base64(pdf_path)
-            extracted = call_haiku(client, pdf_base64, doc_id)
+            extracted = call_haiku(client, pdf_base64, doc_id, args.model)
 
             if extracted:
                 # Merge and update row
-                new_row = merge_extraction(row, extracted)
+                new_row = merge_extraction(row, extracted, args.model)
                 rows[row_idx] = new_row
                 success_count += 1
                 print(f"✓ ({extracted.get('invoice_number', 'N/A')})")
             else:
                 fail_count += 1
-                print(f"✗ (failed to extract)")
+                print("✗ (failed to extract)")
         except Exception as e:
             print(f"✗ (error: {e})")
             fail_count += 1
@@ -265,15 +287,15 @@ def main():
     # Save updated JSONL
     print(f"\nSaving {len(rows)} rows back to JSONL...", end=" ", flush=True)
     save_jsonl(JSONL_PATH, rows)
-    print(f"✓")
+    print("✓")
 
     # Print summary
     print(f"\n{'=' * 60}")
-    print(f"Summary:")
+    print("Summary:")
     print(f"  Total rows processed: {len(to_relabel)}")
     print(f"  Success: {success_count}")
     print(f"  Failed: {fail_count}")
-    print(f"  Preserved (excluded): 2")
+    print("  Preserved (excluded): 2")
     print(f"  Total rows in JSONL: {len(rows)}")
     print(f"{'=' * 60}")
 

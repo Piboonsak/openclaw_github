@@ -12,6 +12,8 @@ from typing import Any
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 
+from config.settings import settings
+from src.backend.ml.llm_router import get_routing_diagnostics, read_cost_log_tail
 from src.backend.pipeline.orchestrator import run_pipeline, select_model
 from src.backend.services.export_service import create_excel_ledger
 from src.backend.services.rule_engine import validate_required_fields
@@ -29,6 +31,18 @@ def _normalize_tax_id(value: str | None) -> str:
 def health() -> dict[str, str]:
     """Check health status of backend."""
     return {"status": "ok"}
+
+
+@router.get("/v1/llm/routing")
+def llm_routing_diagnostics(
+    log_limit: int = Query(20, ge=1, le=200, description="Tail rows from cost log"),
+) -> dict[str, Any]:
+    """Return current Stage C provider/model routing and recent cost events."""
+    settings.reload()
+    return {
+        "routing": get_routing_diagnostics(),
+        "recent_cost_events": read_cost_log_tail(limit=log_limit),
+    }
 
 
 @router.post("/process")

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 
 def should_escalate_to_sonnet(
     *,
@@ -31,3 +33,27 @@ def pick_model(escalated_to_sonnet: bool) -> str:
     if escalated_to_sonnet:
         return "claude-sonnet-4-6-20250601"
     return "claude-haiku-4-5-20250514"
+
+
+def pick_provider_model(escalated_to_sonnet: bool) -> tuple[str, str]:
+    """Return provider+model tuple for multi-provider callers.
+
+    Provider priority is controlled by STAGE_C_PROVIDER (default: openrouter).
+    """
+    provider = (
+        (os.getenv("STAGE_C_PROVIDER", "openrouter") or "openrouter").strip().lower()
+    )
+    if provider not in {"openrouter", "anthropic"}:
+        provider = "openrouter"
+
+    default_model = (
+        os.getenv("STAGE_C_DEFAULT_MODEL", "anthropic/claude-3.5-haiku")
+        or "anthropic/claude-3.5-haiku"
+    ).strip()
+    escalation_model = (
+        os.getenv("STAGE_C_ESCALATION_MODEL", "anthropic/claude-sonnet-4")
+        or "anthropic/claude-sonnet-4"
+    ).strip()
+    model = escalation_model if escalated_to_sonnet else default_model
+
+    return provider, model

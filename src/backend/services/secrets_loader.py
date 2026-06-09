@@ -71,6 +71,20 @@ def _load_env_key(target_name: str, value: str) -> bool:
     return True
 
 
+def load_openrouter_key() -> bool:
+    """Load OPENROUTER_API_KEY from local key file if env is empty."""
+    keys_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)
+    openrouter_value = _read_key_value_file(keys_path, "OPENROUTER_API_KEY")
+    return _load_env_key("OPENROUTER_API_KEY", openrouter_value)
+
+
+def load_anthropic_key() -> bool:
+    """Load ANTHROPIC_API_KEY from local key file if env is empty."""
+    keys_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)
+    anthropic_value = _read_key_value_file(keys_path, "ANTHROPIC_API_KEY")
+    return _load_env_key("ANTHROPIC_API_KEY", anthropic_value)
+
+
 def load_llm_keys() -> dict[str, bool]:
     """Load Anthropic, OpenAI, and OpenRouter keys from local files."""
     anthropic_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)

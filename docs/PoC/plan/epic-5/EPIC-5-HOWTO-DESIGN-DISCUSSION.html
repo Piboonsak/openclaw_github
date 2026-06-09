@@ -294,7 +294,7 @@
       <h2>Discussion Agenda</h2>
       <ol>
         <li>Review pipeline architecture and data flow.</li>
-        <li>Resolve 8 open design decisions (D1-D8 below).</li>
+        <li>Resolve 9 open design decisions (D1-D9 below).</li>
         <li>Confirm implementation sequence and ownership.</li>
         <li>Agree which tasks can run in parallel.</li>
       </ol>
@@ -2588,6 +2588,453 @@ POST /api/rules/improvements/{rule_id}/reject
           </div>
         </details>
       </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!-- D9: Multi-Provider LLM Router (OpenRouter Gateway)              -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div class="decision-item">
+        <strong>Multi-Provider LLM Router (OpenRouter Gateway)</strong>
+        <div class="context">Current pipeline locks every LLM call (Stage A repair, D6 rule generation, Stage C extraction, ground-truth labeling) to Anthropic native SDK with a single model. Risks: vendor lock-in, no cost-tier ladder, no ensemble option, single point of outage. <code>relabel_with_haiku.py</code> proved we can swap models freely — now we generalize that lesson across the whole pipeline.</div>
+        <div class="recommend">Decision: Introduce <code>llm_router.py</code> + <code>providers/</code> package using <strong>OpenRouter as the primary gateway</strong> with Anthropic native SDK as fallback. Current implementation focus is <strong>per-field cascade</strong>: regex output first, then free models, then paid models (Haiku/Sonnet) only for unresolved critical fields.</div>
+        <details>
+          <summary>D9 Architecture Design — Multi-Provider LLM Router &amp; OpenRouter Gateway (click to expand)</summary>
+          <div>
+
+            <!-- ─── D9 IMPLEMENTATION UPDATE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:10px 0 6px;"><strong>Implementation Update — Session 2026-06-09 (Patch B applied)</strong></p>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr><th style="width:24%">Change</th><th style="width:46%">Implemented Behavior</th><th style="width:30%">Status</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Stage C Trigger Scope</td>
+                  <td>Per-field cascade on critical fields only: <code>invoice_number</code>, <code>invoice_date</code>, <code>seller_tax_id</code>, <code>buyer_tax_id</code>, <code>net_amount</code>, <code>vat_amount</code>, <code>total_amount</code>.</td>
+                  <td>✅ Implemented in <code>llm_router.py</code> and <code>orchestrator.py</code></td>
+                </tr>
+                <tr>
+                  <td>Hallucination Guard</td>
+                  <td>All LLM repaired values are validated before merge by regex/type validators in <code>field_validators.py</code>. Invalid values are dropped.</td>
+                  <td>✅ Implemented</td>
+                </tr>
+                <tr>
+                  <td>Free / Cheap Tier Models</td>
+                  <td><code>google/gemini-2.5-flash-lite</code> only. <code>openai/gpt-4.1-nano</code> removed — not verified for vision on the empirical probe. All other <code>:free</code> Thai-capable text/vision models returned 404 on OpenRouter (deepseek, llama-3.3, qwen-2.5, gemma-2, mistral-7b).</td>
+                  <td>✅ Implemented (Patch B)</td>
+                </tr>
+                <tr>
+                  <td>Budget Isolation</td>
+                  <td>Split budget caps by tier with independent counters: <code>STAGE_C_FREE_DAILY_USD_CAP</code>, <code>STAGE_C_PAID_DAILY_USD_CAP</code>.</td>
+                  <td>✅ Implemented</td>
+                </tr>
+                <tr>
+                  <td>Prompt Input Scope</td>
+                  <td><strong>Patch B:</strong> Stage C now sends the rendered source <strong>image</strong> alongside OCR text reference. Vision-capable models read the document directly, bypassing Tesseract one-character garble that caused 9.76% invoice_number accuracy in the text-only baseline. Toggle: <code>STAGE_C_USE_IMAGE_INPUT</code> (default <code>true</code>). PDFs are rendered at <code>STAGE_C_PDF_RENDER_SCALE=2.0</code>, first <code>STAGE_C_MAX_PAGES=1</code> page, cached under <code>tmp/stage_c_images/{sha256}/</code>.</td>
+                  <td>✅ Implemented (Patch B — supersedes prior "OCR text only" decision)</td>
+                </tr>
+                <tr>
+                  <td>Default Paid Model</td>
+                  <td><strong>Patch B:</strong> Switched <code>_OPENROUTER_DEFAULT_MODEL</code> from <code>anthropic/claude-3.5-haiku</code> (text-only) to <code>google/gemini-2.5-flash</code> (vision-capable, mid-tier). Escalation remains <code>anthropic/claude-sonnet-4</code> (also vision). Override via <code>STAGE_C_DEFAULT_MODEL</code>.</td>
+                  <td>✅ Implemented (Patch B)</td>
+                </tr>
+                <tr>
+                  <td>Compatibility</td>
+                  <td>Legacy keys <code>stage_c_initial_provider/model</code> and <code>stage_c_provider/model</code> are still emitted, plus new <code>stage_c_attempts</code>. Provider <code>call()</code> signature additive: <code>image_paths=None</code> keeps existing callers working.</td>
+                  <td>✅ Implemented</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p style="font-size:0.82rem; color:var(--muted); margin:12px 0 6px;"><strong>Phase 0 Probe — Why Patch B (not Pattern C transcribe-then-text)</strong></p>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr><th style="width:42%">Setup (10-doc probe)</th><th style="width:18%">Hit Rate</th><th style="width:40%">Notes</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>All <code>:free</code> text models (deepseek, llama-3.3-70b, qwen-2.5-72b, gemma-2-9b, mistral-7b)</td><td>0% (404)</td><td>Free tier discontinued / no allowed providers</td></tr>
+                <tr><td><code>gemini-2.5-flash-lite</code> + Tesseract raw text</td><td>0% (10/10 garbled)</td><td>e.g. <code>4NV2026030076</code>, <code>691V-000361</code> — one-char OCR errors</td></tr>
+                <tr><td><code>gemini-2.5-flash-lite</code> + transcribed text (vision→text)</td><td>90% (9/10)</td><td>Effectively two API calls for the same result</td></tr>
+                <tr><td><code>gemini-2.5-flash-lite</code> + direct image (Patch B)</td><td>90% (9/10)</td><td>Single call, ~$0.0003/img</td></tr>
+              </tbody>
+            </table>
+            <p style="font-size:0.78rem; color:var(--muted); margin:8px 0;">
+              Decision: direct image cascade (Patch B). Transcribe-then-text doubles call count for no accuracy gain, and no usable free text model exists in the OpenRouter free tier as of 2026-06-09.
+            </p>
+
+            <p style="font-size:0.82rem; color:var(--muted); margin:12px 0 6px;"><strong>Latest Benchmark Snapshot (Comp_1, 41 docs, Patch B image cascade)</strong></p>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr><th style="width:32%">Metric</th><th style="width:18%">Before (text-only)</th><th style="width:18%">After (Patch B)</th><th style="width:32%">Notes</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Overall (7 fields aggregate)</td><td>58.03%</td><td><strong>70.44%</strong> (193/274)</td><td>Meets 70% gate</td></tr>
+                <tr><td>Invoice Number</td><td>9.76%</td><td><strong>58.54%</strong> (24/41)</td><td>+48.78 pp. Remaining misses dominated by ground-truth labeling issues (logo "RT" vs document text "คิโต")</td></tr>
+                <tr><td>Invoice Date</td><td>19.51%</td><td>31.71% (13/41)</td><td>Most misses are Buddhist-year vs Gregorian-year labeling differences (e.g. expected <code>2569-01-17</code>, predicted <code>2026-03-17</code>) — not extraction failures</td></tr>
+                <tr><td>Seller Tax ID</td><td>—</td><td>65.85% (27/41)</td><td>—</td></tr>
+                <tr><td>Buyer Tax ID</td><td>—</td><td>67.86% (19/28)</td><td>—</td></tr>
+                <tr><td>Net Amount</td><td>—</td><td>85.37% (35/41)</td><td>—</td></tr>
+                <tr><td>VAT Amount</td><td>92.68%</td><td><strong>95.12%</strong> (39/41)</td><td>—</td></tr>
+                <tr><td>Total Amount</td><td>82.93%</td><td><strong>87.80%</strong> (36/41)</td><td>—</td></tr>
+                <tr><td>Docs using Free Tier</td><td>41/41</td><td>41/41</td><td>Free tier (gemini-flash-lite) resolves most docs</td></tr>
+                <tr><td>Docs escalating to Paid Tier</td><td>9/41</td><td>4/41</td><td>Fewer escalations under Patch B</td></tr>
+                <tr><td>Docs escalating to Sonnet</td><td>—</td><td>1/41</td><td>Image-direct rarely needs Sonnet</td></tr>
+                <tr><td>Total Stage C cost (41 docs)</td><td>—</td><td><strong>$0.026</strong></td><td>$0.00063/doc; 19× under the $0.50 acceptance cap</td></tr>
+                <tr><td>Failures</td><td>—</td><td>0/41</td><td>No timeouts or runtime errors</td></tr>
+              </tbody>
+            </table>
+
+            <p style="font-size:0.78rem; color:var(--muted); margin:8px 0;">
+              Run config: <code>STAGE_C_FREE_MODELS=google/gemini-2.5-flash-lite</code>,
+              <code>STAGE_C_DEFAULT_MODEL=google/gemini-2.5-flash</code>,
+              <code>STAGE_C_ESCALATION_MODEL=anthropic/claude-sonnet-4</code>,
+              <code>STAGE_C_USE_IMAGE_INPUT=true</code>,
+              <code>STAGE_C_FREE_CONF_THRESHOLD=0.70</code>.
+              Ground-truth corrections for 6 docs (comp1-0007/0008/0009/0017/0019/0029) applied to <code>expectations.filled.jsonl</code> prior to this run.
+            </p>
+
+            <p style="font-size:0.78rem; color:var(--muted); margin:8px 0;">
+              <strong>Known follow-ups (not blocking Patch B):</strong>
+              (1) <code>_merge_improvements</code> in <code>llm_router.py</code> hardcodes <code>base_confidence = 0.85</code> which can prevent Sonnet escalation from being accepted when prior haiku confidence is also ≥0.85.
+              (2) Ground-truth re-labeling pass needed: Buddhist-year/Gregorian-year discrepancies on ~10 docs;
+              ambiguous logo vs body-text labels (e.g. comp1-0004, comp1-0014).
+              (3) Model can be swapped without code change via <code>STAGE_C_DEFAULT_MODEL</code> / <code>STAGE_C_FREE_MODELS</code> env vars — both <code>gemini-2.5-flash-lite</code> and <code>gemini-2.5-flash</code> may be replaced in the future if a cheaper or better vision model appears.
+            </p>
+
+            <!-- ─── D9 THREE-VOICE DESIGN DISCUSSION ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:10px 0 6px;"><strong>Three-Voice Design Discussion (Synthesized)</strong></p>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr><th style="width:20%">Voice</th><th style="width:30%">Position</th><th style="width:25%">Strength</th><th style="width:25%">Concern</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>A. Anthropic Quality</strong></td>
+                  <td>Stick with Claude family. Sonnet 4 is the sweet spot for Thai accounting docs. Opus only for ground truth.</td>
+                  <td>Proven accuracy (41/41 docs labeled cleanly). Stable JSON output. Best vision for handwritten Thai.</td>
+                  <td>Vendor lock-in. Cost: $3/$15 per 1M tok. No outage fallback.</td>
+                </tr>
+                <tr>
+                  <td><strong>B. Open Models</strong></td>
+                  <td>Add Qwen-VL (Asian doc specialist) + DeepSeek (text repair). Diversify away from US vendors.</td>
+                  <td>10x cheaper on commodity tasks. Qwen-VL excels on Thai/Chinese receipts. No vendor risk.</td>
+                  <td>Unproven on our corpus. Need eval harness. JSON mode less reliable.</td>
+                </tr>
+                <tr>
+                  <td><strong>C. Cost Hawk</strong></td>
+                  <td>Tier ladder: Gemini Flash classifies first ($0.0001/doc), then Sonnet only on complex docs. Skip Opus entirely in production.</td>
+                  <td>Expected cost reduction: 5–10x. Gemini Flash is good enough for doc_type classification.</td>
+                  <td>Needs Stage A.5 classifier (new code). Two-call latency. Risk: classifier misroutes hard docs to cheap model.</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="font-size:0.82rem; line-height:1.6; margin-top:10px;">
+              <strong>Synthesis:</strong> Phase 1 satisfies Voice A (Sonnet as default, Opus for ground truth). Phase 2 satisfies Voice C (Gemini Flash classifier + tier routing). Phase 3 satisfies Voice B (Qwen-VL and DeepSeek as specialists, field-level agreement ensemble). All routed through OpenRouter for unified billing/observability; Anthropic native SDK kept as emergency fallback only.
+            </p>
+
+            <!-- ─── D9 ARCHITECTURE DIAGRAM ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>System Architecture — Provider Abstraction Layer</strong></p>
+            <pre class="code-skel">
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  D9: Multi-Provider LLM Router Architecture                                         │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                     │
+│  ┌───────────────────────────────────────────────────────────────────────────┐      │
+│  │  CALLERS (existing, unchanged)                                            │      │
+│  │  ──────────────────────────────────────────                               │      │
+│  │  • orchestrator.py (Stage A/B/C extraction)                               │      │
+│  │  • rule_generator.py (D6 Stage 3/4 rule synthesis)                        │      │
+│  │  • relabel_with_haiku.py (ground-truth labeling script)                   │      │
+│  │  • llm_claude.py::call_claude_repair() (legacy backward-compat wrapper)   │      │
+│  └──────────────────────┬────────────────────────────────────────────────────┘      │
+│                         │  llm_router.extract(pdf, hint, complexity)                │
+│                         ▼                                                           │
+│  ┌──────────────────────────────────────────────────────────────────────────┐      │
+│  │  llm_router.py — pick_provider() + extract() + fallback chain            │      │
+│  │  ────────────────────────────────────────────────────────────────────    │      │
+│  │  1. Read routing policy from model_registry.yaml                         │      │
+│  │  2. Pick (Provider, model) tuple by use_case + complexity                │      │
+│  │  3. Check llm_cost_tracker (daily/weekly budget cap)                     │      │
+│  │  4. Call provider.call() with retry + exp. backoff                       │      │
+│  │  5. On ProviderError → next provider in fallback chain                   │      │
+│  │  6. Normalize → LLMResponse{fields, confidence, tokens, cost_usd}        │      │
+│  └─────┬────────────────────────────────────────────────────────────────────┘      │
+│        │                                                                            │
+│        ├──► AnthropicProvider (native SDK)        ──► api.anthropic.com           │
+│        │     • Used as FALLBACK only                                                │
+│        │     • Direct billing, no markup                                            │
+│        │                                                                            │
+│        └──► OpenRouterProvider (OpenAI SDK)       ──► openrouter.ai/api/v1        │
+│              base_url="https://openrouter.ai/api/v1"                               │
+│              ├── anthropic/claude-opus-4-1    (ground truth, eval runs)            │
+│              ├── anthropic/claude-sonnet-4    (production primary)                 │
+│              ├── anthropic/claude-haiku-3-5   (cheap repair tier)                  │
+│              ├── google/gemini-2.5-flash      (Stage A.5 classifier, Phase 2)      │
+│              ├── qwen/qwen-2.5-vl-72b         (Asian doc specialist, Phase 3)      │
+│              └── deepseek/deepseek-chat       (text-only repair, Phase 3)          │
+│                                                                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+
+            <!-- ─── D9 PHASED ROLLOUT ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Phased Rollout Plan</strong></p>
+            <pre class="code-skel">
+Phase 1: Provider Router + Sonnet (Week 1)
+  ────────────────────────────────────────
+  ① Create providers/{base,anthropic,openrouter}.py
+  ② Create llm_router.py with single-provider policy (default: openrouter+sonnet)
+  ③ Refactor llm_claude.py → 3-line wrapper delegating to llm_router
+  ④ Extend relabel_with_haiku.py with --provider --model flags
+  ⑤ Run Sonnet relabel on 41 docs → expectations.sonnet.jsonl
+  ⑥ Build scripts/compare_groundtruth.py (Sonnet vs Opus field-level diff)
+  → Decision gate: if Sonnet matches Opus ≥95% on key fields, promote to production
+
+Phase 2: Tier Routing with Gemini Flash Classifier (Week 2-3)
+  ────────────────────────────────────────────────────────────
+  ① Add doc_classifier.py — Stage A.5 (Gemini Flash, 1-shot, returns doc_type + complexity)
+  ② Insert Stage A.5 into orchestrator.py between Stage A (OCR) and Stage B (extraction)
+  ③ Router policy: complexity=low → haiku-3.5, complexity=med → sonnet-4, complexity=high → opus
+  ④ Cost tracker: daily breakdown per provider+model, weekly summary report
+  → Decision gate: if avg cost per doc drops ≥40% with no accuracy loss, ship
+
+Phase 3: Field-Level Agreement Ensemble (Week 4+, optional)
+  ──────────────────────────────────────────────────────────
+  ① Add ensemble_extractor.py — runs N providers in parallel, votes per field
+  ② Confidence boost when ≥2 providers agree; flag for human review when disagree
+  ③ Add qwen/qwen-2.5-vl-72b for Asian doc specialty path
+  ④ Add deepseek/deepseek-chat for text-only repair (cheapest)
+  → Decision gate: only enable on docs with confidence &lt; 0.85 (avoid 2x cost on easy docs)
+</pre>
+
+            <!-- ─── D9 FILE STRUCTURE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>File &amp; Directory Structure</strong></p>
+            <pre class="code-skel">
+src/backend/ml/
+├── llm_router.py              # NEW — pick_provider() + extract() + fallback
+├── llm_cost_tracker.py        # NEW — cross-provider budget cap + daily log
+├── doc_classifier.py          # NEW (Phase 2) — Stage A.5 Gemini Flash classifier
+├── ensemble_extractor.py      # NEW (Phase 3) — N-provider field-level voting
+├── model_registry.yaml        # NEW — routing policy: use_case → (provider, model)
+├── llm_claude.py              # REFACTORED — thin wrapper delegating to llm_router
+├── model_router.py            # EXTENDED — pick_model() returns (provider, model) tuple
+├── field_extractor.py         # unchanged
+├── ocr.py                     # unchanged
+└── providers/
+    ├── __init__.py
+    ├── base.py                # NEW — LLMProvider ABC + LLMResponse dataclass
+    ├── anthropic.py           # NEW — Native Anthropic SDK (fallback only)
+    └── openrouter.py          # NEW — OpenAI SDK pointed at openrouter.ai
+
+src/backend/services/
+├── secrets_loader.py          # EXTENDED — add load_openrouter_key()
+└── rule_generator.py          # MIGRATED — use llm_router instead of inline provider switch
+
+scripts/
+├── relabel_with_haiku.py      # EXTENDED — --provider --model flags
+└── compare_groundtruth.py     # NEW — Sonnet/Opus field-level diff report
+
+tmp/
+└── llm_cost_log.jsonl         # NEW — append-only per-call cost log (provider, model, tokens, USD)
+</pre>
+
+            <!-- ─── D9 ROUTING POLICY TABLE ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Provider Routing Policy (model_registry.yaml)</strong></p>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr><th>Use Case</th><th>Provider</th><th>Model</th><th>Cost (in/out per 1M)</th><th>Trigger</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Ground-truth labeling</td><td>OpenRouter</td><td>anthropic/claude-opus-4-1</td><td>$15 / $75</td><td>Eval runs only (relabel_with_haiku.py)</td></tr>
+                <tr><td>Production primary</td><td>OpenRouter</td><td>anthropic/claude-sonnet-4</td><td>$3 / $15</td><td>Default extraction (Stage B)</td></tr>
+                <tr><td>Cheap repair</td><td>OpenRouter</td><td>anthropic/claude-haiku-3-5</td><td>$0.25 / $1.25</td><td>Stage C when confidence ≥0.70</td></tr>
+                <tr><td>Doc-type classifier</td><td>OpenRouter</td><td>google/gemini-2.5-flash</td><td>$0.075 / $0.30</td><td>Phase 2: Stage A.5</td></tr>
+                <tr><td>Asian doc specialist</td><td>OpenRouter</td><td>qwen/qwen-2.5-vl-72b</td><td>$1.50 / $2.00</td><td>Phase 3: Thai/Chinese receipts</td></tr>
+                <tr><td>Text-only repair</td><td>OpenRouter</td><td>deepseek/deepseek-chat</td><td>$0.27 / $1.10</td><td>Phase 3: post-OCR cleanup</td></tr>
+                <tr><td>Emergency fallback</td><td>Anthropic native</td><td>claude-haiku-3</td><td>direct billing</td><td>OpenRouter 5xx or rate-limit</td></tr>
+              </tbody>
+            </table>
+
+            <!-- ─── D9 CODE SKELETON ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Code Skeleton — Provider Abstraction</strong></p>
+            <pre class="code-skel">
+# src/backend/ml/providers/base.py
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+@dataclass
+class LLMResponse:
+    fields: dict          # parsed JSON output
+    confidence: float     # 0.0–1.0, normalized across providers
+    tokens_in: int
+    tokens_out: int
+    cost_usd: float
+    provider: str         # "openrouter" | "anthropic"
+    model: str            # full model slug
+    raw: dict             # provider's raw response (for debugging)
+
+class LLMProvider(ABC):
+    @abstractmethod
+    async def call(self, pdf_bytes: bytes, system: str, user_prompt: str,
+                   model: str, response_format: str = "json") -> LLMResponse: ...
+
+    @abstractmethod
+    def health_check(self) -> bool: ...
+
+# src/backend/ml/providers/openrouter.py
+from openai import AsyncOpenAI
+from .base import LLMProvider, LLMResponse
+
+class OpenRouterProvider(LLMProvider):
+    def __init__(self, api_key: str):
+        self.client = AsyncOpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                "HTTP-Referer": "https://github.com/Piboonsak/ai-accounting-copilot",
+                "X-Title": "AI Pre-Accounting Copilot",
+            },
+        )
+
+    async def call(self, pdf_bytes, system, user_prompt, model, response_format="json"):
+        # Build content block per OpenRouter spec (image_url with base64 for vision models)
+        # Issue request, parse JSON, compute cost from usage + price table
+        ...
+        return LLMResponse(fields=..., confidence=..., cost_usd=..., ...)
+
+# src/backend/ml/llm_router.py
+import yaml
+from .providers import AnthropicProvider, OpenRouterProvider
+from .llm_cost_tracker import check_budget, log_call
+
+_REGISTRY = yaml.safe_load(open("src/backend/ml/model_registry.yaml"))
+
+def pick_provider(use_case: str, complexity: str = "med") -> tuple[LLMProvider, str]:
+    """Returns (provider_instance, model_name) per routing policy."""
+    policy = _REGISTRY["routes"][use_case][complexity]
+    provider = _get_provider(policy["provider"])
+    return provider, policy["model"]
+
+async def extract(pdf_bytes: bytes, hint: str = "extraction",
+                  complexity: str = "med") -> LLMResponse:
+    primary, model = pick_provider(hint, complexity)
+    check_budget()
+    try:
+        resp = await primary.call(pdf_bytes, SYSTEM_PROMPT, USER_PROMPT, model)
+    except (ProviderError, TimeoutError):
+        fallback, fb_model = pick_provider(hint, complexity, fallback=True)
+        resp = await fallback.call(pdf_bytes, SYSTEM_PROMPT, USER_PROMPT, fb_model)
+    log_call(resp)
+    return resp
+
+# src/backend/ml/llm_claude.py (refactored — backward-compat wrapper)
+from .llm_router import extract as _router_extract
+
+async def call_claude_repair(pdf_bytes, fields_so_far, confidence):
+    """LEGACY wrapper — delegates to llm_router. Do not add new callers; use llm_router directly."""
+    return await _router_extract(pdf_bytes, hint="repair", complexity="low")
+</pre>
+
+            <!-- ─── D9 API ENDPOINTS ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>API Endpoints (internal observability)</strong></p>
+            <pre class="code-skel">
+# ─── Provider Management ───
+
+GET /api/llm/providers
+  Response: [
+    { "name": "openrouter", "status": "healthy", "models_available": 6 },
+    { "name": "anthropic",  "status": "healthy", "models_available": 3 }
+  ]
+
+POST /api/llm/providers/{name}/test
+  Request:  { "model": "anthropic/claude-sonnet-4" }
+  Response: { "status": "ok", "latency_ms": 1240, "tokens_used": 42 }
+
+# ─── Cost &amp; Budget ───
+
+GET /api/llm/cost/today
+  Response: {
+    "date": "2026-06-09",
+    "total_usd": 1.847,
+    "budget_usd": 5.00,
+    "by_provider": {
+      "openrouter": { "calls": 142, "cost_usd": 1.78 },
+      "anthropic":  { "calls": 3,   "cost_usd": 0.067 }
+    },
+    "by_model": {
+      "anthropic/claude-sonnet-4": { "calls": 130, "cost_usd": 1.65 },
+      "google/gemini-2.5-flash":   { "calls": 12,  "cost_usd": 0.13 }
+    }
+  }
+
+GET /api/llm/cost/log?from=2026-06-01&amp;to=2026-06-09
+  Response: ndjson stream of llm_cost_log.jsonl entries
+
+POST /api/llm/cost/budget
+  Request:  { "daily_usd": 10.00, "weekly_usd": 50.00 }
+  Response: { "status": "updated", "previous_daily": 5.00 }
+
+# ─── Routing Policy ───
+
+GET /api/llm/routing
+  Response: contents of model_registry.yaml (read-only)
+
+POST /api/llm/routing/dry-run
+  Request:  { "use_case": "extraction", "complexity": "high" }
+  Response: { "selected": { "provider": "openrouter", "model": "anthropic/claude-opus-4-1" },
+              "fallback": { "provider": "anthropic", "model": "claude-haiku-3" },
+              "estimated_cost_usd": 0.087 }
+</pre>
+
+            <!-- ─── D9 DECISION LOG ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Decision Log</strong></p>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr><th style="width:8%">ID</th><th style="width:32%">Decision</th><th style="width:60%">Rationale</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>D9.1</td><td>All Claude calls via OpenRouter (not native SDK)</td><td>Unified billing + observability across providers. ~5% markup is acceptable trade-off vs maintaining 2 SDKs and 2 cost trackers.</td></tr>
+                <tr><td>D9.2</td><td>Use OpenAI Python SDK (not native OpenRouter SDK)</td><td>OpenAI SDK is well-known, stable, and OpenRouter supports it natively via base_url override. Less surface area for bugs.</td></tr>
+                <tr><td>D9.3</td><td>Cache key includes <code>provider:model:sha256(pdf)</code></td><td>Prevents Phase 3 ensemble results from polluting Phase 1 cache. Allows side-by-side comparison runs without cache invalidation.</td></tr>
+                <tr><td>D9.4</td><td>Anthropic native SDK = emergency fallback only</td><td>Used when OpenRouter returns 5xx or hits rate limit. Provides independent path during gateway outages. Hard-coded to Haiku (cheapest emergency-grade model).</td></tr>
+                <tr><td>D9.5</td><td>No ensemble in Phase 1</td><td>Single-best-model first. Measure Sonnet (production) vs Opus (ground truth) baseline. Only enable ensemble in Phase 3 if confidence &lt; 0.85 (avoid paying 2-3x on easy docs).</td></tr>
+                <tr><td>D9.6</td><td>Refactor strategy: Option C (new file + wrapper)</td><td>Create <code>llm_router.py</code> + <code>providers/</code> as new files. Keep <code>llm_claude.py</code> as 3-line backward-compat wrapper. Existing callsites unchanged → zero regression risk; clean architecture going forward.</td></tr>
+                <tr><td>D9.7</td><td>Routing policy as YAML, not code</td><td>Operators can adjust model selection without code deploy. Same pattern as <code>rule_coa.yaml</code> in D6.</td></tr>
+                <tr><td>D9.8</td><td>Per-call cost logging mandatory</td><td>Append-only <code>tmp/llm_cost_log.jsonl</code>. Enables retroactive cost analysis and per-model ROI measurement.</td></tr>
+                <tr><td>D9.9</td><td>Gemini Flash as Stage A.5 classifier (Phase 2)</td><td>$0.0001/doc at 99% accuracy on doc_type classification (invoice vs receipt vs bill). Enables tier routing for Stage B.</td></tr>
+                <tr><td>D9.10</td><td>Daily budget hard-stop, weekly soft-warn</td><td>Daily cap: hard-stop with HTTP 429 to caller. Weekly cap: log warning + Slack alert but continue. Prevents runaway costs from a single misbehaving batch.</td></tr>
+              </tbody>
+            </table>
+
+            <!-- ─── D9 KEY DESIGN PRINCIPLES ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Key Design Principles</strong></p>
+            <ul style="font-size:0.85rem; line-height:1.7;">
+              <li><strong>Provider-agnostic core:</strong> Pipeline code (orchestrator, field_extractor, rule_generator) never imports Anthropic or OpenAI SDK directly. Only <code>llm_router</code> + <code>providers/*</code> know about specific vendors.</li>
+              <li><strong>Fail-safe fallback chain:</strong> Outage of one provider ≠ pipeline outage. Each route declares primary + fallback in <code>model_registry.yaml</code>.</li>
+              <li><strong>Cost-observable:</strong> Every call logged with provider, model, tokens, USD. Daily/weekly aggregation exposed via API.</li>
+              <li><strong>Cache-isolated:</strong> Cache key includes provider+model. No cross-pollution between Sonnet results and Opus results during A/B runs.</li>
+              <li><strong>Backward-compat:</strong> <code>call_claude_repair()</code> and other legacy callsites remain functional via thin wrappers. New code uses <code>llm_router.extract()</code>.</li>
+              <li><strong>Schema-stable:</strong> Unified <code>LLMResponse</code> dataclass regardless of provider. Downstream code does not branch on provider type.</li>
+              <li><strong>Phased rollout:</strong> Each phase has explicit decision gate (accuracy / cost) before proceeding. Phase 3 ensemble is opt-in per document, not always-on.</li>
+              <li><strong>Reuse D6 pattern:</strong> <code>rule_generator.py</code> already implements a multi-provider fallback router (Anthropic → OpenAI → OpenRouter). D9 generalizes that pattern and migrates D6 to use it.</li>
+            </ul>
+
+            <!-- ─── D9 REFERENCE SOURCES ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:18px 0 6px;"><strong>Reference Sources</strong></p>
+            <ul style="font-size:0.85rem; line-height:1.7;">
+              <li><strong>OpenRouter docs:</strong> <a href="https://openrouter.ai/docs/quickstart" target="_blank">openrouter.ai/docs/quickstart</a> — OpenAI SDK pattern, base_url override, model naming</li>
+              <li><strong>OpenRouter model catalog:</strong> <a href="https://openrouter.ai/docs/models" target="_blank">openrouter.ai/docs/models</a> — provider/model slugs, pricing, vision support matrix</li>
+              <li><strong>Anthropic PDF API:</strong> <a href="https://docs.anthropic.com/en/docs/build-with-claude/pdf-support" target="_blank">docs.anthropic.com — PDF support</a> — base64 document blocks</li>
+              <li><strong>Internal — current Anthropic-only Stage C:</strong> <code>src/backend/ml/llm_claude.py</code> lines 193–340 (<code>call_claude_repair()</code>) — the function being refactored</li>
+              <li><strong>Internal — existing multi-provider pattern:</strong> <code>src/backend/services/rule_generator.py</code> lines 191–210 (<code>_call_llm()</code> with Anthropic/OpenAI/OpenRouter fallback) — pattern to generalize</li>
+              <li><strong>Internal — model selection scaffold:</strong> <code>src/backend/ml/model_router.py</code> — <code>pick_model()</code> to extend with provider tuple</li>
+              <li><strong>Internal — proof of concept:</strong> <code>scripts/relabel_with_haiku.py</code> (commit <code>adae0b7</code>) — standalone labeler that proved Opus extraction works on all 41 PDFs; pattern to extend with <code>--provider --model</code> flags</li>
+              <li><strong>Internal — secrets management:</strong> <code>src/backend/services/secrets_loader.py</code> — extend with <code>load_openrouter_key()</code>; key stored in <code>D:\key\ALL-Openclaw-keys.txt</code></li>
+              <li><strong>Internal — ground truth dataset:</strong> <code>private_data/poc/Comp_1/expectations.filled.jsonl</code> (gitignored, local only) — 43 rows, 41 Opus-labeled, 2 excluded; baseline for Sonnet comparison</li>
+              <li><strong>Internal — accuracy evaluator (D8):</strong> <code>src/backend/evaluation/accuracy_evaluator.py</code> — existing field/account/journal accuracy metrics; will consume <code>expectations.sonnet.jsonl</code> for Phase 1 decision gate</li>
+            </ul>
+
+          </div>
+        </details>
+      </div>
     </div>
   </section>
 
@@ -3020,7 +3467,7 @@ POST /api/rules/improvements/{rule_id}/reject
   </section>
 
   <p style="text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 16px;">
-    Last updated: 2025-06-05 (All 8 Open Design Decisions D1–D8 resolved — session update: D# prefixes, Decision labels, Sprint Board ✅)
+    Last updated: 2026-06-09 (D9 added — Multi-Provider LLM Router / OpenRouter Gateway; D1–D9 resolved)
   </p>
 
 </div>

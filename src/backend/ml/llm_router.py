@@ -1,0 +1,680 @@
+"""Stage C multi-provider routing and repair logic."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import time
+from pathlib import Path
+from typing import Any
+
+from config.settings import settings
+from src.backend.ml.field_validators import validate_field
+from src.backend.ml.providers import AnthropicProvider, LLMProvider, OpenRouterProvider
+from src.backend.services.secrets_loader import load_llm_keys
+
+_DAILY_BUDGET_FILE = Path(__file__).parent / "cache" / "stage_c_budget.json"
+_COST_LOG_FILE = Path(__file__).resolve().parents[3] / "tmp" / "llm_cost_log.jsonl"
+_DEFAULT_DAILY_USD_CAP = 2.0
+_DEFAULT_FREE_DAILY_USD_CAP = 1.0
+_DEFAULT_PAID_DAILY_USD_CAP = 2.0
+_DEFAULT_MODEL = "claude-haiku-4-5-20250514"
+# Vision-capable default for Stage C image cascade (Patch B).
+# Previously "anthropic/claude-3.5-haiku" — text-only, incompatible with image input.
+_OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash"
+_DEFAULT_FREE_MODELS = ["google/gemini-2.5-flash-lite"]
+_DEFAULT_FREE_CONF_THRESHOLD = 0.70
+_DEFAULT_CRITICAL_FIELDS = {
+    "invoice_number",
+    "invoice_date",
+    "seller_tax_id",
+    "buyer_tax_id",
+    "net_amount",
+    "vat_amount",
+    "total_amount",
+}
+
+
+def _critical_fields() -> set[str]:
+    raw = os.environ.get("STAGE_C_CRITICAL_FIELDS", "")
+    if not raw.strip():
+        return set(_DEFAULT_CRITICAL_FIELDS)
+    values = {item.strip() for item in raw.split(",") if item.strip()}
+    return values or set(_DEFAULT_CRITICAL_FIELDS)
+
+
+def _load_budget() -> dict[str, Any]:
+    if _DAILY_BUDGET_FILE.exists():
+        try:
+            return json.loads(_DAILY_BUDGET_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {
+        "date": "",
+        "spent_usd": 0.0,
+        "spent_by_tier": {"free": 0.0, "paid": 0.0},
+    }
+
+
+def _save_budget(data: dict[str, Any]) -> None:
+    _DAILY_BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _DAILY_BUDGET_FILE.write_text(json.dumps(data), encoding="utf-8")
+
+
+def _today_str() -> str:
+    return time.strftime("%Y-%m-%d")
+
+
+def _normalize_tier(tier: str | None) -> str:
+    if (tier or "").strip().lower() == "free":
+        return "free"
+    return "paid"
+
+
+def _tier_cap_usd(tier: str) -> float:
+    normalized = _normalize_tier(tier)
+    if normalized == "free":
+        return float(
+            os.environ.get(
+                "STAGE_C_FREE_DAILY_USD_CAP", str(_DEFAULT_FREE_DAILY_USD_CAP)
+            )
+        )
+    return float(
+        os.environ.get("STAGE_C_PAID_DAILY_USD_CAP", str(_DEFAULT_PAID_DAILY_USD_CAP))
+    )
+
+
+def _budget_allows(estimated_cost_usd: float, tier: str = "paid") -> tuple[bool, str]:
+    normalized_tier = _normalize_tier(tier)
+    cap = _tier_cap_usd(normalized_tier)
+    budget = _load_budget()
+    today = _today_str()
+    if budget.get("date") != today:
+        budget = {
+            "date": today,
+            "spent_usd": 0.0,
+            "spent_by_tier": {"free": 0.0, "paid": 0.0},
+        }
+
+    spent_by_tier = budget.get("spent_by_tier") or {"free": 0.0, "paid": 0.0}
+    tier_spent = float(spent_by_tier.get(normalized_tier, 0.0) or 0.0)
+
+    if tier_spent + estimated_cost_usd > cap:
+        return (
+            False,
+            f"Stage C {normalized_tier} daily budget cap ${cap:.2f} reached (spent ${tier_spent:.2f})",
+        )
+    return True, ""
+
+
+def _record_spend(cost_usd: float, tier: str = "paid") -> None:
+    normalized_tier = _normalize_tier(tier)
+    budget = _load_budget()
+    today = _today_str()
+    if budget.get("date") != today:
+        budget = {
+            "date": today,
+            "spent_usd": 0.0,
+            "spent_by_tier": {"free": 0.0, "paid": 0.0},
+        }
+
+    spent_by_tier = budget.get("spent_by_tier") or {"free": 0.0, "paid": 0.0}
+    spent_by_tier[normalized_tier] = round(
+        float(spent_by_tier.get(normalized_tier, 0.0) or 0.0) + cost_usd,
+        6,
+    )
+
+    budget["spent_usd"] = round(budget["spent_usd"] + cost_usd, 6)
+    budget["spent_by_tier"] = spent_by_tier
+    _save_budget(budget)
+
+
+def _append_cost_log(entry: dict[str, Any]) -> None:
+    _COST_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with _COST_LOG_FILE.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def read_cost_log_tail(limit: int = 20) -> list[dict[str, Any]]:
+    """Read the latest N cost log records from append-only jsonl file."""
+    if limit <= 0:
+        return []
+    if not _COST_LOG_FILE.exists():
+        return []
+
+    rows: list[dict[str, Any]] = []
+    with _COST_LOG_FILE.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return rows[-limit:]
+
+
+def get_routing_diagnostics() -> dict[str, Any]:
+    """Expose current Stage C routing configuration for diagnostics endpoints."""
+    settings.reload()
+    budget = _load_budget()
+    spent_by_tier = budget.get("spent_by_tier") or {"free": 0.0, "paid": 0.0}
+    free_models = [
+        item.strip()
+        for item in os.environ.get(
+            "STAGE_C_FREE_MODELS", ",".join(_DEFAULT_FREE_MODELS)
+        ).split(",")
+        if item.strip()
+    ]
+    return {
+        "provider_preference": os.environ.get("STAGE_C_PROVIDER", "openrouter"),
+        "default_model": os.environ.get(
+            "STAGE_C_DEFAULT_MODEL", _OPENROUTER_DEFAULT_MODEL
+        ),
+        "escalation_model": os.environ.get(
+            "STAGE_C_ESCALATION_MODEL", "anthropic/claude-sonnet-4"
+        ),
+        "openrouter_base_url": settings.OPENROUTER_BASE_URL,
+        "free_models": free_models,
+        "free_conf_threshold": float(
+            os.environ.get(
+                "STAGE_C_FREE_CONF_THRESHOLD", str(_DEFAULT_FREE_CONF_THRESHOLD)
+            )
+        ),
+        "daily_budget_caps_usd": {
+            "free": _tier_cap_usd("free"),
+            "paid": _tier_cap_usd("paid"),
+            "legacy_total": float(
+                os.environ.get("STAGE_C_DAILY_USD_CAP", str(_DEFAULT_DAILY_USD_CAP))
+            ),
+        },
+        "daily_budget_state": {
+            "date": budget.get("date", ""),
+            "spent_usd": float(budget.get("spent_usd", 0.0) or 0.0),
+            "spent_by_tier": {
+                "free": float(spent_by_tier.get("free", 0.0) or 0.0),
+                "paid": float(spent_by_tier.get("paid", 0.0) or 0.0),
+            },
+        },
+        "cost_log_file": str(_COST_LOG_FILE),
+    }
+
+
+def _estimate_cost_usd(prompt_tokens: int, completion_tokens: int, model: str) -> float:
+    lowered = (model or "").lower()
+    if "haiku" in lowered:
+        input_price = 0.25 / 1_000_000
+        output_price = 1.25 / 1_000_000
+    elif "opus" in lowered:
+        input_price = 15.0 / 1_000_000
+        output_price = 75.0 / 1_000_000
+    elif "gemini" in lowered:
+        input_price = 0.075 / 1_000_000
+        output_price = 0.30 / 1_000_000
+    elif "deepseek" in lowered:
+        input_price = 0.27 / 1_000_000
+        output_price = 1.10 / 1_000_000
+    elif "qwen" in lowered:
+        input_price = 1.5 / 1_000_000
+        output_price = 2.0 / 1_000_000
+    else:
+        # sonnet / generic mid-tier
+        input_price = 3.0 / 1_000_000
+        output_price = 15.0 / 1_000_000
+    return round(prompt_tokens * input_price + completion_tokens * output_price, 6)
+
+
+def _normalize_model_for_provider(model: str | None, provider: str) -> str:
+    selected = (model or os.environ.get("STAGE_C_DEFAULT_MODEL", "")).strip()
+    if not selected:
+        return _OPENROUTER_DEFAULT_MODEL if provider == "openrouter" else _DEFAULT_MODEL
+
+    if provider == "openrouter":
+        if "/" in selected:
+            return selected
+        if selected.lower().startswith("claude"):
+            return f"anthropic/{selected}"
+        return selected
+
+    # anthropic provider
+    if selected.startswith("anthropic/"):
+        return selected.split("/", 1)[1]
+    return selected
+
+
+def _provider_order(preferred_provider: str | None = None) -> list[str]:
+    preferred = (
+        (preferred_provider or os.environ.get("STAGE_C_PROVIDER", "openrouter"))
+        .strip()
+        .lower()
+    )
+    if preferred == "anthropic":
+        return ["anthropic", "openrouter"]
+    return ["openrouter", "anthropic"]
+
+
+def _build_provider(name: str) -> tuple[LLMProvider, str] | tuple[None, str]:
+    settings.reload()
+    if name == "openrouter":
+        key = os.environ.get("OPENROUTER_API_KEY", "") or settings.OPENROUTER_API_KEY
+        if not key:
+            return None, "OPENROUTER_API_KEY not set"
+        return OpenRouterProvider(
+            api_key=key, base_url=settings.OPENROUTER_BASE_URL
+        ), ""
+
+    key = os.environ.get("ANTHROPIC_API_KEY", "") or settings.ANTHROPIC_API_KEY
+    if not key:
+        return None, "ANTHROPIC_API_KEY not set"
+    return AnthropicProvider(api_key=key), ""
+
+
+def _strip_code_fence(content: str) -> str:
+    text = content.strip()
+    if text.startswith("```"):
+        parts = text.split("```")
+        if len(parts) >= 2:
+            text = parts[1]
+        if text.startswith("json"):
+            text = text[4:]
+    return text.strip()
+
+
+def _normalize_match_text(value: str) -> str:
+    normalized = str(value or "").lower()
+    normalized = "".join(normalized.split())
+    return normalized
+
+
+def _value_in_ocr(value: str, raw_text: str) -> bool:
+    left = _normalize_match_text(value)
+    right = _normalize_match_text(raw_text)
+    if not left or not right:
+        return False
+    return left in right
+
+
+def _normalize_repaired_date(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = text.replace("/", "-")
+    m = re.fullmatch(r"(\d{1,2})-(\d{1,2})-(\d{4})", text)
+    if m:
+        d, mo, y = m.groups()
+        return f"{int(y):04d}-{int(mo):02d}-{int(d):02d}"
+    m = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", text)
+    if m:
+        y, mo, d = m.groups()
+        return f"{int(y):04d}-{int(mo):02d}-{int(d):02d}"
+    return text
+
+
+def _is_bad_repaired_invoice_no(value: str) -> bool:
+    cand = re.sub(r"\s+", "", str(value or "")).upper()
+    if not cand:
+        return True
+    if cand.startswith(("PO", "P/O", "SO", "REF", "RFQ")):
+        return True
+    if re.fullmatch(r"\d{1,4}/\d{1,4}", cand):
+        return True
+    return False
+
+
+def _merge_improvements(
+    *,
+    repaired: dict[str, Any],
+    current_fields: dict[str, Any],
+    current_confidence: dict[str, Any],
+    raw_text: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    improved_fields: dict[str, Any] = {}
+    improved_confidence: dict[str, Any] = {}
+    base_confidence = 0.85
+
+    warnings = current_fields.get("field_validation_warnings") or []
+    warning_fields: set[str] = set()
+    if isinstance(warnings, list):
+        for item in warnings:
+            text = str(item)
+            if ":" in text:
+                warning_fields.add(text.split(":", 1)[0])
+
+    for field_name, new_value in repaired.items():
+        if field_name not in current_fields:
+            continue
+        if not new_value:
+            continue
+
+        candidate_value = str(new_value)
+        if field_name == "invoice_date":
+            candidate_value = _normalize_repaired_date(candidate_value)
+            if not candidate_value:
+                continue
+        if field_name == "invoice_number" and _is_bad_repaired_invoice_no(
+            candidate_value
+        ):
+            continue
+
+        is_valid, _ = validate_field(field_name, candidate_value, raw_text)
+        if not is_valid:
+            continue
+
+        current_conf = current_confidence.get(field_name, 0.0)
+        current_value = str(current_fields.get(field_name) or "")
+        current_in_ocr = _value_in_ocr(current_value, raw_text)
+        has_warning = field_name in warning_fields
+
+        accept = False
+        if has_warning:
+            accept = True
+        elif isinstance(current_conf, float) and current_conf < 0.85:
+            accept = True
+        elif not current_in_ocr:
+            accept = True
+
+        if accept:
+            improved_fields[field_name] = candidate_value
+            improved_confidence[field_name] = base_confidence
+
+    return improved_fields, improved_confidence
+
+
+def _build_stage_c_user_prompt(
+    *,
+    raw_text: str,
+    current_fields: dict[str, Any],
+    weak_fields: list[str] | None,
+    has_image: bool = False,
+) -> str:
+    display_fields = {
+        k: v
+        for k, v in current_fields.items()
+        if k not in ("source_text", "cross_field_error")
+    }
+    weak = [item for item in (weak_fields or []) if item in display_fields]
+    target_section = (
+        "\n\n=== TARGET FIELDS (ONLY FIX THESE) ===\n" + ", ".join(weak) if weak else ""
+    )
+    if has_image:
+        # Vision input: the model reads the document image directly.
+        # OCR text is provided as fallback reference only — the image is authoritative.
+        return (
+            "An image of the source accounting document is attached. "
+            "Read the image and correct the extracted fields below. "
+            "Trust the image when it disagrees with the OCR text.\n\n"
+            "=== CURRENT EXTRACTED FIELDS ===\n"
+            + json.dumps(display_fields, ensure_ascii=False, indent=2)
+            + target_section
+            + "\n\n=== OCR REFERENCE TEXT (may contain errors) ===\n"
+            + raw_text[:2000]
+            + "\n\nReturn corrected fields as JSON only."
+        )
+    return (
+        "=== RAW OCR TEXT ===\n"
+        + raw_text[:4000]
+        + "\n\n=== CURRENT EXTRACTED FIELDS ===\n"
+        + json.dumps(display_fields, ensure_ascii=False, indent=2)
+        + target_section
+        + "\n\nPlease return corrected/completed fields as JSON."
+    )
+
+
+def _free_models() -> list[str]:
+    raw = os.environ.get("STAGE_C_FREE_MODELS", ",".join(_DEFAULT_FREE_MODELS))
+    models = [item.strip() for item in raw.split(",") if item.strip()]
+    return models or list(_DEFAULT_FREE_MODELS)
+
+
+def _image_input_enabled() -> bool:
+    """Whether Stage C should send the source document image to the LLM (Patch B)."""
+    return os.environ.get("STAGE_C_USE_IMAGE_INPUT", "true").strip().lower() == "true"
+
+
+def _weak_fields_by_threshold(
+    confidence: dict[str, Any],
+    threshold: float,
+) -> list[str]:
+    weak: list[str] = []
+    critical = _critical_fields()
+    for key, value in confidence.items():
+        if key in {"source_text"}:
+            continue
+        if key not in critical:
+            continue
+        if not isinstance(value, (int, float)):
+            continue
+        if float(value) < threshold:
+            weak.append(key)
+    return weak
+
+
+def call_llm_repair(
+    *,
+    raw_text: str,
+    current_fields: dict[str, Any],
+    current_confidence: dict[str, Any],
+    system_prompt: str,
+    model: str | None = None,
+    provider: str | None = None,
+    weak_fields: list[str] | None = None,
+    tier: str = "paid",
+    image_path: str | None = None,
+) -> dict[str, Any]:
+    """Route Stage C repair through configured providers with fallback."""
+    load_llm_keys()
+
+    use_image = bool(image_path) and _image_input_enabled()
+    image_paths = [image_path] if (use_image and image_path) else None
+
+    user_prompt = _build_stage_c_user_prompt(
+        raw_text=raw_text,
+        current_fields=current_fields,
+        weak_fields=weak_fields,
+        has_image=use_image,
+    )
+
+    normalized_tier = _normalize_tier(tier)
+    estimated = _estimate_cost_usd(800, 150, model or _DEFAULT_MODEL)
+    allowed, reason = _budget_allows(estimated, tier=normalized_tier)
+    if not allowed:
+        _append_cost_log(
+            {
+                "ts": time.time(),
+                "date": _today_str(),
+                "tier": normalized_tier,
+                "provider": "",
+                "model": model or _DEFAULT_MODEL,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "triggered_by_fields": weak_fields or [],
+                "estimated_cost_usd": estimated,
+                "actual_cost_usd": 0.0,
+                "skipped": True,
+                "skip_reason": reason,
+            }
+        )
+        return {"fields": {}, "confidence": {}, "skipped": True, "skip_reason": reason}
+
+    errors: list[str] = []
+    attempted: list[tuple[str, str]] = []
+    for provider_name in _provider_order(provider):
+        provider_client, provider_error = _build_provider(provider_name)
+        if provider_client is None:
+            errors.append(f"{provider_name}: {provider_error}")
+            continue
+
+        selected_model = _normalize_model_for_provider(model, provider_name)
+        attempted.append((provider_name, selected_model))
+        try:
+            response = provider_client.call(
+                model=selected_model,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                image_paths=image_paths,
+            )
+            content = _strip_code_fence(response.text)
+            repaired = json.loads(content)
+
+            actual_cost = _estimate_cost_usd(
+                response.input_tokens,
+                response.output_tokens,
+                selected_model,
+            )
+            _record_spend(actual_cost, tier=normalized_tier)
+            _append_cost_log(
+                {
+                    "ts": time.time(),
+                    "date": _today_str(),
+                    "tier": normalized_tier,
+                    "provider": provider_name,
+                    "model": selected_model,
+                    "input_tokens": response.input_tokens,
+                    "output_tokens": response.output_tokens,
+                    "triggered_by_fields": weak_fields or [],
+                    "estimated_cost_usd": estimated,
+                    "actual_cost_usd": actual_cost,
+                    "skipped": False,
+                    "skip_reason": "",
+                }
+            )
+
+            improved_fields, improved_confidence = _merge_improvements(
+                repaired=repaired,
+                current_fields=current_fields,
+                current_confidence=current_confidence,
+                raw_text=raw_text,
+            )
+            return {
+                "fields": improved_fields,
+                "confidence": improved_confidence,
+                "skipped": False,
+                "skip_reason": "",
+                "provider": provider_name,
+                "model": selected_model,
+            }
+        except Exception as exc:  # pragma: no cover - provider fallback safety
+            errors.append(f"{provider_name}: {exc}")
+
+    fallback_model = (
+        attempted[0][1]
+        if attempted
+        else _normalize_model_for_provider(model, "openrouter")
+    )
+    _append_cost_log(
+        {
+            "ts": time.time(),
+            "date": _today_str(),
+            "tier": normalized_tier,
+            "provider": attempted[0][0] if attempted else "",
+            "model": fallback_model,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "triggered_by_fields": weak_fields or [],
+            "estimated_cost_usd": estimated,
+            "actual_cost_usd": 0.0,
+            "skipped": True,
+            "skip_reason": "LLM provider failed: " + " | ".join(errors),
+        }
+    )
+    return {
+        "fields": {},
+        "confidence": {},
+        "skipped": True,
+        "skip_reason": "LLM provider failed: " + " | ".join(errors),
+        "provider": attempted[0][0] if attempted else "",
+        "model": fallback_model,
+    }
+
+
+def cascade_repair(
+    *,
+    raw_text: str,
+    current_fields: dict[str, Any],
+    current_confidence: dict[str, Any],
+    system_prompt: str,
+    provider: str | None = None,
+    image_path: str | None = None,
+) -> dict[str, Any]:
+    """Run per-field cascade: free models first, then paid (haiku -> sonnet)."""
+    threshold = float(
+        os.environ.get("STAGE_C_FREE_CONF_THRESHOLD", str(_DEFAULT_FREE_CONF_THRESHOLD))
+    )
+    working_fields = dict(current_fields)
+    working_conf = dict(current_confidence)
+    merged_fields: dict[str, Any] = {}
+    merged_confidence: dict[str, Any] = {}
+    attempts: list[dict[str, Any]] = []
+
+    weak_fields = _weak_fields_by_threshold(working_conf, threshold)
+    if not weak_fields:
+        return {
+            "fields": {},
+            "confidence": {},
+            "attempts": [],
+            "skipped": False,
+            "skip_reason": "",
+            "unresolved_fields": [],
+        }
+
+    preferred_provider = provider or os.environ.get("STAGE_C_PROVIDER", "openrouter")
+    default_paid = os.environ.get("STAGE_C_DEFAULT_MODEL", _OPENROUTER_DEFAULT_MODEL)
+    escalation_paid = os.environ.get(
+        "STAGE_C_ESCALATION_MODEL", "anthropic/claude-sonnet-4"
+    )
+
+    model_plan: list[tuple[str, str]] = [(model, "free") for model in _free_models()]
+    model_plan.append((default_paid, "paid"))
+    if escalation_paid != default_paid:
+        model_plan.append((escalation_paid, "paid"))
+
+    for model_name, tier in model_plan:
+        if not weak_fields:
+            break
+
+        repair = call_llm_repair(
+            raw_text=raw_text,
+            current_fields=working_fields,
+            current_confidence=working_conf,
+            system_prompt=system_prompt,
+            model=model_name,
+            provider=preferred_provider,
+            weak_fields=weak_fields,
+            tier=tier,
+            image_path=image_path,
+        )
+        attempts.append(
+            {
+                "tier": tier,
+                "provider": repair.get("provider", preferred_provider),
+                "model": repair.get("model", model_name),
+                "skipped": bool(repair.get("skipped", False)),
+                "skip_reason": repair.get("skip_reason", ""),
+            }
+        )
+
+        if repair.get("skipped"):
+            continue
+
+        updated_fields = repair.get("fields") or {}
+        updated_conf = repair.get("confidence") or {}
+        if not updated_fields:
+            continue
+
+        working_fields.update(updated_fields)
+        working_conf.update(updated_conf)
+        merged_fields.update(updated_fields)
+        merged_confidence.update(updated_conf)
+
+        weak_fields = _weak_fields_by_threshold(working_conf, threshold)
+
+    return {
+        "fields": merged_fields,
+        "confidence": merged_confidence,
+        "attempts": attempts,
+        "skipped": False,
+        "skip_reason": "",
+        "unresolved_fields": weak_fields,
+    }

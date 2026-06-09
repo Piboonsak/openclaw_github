@@ -38,7 +38,7 @@ DOC_NO_SOFT_RE = re.compile(
     re.IGNORECASE,
 )
 BILL_NO_RE = re.compile(
-    r"(?:bill\s*no\.?|doc\s*no\.?|reference\s*no\.?|ref\.?\s*no\.?)\s*[:：#-]?\s*([A-Za-z0-9][A-Za-z0-9\-_/\.]{2,40})",
+    r"(?:bill\s*no\.?|doc\s*no\.?)\s*[:：#-]?\s*([A-Za-z0-9][A-Za-z0-9\-_/\.]{2,40})",
     re.IGNORECASE,
 )
 DATE_LABEL_RE = re.compile(
@@ -272,7 +272,34 @@ def _value_in_ocr(value: str, raw_text: str) -> bool:
 
 def _extract_invoice_date(raw_text: str) -> str:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+
+    # Prefer explicit invoice/document-date labels and avoid due-date lines.
     for line in lines[:60]:
+        line_l = line.lower()
+        if any(
+            token in line_l
+            for token in ("due", "ครบกำหนด", "กำหนดชำระ", "payment term")
+        ):
+            continue
+        if not DATE_LABEL_RE.search(line):
+            continue
+        if not re.search(
+            r"(?:invoice\s*date|document\s*date|วันที่เอกสาร|วันที่ออก|ใบกำกับ|ใบแจ้งหนี้)",
+            line,
+            re.IGNORECASE,
+        ):
+            continue
+        labeled_date = _extract_date_from_snippet(line)
+        if labeled_date:
+            return labeled_date
+
+    for line in lines[:60]:
+        line_l = line.lower()
+        if any(
+            token in line_l
+            for token in ("due", "ครบกำหนด", "กำหนดชำระ", "payment term")
+        ):
+            continue
         if not DATE_LABEL_RE.search(line):
             continue
         labeled_date = _extract_date_from_snippet(line)
@@ -410,6 +437,16 @@ def _valid_invoice_no_candidate(line: str, candidate: str) -> bool:
         return False
 
     line_l = line.lower()
+    cand_compact = re.sub(r"\s+", "", cand).upper()
+
+    # Do not treat purchase-order/reference identifiers as invoice numbers.
+    if "reference" in line_l or "อ้างอิง" in line:
+        return False
+    if cand_compact.startswith(("PO", "P/O", "SO", "REF", "RFQ")):
+        return False
+    if re.fullmatch(r"\d{1,4}/\d{1,4}", cand_compact):
+        return False
+
     if _is_tax_id_like(cand) and (
         "taxid" in line_l
         or "เลขประจําตัวผู้เสียภาษี" in line
@@ -423,8 +460,19 @@ def _valid_invoice_no_candidate(line: str, candidate: str) -> bool:
         token in line
         for token in ("ถนน", "แขวง", "เขต", "จังหวัด", "อำเภอ", "ตำบล", "หมู่", "ซอย")
     ):
+        if "/" in cand:
+            return False
         if len(cand) <= 8 and re.fullmatch(r"[A-Za-z0-9]+", cand):
             return False
+
+    if (
+        any(
+            token in line_l
+            for token in ("bill to", "sold to", "buyer", "customer", "address", "ที่อยู่")
+        )
+        and "/" in cand
+    ):
+        return False
 
     return True
 
@@ -1118,7 +1166,9 @@ def _join_ocr_text(ocr_output: dict[str, Any]) -> str:
 
 
 def _extract_with_rules(raw_text: str) -> dict[str, Any]:
-    invoice_number, invoice_number_source = _extract_invoice_number_with_source(raw_text)
+    invoice_number, invoice_number_source = _extract_invoice_number_with_source(
+        raw_text
+    )
     vendor_match = VENDOR_RE.search(raw_text)
     invoice_date = _extract_invoice_date(raw_text)
     total_amount = _extract_total_amount(raw_text)
@@ -1318,7 +1368,9 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
     }
     invoice_number_conf = min(
         invoice_number_conf,
-        source_conf_cap.get(str(fields.get("invoice_number_source") or "missing"), 0.55),
+        source_conf_cap.get(
+            str(fields.get("invoice_number_source") or "missing"), 0.55
+        ),
     )
     if fields["invoice_number"] and _looks_like_noisy_invoice_number(
         str(fields["invoice_number"])

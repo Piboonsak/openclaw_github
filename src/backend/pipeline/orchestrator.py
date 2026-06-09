@@ -7,13 +7,22 @@ from enum import Enum, auto
 from typing import Any
 
 from src.backend.ml.field_extractor import run_extraction
-from src.backend.ml.llm_claude import call_claude_repair, should_trigger_stage_c
-from src.backend.ml.model_router import pick_model, should_escalate_to_sonnet
+from src.backend.ml.llm_claude import STAGE_C_SYSTEM_PROMPT
+from src.backend.ml.llm_router import cascade_repair
 from src.backend.ml.ocr import run_ocr
 from src.backend.services.rule_engine import run_journal_router
 
 # Threshold below which LLM escalation is triggered (aligned with design D2)
 CONFIDENCE_ESCALATION_THRESHOLD = 0.70
+STAGE_C_CRITICAL_FIELDS = {
+    "invoice_number",
+    "invoice_date",
+    "seller_tax_id",
+    "buyer_tax_id",
+    "net_amount",
+    "vat_amount",
+    "total_amount",
+}
 
 
 class StageResult(Enum):
@@ -84,7 +93,7 @@ def _compute_overall_confidence(
 async def run_pipeline(
     image_path: str, company_id: str | None = None
 ) -> PipelineContext:
-    """Run OCR -> extraction -> Stage C repair -> Sonnet escalation -> journal routing."""
+    """Run OCR -> extraction -> Stage C cascade repair -> journal routing."""
     ctx = PipelineContext(source_file=image_path, company_id=company_id)
     try:
         ctx.ocr_output = run_ocr(image_path)
@@ -98,62 +107,65 @@ async def run_pipeline(
         # Use OCR confidence from extraction meta (where the extractor stores it)
         ocr_info = {"ocr_confidence": meta.get("ocr_confidence", 0.75)}
 
-        # --- Stage C: Claude-based repair ---
-        # Trigger by existing rules (cross-field conflict, missing VAT, low per-field conf)
-        trigger, reason = should_trigger_stage_c(fields, confidence)
-
-        # Also trigger if overall confidence is below escalation threshold
+        # --- Stage C: per-field cascade (regex -> free -> paid) ---
         overall = _compute_overall_confidence(fields, confidence, ocr_info)
-        if not trigger and overall < CONFIDENCE_ESCALATION_THRESHOLD:
-            trigger = True
-            reason = (
-                f"overall_confidence={overall:.2f} < {CONFIDENCE_ESCALATION_THRESHOLD}"
-            )
+        low_conf_keys = [
+            k
+            for k, v in confidence.items()
+            if k in STAGE_C_CRITICAL_FIELDS
+            and isinstance(v, (int, float))
+            and float(v) < CONFIDENCE_ESCALATION_THRESHOLD
+        ]
 
-        if trigger:
+        if low_conf_keys:
             raw_text = fields.get("source_text", "")
-            model = ctx.extraction_output.get("model")
-            repair = call_claude_repair(raw_text, fields, confidence, model)
-            ctx.stage_c_output = repair
-            if not repair.get("skipped") and repair.get("fields"):
-                fields.update(repair["fields"])
-                confidence.update(repair["confidence"])
+            cascade = cascade_repair(
+                raw_text=raw_text,
+                current_fields=fields,
+                current_confidence=confidence,
+                system_prompt=STAGE_C_SYSTEM_PROMPT,
+                image_path=image_path,
+            )
+            ctx.stage_c_output = cascade
+            if cascade.get("fields"):
+                fields.update(cascade["fields"])
+                confidence.update(cascade["confidence"])
                 ctx.extraction_output["stage_c_applied"] = True
-                ctx.extraction_output["stage_c_reason"] = reason
+                ctx.extraction_output["stage_c_reason"] = (
+                    f"low_confidence_fields:{low_conf_keys}"
+                )
                 ctx.stage_c_applied = True
+            attempts = cascade.get("attempts", [])
+            ctx.extraction_output["stage_c_attempts"] = attempts
+            if attempts:
+                first_attempt = attempts[0]
+                last_attempt = attempts[-1]
+                ctx.extraction_output["stage_c_initial_provider"] = first_attempt.get(
+                    "provider", ""
+                )
+                ctx.extraction_output["stage_c_initial_model"] = first_attempt.get(
+                    "model", ""
+                )
+                ctx.extraction_output["stage_c_provider"] = last_attempt.get(
+                    "provider", ""
+                )
+                ctx.extraction_output["stage_c_model"] = last_attempt.get("model", "")
+            unresolved = cascade.get("unresolved_fields", [])
+            if unresolved:
+                ctx.extraction_output["stage_c_unresolved_fields"] = unresolved
 
         # Recompute after Stage C repair
         overall = _compute_overall_confidence(fields, confidence, ocr_info)
 
-        # --- Sonnet escalation: if still below threshold after Stage C ---
-        if overall < CONFIDENCE_ESCALATION_THRESHOLD and not ctx.escalated_to_sonnet:
-            ocr_conf = float(meta.get("ocr_confidence", 0.75))
-            low_conf_fields = sum(
-                1
-                for k, v in confidence.items()
-                if k not in ("source_text",)
-                and isinstance(v, (int, float))
-                and v < CONFIDENCE_ESCALATION_THRESHOLD
+        # Sonnet escalation now handled within cascade_repair() model plan.
+        ctx.escalated_to_sonnet = bool(
+            any(
+                "sonnet" in str(item.get("model", "")).lower()
+                and not item.get("skipped")
+                for item in (ctx.extraction_output.get("stage_c_attempts") or [])
             )
-            escalate = should_escalate_to_sonnet(
-                page_count=int(meta.get("page_count", 1)),
-                ocr_confidence=ocr_conf,
-                low_confidence_fields=low_conf_fields,
-                rule_conflict=bool(fields.get("cross_field_conflict")),
-            )
-            if escalate:
-                # Re-run extraction with Sonnet model
-                sonnet_model = pick_model(escalated_to_sonnet=True)
-                raw_text = fields.get("source_text", "")
-                sonnet_repair = call_claude_repair(
-                    raw_text, fields, confidence, sonnet_model
-                )
-                if not sonnet_repair.get("skipped") and sonnet_repair.get("fields"):
-                    fields.update(sonnet_repair["fields"])
-                    confidence.update(sonnet_repair["confidence"])
-                ctx.escalated_to_sonnet = True
-                ctx.extraction_output["escalated_to_sonnet"] = True
-                ctx.extraction_output["model"] = sonnet_model
+        )
+        ctx.extraction_output["escalated_to_sonnet"] = ctx.escalated_to_sonnet
 
         # Final overall confidence
         overall = _compute_overall_confidence(fields, confidence, ocr_info)
