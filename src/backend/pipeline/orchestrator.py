@@ -122,6 +122,38 @@ def _compute_overall_confidence(
     return overall
 
 
+def _backfill_amounts_from_reconciliation(
+    fields: dict[str, Any],
+    reconciliation: dict[str, Any],
+) -> list[str]:
+    """Backfill missing net/vat/total only when at least two values are present.
+
+    This keeps display fields complete (for review/export) while avoiding
+    speculative fill-ins from a single observed value.
+    """
+    amount_keys = ("net_amount", "vat_amount", "total_amount")
+    observed_count = sum(1 for key in amount_keys if str(fields.get(key) or "").strip())
+    if observed_count < 2:
+        return []
+
+    derived = reconciliation.get("derived") or {}
+    key_map = {
+        "net_amount": "net",
+        "vat_amount": "vat",
+        "total_amount": "gross",
+    }
+
+    backfilled: list[str] = []
+    for field_key, derived_key in key_map.items():
+        if str(fields.get(field_key) or "").strip():
+            continue
+        value = derived.get(derived_key)
+        if isinstance(value, (int, float)):
+            fields[field_key] = f"{float(value):.2f}"
+            backfilled.append(field_key)
+    return backfilled
+
+
 async def run_pipeline(
     image_path: str,
     company_id: str | None = None,
@@ -194,6 +226,15 @@ async def run_pipeline(
         # per-field penalties, then auto-correct gross when the printed total is the
         # post-WHT paid amount.
         reconciliation = reconcile_amounts(fields)
+        backfilled_fields = _backfill_amounts_from_reconciliation(
+            fields, reconciliation
+        )
+        if backfilled_fields:
+            # Re-run after backfilling to keep derived/checks in sync with surfaced fields.
+            reconciliation = reconcile_amounts(fields)
+            ctx.extraction_output["reconciliation_backfilled_fields"] = (
+                backfilled_fields
+            )
         apply_amount_confidence(fields, confidence, reconciliation)
         if reconciliation.get("total_is_paid"):
             for key, value in reconciliation.get("corrected", {}).items():
