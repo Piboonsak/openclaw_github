@@ -1306,6 +1306,7 @@
     fileItem._reconciliation = extraction.reconciliation || fields.reconciliation || null;
     fileItem._criticalFlags = extraction.critical_flags || null;
     fileItem._vatLayout = extraction.vat_layout || fileItem._reconciliation?.layout || null;
+    const reconciledDerived = fileItem._reconciliation?.derived || {};
     const journal = payload.journal || {};
     const postings = Array.isArray(journal.postings) ? journal.postings : [];
 
@@ -1318,6 +1319,9 @@
     const extractedVatRate = toOptionalNumber(fields.vat_rate);
     const extractedWhtAmount = toOptionalNumber(fields.wht_amount);
     const extractedWhtRate = toOptionalNumber(fields.wht_rate);
+    const reconciledNetAmount = toOptionalNumber(reconciledDerived.net);
+    const reconciledVatAmount = toOptionalNumber(reconciledDerived.vat);
+    const reconciledGrossAmount = toOptionalNumber(reconciledDerived.gross);
 
     const backendInvNo = String(fields.invoice_number || '').trim();
     if (backendInvNo.length >= 4 || /[A-Za-z-]/.test(backendInvNo)) {
@@ -1328,7 +1332,9 @@
     fileItem.sellerTax = fields.seller_tax_id || fileItem.sellerTax;
     fileItem.buyerTax = String(fields.buyer_tax_id || '').trim();
     fileItem.buyerName = fields.buyer_name || fileItem.buyerName || '';
-    if (expenseLine) {
+    if (reconciledNetAmount !== null && reconciledNetAmount > 0) {
+      fileItem.netAmt = reconciledNetAmount;
+    } else if (expenseLine) {
       fileItem.netAmt = toNumber(expenseLine.debit);
     } else if (extractedNetAmount !== null && extractedNetAmount > 0) {
       fileItem.netAmt = extractedNetAmount;
@@ -1345,7 +1351,9 @@
       fileItem.vatRate = fileItem.vatRate || 7;
     }
     fileItem.discount = fileItem.discount || 0;
-    if (vatLine) {
+    if (reconciledVatAmount !== null && reconciledVatAmount > 0) {
+      fileItem._vatAmt = reconciledVatAmount;
+    } else if (vatLine) {
       fileItem._vatAmt = toNumber(vatLine.debit);
     } else if (extractedVatAmount !== null && extractedVatAmount > 0) {
       fileItem._vatAmt = extractedVatAmount;
@@ -1367,7 +1375,10 @@
     fileItem._creditAmt = creditLine
       ? toNumber(creditLine.credit)
       : toNumber(journal?.totals?.credit, totalAmount);
-    fileItem._grossAmt = fileItem._creditAmt || totalAmount || (fileItem.netAmt + fileItem._vatAmt);
+    fileItem._grossAmt =
+      (reconciledGrossAmount !== null && reconciledGrossAmount > 0)
+        ? reconciledGrossAmount
+        : (fileItem._creditAmt || totalAmount || (fileItem.netAmt + fileItem._vatAmt));
 
     const extractionMeta = {
       ...(extraction?.meta || {}),

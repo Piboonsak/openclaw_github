@@ -406,9 +406,28 @@ def _resolve_amount(field_name: str, context: dict[str, Any]) -> float:
 def _fallback_payload(
     fields: dict[str, Any], rules: dict[str, Any], sha: str
 ) -> dict[str, Any]:
-    amount = _to_float(fields.get("total_amount"))
-    vat_amount = round(amount * rules["vat_rate"], 2)
-    base_amount = max(amount - vat_amount, 0.0)
+    # Keep fallback aligned with reconciliation: trust printed VAT/Net first.
+    # This avoids recomputing VAT as total*rate (wrong for inclusive totals and
+    # harmful when a correct VAT is already present on the document).
+    gross = _to_float(fields.get("total_amount") or fields.get("gross_amount"))
+    doc_vat = _to_float(fields.get("vat_amount"), 0.0)
+    doc_net = _to_float(fields.get("net_amount"), 0.0)
+    vat_rate = float(rules.get("vat_rate", 0.07))
+    layout, derived = classify_vat_layout(
+        net=doc_net or None,
+        vat=doc_vat or None,
+        total=gross or None,
+        rate=vat_rate * 100.0,
+    )
+
+    vat_amount = round(doc_vat if doc_vat > 0 else (derived.get("vat") or 0.0), 2)
+    base_amount = round(
+        doc_net
+        if doc_net > 0
+        else (derived.get("net") or max((gross or 0.0) - vat_amount, 0.0)),
+        2,
+    )
+    amount = round(derived.get("gross") or gross or (base_amount + vat_amount), 2)
 
     postings = [
         {
@@ -443,7 +462,7 @@ def _fallback_payload(
         "is_balanced": balanced,
         "status": "READY" if balanced else "UNRESOLVED_RULE",
         "cache_hit": False,
-        "flags": [],
+        "flags": [f"vat_layout:{layout}"] if layout else [],
     }
 
 
