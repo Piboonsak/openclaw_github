@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
+from src.backend.ml.amount_reconciler import apply_amount_confidence, reconcile_amounts
 from src.backend.ml.field_extractor import run_extraction
 from src.backend.ml.llm_claude import STAGE_C_SYSTEM_PROMPT
 from src.backend.ml.llm_router import cascade_repair
@@ -23,6 +24,33 @@ STAGE_C_CRITICAL_FIELDS = {
     "vat_amount",
     "total_amount",
 }
+
+# Weighted critical-field model for overall confidence. Money + tax-id fields
+# dominate; document identifiers and names contribute little. A wrong amount must
+# drag overall confidence down far more than a misread invoice number.
+_FIELD_WEIGHTS = {
+    "seller_tax_id": 3.0,
+    "buyer_tax_id": 3.0,
+    "net_amount": 3.0,
+    "vat_amount": 3.0,
+    "total_amount": 3.0,
+    "wht_amount": 1.5,
+    "invoice_number": 1.0,
+    "invoice_date": 1.0,
+    "seller_name": 1.0,
+}
+# Fields that must be present for a document to earn high confidence.
+_REQUIRED_CRITICAL = (
+    "seller_tax_id",
+    "buyer_tax_id",
+    "net_amount",
+    "vat_amount",
+    "total_amount",
+)
+# Hard-gate ceilings.
+_GATE_RECONCILE_FAIL = 0.69
+_GATE_TAX_MISMATCH = 0.79
+_GATE_CRITICAL_MISSING = 0.74
 
 
 class StageResult(Enum):
@@ -46,43 +74,47 @@ class PipelineContext:
 
 
 def _compute_overall_confidence(
-    fields: dict[str, Any], confidence: dict[str, Any], ocr_output: dict[str, Any]
+    fields: dict[str, Any],
+    confidence: dict[str, Any],
+    ocr_output: dict[str, Any],
+    reconciliation: dict[str, Any] | None = None,
+    tax_id_match: bool | None = None,
 ) -> float:
-    """Compute overall confidence matching the frontend formula logic.
+    """Compute overall confidence from weighted critical fields plus hard gates.
 
-    Uses: OCR confidence × 0.25 + field avg × 0.45 + completeness × 0.30
-    Only averages confidence for required fields (not optional ones).
-    Required fields: invoice_number, invoice_date, seller_name,
-    seller_tax_id, buyer_tax_id, total_amount (6 fields).
+    Money and tax-id fields dominate the weighted field score. Hard gates then
+    cap the result when the document fails arithmetic reconciliation, the buyer
+    tax id does not match the company, or a required critical field is missing —
+    so a confident-but-wrong document cannot reach the green band.
     """
     ocr_conf = min(1.0, max(0.0, float(ocr_output.get("ocr_confidence", 0.75))))
 
-    required_keys = [
-        "invoice_number",
-        "invoice_date",
-        "seller_name",
-        "seller_tax_id",
-        "buyer_tax_id",
-        "total_amount",
-    ]
+    weighted_sum = 0.0
+    weight_total = 0.0
+    for key, weight in _FIELD_WEIGHTS.items():
+        value = confidence.get(key)
+        if isinstance(value, (int, float)):
+            weighted_sum += float(value) * weight
+            weight_total += weight
+    field_conf = weighted_sum / weight_total if weight_total else 0.6
 
-    # Average confidence only for required fields
-    conf_values = [
-        float(confidence[k])
-        for k in required_keys
-        if k in confidence and isinstance(confidence[k], (int, float))
-    ]
-    field_conf = sum(conf_values) / len(conf_values) if conf_values else 0.6
+    present = sum(1 for k in _REQUIRED_CRITICAL if str(fields.get(k) or "").strip())
+    completeness = present / len(_REQUIRED_CRITICAL)
 
-    present = sum(1 for k in required_keys if str(fields.get(k) or "").strip())
-    completeness = present / len(required_keys)
+    overall = ocr_conf * 0.20 + field_conf * 0.55 + completeness * 0.25
 
-    overall = ocr_conf * 0.25 + field_conf * 0.45 + completeness * 0.30
+    # --- Hard gates ---
+    if reconciliation is not None and not reconciliation.get("reconciled", True):
+        overall = min(overall, _GATE_RECONCILE_FAIL)
+    if tax_id_match is False:
+        overall = min(overall, _GATE_TAX_MISMATCH)
+    if present < len(_REQUIRED_CRITICAL):
+        overall = min(overall, _GATE_CRITICAL_MISSING)
 
     has_low_critical = any(
         isinstance(confidence.get(key), (int, float))
         and float(confidence.get(key, 0.0)) < CONFIDENCE_ESCALATION_THRESHOLD
-        for key in required_keys
+        for key in STAGE_C_CRITICAL_FIELDS
     )
     if has_low_critical:
         overall = min(overall, CONFIDENCE_ESCALATION_THRESHOLD - 0.01)
@@ -91,7 +123,9 @@ def _compute_overall_confidence(
 
 
 async def run_pipeline(
-    image_path: str, company_id: str | None = None
+    image_path: str,
+    company_id: str | None = None,
+    company_tax_id: str | None = None,
 ) -> PipelineContext:
     """Run OCR -> extraction -> Stage C cascade repair -> journal routing."""
     ctx = PipelineContext(source_file=image_path, company_id=company_id)
@@ -154,8 +188,52 @@ async def run_pipeline(
             if unresolved:
                 ctx.extraction_output["stage_c_unresolved_fields"] = unresolved
 
-        # Recompute after Stage C repair
-        overall = _compute_overall_confidence(fields, confidence, ocr_info)
+        # --- Re-run reconciliation AFTER Stage C may have overwritten amounts ---
+        # The rules pass reconciled the original extraction, but Stage C can change
+        # net/vat/total. Re-anchor on the (possibly repaired) document VAT, reapply
+        # per-field penalties, then auto-correct gross when the printed total is the
+        # post-WHT paid amount.
+        reconciliation = reconcile_amounts(fields)
+        apply_amount_confidence(fields, confidence, reconciliation)
+        if reconciliation.get("total_is_paid"):
+            for key, value in reconciliation.get("corrected", {}).items():
+                fields[key] = value
+            # Re-reconcile after auto-correction so downstream sees consistent state.
+            reconciliation = reconcile_amounts(fields)
+        fields["reconciliation"] = reconciliation
+        ctx.extraction_output["reconciliation"] = reconciliation
+        ctx.extraction_output["vat_layout"] = reconciliation.get("layout")
+
+        # Buyer tax-id vs company tax-id gate.
+        tax_id_match: bool | None = None
+        if company_tax_id:
+            buyer_tax_id = "".join(
+                ch for ch in str(fields.get("buyer_tax_id") or "") if ch.isdigit()
+            )
+            company_digits = "".join(ch for ch in str(company_tax_id) if ch.isdigit())
+            if buyer_tax_id and company_digits:
+                tax_id_match = buyer_tax_id == company_digits
+                if not tax_id_match:
+                    confidence["buyer_tax_id"] = min(
+                        float(confidence.get("buyer_tax_id", 0.9) or 0.0), 0.45
+                    )
+        ctx.extraction_output["tax_id_match"] = tax_id_match
+
+        # Critical flags surfaced to the frontend.
+        ctx.extraction_output["critical_flags"] = {
+            "reconciled": reconciliation.get("reconciled"),
+            "vat_check": reconciliation.get("checks", {}).get("vat"),
+            "total_check": reconciliation.get("checks", {}).get("total"),
+            "wht_check": reconciliation.get("checks", {}).get("wht"),
+            "total_is_paid": reconciliation.get("total_is_paid"),
+            "tax_id_match": tax_id_match,
+            "mismatches": reconciliation.get("mismatches", []),
+        }
+
+        # Recompute after Stage C repair + reconciliation
+        overall = _compute_overall_confidence(
+            fields, confidence, ocr_info, reconciliation, tax_id_match
+        )
 
         # Sonnet escalation now handled within cascade_repair() model plan.
         ctx.escalated_to_sonnet = bool(
@@ -168,7 +246,9 @@ async def run_pipeline(
         ctx.extraction_output["escalated_to_sonnet"] = ctx.escalated_to_sonnet
 
         # Final overall confidence
-        overall = _compute_overall_confidence(fields, confidence, ocr_info)
+        overall = _compute_overall_confidence(
+            fields, confidence, ocr_info, reconciliation, tax_id_match
+        )
         ctx.overall_confidence = overall
         ctx.extraction_output["overall_confidence"] = overall
 

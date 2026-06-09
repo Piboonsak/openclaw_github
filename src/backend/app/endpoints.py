@@ -82,7 +82,9 @@ async def process(
         )
 
     # Run actual async pipeline orchestrator
-    ctx = await run_pipeline(resolved_path, company_id=company_id)
+    ctx = await run_pipeline(
+        resolved_path, company_id=company_id, company_tax_id=company_tax_id
+    )
 
     if ctx.error:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {ctx.error}")

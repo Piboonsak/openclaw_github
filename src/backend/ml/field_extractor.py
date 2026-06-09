@@ -14,13 +14,17 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
+from src.backend.ml.amount_reconciler import (
+    apply_amount_confidence,
+    reconcile_amounts,
+)
 from src.backend.ml.model_router import pick_model, should_escalate_to_sonnet
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v26"
+EXTRACTION_SCHEMA_VERSION = "v27"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
@@ -1445,6 +1449,13 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
                 )
     except ValueError:
         pass
+
+    # Authoritative arithmetic reconciliation (anchored on document VAT, classifies
+    # exclusive/inclusive layout, enforces Net + VAT = Gross). Applies per-field
+    # confidence penalties so a wrong-but-confident amount cannot earn a green band.
+    reconciliation = reconcile_amounts(fields)
+    apply_amount_confidence(fields, confidence, reconciliation)
+    fields["reconciliation"] = reconciliation
 
     return {"fields": fields, "confidence": confidence}
 

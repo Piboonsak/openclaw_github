@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from src.backend.ml.amount_reconciler import classify_vat_layout
 from src.backend.services.rule_loader import JournalRule, load_company_rules
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -172,12 +173,31 @@ def _derive_routing_context(
     )
     vat_rate = rules.get("vat_rate", 0.07)
     has_vat = has_vat_hint and gross_amount > 0
-    vat_amount = _to_float(fields.get("vat_amount"))
-    if not vat_amount and has_vat:
-        vat_amount = round(gross_amount * vat_rate / (1.0 + vat_rate), 2)
-    net_amount = _to_float(fields.get("net_amount"))
-    if not net_amount:
-        net_amount = round(max(gross_amount - vat_amount, 0.0), 2)
+    # Anchor on the VAT value seen on the document and classify the layout
+    # (exclusive "บวก VAT" vs inclusive "ถอด VAT") instead of always assuming
+    # inclusive. This prevents over-writing a trusted extracted VAT/net.
+    doc_vat = _to_float(fields.get("vat_amount"))
+    doc_net = _to_float(fields.get("net_amount"))
+    rate_pct = vat_rate * 100.0
+    if doc_vat or doc_net or gross_amount:
+        _layout, _derived = classify_vat_layout(
+            net=doc_net or None,
+            vat=doc_vat or None,
+            total=gross_amount or None,
+            rate=rate_pct,
+        )
+        if has_vat or doc_vat:
+            vat_amount = doc_vat or _derived.get("vat") or 0.0
+        else:
+            vat_amount = doc_vat or 0.0
+        net_amount = (
+            doc_net
+            or _derived.get("net")
+            or round(max(gross_amount - vat_amount, 0.0), 2)
+        )
+    else:
+        vat_amount = doc_vat or 0.0
+        net_amount = doc_net or round(max(gross_amount - vat_amount, 0.0), 2)
 
     amount_paid = _to_float(fields.get("amount_paid"))
     payment_amount = amount_paid or round(max(gross_amount - wht_amount, 0.0), 2)

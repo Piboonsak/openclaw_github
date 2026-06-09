@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from config.settings import settings
+from src.backend.ml.amount_reconciler import reconcile_amounts
 from src.backend.ml.field_validators import validate_field
 from src.backend.ml.providers import AnthropicProvider, LLMProvider, OpenRouterProvider
 from src.backend.services.secrets_loader import load_llm_keys
@@ -378,6 +379,41 @@ def _merge_improvements(
         if accept:
             improved_fields[field_name] = candidate_value
             improved_confidence[field_name] = base_confidence
+
+    # Money fields earn high confidence only when the repaired amounts reconcile
+    # arithmetically. Otherwise cap them so a confident-but-wrong repair cannot
+    # produce a green band.
+    money_fields = {
+        "net_amount",
+        "vat_amount",
+        "total_amount",
+        "wht_amount",
+        "amount_paid",
+    }
+    if improved_fields.keys() & money_fields:
+        merged = {**current_fields, **improved_fields}
+        recon = reconcile_amounts(merged)
+        checks = recon.get("checks", {})
+        for field_name in improved_fields.keys() & money_fields:
+            if (
+                field_name in ("net_amount", "total_amount")
+                and checks.get("total") == "fail"
+            ):
+                improved_confidence[field_name] = min(
+                    improved_confidence[field_name], 0.45
+                )
+            elif field_name == "vat_amount" and checks.get("vat") == "fail":
+                improved_confidence[field_name] = min(
+                    improved_confidence[field_name], 0.40
+                )
+            elif field_name == "wht_amount" and checks.get("wht") == "fail":
+                improved_confidence[field_name] = min(
+                    improved_confidence[field_name], 0.40
+                )
+            elif not recon.get("reconciled"):
+                improved_confidence[field_name] = min(
+                    improved_confidence[field_name], 0.50
+                )
 
     return improved_fields, improved_confidence
 

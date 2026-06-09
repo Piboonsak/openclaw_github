@@ -1381,6 +1381,24 @@ input[type="checkbox"]:focus-visible {
 .conf-med  { background: var(--warn-soft); color: var(--warn); }
 .conf-low  { background: var(--danger-soft); color: var(--danger); }
 
+.scan-flag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.scan-flag-chips:empty { display: none; }
+.flag-chip {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid transparent;
+}
+.flag-chip-danger { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.flag-chip-warn   { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.flag-chip-info   { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
 .taxid-status { font-size: var(--text-xs); margin-top: 4px; display: block; }
 .taxid-ok   { color: var(--ok); }
 .taxid-warn { color: var(--warn); }

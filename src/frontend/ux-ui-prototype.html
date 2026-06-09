@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/ux-ui-prototype.css?v=20260608h" />
+  <link rel="stylesheet" href="/static/ux-ui-prototype.css?v=20260609a" />
 </head>
 <body>
 
@@ -168,6 +168,7 @@
                 <button type="button" class="scan-confidence-info" id="scanConfidenceInfo" aria-label="Confidence details" title=""></button>
               </div>
             </div>
+            <div class="scan-flag-chips" id="scanFlagChips"></div>
 
             <div class="field-grid-2">
               <div class="field-group">
@@ -1300,6 +1301,11 @@
     const fields = payload.fields || {};
     const extraction = payload.extraction || {};
     const extractionConfidenceMap = extraction.confidence_per_field || {};
+    // Arithmetic reconciliation + critical gates from the backend (anchored on
+    // the document VAT, classifies exclusive/inclusive, enforces Net+VAT=Gross).
+    fileItem._reconciliation = extraction.reconciliation || fields.reconciliation || null;
+    fileItem._criticalFlags = extraction.critical_flags || null;
+    fileItem._vatLayout = extraction.vat_layout || fileItem._reconciliation?.layout || null;
     const journal = payload.journal || {};
     const postings = Array.isArray(journal.postings) ? journal.postings : [];
 
@@ -1767,6 +1773,41 @@
     });
   }
 
+  function renderReconcileFlags(f) {
+    const host = $('scanFlagChips');
+    if (!host) return;
+    host.innerHTML = '';
+    const recon = f._reconciliation;
+    const flags = f._criticalFlags || {};
+    const chips = [];
+    if (recon && recon.reconciled === false) {
+      chips.push({ cls: 'flag-chip-danger', text: '⚠ Amounts do not reconcile' });
+    }
+    if (flags.total_is_paid || recon?.total_is_paid) {
+      chips.push({ cls: 'flag-chip-warn', text: '↺ Total adjusted (was post-WHT paid)' });
+    }
+    if (flags.vat_check === 'fail' || recon?.checks?.vat === 'fail') {
+      chips.push({ cls: 'flag-chip-danger', text: '⚠ VAT mismatch' });
+    }
+    if (flags.wht_check === 'fail' || recon?.checks?.wht === 'fail') {
+      chips.push({ cls: 'flag-chip-warn', text: '⚠ WHT mismatch' });
+    }
+    if (flags.tax_id_match === false) {
+      chips.push({ cls: 'flag-chip-danger', text: '⚠ Buyer Tax ID ≠ company' });
+    }
+    const layout = f._vatLayout || recon?.layout;
+    if (layout === 'exclusive' || layout === 'inclusive') {
+      const label = layout === 'exclusive' ? 'บวก VAT (exclusive)' : 'ถอด VAT (inclusive)';
+      chips.push({ cls: 'flag-chip-info', text: label });
+    }
+    for (const chip of chips) {
+      const el = document.createElement('span');
+      el.className = `flag-chip ${chip.cls}`;
+      el.textContent = chip.text;
+      host.appendChild(el);
+    }
+  }
+
   function loadScanForm(f) {
     if (!f) return;
     const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
@@ -1777,9 +1818,16 @@
 
     const confEl = $('scanConfidence');
     confEl.textContent = `${f.confidence}% confidence`;
-    confEl.className = `scan-confidence ${f.confidence >= 90 ? 'conf-high' : f.confidence >= 75 ? 'conf-med' : 'conf-low'}`;
+    // Band: green >= 85 AND reconciled; yellow 70-84; red < 70 or not reconciled.
+    // A document whose amounts do not reconcile can never show green.
+    const reconciled = f._reconciliation ? f._reconciliation.reconciled !== false : true;
+    let band = 'conf-low';
+    if (f.confidence >= 85 && reconciled) band = 'conf-high';
+    else if (f.confidence >= 70) band = 'conf-med';
+    confEl.className = `scan-confidence ${band}`;
     $('scanConfidenceInfo').textContent = 'i';
-    $('scanConfidenceInfo').title = f._confidenceDetail || 'Confidence blends OCR quality and extracted-field completeness.';
+    $('scanConfidenceInfo').title = f._confidenceDetail || 'Confidence blends OCR quality, weighted critical fields, and arithmetic reconciliation.';
+    renderReconcileFlags(f);
 
     const net = toNumber(f.netAmt, 0);
     const vat = f._vatAmt !== undefined && f._vatAmt !== null
