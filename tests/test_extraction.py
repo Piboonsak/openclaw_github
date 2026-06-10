@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 
 from src.backend.ml.field_extractor import (
     _extract_net_amount,
+    _extract_total_amount,
     _extract_vat_amount,
     _extract_vat_rate,
     extract_fields,
@@ -54,6 +55,26 @@ class TestExtraction(unittest.TestCase):
         """
         net = _extract_net_amount(raw_text)
         self.assertEqual(net, "1859.81")
+
+    def test_extract_net_amount_from_ruam_kha_sinkha_line(self):
+        raw_text = "หนึ่งพันสี่ร้อยสี่สิบสี่บาทห้าสิบสตางค์ รวมค่าสินค้า 1,350.00"
+        net = _extract_net_amount(raw_text)
+        self.assertEqual(net, "1350.00")
+
+    def test_extract_total_amount_from_ruam_ngoen_with_ocr_separators(self):
+        raw_text = "รวมค่าสินค้า 1,350.00\nVAT 7% 94.50\nรวมเงิน 1.444.50"
+        total = _extract_total_amount(raw_text)
+        self.assertEqual(total, "1444.50")
+
+    def test_extract_vat_amount_from_noisy_thai_vat_label(self):
+        raw_text = "Total/รวมเงิน 17,950.00\nกภาษมูลศาเทิม 1,256.50\nGrandTotal/รวมเป็นเงินทั้งสิ้น 19,206.50"
+        vat = _extract_vat_amount(raw_text)
+        self.assertEqual(vat, "1256.50")
+
+    def test_extract_net_amount_from_total_and_grand_total(self):
+        raw_text = "Total/รวมเงิน 17,950.00\nภาษีมูลค่าเพิ่ม 1,256.50\nGrandTotal/รวมเป็นเงินทั้งสิ้น 19,206.50"
+        net = _extract_net_amount(raw_text)
+        self.assertEqual(net, "17950.00")
 
     def test_extract_vat_rate_default_7_percent(self):
         """Test VAT rate defaults to 7 when VAT context present but rate not explicit."""

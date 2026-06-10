@@ -1,12 +1,25 @@
-# Cache Artifact Layout (Repo-tracked)
+# Cache Artifact Layout (Current)
 
-This project stores pipeline cache artifacts inside src by module for traceability.
+This project stores runtime pipeline caches in the following folders:
 
-- TASK-501 OCR output:
-  - src/ocr/cache/{sha256}/ocr_output.json
-- TASK-502 Extraction output:
-  - src/extraction/cache/{sha256}/extraction_output.json
-- TASK-503 Journal output:
-  - src/validation/cache/{sha256}/journal_output.json
+- OCR + extraction cache artifacts:
+  - `src/backend/ml/cache/{sha256}/ocr_output.json`
+  - `src/backend/ml/cache/{sha256}/extraction_output.json`
+- Journal/rule-engine cache artifacts:
+  - `src/backend/services/cache/{sha256}_<company_id>/journal_output.json`
+- PDF page image cache (Stage C support):
+  - `tmp/stage_c_images/{pdf_sha256}/page_<n>.png`
 
-If legacy artifacts exist under cache/{sha256}/, use scripts/migrate-cache-to-src.ps1 to migrate them.
+## Clear Cache Commands
+
+- Clear cache only:
+  - `./scripts/clear-cache.ps1`
+- Clear cache + restart API server (port 8000):
+  - `./scripts/clear-cache.ps1 -RestartServer`
+  - `curl.exe -sS http://127.0.0.1:8000/api/health`
+
+## Cache Folders Cleared by Script
+
+- `src/backend/ml/cache`
+- `src/backend/services/cache`
+- `tmp/stage_c_images`

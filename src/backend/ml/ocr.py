@@ -43,7 +43,9 @@ def _deskew_image(image_obj: Any) -> Any:
 
     img_array = numpy_module.array(image_obj)
     # Invert so text pixels are white (OpenCV moments expect white foreground).
-    _, thresh = cv2.threshold(img_array, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    _, thresh = cv2.threshold(
+        img_array, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+    )
     coords = numpy_module.column_stack(numpy_module.where(thresh > 0))
     if len(coords) < 10:
         return image_obj
@@ -56,7 +58,9 @@ def _deskew_image(image_obj: Any) -> Any:
     h, w = img_array.shape
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated = cv2.warpAffine(img_array, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    rotated = cv2.warpAffine(
+        img_array, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
+    )
     pil_module = importlib.import_module("PIL.Image")
     return pil_module.fromarray(rotated)
 
@@ -80,7 +84,8 @@ def _adaptive_threshold_image(image_obj: Any) -> Any:
         return image_obj
 
     binarized = cv2.adaptiveThreshold(
-        img_array, 255,
+        img_array,
+        255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
         blockSize=31,
@@ -297,7 +302,10 @@ def _extract_text_blocks_with_tesseract(
             pytesseract.pytesseract.tesseract_cmd = str(windows_default)
 
     config_args = ""
-    if LOCAL_TESSDATA_DIR.exists() and (LOCAL_TESSDATA_DIR / "tha.traineddata").exists():
+    if (
+        LOCAL_TESSDATA_DIR.exists()
+        and (LOCAL_TESSDATA_DIR / "tha.traineddata").exists()
+    ):
         # Tesseract treats the value after --tessdata-dir as a literal path; do not
         # wrap it in quotes (pytesseract passes args directly, no shell parsing).
         config_args = f"--tessdata-dir {LOCAL_TESSDATA_DIR.as_posix()}"
@@ -441,7 +449,11 @@ def _build_layout_zones(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return zones
 
 
-def run_ocr(file_path: str, cache_root: Path | None = None) -> dict[str, Any]:
+def run_ocr(
+    file_path: str,
+    cache_root: Path | None = None,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
     """Run OCR and persist `ocr_output.json` under cache/{sha256}/."""
     source = Path(file_path)
     if not source.exists():
@@ -452,7 +464,7 @@ def run_ocr(file_path: str, cache_root: Path | None = None) -> dict[str, Any]:
     artifact_dir = root / sha
     artifact_path = artifact_dir / "ocr_output.json"
 
-    if artifact_path.exists():
+    if artifact_path.exists() and not force_refresh:
         cached = json.loads(artifact_path.read_text(encoding="utf-8"))
         if cached.get("schema_version") == OCR_SCHEMA_VERSION:
             cached["cache_hit"] = True

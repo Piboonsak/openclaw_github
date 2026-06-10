@@ -319,7 +319,7 @@ RECEIPT-2026-05-12        ░░░░   ─         ─        ─        ⟳ O
 
 ### Step 4: Review Scan Results
 
-**Layout**: Split panel — left PDF viewer (40%) + right form editor (60%)
+**Layout**: Split panel — default 50/50 (viewer/form), toggle `Wide x3` = 75/25 (viewer/form)
 
 ```
 ┌──────────────────────┬──────────────────────────────────────┐

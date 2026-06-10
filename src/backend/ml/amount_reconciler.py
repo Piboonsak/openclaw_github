@@ -47,6 +47,35 @@ def _close(a: float | None, b: float | None, base: float | None = None) -> bool:
     return abs(a - b) <= _tolerance(ref)
 
 
+def _expected_exclusive_vat(amount: float, rate: float) -> float:
+    return round(amount * rate / 100.0, 2)
+
+
+def _expected_inclusive_vat(amount: float, rate: float) -> float:
+    return round(amount * rate / (100.0 + rate), 2)
+
+
+def _formula_close(actual: float, expected: float) -> bool:
+    # Formula disambiguation needs tighter tolerance than generic amount checks;
+    # otherwise both inclusive and exclusive can pass for the same value.
+    tolerance = max(0.5, abs(expected) * 0.02)
+    return abs(actual - expected) <= tolerance
+
+
+def _vat_fits_exclusive(amount: float | None, vat: float | None, rate: float) -> bool:
+    if amount is None or vat is None:
+        return False
+    expected = _expected_exclusive_vat(amount, rate)
+    return _formula_close(vat, expected)
+
+
+def _vat_fits_inclusive(amount: float | None, vat: float | None, rate: float) -> bool:
+    if amount is None or vat is None:
+        return False
+    expected = _expected_inclusive_vat(amount, rate)
+    return _formula_close(vat, expected)
+
+
 def classify_vat_layout(
     net: float | None,
     vat: float | None,
@@ -65,19 +94,51 @@ def classify_vat_layout(
     if rate <= 0:
         rate = DEFAULT_VAT_RATE
 
-    # Anchor: VAT + subtotal present -> exclusive (gross = net + vat).
+    # VAT + subtotal: choose arithmetic match first, then slot fallback.
     if vat is not None and net is not None:
+        net_matches_exclusive = _vat_fits_exclusive(net, vat, rate)
+        net_matches_inclusive = _vat_fits_inclusive(net, vat, rate)
+        if net_matches_exclusive and not net_matches_inclusive:
+            return "exclusive", {"net": net, "vat": vat, "gross": round(net + vat, 2)}
+        if net_matches_inclusive and not net_matches_exclusive:
+            return "inclusive", {
+                "net": round(net - vat, 2),
+                "vat": vat,
+                "gross": net,
+            }
         return "exclusive", {"net": net, "vat": vat, "gross": round(net + vat, 2)}
 
-    # Anchor: VAT + grand total present -> inclusive (net = total - vat).
+    # VAT + total: choose arithmetic match first, then slot fallback.
     if vat is not None and total is not None:
-        return "inclusive", {"net": round(total - vat, 2), "vat": vat, "gross": total}
+        total_matches_exclusive = _vat_fits_exclusive(total, vat, rate)
+        total_matches_inclusive = _vat_fits_inclusive(total, vat, rate)
+        if total_matches_exclusive and not total_matches_inclusive:
+            # total is actually net (common mis-slot); rebuild gross from formula.
+            return "exclusive", {
+                "net": total,
+                "vat": vat,
+                "gross": round(total + vat, 2),
+            }
+        if total_matches_inclusive and not total_matches_exclusive:
+            return "inclusive", {
+                "net": round(total - vat, 2),
+                "vat": vat,
+                "gross": total,
+            }
+        return "inclusive", {
+            "net": round(total - vat, 2),
+            "vat": vat,
+            "gross": total,
+        }
 
     # No VAT line, but net + total -> VAT is the difference.
     if net is not None and total is not None:
-        diff = round(total - net, 2)
-        layout = "exclusive" if total > net else "unknown"
-        return layout, {"net": net, "vat": max(diff, 0.0), "gross": total}
+        if total >= net:
+            diff = round(total - net, 2)
+            return "exclusive", {"net": net, "vat": max(diff, 0.0), "gross": total}
+        # Swap mis-slotted values when gross/net are reversed in extraction.
+        diff = round(net - total, 2)
+        return "exclusive", {"net": total, "vat": max(diff, 0.0), "gross": net}
 
     # Only grand total -> assume inclusive (Thai grand totals usually include VAT).
     if total is not None:

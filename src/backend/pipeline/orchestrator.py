@@ -132,6 +132,13 @@ def _to_amount_float(value: Any) -> float | None:
         return None
 
 
+def _amount_close(a: float | None, b: float | None) -> bool:
+    if a is None or b is None:
+        return False
+    tolerance = max(1.0, max(abs(a), abs(b)) * 0.005)
+    return abs(a - b) <= tolerance
+
+
 def _build_numeric_consistency_alerts(
     fields: dict[str, Any],
     reconciliation: dict[str, Any],
@@ -151,7 +158,9 @@ def _build_numeric_consistency_alerts(
 
     alerts: list[dict[str, str]] = []
 
-    def _add(field_name: str, current: float | None, recommended: float | None, reason: str) -> None:
+    def _add(
+        field_name: str, current: float | None, recommended: float | None, reason: str
+    ) -> None:
         if recommended is None:
             return
         alerts.append(
@@ -227,16 +236,85 @@ def _backfill_amounts_from_reconciliation(
     return backfilled
 
 
+def _realign_amount_slots(
+    fields: dict[str, Any],
+    reconciliation: dict[str, Any],
+) -> list[str]:
+    """Realign mis-slotted net/total when arithmetic strongly indicates swap.
+
+    This fixes a common extraction issue where subtotal is written into
+    ``total_amount``; for exclusive VAT docs that causes net to be derived from the
+    wrong base unless we move values back to canonical slots.
+    """
+    derived = reconciliation.get("derived") or {}
+    d_net = _to_amount_float(derived.get("net"))
+    d_gross = _to_amount_float(derived.get("gross"))
+    if d_net is None or d_gross is None:
+        return []
+
+    net = _to_amount_float(fields.get("net_amount"))
+    total = _to_amount_float(fields.get("total_amount"))
+
+    updated: list[str] = []
+
+    if net is None and total is not None and _amount_close(total, d_net):
+        fields["net_amount"] = f"{d_net:.2f}"
+        updated.append("net_amount")
+        if not _amount_close(total, d_gross):
+            fields["total_amount"] = f"{d_gross:.2f}"
+            updated.append("total_amount")
+        return updated
+
+    if net is not None and total is not None:
+        # Both present but reversed: net holds gross and total holds net.
+        if _amount_close(net, d_gross) and _amount_close(total, d_net):
+            fields["net_amount"] = f"{d_net:.2f}"
+            fields["total_amount"] = f"{d_gross:.2f}"
+            updated.extend(["net_amount", "total_amount"])
+
+    return updated
+
+
+def _stabilize_amount_confidence(
+    fields: dict[str, Any],
+    confidence: dict[str, Any],
+    reconciliation: dict[str, Any],
+    ocr_confidence: float,
+) -> None:
+    """Avoid under-scoring amount fields when arithmetic checks are fully consistent.
+
+    The extractor can assign conservative confidence to numeric fields even when
+    Net/VAT/Total relationships reconcile perfectly. In that case, keep a minimum
+    floor so overall confidence reflects both OCR quality and arithmetic validity.
+    """
+    checks = reconciliation.get("checks", {}) or {}
+    if not reconciliation.get("reconciled"):
+        return
+    if checks.get("total") != "ok" or checks.get("vat") != "ok":
+        return
+
+    floor = min(0.90, max(0.72, float(ocr_confidence) * 0.90))
+    for key in ("net_amount", "vat_amount", "total_amount"):
+        if not str(fields.get(key) or "").strip():
+            continue
+        current = confidence.get(key)
+        if isinstance(current, (int, float)):
+            confidence[key] = max(float(current), floor)
+
+
 async def run_pipeline(
     image_path: str,
     company_id: str | None = None,
     company_tax_id: str | None = None,
+    force_refresh: bool = False,
 ) -> PipelineContext:
     """Run OCR -> extraction -> Stage C cascade repair -> journal routing."""
     ctx = PipelineContext(source_file=image_path, company_id=company_id)
     try:
-        ctx.ocr_output = run_ocr(image_path)
-        ctx.extraction_output = run_extraction(ctx.ocr_output)
+        ctx.ocr_output = run_ocr(image_path, force_refresh=force_refresh)
+        ctx.extraction_output = run_extraction(
+            ctx.ocr_output, force_refresh=force_refresh
+        )
         ctx.extraction_output["company_id"] = company_id
 
         fields = ctx.extraction_output.get("fields", {})
@@ -299,6 +377,10 @@ async def run_pipeline(
         # per-field penalties, then auto-correct gross when the printed total is the
         # post-WHT paid amount.
         reconciliation = reconcile_amounts(fields)
+        realigned_fields = _realign_amount_slots(fields, reconciliation)
+        if realigned_fields:
+            reconciliation = reconcile_amounts(fields)
+            ctx.extraction_output["reconciliation_realigned_fields"] = realigned_fields
         backfilled_fields = _backfill_amounts_from_reconciliation(
             fields, reconciliation
         )
@@ -309,11 +391,24 @@ async def run_pipeline(
                 backfilled_fields
             )
         apply_amount_confidence(fields, confidence, reconciliation)
+        _stabilize_amount_confidence(
+            fields,
+            confidence,
+            reconciliation,
+            float(ocr_info.get("ocr_confidence", 0.75) or 0.75),
+        )
         if reconciliation.get("total_is_paid"):
             for key, value in reconciliation.get("corrected", {}).items():
                 fields[key] = value
             # Re-reconcile after auto-correction so downstream sees consistent state.
             reconciliation = reconcile_amounts(fields)
+            apply_amount_confidence(fields, confidence, reconciliation)
+            _stabilize_amount_confidence(
+                fields,
+                confidence,
+                reconciliation,
+                float(ocr_info.get("ocr_confidence", 0.75) or 0.75),
+            )
 
         numeric_alerts = _build_numeric_consistency_alerts(fields, reconciliation)
         fields["numeric_consistency_alerts"] = numeric_alerts
@@ -374,6 +469,7 @@ async def run_pipeline(
         ctx.journal_output = run_journal_router(
             ctx.extraction_output,
             company_id=company_id,
+            force_refresh=force_refresh,
         )
     except Exception as exc:  # pragma: no cover - safety net for runtime failures
         ctx.status = StageResult.FAILED

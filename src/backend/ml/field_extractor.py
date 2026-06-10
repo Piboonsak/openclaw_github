@@ -24,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "ml" / "cache"
 
 
-EXTRACTION_SCHEMA_VERSION = "v27"
+EXTRACTION_SCHEMA_VERSION = "v29"
 
 INVOICE_RE = re.compile(
     r"(?:invoice|inv|เลขที่ใบ(?:กำกับ|แจ้งหนี้)|เลขที่)\s*[:#-]*\s*([A-Z0-9-]+)", re.IGNORECASE
@@ -60,7 +60,7 @@ DATE_ENG_MONTH_RE_REV = re.compile(
     r"(?i)(?<!\w)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*(\d{1,2})\s*,?\s*(\d{2,4})(?!\w)"
 )
 AMOUNT_RE = re.compile(
-    r"(?<![\d.])(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+\.\d{1,2}|\d{1,9})(?!\d)"
+    r"(?<![\d.])(\d{1,3}(?:[\.,]\d{3})+(?:[\.,]\d{1,2})?|\d+[\.,]\d{1,2}|\d{1,9})(?!\d)"
 )
 VENDOR_RE = re.compile(r"(?:vendor|supplier|ผู้ขาย|บริษัท)[:\s]*([^\n]+)", re.IGNORECASE)
 SELLER_RE = re.compile(
@@ -109,11 +109,12 @@ VAT_LINE_HINT_RE = re.compile(
     re.IGNORECASE,
 )
 NET_LINE_HINT_RE = re.compile(
-    r"(?:มูลค่าสินค้าก่อนภาษี|มูลค่าก่อนภาษี|net\s*amount|amount\s*before\s*tax|subtotal|รวมสินค้า)",
+    r"(?:มูลค่าสินค้าก่อนภาษี|มูลค่าก่อนภาษี|net\s*amount|amount\s*before\s*tax|subtotal|รวม(?:ค่า)?สินค้า)",
     re.IGNORECASE,
 )
 TOTAL_KEYWORDS = (
     "grand total",
+    "grandtotal",
     "total amount",
     "amount due",
     "total",
@@ -122,6 +123,7 @@ TOTAL_KEYWORDS = (
     "ยอดรวม",
     "ยอดสุทธิ",
     "รวมเป็นเงิน",
+    "รวมเงิน",
     "มูลค่ารวม",
     "ยอดชำระ",
     "ยอดเงินรวม",
@@ -223,7 +225,41 @@ def _normalize_date(value: str) -> str:
 
 
 def _normalize_number(value: str) -> str:
-    return value.replace(",", "").strip()
+    text = (value or "").strip().replace(" ", "")
+    if not text:
+        return ""
+
+    comma_count = text.count(",")
+    dot_count = text.count(".")
+    sep_count = comma_count + dot_count
+
+    if sep_count == 0:
+        return text
+
+    if sep_count == 1:
+        if "," in text:
+            left, right = text.split(",", 1)
+            if len(right) <= 2:
+                return f"{left}.{right}"
+            if len(right) == 3 and len(left) <= 3:
+                return f"{left}{right}"
+            return f"{left}{right}"
+
+        left, right = text.split(".", 1)
+        if len(right) == 3 and len(left) <= 3:
+            return f"{left}{right}"
+        return text
+
+    last_dot = text.rfind(".")
+    last_comma = text.rfind(",")
+    last_sep_idx = max(last_dot, last_comma)
+    int_part = re.sub(r"[\.,]", "", text[:last_sep_idx])
+    frac_part = re.sub(r"[\.,]", "", text[last_sep_idx + 1 :])
+    if not frac_part:
+        return int_part
+    if len(frac_part) > 2:
+        return f"{int_part}{frac_part}"
+    return f"{int_part}.{frac_part}"
 
 
 def _normalize_ocr_text(raw_text: str) -> str:
@@ -582,6 +618,15 @@ def _extract_vat_amount(raw_text: str) -> str:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
     candidates: list[tuple[int, float]] = []
 
+    def _line_has_vat_hint(line: str) -> bool:
+        line_l = line.lower()
+        if VAT_LINE_HINT_RE.search(line):
+            return True
+        # OCR-noisy Thai VAT labels, e.g. "กภาษมูลศาเทิม".
+        if re.search(r"ภาษ.{0,8}มูล", line):
+            return True
+        return "vat" in line_l
+
     for line in lines:
         line_l = line.lower()
 
@@ -603,7 +648,7 @@ def _extract_vat_amount(raw_text: str) -> str:
         ):
             continue  # Skip zero-VAT lines like "มูลค่าสินค้าที่ไม่มีภาษีมูลค่าเพิ่ม"
 
-        if not VAT_LINE_HINT_RE.search(line):
+        if not _line_has_vat_hint(line):
             continue
 
         candidate: float | None = None
@@ -727,7 +772,33 @@ def _extract_net_amount(raw_text: str) -> str:
         else:
             candidates.append(values[-1])
 
-    return f"{max(candidates):.2f}" if candidates else ""
+    if candidates:
+        return f"{max(candidates):.2f}"
+
+    # Fallback: documents that use both "Total" and "GrandTotal" labels.
+    grand_keywords = ("grand total", "grandtotal", "รวมเป็นเงินทั้งสิ้น", "รวมทั้งสิ้น")
+    non_grand_total_keywords = ("total", "รวมเงิน")
+    grand_totals: list[float] = []
+    smaller_totals: list[float] = []
+
+    for line in lines:
+        line_l = line.lower()
+        values = _line_amount_candidates(line)
+        if not values:
+            continue
+        if any(keyword in line_l for keyword in grand_keywords):
+            grand_totals.extend(values)
+            continue
+        if any(keyword in line_l for keyword in non_grand_total_keywords):
+            smaller_totals.extend(values)
+
+    if grand_totals and smaller_totals:
+        gross = max(grand_totals)
+        net_candidates = [value for value in smaller_totals if value < gross]
+        if net_candidates:
+            return f"{max(net_candidates):.2f}"
+
+    return ""
 
 
 def _extract_vat_rate(raw_text: str) -> str:
@@ -760,7 +831,9 @@ def _extract_vat_rate(raw_text: str) -> str:
 
 def _has_vat_context(raw_text: str) -> bool:
     """Check if document has VAT-related keywords suggesting VAT is applicable."""
-    return bool(VAT_LINE_HINT_RE.search(raw_text))
+    if VAT_LINE_HINT_RE.search(raw_text):
+        return True
+    return bool(re.search(r"ภาษ.{0,8}มูล", raw_text))
 
 
 def _clean_party_name(value: str) -> str:
@@ -1514,6 +1587,7 @@ def _compute_cost_thb(input_tokens: int, output_tokens: int, model: str) -> floa
 def run_extraction(
     ocr_output: dict[str, Any],
     cache_root: Path | None = None,
+    force_refresh: bool = False,
 ) -> dict[str, Any]:
     """Run extraction and persist `extraction_output.json` under cache/{sha256}/."""
     raw_text = _normalize_ocr_text(_join_ocr_text(ocr_output))
@@ -1522,7 +1596,7 @@ def run_extraction(
     root = cache_root or DEFAULT_CACHE_ROOT
     artifact_dir = root / sha
     artifact_path = artifact_dir / "extraction_output.json"
-    if artifact_path.exists():
+    if artifact_path.exists() and not force_refresh:
         cached = json.loads(artifact_path.read_text(encoding="utf-8"))
         if cached.get("schema_version") == EXTRACTION_SCHEMA_VERSION:
             cached["cache_hit"] = True

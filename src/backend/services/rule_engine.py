@@ -594,6 +594,7 @@ def run_journal_router(
     company_id: str | None = None,
     cache_root: Path | None = None,
     rules_root: Path | None = None,
+    force_refresh: bool = False,
 ) -> dict[str, Any]:
     """Create journal output and persist `journal_output.json` under cache/{sha256}/."""
     sha = str(extraction_output.get("sha256") or _hash_for_payload(extraction_output))
@@ -602,7 +603,7 @@ def run_journal_router(
     artifact_key = sha if not resolved_company_id else f"{sha}_{resolved_company_id}"
     artifact_dir = root / artifact_key
     artifact_path = artifact_dir / "journal_output.json"
-    if artifact_path.exists():
+    if artifact_path.exists() and not force_refresh:
         cached = json.loads(artifact_path.read_text(encoding="utf-8"))
         if cached.get("schema_version") == JOURNAL_SCHEMA_VERSION:
             cached["cache_hit"] = True

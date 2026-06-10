@@ -11,6 +11,10 @@ DEFAULT_ANTHROPIC_KEYS_FILE = Path(r"D:\key\ALL-Openclaw-keys.txt")
 DEFAULT_OPENAI_KEY_FILE = Path(
     r"D:\key\API Key for OpenClawAA01 access to OpenAI[ChatGPT].txt"
 )
+# When the key file groups a credential under an INI-style section header
+# (e.g. ``[ANTHROPIC_API_KEY]`` with named sub-entries), prefer the sub-entry
+# whose name matches this project.
+_ANTHROPIC_PREFERRED_SUBKEY = "AI-pre-accounting-copilot"
 
 
 def _resolve_path(env_name: str, default_path: Path) -> Path:
@@ -20,23 +24,69 @@ def _resolve_path(env_name: str, default_path: Path) -> Path:
     return default_path
 
 
-def _read_key_value_file(path: Path, key_name: str) -> str:
+def _read_key_value_file(
+    path: Path, key_name: str, preferred_subkey: str | None = None
+) -> str:
+    """Read ``key_name`` from a simple ``KEY=value`` credential file.
+
+    Supports two layouts:
+
+    1. Flat ``KEY="value"`` lines (matched directly by ``key_name``).
+    2. INI-style sections where the credential is grouped under a
+       ``[KEY_NAME]`` header with one or more named sub-entries that use
+       either ``=`` or ``:`` as the delimiter, e.g.::
+
+           [ANTHROPIC_API_KEY]
+           NongKung-API-Key="sk-ant-..."
+           AI-pre-accounting-copilot:"sk-ant-..."
+
+       A blank line ends the section. When matching a section, the entry whose
+       name equals ``preferred_subkey`` is returned if present, otherwise the
+       first entry in the section.
+    """
     if not path.exists() or not path.is_file():
         return ""
+
+    direct = ""
+    section: str | None = None
+    section_values: dict[str, str] = {}
 
     try:
         with path.open("r", encoding="utf-8") as handle:
             for raw_line in handle:
                 line = raw_line.strip()
-                if not line or line.startswith("#") or "=" not in line:
+                if not line:
+                    section = None
                     continue
-                name, value = line.split("=", 1)
-                if name.strip() != key_name:
+                if line.startswith("#"):
                     continue
-                return value.strip().strip('"').strip("'")
+                if line.startswith("[") and line.endswith("]"):
+                    section = line[1:-1].strip()
+                    continue
+
+                if "=" in line:
+                    name, value = line.split("=", 1)
+                elif ":" in line:
+                    name, value = line.split(":", 1)
+                else:
+                    continue
+
+                name = name.strip()
+                value = value.strip().strip('"').strip("'")
+
+                if name == key_name and not direct:
+                    direct = value
+                if section == key_name:
+                    section_values.setdefault(name, value)
     except OSError:
         return ""
 
+    if direct:
+        return direct
+    if section_values:
+        if preferred_subkey and preferred_subkey in section_values:
+            return section_values[preferred_subkey]
+        return next(iter(section_values.values()))
     return ""
 
 
@@ -81,7 +131,9 @@ def load_openrouter_key() -> bool:
 def load_anthropic_key() -> bool:
     """Load ANTHROPIC_API_KEY from local key file if env is empty."""
     keys_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)
-    anthropic_value = _read_key_value_file(keys_path, "ANTHROPIC_API_KEY")
+    anthropic_value = _read_key_value_file(
+        keys_path, "ANTHROPIC_API_KEY", preferred_subkey=_ANTHROPIC_PREFERRED_SUBKEY
+    )
     return _load_env_key("ANTHROPIC_API_KEY", anthropic_value)
 
 
@@ -90,7 +142,11 @@ def load_llm_keys() -> dict[str, bool]:
     anthropic_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)
     openai_path = _resolve_path("OPENAI_KEY_FILE", DEFAULT_OPENAI_KEY_FILE)
 
-    anthropic_value = _read_key_value_file(anthropic_path, "ANTHROPIC_API_KEY")
+    anthropic_value = _read_key_value_file(
+        anthropic_path,
+        "ANTHROPIC_API_KEY",
+        preferred_subkey=_ANTHROPIC_PREFERRED_SUBKEY,
+    )
     openrouter_value = _read_key_value_file(anthropic_path, "OPENROUTER_API_KEY")
     openai_value = _read_openai_key_file(openai_path)
 

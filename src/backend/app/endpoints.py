@@ -54,6 +54,10 @@ async def process(
     company_tax_id: str | None = Form(
         None, description="Company tax id for buyer tax-id verification"
     ),
+    force_refresh: bool = Form(
+        False,
+        description="Bypass OCR/extraction/journal caches and recompute pipeline",
+    ),
     file: UploadFile | None = File(None, description="Uploaded document blob"),
 ) -> dict[str, Any]:
     """Process a document (OCR -> Field Extraction -> GL Alignment Routing)."""
@@ -83,7 +87,10 @@ async def process(
 
     # Run actual async pipeline orchestrator
     ctx = await run_pipeline(
-        resolved_path, company_id=company_id, company_tax_id=company_tax_id
+        resolved_path,
+        company_id=company_id,
+        company_tax_id=company_tax_id,
+        force_refresh=force_refresh,
     )
 
     if ctx.error:

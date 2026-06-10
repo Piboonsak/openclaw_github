@@ -20,12 +20,31 @@ _COST_LOG_FILE = Path(__file__).resolve().parents[3] / "tmp" / "llm_cost_log.jso
 _DEFAULT_DAILY_USD_CAP = 2.0
 _DEFAULT_FREE_DAILY_USD_CAP = 1.0
 _DEFAULT_PAID_DAILY_USD_CAP = 2.0
-_DEFAULT_MODEL = "claude-haiku-4-5-20250514"
+_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 # Vision-capable default for Stage C image cascade (Patch B).
 # Previously "anthropic/claude-3.5-haiku" — text-only, incompatible with image input.
 _OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash"
 _DEFAULT_FREE_MODELS = ["google/gemini-2.5-flash-lite"]
 _DEFAULT_FREE_CONF_THRESHOLD = 0.70
+# Direct Anthropic API requires fully-dated model IDs. OpenRouter accepts the
+# short aliases, but when we fall back to the native Anthropic provider we must
+# resolve bare aliases to a concrete, currently-available snapshot ID, otherwise
+# the call 404s ("model: <alias>"). Keep this in sync with `models.list()`.
+_ANTHROPIC_MODEL_ALIASES = {
+    "claude-haiku-4-5": "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-5": "claude-sonnet-4-5-20250929",
+    "claude-sonnet-4": "claude-sonnet-4-20250514",
+    "claude-opus-4-5": "claude-opus-4-5-20251101",
+    "claude-opus-4-1": "claude-opus-4-1-20250805",
+    "claude-opus-4": "claude-opus-4-20250514",
+}
+# Emergency-only Claude model used when the primary OpenRouter gateway is
+# unreachable and we fall back to the native Anthropic provider for a model that
+# is not a Claude model (e.g. google/gemini-*). Vision-capable so image repair
+# still works in an outage. Per D9/Patch B, Anthropic is a cost-controlled
+# emergency fallback only — the primary vision path is gemini-2.5-flash-lite
+# via OpenRouter.
+_ANTHROPIC_EMERGENCY_FALLBACK_MODEL = "claude-sonnet-4-5-20250929"
 _DEFAULT_CRITICAL_FIELDS = {
     "invoice_number",
     "invoice_date",
@@ -241,8 +260,17 @@ def _normalize_model_for_provider(model: str | None, provider: str) -> str:
 
     # anthropic provider
     if selected.startswith("anthropic/"):
-        return selected.split("/", 1)[1]
-    return selected
+        selected = selected.split("/", 1)[1]
+    resolved = _ANTHROPIC_MODEL_ALIASES.get(selected, selected)
+    # Emergency fallback: if the primary OpenRouter gateway is unreachable and we
+    # fall back to the native Anthropic provider for a non-Claude model
+    # (e.g. google/gemini-*), the bare model id would 404 on Anthropic. Map it to
+    # a vision-capable Claude model so image repair still succeeds in an outage.
+    if not resolved.lower().startswith("claude"):
+        return os.environ.get(
+            "STAGE_C_ANTHROPIC_FALLBACK_MODEL", _ANTHROPIC_EMERGENCY_FALLBACK_MODEL
+        )
+    return resolved
 
 
 def _provider_order(preferred_provider: str | None = None) -> list[str]:
@@ -330,6 +358,7 @@ def _merge_improvements(
     current_fields: dict[str, Any],
     current_confidence: dict[str, Any],
     raw_text: str,
+    image_used: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     improved_fields: dict[str, Any] = {}
     improved_confidence: dict[str, Any] = {}
@@ -383,7 +412,12 @@ def _merge_improvements(
             "wht_amount",
             "amount_paid",
         }:
-            if not _value_in_ocr(candidate_value, raw_text):
+            # When the repair came from a vision (image) call, the image is
+            # authoritative — the whole purpose is to correct amounts that OCR
+            # mangled, so do not require the value to appear in the OCR text.
+            # Hallucination risk is bounded by the arithmetic reconciliation
+            # confidence-capping applied below.
+            if not image_used and not _value_in_ocr(candidate_value, raw_text):
                 accept = False
 
         if accept:
@@ -592,6 +626,7 @@ def call_llm_repair(
                 current_fields=current_fields,
                 current_confidence=current_confidence,
                 raw_text=raw_text,
+                image_used=use_image,
             )
             return {
                 "fields": improved_fields,
@@ -671,7 +706,13 @@ def cascade_repair(
         "STAGE_C_ESCALATION_MODEL", "anthropic/claude-sonnet-4"
     )
 
-    model_plan: list[tuple[str, str]] = [(model, "free") for model in _free_models()]
+    # D9 / Patch B: the vision and text cascades share the same model plan —
+    # free gemini-2.5-flash-lite first, then the paid default, then escalation.
+    # When an image is available it is attached to every attempt (handled inside
+    # call_llm_repair). The provider stays OpenRouter as primary; the native
+    # Anthropic provider is an emergency fallback only (see _provider_order and
+    # _normalize_model_for_provider), keeping cost ~$0.0006/doc.
+    model_plan = [(model, "free") for model in _free_models()]
     model_plan.append((default_paid, "paid"))
     if escalation_paid != default_paid:
         model_plan.append((escalation_paid, "paid"))

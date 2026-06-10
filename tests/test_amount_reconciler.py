@@ -28,6 +28,21 @@ class TestVatLayoutClassifier(unittest.TestCase):
         self.assertEqual(layout, "inclusive")
         self.assertAlmostEqual(derived["net"], 17950.0, places=2)
 
+    def test_vat_and_total_prefers_exclusive_when_formula_matches(self):
+        # 03062026130707: extracted slot may carry subtotal in total_amount.
+        # Arithmetic must classify as exclusive when VAT matches 7% of this value.
+        layout, derived = classify_vat_layout(net=None, vat=94.50, total=1350.00)
+        self.assertEqual(layout, "exclusive")
+        self.assertAlmostEqual(derived["net"], 1350.00, places=2)
+        self.assertAlmostEqual(derived["gross"], 1444.50, places=2)
+
+    def test_net_and_total_without_vat_swaps_when_reversed(self):
+        layout, derived = classify_vat_layout(net=1444.50, vat=None, total=1350.00)
+        self.assertEqual(layout, "exclusive")
+        self.assertAlmostEqual(derived["net"], 1350.00, places=2)
+        self.assertAlmostEqual(derived["vat"], 94.50, places=2)
+        self.assertAlmostEqual(derived["gross"], 1444.50, places=2)
+
     def test_only_total_assumes_inclusive(self):
         layout, derived = classify_vat_layout(net=None, vat=None, total=107.0, rate=7.0)
         self.assertEqual(layout, "inclusive")
@@ -54,6 +69,18 @@ class TestReconcileAmounts(unittest.TestCase):
         self.assertEqual(result["layout"], "exclusive")
         self.assertEqual(result["checks"]["total"], "ok")
         self.assertEqual(result["checks"]["vat"], "ok")
+
+    def test_doc_130707_vat_total_mis_slot_still_classifies_exclusive(self):
+        fields = {
+            "net_amount": "",
+            "vat_amount": "94.50",
+            "total_amount": "1350.00",
+            "vat_rate": "7",
+        }
+        result = reconcile_amounts(fields)
+        self.assertEqual(result["layout"], "exclusive")
+        self.assertAlmostEqual(result["derived"]["net"], 1350.00, places=2)
+        self.assertAlmostEqual(result["derived"]["gross"], 1444.50, places=2)
 
     def test_doc_130649_gross_before_wht(self):
         # gross = net + vat (2,057,692.31); WHT is a separate deduction

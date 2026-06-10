@@ -536,6 +536,7 @@
   const STORAGE_KEY_MAPPING_RULES = 'ledgerflow_mapping_rules';
   const STORAGE_KEY_COA_RULE_JOBS = 'ledgerflow_coa_rule_jobs';
   const STORAGE_KEY_SELECTED_COMPANY = 'ledgerflow_selected_company';
+  const STORAGE_KEY_PREVIEW_WIDTH_MODE = 'ledgerflow_preview_width_mode';
 
   const RESET_PARAM_SAFE = 'resetDemo';
   const RESET_PARAM_FULL = 'resetAllDemo';
@@ -637,6 +638,20 @@
     } catch {}
   }
 
+  function loadPreviewWidthMode() {
+    try {
+      return window.localStorage.getItem(STORAGE_KEY_PREVIEW_WIDTH_MODE) === 'wide';
+    } catch {
+      return true;
+    }
+  }
+
+  function persistPreviewWidthMode() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY_PREVIEW_WIDTH_MODE, state.preview.wide ? 'wide' : 'normal');
+    } catch {}
+  }
+
   const SAMPLE_FILES = [
     { id:'f01', name:'INV-Metro-Electric-001.pdf',    size:2.1, folder:'2026-05-Invoices',  sellerTax:'0105566111111', sellerName:'Metro Electric Co.,Ltd',               buyerTax:'0105559123456', netAmt:10000, vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:97, invNo:'INV-2605-001',   invDate:'2026-05-12' },
     { id:'f02', name:'INV-Metro-Electric-002.pdf',    size:1.8, folder:'2026-05-Invoices',  sellerTax:'0105566111111', sellerName:'Metro Electric Co.,Ltd',               buyerTax:'0105559123456', netAmt:8500,  vatRate:7, whtRate:3, discount:0,   docType:'Invoice', confidence:95, invNo:'INV-2605-002',   invDate:'2026-05-13' },
@@ -681,8 +696,9 @@
       dragStartX: 0,
       dragStartY: 0,
       enabled: false,
-      wide: false,
+      wide: loadPreviewWidthMode(),
     },
+    processingInProgress: false,
     coaMode: 'csv',
     coaRule: {
       pdfFile: null,
@@ -1491,6 +1507,7 @@
     document.querySelectorAll('.step-panel').forEach(p => p.classList.add('hidden'));
     const panel = $(`step-${n}`);
     if (panel) { panel.classList.remove('hidden'); panel.scrollIntoView({ behavior:'smooth', block:'start' }); }
+    document.querySelector('main.main')?.classList.toggle('is-scan-review', n === 4);
     document.querySelectorAll('.step-item').forEach(item => {
       const s = parseInt(item.dataset.step);
       item.classList.remove('active','done');
@@ -1499,10 +1516,17 @@
     });
     state.currentStep = n;
     $('prevBtn').disabled = n <= 1;
+    $('nextBtn').disabled = false;
     const nextLabels = {1:'Continue →',2:'Confirm & Process →',3:'Continue →',4:'Continue to Mapping →',5:'Continue to Export →',6:'Download CSV'};
     $('nextBtn').textContent = nextLabels[n] || 'Continue →';
     if (n === 2) renderStep2();
-    if (n === 3) startProcessing();
+    if (n === 3) {
+      if (state.processingInProgress) {
+        $('nextBtn').disabled = true;
+        $('nextBtn').textContent = 'Processing…';
+      }
+      startProcessing();
+    }
     if (n === 4) renderStep4();
     if (n === 5) renderStep5();
     if (n === 6) renderStep6();
@@ -1510,6 +1534,10 @@
 
   $('prevBtn').addEventListener('click', () => { if (state.currentStep > 1) setStep(state.currentStep - 1); });
   $('nextBtn').addEventListener('click', () => {
+    if (state.currentStep === 3 && state.processingInProgress) {
+      showToast('Processing is still running. Please wait until all files are done.','warn');
+      return;
+    }
     if (state.currentStep < 6) setStep(state.currentStep + 1);
     else exportCSV();
   });
@@ -1691,63 +1719,79 @@
 
   /* ─── STEP 3: PROCESSING ─── */
   async function startProcessing() {
-    if (state.confirmedFiles.length === 0) state.confirmedFiles = [...getActiveFiles()];
-    state.processedFiles = [];
-    const body = $('processTableBody');
-    body.innerHTML = '';
-    const STAGES = ['OCR','Classify','Extract','Map COA'];
+    state.processingInProgress = true;
+    $('nextBtn').disabled = true;
+    $('nextBtn').textContent = 'Processing…';
 
-    state.confirmedFiles.forEach(f => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="col-name"><span class="process-filename">${f.name}</span></td>
-        ${STAGES.map(s => `<td class="col-stage"><div class="stage-bar" id="sb-${f.id}-${s.replace(' ','')}"><div class="stage-bar-fill"></div></div></td>`).join('')}
-        <td class="col-status" id="ps-${f.id}"><span class="status-chip status-waiting">Waiting</span></td>
-      `;
-      body.appendChild(tr);
-    });
+    try {
+      if (state.confirmedFiles.length === 0) state.confirmedFiles = [...getActiveFiles()];
+      state.processedFiles = [];
+      const body = $('processTableBody');
+      body.innerHTML = '';
+      const STAGES = ['OCR','Classify','Extract','Map COA'];
 
-    const fillStage = (fileId, stageName) => {
-      const bar = document.getElementById(`sb-${fileId}-${stageName.replace(' ','')}`);
-      if (bar) bar.querySelector('.stage-bar-fill').style.width = '100%';
-    };
+      state.confirmedFiles.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="col-name"><span class="process-filename">${f.name}</span></td>
+          ${STAGES.map(s => `<td class="col-stage"><div class="stage-bar" id="sb-${f.id}-${s.replace(' ','')}"><div class="stage-bar-fill"></div></div></td>`).join('')}
+          <td class="col-status" id="ps-${f.id}"><span class="status-chip status-waiting">Waiting</span></td>
+        `;
+        body.appendChild(tr);
+      });
 
-    for (let i = 0; i < state.confirmedFiles.length; i++) {
-      const f = state.confirmedFiles[i];
-      const statusEl = $(`ps-${f.id}`);
-      $('processProgress').textContent = `Processing ${i + 1} of ${state.confirmedFiles.length}…`;
-      statusEl.innerHTML = '<span class="status-chip status-running">Processing…</span>';
+      const fillStage = (fileId, stageName) => {
+        const bar = document.getElementById(`sb-${fileId}-${stageName.replace(' ','')}`);
+        if (bar) bar.querySelector('.stage-bar-fill').style.width = '100%';
+      };
 
-      let usedBackend = false;
-      let degradedOcr = false;
-      let degradedReason = '';
-      let fallbackReason = '';
-      try {
-        fillStage(f.id, 'OCR');
-        const payload = await runBackendProcess(f);
-        fillStage(f.id, 'Classify');
-        fillStage(f.id, 'Extract');
-        fillStage(f.id, 'Map COA');
-        if (payload) {
-          usedBackend = true;
-          degradedOcr = Boolean(payload.ocr_degraded);
-          degradedReason = Array.isArray(payload.ocr_warnings) ? payload.ocr_warnings.join(' | ') : '';
-          applyBackendResultToFile(f, payload);
+      for (let i = 0; i < state.confirmedFiles.length; i++) {
+        const f = state.confirmedFiles[i];
+        const statusEl = $(`ps-${f.id}`);
+        if (!statusEl) {
+          console.warn('Missing process status cell for file:', f?.id, f?.name);
+          continue;
         }
-      } catch (err) {
-        fallbackReason = String(err?.message || err || 'Fallback mode');
-        console.warn('Backend process fallback for file:', f.name, err);
+        $('processProgress').textContent = `Processing ${i + 1} of ${state.confirmedFiles.length}…`;
+        statusEl.innerHTML = '<span class="status-chip status-running">Processing…</span>';
+
+        let usedBackend = false;
+        let degradedOcr = false;
+        let degradedReason = '';
+        let fallbackReason = '';
+        try {
+          fillStage(f.id, 'OCR');
+          const payload = await runBackendProcess(f);
+          fillStage(f.id, 'Classify');
+          fillStage(f.id, 'Extract');
+          fillStage(f.id, 'Map COA');
+          if (payload) {
+            usedBackend = true;
+            degradedOcr = Boolean(payload.ocr_degraded);
+            degradedReason = Array.isArray(payload.ocr_warnings) ? payload.ocr_warnings.join(' | ') : '';
+            applyBackendResultToFile(f, payload);
+          }
+        } catch (err) {
+          fallbackReason = String(err?.message || err || 'Fallback mode');
+          console.warn('Backend process fallback for file:', f.name, err);
+        }
+
+        statusEl.innerHTML = usedBackend
+          ? degradedOcr
+            ? `<span class="status-chip status-degraded" title="${escapeAttr(degradedReason || 'OCR degraded mode')}">⚠ Degraded OCR</span>`
+            : '<span class="status-chip status-done">✓ Done (API)</span>'
+          : `<span class="status-chip status-running" title="${escapeAttr(fallbackReason)}">Done (Fallback)</span>`;
+        state.processedFiles.push(f);
       }
 
-      statusEl.innerHTML = usedBackend
-        ? degradedOcr
-          ? `<span class="status-chip status-degraded" title="${escapeAttr(degradedReason || 'OCR degraded mode')}">⚠ Degraded OCR</span>`
-          : '<span class="status-chip status-done">✓ Done (API)</span>'
-        : `<span class="status-chip status-running" title="${escapeAttr(fallbackReason)}">Done (Fallback)</span>`;
-      state.processedFiles.push(f);
+      $('processProgress').textContent = `All ${state.confirmedFiles.length} documents processed.`;
+    } finally {
+      state.processingInProgress = false;
+      if (state.currentStep === 3) {
+        $('nextBtn').disabled = false;
+        $('nextBtn').textContent = 'Continue →';
+      }
     }
-
-    $('processProgress').textContent = `All ${state.confirmedFiles.length} documents processed.`;
   }
 
   /* ─── STEP 4: SCAN REVIEW ─── */
@@ -1908,6 +1952,7 @@
     detailPanel.classList.toggle('is-wide-preview', state.preview.wide);
     toggle.textContent = state.preview.wide ? 'Normal' : 'Wide x3';
     toggle.title = state.preview.wide ? 'Switch to normal width' : 'Switch to 3x width';
+    persistPreviewWidthMode();
   }
 
   function updatePreviewTransform() {

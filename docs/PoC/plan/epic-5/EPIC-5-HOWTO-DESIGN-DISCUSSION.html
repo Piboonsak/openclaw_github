@@ -2600,8 +2600,15 @@ POST /api/rules/improvements/{rule_id}/reject
           <summary>D9 Architecture Design — Multi-Provider LLM Router &amp; OpenRouter Gateway (click to expand)</summary>
           <div>
 
+            <div style="border:1px solid #16a34a; background:#f0fdf4; color:#14532d; padding:10px 12px; border-radius:8px; margin:8px 0 12px; font-size:0.82rem; line-height:1.5;">
+              <strong>Approved Baseline (LOCKED):</strong> Patch B direct-image cascade is the accepted production baseline from Session 2026-06-09.
+              Primary route is <code>OpenRouter + google/gemini-2.5-flash-lite</code> (free tier), then <code>google/gemini-2.5-flash</code> (paid), with <code>anthropic</code> native used as <strong>emergency fallback only</strong>.
+              Any change to provider order, model set, or routing policy requires <strong>human approval</strong> before implementation.
+            </div>
+
             <!-- ─── D9 IMPLEMENTATION UPDATE ─── -->
             <p style="font-size:0.82rem; color:var(--muted); margin:10px 0 6px;"><strong>Implementation Update — Session 2026-06-09 (Patch B applied)</strong></p>
+            <p style="font-size:0.78rem; color:#14532d; margin:0 0 8px;"><strong>Governance:</strong> This Patch B configuration is locked as approved baseline. Changes must escalate to human approver.</p>
             <table class="compare-table" style="font-size:0.82rem;">
               <thead>
                 <tr><th style="width:24%">Change</th><th style="width:46%">Implemented Behavior</th><th style="width:30%">Status</th></tr>
@@ -2698,6 +2705,50 @@ POST /api/rules/improvements/{rule_id}/reject
               (2) Ground-truth re-labeling pass needed: Buddhist-year/Gregorian-year discrepancies on ~10 docs;
               ambiguous logo vs body-text labels (e.g. comp1-0004, comp1-0014).
               (3) Model can be swapped without code change via <code>STAGE_C_DEFAULT_MODEL</code> / <code>STAGE_C_FREE_MODELS</code> env vars — both <code>gemini-2.5-flash-lite</code> and <code>gemini-2.5-flash</code> may be replaced in the future if a cheaper or better vision model appears.
+            </p>
+
+            <!-- ─── D9 EVA REPORT 2026-06-10 ─── -->
+            <p style="font-size:0.82rem; color:var(--muted); margin:12px 0 6px;"><strong>EVA Report — Session 2026-06-10 (aiacc_eva_report_20260610_135853) — 41 docs, live API, cache cleared</strong></p>
+            <table class="compare-table" style="font-size:0.82rem;">
+              <thead>
+                <tr>
+                  <th style="width:30%">Field</th>
+                  <th style="width:15%">Matched/Total</th>
+                  <th style="width:15%">Accuracy</th>
+                  <th style="width:15%">vs Patch B baseline</th>
+                  <th style="width:25%">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Net Amount (THB)</td><td>36/41</td><td><strong>87.80%</strong></td><td>→ (same)</td><td>Meets target ≥85%</td></tr>
+                <tr><td>Gross / Total Amount (THB)</td><td>37/41</td><td><strong>90.24%</strong></td><td>↑ +2.44 pp</td><td>Improved</td></tr>
+                <tr><td>VAT 7% (THB)</td><td>39/41</td><td><strong>95.12%</strong></td><td>→ (same)</td><td>Meets target ≥90%</td></tr>
+                <tr><td>WHT Amount (THB)</td><td>40/41</td><td><strong>97.56%</strong></td><td>— (new field tracked)</td><td>Near-perfect</td></tr>
+                <tr><td>Buyer Tax ID</td><td>20/41</td><td>48.78%</td><td>↓ vs 67.86%</td><td>⚠ Total denominator changed (41 vs 28); more docs with buyer_tax_id required</td></tr>
+                <tr><td>Seller Tax ID</td><td>27/41</td><td>65.85%</td><td>→ (same)</td><td>Seller confusion / garbled OCR</td></tr>
+                <tr><td>Invoice Number</td><td>24/41</td><td>58.54%</td><td>→ (same)</td><td>Thai encoding issues + logo vs body-text label ambiguity</td></tr>
+                <tr><td>Invoice Date</td><td>17/41</td><td>41.46%</td><td>↑ +9.75 pp</td><td>Buddhist/Gregorian year normalizer in eva_report.py now applied</td></tr>
+              </tbody>
+            </table>
+            <p style="font-size:0.78rem; color:var(--muted); margin:8px 0;">
+              Provider routing confirmed: <code>openrouter/google/gemini-2.5-flash-lite</code> primary (free tier, 100% coverage).
+              Anthropic native = emergency fallback only (1/49 calls, 2%).
+              EVA report output: <code>tmp/benchmark/eva_report/aiacc_eva_report_20260610_135853.html</code> &amp; <code>.json</code>.
+            </p>
+            <p style="font-size:0.78rem; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:8px; margin:8px 0;">
+              <strong>⚠ What was done (Session 2026-06-10):</strong>
+              (1) Reverted forced-Anthropic routing — code now matches D9 Patch B locked design (gemini-flash-lite via OpenRouter primary).
+              (2) Fixed <code>secrets_loader.py</code> to correctly parse <code>[SECTION]</code> + colon-delimited key file — Anthropic emergency fallback now loads key correctly.
+              (3) Normalised Anthropic model alias in <code>_normalize_model_for_provider</code> so emergency fallback doesn't 404.
+              (4) Relaxed <code>_merge_improvements</code> <code>_value_in_ocr</code> gate for money fields when <code>image_used=True</code>.
+              (5) Ran full 41-doc benchmark + EVA report with clean caches — routing 100% OpenRouter/gemini confirmed.
+            </p>
+            <p style="font-size:0.78rem; color:#1e3a5f; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:8px; margin:8px 0;">
+              <strong>🚫 What NOT to change (Governance — human approval required):</strong>
+              Do NOT change provider order (OpenRouter must remain primary).
+              Do NOT change free-tier model away from <code>google/gemini-2.5-flash-lite</code>.
+              Do NOT add forced-Anthropic routing for vision — OpenRouter handles image input correctly.
+              Do NOT modify <code>safeBinProfiles</code> or escalation order without human sign-off.
             </p>
 
             <!-- ─── D9 THREE-VOICE DESIGN DISCUSSION ─── -->

@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LedgerFlow Phase II Requirement (User-Friendly + Effort)</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --brand: #0f766e;
+      --brand-soft: #ecfeff;
+      --warn: #b45309;
+      --warn-soft: #fffbeb;
+      --ok: #166534;
+      --ok-soft: #ecfdf5;
+      --danger: #b91c1c;
+      --danger-soft: #fef2f2;
+      --info: #1d4ed8;
+      --info-soft: #eff6ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top right, #dbeafe 0%, transparent 35%), var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 60%, #22c55e 100%);
+      border-radius: 16px;
+      color: #fff;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 12px 28px rgba(15, 118, 110, 0.25);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 1.85rem;
+      letter-spacing: -0.01em;
+    }
+
+    .hero p { margin: 0; opacity: 0.96; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .meta-item {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+    }
+
+    .section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 5px 16px rgba(31, 41, 55, 0.05);
+    }
+
+    .section h2 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      color: #0f172a;
+    }
+
+    .section h3 {
+      margin: 14px 0 6px;
+      font-size: 1rem;
+      color: #334155;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+    }
+
+    .b-critical { color: var(--danger); background: var(--danger-soft); border-color: #fecaca; }
+    .b-high { color: #9a3412; background: #fff7ed; border-color: #fed7aa; }
+    .b-medium { color: var(--warn); background: var(--warn-soft); border-color: #fde68a; }
+    .b-low { color: var(--ok); background: var(--ok-soft); border-color: #bbf7d0; }
+    .b-design { color: var(--info); background: var(--info-soft); border-color: #bfdbfe; }
+
+    .img-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    figure {
+      margin: 0;
+      border: 1px dashed #93c5fd;
+      border-radius: 10px;
+      background: #f8fbff;
+      padding: 10px;
+    }
+
+    figure img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      background: #e2e8f0;
+      min-height: 120px;
+      object-fit: contain;
+    }
+
+    figcaption {
+      margin-top: 8px;
+      font-size: 0.83rem;
+      color: var(--muted);
+    }
+
+    .note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .mono {
+      font-family: Consolas, "JetBrains Mono", monospace;
+      font-size: 0.88rem;
+      background: #f8fafc;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+
+    ul { margin: 8px 0 0; padding-left: 20px; }
+    li { margin: 5px 0; }
+
+    .footer {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 0.86rem;
+    }
+
+    @media (max-width: 700px) {
+      .wrap { padding: 14px; }
+      .hero h1 { font-size: 1.4rem; }
+      table { font-size: 0.84rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Phase II Requirement (ฉบับอธิบายผู้ใช้ + ประเมิน Effort)</h1>
+      <p>เอกสารนี้สรุปปัญหาที่พบจริงจากการใช้งาน, ข้อเสนอพัฒนาแบบเข้าใจง่าย, ภาพประกอบ, และประมาณการ effort เพื่อใช้ตีราคาเก็บ requirement</p>
+      <div class="meta">
+        <div class="meta-item"><strong>ระบบ:</strong> LedgerFlow - Scan Review</div>
+        <div class="meta-item"><strong>ช่วงงาน:</strong> Phase II (Enhancement & Edge Cases)</div>
+        <div class="meta-item"><strong>เวอร์ชันเอกสาร:</strong> v1.0</div>
+        <div class="meta-item"><strong>วันที่:</strong> 2026-06-09</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>ภาพรวมปัญหาที่จะพัฒนา</h2>
+      <div class="badge-row">
+        <span class="badge b-critical">WHT extraction/consistency</span>
+        <span class="badge b-high">VAT layout classification</span>
+        <span class="badge b-high">Thai label ambiguity (NET/TOTAL)</span>
+        <span class="badge b-medium">OCR overlap/gridline noise</span>
+        <span class="badge b-medium">Broker-specific document template</span>
+        <span class="badge b-design">Review UX Zone B width</span>
+      </div>
+      <div class="note">
+        เป้าหมายหลัก: ลดการตีความผิดระหว่าง <strong>บวก VAT (exclusive)</strong> กับ <strong>ถอด VAT (inclusive)</strong>, เพิ่มความน่าเชื่อถือในเอกสารที่มี WHT, และปรับ UX ให้ตรวจเอกสารได้ง่ายขึ้น
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>ข้อกำหนด #1: เอกสารมี WHT ให้แสดงสัญลักษณ์ "w" + คำนวณย้อนกลับกรณีข้อมูลไม่ครบ</h2>
+      <h3>ปัญหาจริง</h3>
+      <ul>
+        <li>ตัวอย่างเอกสาร <span class="mono">03062026130649.pdf</span> มี WHT ชัดเจน แต่บางครั้งระบบไม่ผูกความสัมพันธ์ Gross / Paid / WHT ถูกต้อง</li>
+        <li>ผู้ใช้ต้องการสัญลักษณ์ที่มองเห็นเร็วว่าไฟล์นี้เป็นกลุ่ม WHT</li>
+      </ul>
+      <h3>สิ่งที่ต้องทำ</h3>
+      <ul>
+        <li>เพิ่ม badge <span class="mono">w</span> ในรายการเอกสารฝั่งซ้ายเมื่อพบ <span class="mono">wht_amount &gt; 0</span> หรือ <span class="mono">has_wht = true</span></li>
+        <li>เพิ่มตัวแก้สมการย้อนหลังเมื่อมี gross + wht + paid แต่ net/vat ไม่ครบ เพื่อ backfill อย่างมีหลักฐาน</li>
+      </ul>
+      <div class="img-grid">
+        <figure>
+          <img src="assets/phase2-wht-block.png" alt="ตัวอย่างบล็อกยอดเงินเอกสารที่มี WHT" />
+          <figcaption>ภาพประกอบ A: บล็อกยอดเงินที่แสดงยอดหัก ณ ที่จ่ายและยอดจ่ายสุทธิ</figcaption>
+        </figure>
+      </div>
+      <div class="note">สูตรอ้างอิง: <span class="mono">AmountPaid = Gross - WHT</span> และ <span class="mono">WHT = Net x WHTRate</span></div>
+    </section>
+
+    <section class="section">
+      <h2>ข้อกำหนด #2: ปรับ UX/UI ให้ Zone B (พื้นที่ดูเอกสาร) กว้างขึ้น 3 เท่า</h2>
+      <h3>ปัญหาจริง</h3>
+      <ul>
+        <li>หน้าจอ Review ปัจจุบันพื้นที่เอกสารค่อนข้างแคบ ทำให้ไล่ดูตัวเลขยาก</li>
+      </ul>
+      <h3>สิ่งที่ต้องทำ</h3>
+      <ul>
+        <li>เพิ่มโหมด <span class="mono">Wide x3</span> ให้คอลัมน์เอกสารกว้างขึ้น (เช่น 75%) และคอลัมน์ฟิลด์ย่อเหลือ 25%</li>
+        <li>จำค่าโหมดใน local storage เพื่อใช้ต่อเนื่อง</li>
+      </ul>
+      <div class="img-grid">
+        <figure>
+          <img src="assets/phase2-zone-b-wide.png" alt="ตัวอย่างหน้าจอ review ที่ขยาย zone B" />
+          <figcaption>ภาพประกอบ B: โหมดขยายพื้นที่เอกสารสำหรับตรวจสอบ</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>ข้อกำหนด #3-4: แก้การสลับ inclusive/exclusive และความกำกวมคำว่า NET/TOTAL บนเอกสารไทย</h2>
+      <h3>ปัญหาจริง</h3>
+      <ul>
+        <li>เอกสารหลายแบบวาง label ไม่ตรง semantic บัญชี เช่นใช้คำว่า NET AMOUNT ในตำแหน่ง Gross</li>
+        <li>ผลคือระบบจัด layout VAT ผิด และคะแนนตกทั้งที่ภาพชัดมาก</li>
+      </ul>
+      <h3>Hint จากผู้ใช้ (ต้องนำไปใช้จริง)</h3>
+      <ul>
+        <li>แบบ <strong>บวก VAT (exclusive)</strong>: ค่าบนมักน้อยกว่าค่าล่าง (ฐาน + VAT = ยอดรวม)</li>
+        <li>แบบ <strong>ถอด VAT (inclusive)</strong>: ตรรกะกลับกันตามโครงสร้างยอดรวมที่รวม VAT อยู่แล้ว</li>
+      </ul>
+      <h3>สิ่งที่ต้องทำ</h3>
+      <ul>
+        <li>เพิ่ม arithmetic-first classifier: จัดลำดับตัวเลขและเลือกโมเดลที่สมการลงตัวก่อนเชื่อ label</li>
+        <li>เพิ่ม prompt guard เรื่อง Thai form wording เพื่อไม่ map ตามคำอังกฤษอย่างเดียว</li>
+        <li>เพิ่ม confidence policy ใหม่: ถ้าสมการลงตัวชัดเจนให้คะแนนไม่ตกเพราะ label ambiguity</li>
+      </ul>
+      <div class="img-grid">
+        <figure>
+          <img src="assets/phase2-layout-ambiguity-1.png" alt="ตัวอย่างบล็อกตัวเลขที่ทำให้ระบบสลับ inclusive exclusive" />
+          <figcaption>ภาพประกอบ C1: ตัวอย่างเอกสารที่คำว่า NET/TOTAL ชวนให้ map ผิด</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/phase2-layout-ambiguity-2.png" alt="ตัวอย่างอีกเคสที่ต้องเทียบสมการแทนการอ่าน label" />
+          <figcaption>ภาพประกอบ C2: ใช้สมการช่วยตัดสินแทนการยึด label อย่างเดียว</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>ข้อกำหนด #5: เคสตัวเลขทับตาราง (grid overlap) ให้ preprocess ก่อน OCR</h2>
+      <h3>ปัญหาจริง</h3>
+      <ul>
+        <li>เอกสาร <span class="mono">03062026131847.pdf</span> มีตัวเลขทับเส้นตารางทำให้ OCR เพี้ยนหนัก</li>
+      </ul>
+      <h3>สิ่งที่ต้องทำ</h3>
+      <ul>
+        <li>เพิ่ม pre-processing เพื่อลบเส้นแนวตั้ง/แนวนอนก่อน OCR (OpenCV morphology + line removal)</li>
+        <li>ถ้าเป็น PDF ดิจิทัล ให้ดึง text layer โดยตรงก่อน OCR เพื่อลด error</li>
+      </ul>
+      <div class="img-grid">
+        <figure>
+          <img src="assets/phase2-grid-overlap.png" alt="ตัวอย่างตัวเลขทับตารางที่ OCR อ่านผิด" />
+          <figcaption>ภาพประกอบ D: ตัวเลขทับเส้นตาราง ทำให้ OCR อ่านผิดตำแหน่ง/ค่าทศนิยม</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>ข้อกำหนด #6: รองรับเอกสารเฉพาะกลุ่ม Broker ประกัน</h2>
+      <h3>ปัญหาจริง</h3>
+      <ul>
+        <li>โครงสร้างเอกสาร Broker ไม่เหมือนใบกำกับทั่วไป จึง map field และบัญชีไม่เข้า</li>
+      </ul>
+      <h3>สิ่งที่ต้องทำ</h3>
+      <ul>
+        <li>เพิ่ม route classifier สำหรับคำสำคัญเช่น Broker, นายหน้า, ประกันภัย</li>
+        <li>สร้าง extraction template และ posting rule เฉพาะกลุ่ม broker</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>ประเมิน Effort (เพื่อคิดราคา Requirement / Delivery Plan)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>งาน</th>
+            <th>รายละเอียด</th>
+            <th>Effort (Dev Day)</th>
+            <th>Complexity</th>
+            <th>หมายเหตุราคา</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>#1 WHT Badge + Backfill Solver</td>
+            <td>UI badge, rule engine/backfill, tests, edge-case validation</td>
+            <td>2.5 - 4.0</td>
+            <td>High</td>
+            <td>ต้องมี test matrix หลายเอกสาร</td>
+          </tr>
+          <tr>
+            <td>#2 Zone B Wide x3 UX</td>
+            <td>Layout toggle, responsive, state persistence</td>
+            <td>1.0 - 1.5</td>
+            <td>Low</td>
+            <td>ทำคู่กับ usability review ได้</td>
+          </tr>
+          <tr>
+            <td>#3/#4 VAT Layout Disambiguation</td>
+            <td>Arithmetic-first classifier, prompt guard, confidence policy tuning</td>
+            <td>4.0 - 6.0</td>
+            <td>Critical</td>
+            <td>เป็น core accuracy ของ Phase II</td>
+          </tr>
+          <tr>
+            <td>#5 OCR Gridline Preprocess</td>
+            <td>OpenCV preprocessing + fallback text-layer extraction</td>
+            <td>3.0 - 5.0</td>
+            <td>High</td>
+            <td>ขึ้นกับคุณภาพ PDF/scan source</td>
+          </tr>
+          <tr>
+            <td>#6 Broker Template Route</td>
+            <td>Doc classifier + broker template + posting rules</td>
+            <td>2.5 - 4.5</td>
+            <td>Medium-High</td>
+            <td>ควรเก็บตัวอย่าง broker เพิ่ม</td>
+          </tr>
+          <tr>
+            <td><strong>รวมประมาณ</strong></td>
+            <td>รวม dev + unit/integration tests + tuning รอบแรก</td>
+            <td><strong>13.0 - 21.0 วัน</strong></td>
+            <td><strong>Mixed</strong></td>
+            <td><strong>ยังไม่รวม UAT และเปลี่ยน requirement กลางทาง</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        แนะนำคิดราคาเป็น 2 ก้อน:
+        <ul>
+          <li><strong>Requirement & Design Package:</strong> 20-30% ของงบรวม</li>
+          <li><strong>Implementation Package:</strong> 70-80% ตาม effort จริงและจำนวนรอบแก้</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Acceptance Criteria (ฉบับสั้นสำหรับคุยกับผู้ใช้)</h2>
+      <ul>
+        <li>เอกสารมี WHT แสดง badge <span class="mono">w</span> ใน list ทุกไฟล์ที่เข้าเงื่อนไข</li>
+        <li>โหมด Zone B Wide x3 เปิด/ปิดได้ และจำค่าผู้ใช้ได้</li>
+        <li>ลด false layout (inclusive/exclusive) อย่างน้อย 80% บนชุดเอกสารที่เคยผิด</li>
+        <li>เคสตัวเลขทับตาราง OCR accuracy ดีขึ้นแบบวัดได้ (ก่อน-หลัง)</li>
+        <li>เอกสาร broker ผ่าน extraction + posting rule ขั้นพื้นฐานได้</li>
+      </ul>
+      <div class="footer">ไฟล์นี้จัดทำเพื่อใช้เสนอ requirement และตีราคา Phase II แบบเข้าใจง่ายสำหรับผู้ใช้งานธุรกิจและทีมพัฒนา</div>
+    </section>
+  </div>
+</body>
+</html>

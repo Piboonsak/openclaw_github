@@ -25,10 +25,10 @@ def test_run_pipeline_success_for_text_input(monkeypatch):
 
 
 def test_run_pipeline_backfills_missing_net_from_vat_and_total(monkeypatch):
-    def fake_run_ocr(_image_path: str) -> dict:
+    def fake_run_ocr(_image_path: str, **_kwargs) -> dict:
         return {"raw_text": "mock", "ocr_confidence": 0.95}
 
-    def fake_run_extraction(_ocr_output: dict) -> dict:
+    def fake_run_extraction(_ocr_output: dict, **_kwargs) -> dict:
         return {
             "fields": {
                 "source_text": "VAT 373.10 TOTAL 5703.10",
@@ -56,7 +56,9 @@ def test_run_pipeline_backfills_missing_net_from_vat_and_total(monkeypatch):
             "unresolved_fields": [],
         }
 
-    def fake_run_journal_router(_payload: dict, company_id: str | None = None) -> dict:
+    def fake_run_journal_router(
+        _payload: dict, company_id: str | None = None, **_kwargs
+    ) -> dict:
         return {"is_balanced": True, "company_id": company_id}
 
     monkeypatch.setattr(orchestrator, "run_ocr", fake_run_ocr)
@@ -72,10 +74,10 @@ def test_run_pipeline_backfills_missing_net_from_vat_and_total(monkeypatch):
 
 
 def test_run_pipeline_emits_numeric_consistency_alerts(monkeypatch):
-    def fake_run_ocr(_image_path: str) -> dict:
+    def fake_run_ocr(_image_path: str, **_kwargs) -> dict:
         return {"raw_text": "mock", "ocr_confidence": 0.95}
 
-    def fake_run_extraction(_ocr_output: dict) -> dict:
+    def fake_run_extraction(_ocr_output: dict, **_kwargs) -> dict:
         return {
             "fields": {
                 "source_text": "mock",
@@ -108,7 +110,9 @@ def test_run_pipeline_emits_numeric_consistency_alerts(monkeypatch):
             "unresolved_fields": [],
         }
 
-    def fake_run_journal_router(_payload: dict, company_id: str | None = None) -> dict:
+    def fake_run_journal_router(
+        _payload: dict, company_id: str | None = None, **_kwargs
+    ) -> dict:
         return {"is_balanced": True, "company_id": company_id}
 
     monkeypatch.setattr(orchestrator, "run_ocr", fake_run_ocr)
