@@ -346,44 +346,45 @@ def _extract_text_blocks_with_tesseract(
 
 def _extract_text_blocks_for_pdf(file_path: Path) -> list[dict[str, Any]]:
     # Prefer native text extraction for searchable PDFs before OCR fallback.
+    pypdf = None
     try:
         pypdf = importlib.import_module("pypdf")
-    except ImportError as exc:  # pragma: no cover - depends on local PDF stack
-        raise RuntimeError(
-            "Missing PDF dependency: pypdf is required for PDF processing"
-        ) from exc
+    except ImportError:
+        # Continue to image-based OCR fallback when pypdf is unavailable.
+        pass
 
-    reader = pypdf.PdfReader(str(file_path))
     blocks: list[dict[str, Any]] = []
     block_id = 0
+    if pypdf is not None:
+        reader = pypdf.PdfReader(str(file_path))
 
-    for page_idx, page in enumerate(reader.pages):
-        page_text = (page.extract_text() or "").strip()
-        if not page_text:
-            continue
-
-        for line_idx, line in enumerate(page_text.splitlines()):
-            text = line.strip()
-            if not text:
+        for page_idx, page in enumerate(reader.pages):
+            page_text = (page.extract_text() or "").strip()
+            if not page_text:
                 continue
-            blocks.append(
-                {
-                    "id": block_id,
-                    "text": text,
-                    "confidence": 1.0,
-                    "bbox": [
-                        0,
-                        line_idx * 24,
-                        max(len(text) * 8, 40),
-                        (line_idx + 1) * 24,
-                    ],
-                    "page": page_idx + 1,
-                }
-            )
-            block_id += 1
 
-    if blocks:
-        return blocks
+            for line_idx, line in enumerate(page_text.splitlines()):
+                text = line.strip()
+                if not text:
+                    continue
+                blocks.append(
+                    {
+                        "id": block_id,
+                        "text": text,
+                        "confidence": 1.0,
+                        "bbox": [
+                            0,
+                            line_idx * 24,
+                            max(len(text) * 8, 40),
+                            (line_idx + 1) * 24,
+                        ],
+                        "page": page_idx + 1,
+                    }
+                )
+                block_id += 1
+
+        if blocks:
+            return blocks
 
     # Fallback for scanned PDFs: render pages to images then OCR each page.
     # Engine order: PaddleOCR (primary) -> Tesseract (fallback).
