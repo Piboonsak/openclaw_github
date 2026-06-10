@@ -57,10 +57,13 @@ def get_prototype():
             status_code=404,
         )
     html = prototype_path.read_text(encoding="utf-8")
-    # Serve the prototype through /prototype while keeping static assets under /static.
-    html = html.replace(
-        'href="./ux-ui-prototype.css"', 'href="/static/ux-ui-prototype.css"'
-    )
+    # Keep legacy relative hrefs working by normalizing stylesheet path to /static.
+    for old_href in (
+        'href="./ux-ui-prototype.css"',
+        "href='./ux-ui-prototype.css'",
+        'href="ux-ui-prototype.css?v=20260610b"',
+    ):
+        html = html.replace(old_href, 'href="/static/ux-ui-prototype.css"')
     return HTMLResponse(
         html,
         headers={
