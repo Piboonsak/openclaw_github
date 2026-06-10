@@ -1,14 +1,27 @@
+import shutil
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from src.backend.services.rule_engine import (
-    run_journal_router,
+from src.validation.rules import (
+    InvalidChartOfAccountsError,
+    UnbalancedEntryError,
+    compile_rules,
+    post_journal_entry,
+    route_journal,
     validate_required_fields,
 )
 
 
 class TestValidation(unittest.TestCase):
+    def _prepare_company_rules(self, base_dir: Path) -> Path:
+        repo_root = Path(__file__).resolve().parents[1]
+        source_rule = repo_root / "docs" / "PoC" / "Comp_1" / "rule_coa.yaml"
+        target_rule = base_dir / "rules" / "Comp_1" / "rule_coa.yaml"
+        target_rule.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_rule, target_rule)
+        return target_rule
+
     def test_validate_required_fields_reports_missing(self):
         result = validate_required_fields(
             {"invoice_number": "INV-1"}, ["invoice_number", "total_amount"]
@@ -16,124 +29,158 @@ class TestValidation(unittest.TestCase):
         self.assertEqual(result["missing_fields"], ["total_amount"])
         self.assertFalse(result["is_valid"])
 
-    def test_run_journal_router_outputs_balanced_entries(self):
+    def test_compile_rules_loads_company_yaml(self):
         with TemporaryDirectory() as tmp:
-            extraction_output = {
-                "sha256": "xyz987",
+            yaml_path = self._prepare_company_rules(Path(tmp))
+            compiled = compile_rules(yaml_path)
+            self.assertEqual(compiled.company_id, "Comp_1")
+            self.assertGreater(len(compiled.chart_of_accounts), 0)
+            self.assertGreater(len(compiled.journal_rules), 0)
+
+    def test_purchase_route_and_post_balanced(self):
+        with TemporaryDirectory() as tmp:
+            yaml_path = self._prepare_company_rules(Path(tmp))
+            compiled = compile_rules(yaml_path)
+            extraction = {
+                "sha256": "purchase001",
                 "fields": {
-                    "invoice_number": "INV-001",
+                    "document_type": "Purchase Order",
+                    "source_document": "P/O",
+                    "payment_method": "credit",
+                    "has_vat": True,
+                    "vat_type": "normal",
                     "invoice_date": "2026-06-07",
-                    "vendor_name": "Vendor A",
-                    "total_amount": "1070",
+                    "invoice_number": "PO-001",
+                    "gross_amount": 1070.0,
+                    "net_amount": 1000.0,
+                    "vat_amount": 70.0,
                 },
             }
-
-            output = run_journal_router(
-                extraction_output,
-                cache_root=Path(tmp) / "cache",
-                rules_root=Path(tmp) / "rules",
-            )
-
+            output = post_journal_entry(extraction, compiled)
             self.assertTrue(output["is_balanced"])
             self.assertEqual(output["status"], "READY")
-            self.assertEqual(
-                round(output["totals"]["debit"], 2),
-                round(output["totals"]["credit"], 2),
-            )
+            self.assertEqual(output["rule_id"], "RRL-PURCHASE-SUPPLIES")
+            self.assertEqual(output["express_gl"]["book_code"], "AP")
 
-            artifact = Path(tmp) / "cache" / "xyz987" / "journal_output.json"
-            self.assertTrue(artifact.exists())
-
-            cached = run_journal_router(
-                extraction_output,
-                cache_root=Path(tmp) / "cache",
-                rules_root=Path(tmp) / "rules",
-            )
-            self.assertTrue(cached["cache_hit"])
-
-    def test_fallback_uses_document_vat_when_present(self):
+    def test_sale_route_and_post_balanced(self):
         with TemporaryDirectory() as tmp:
-            extraction_output = {
-                "sha256": "doc125326",
+            yaml_path = self._prepare_company_rules(Path(tmp))
+            compiled = compile_rules(yaml_path)
+            extraction = {
+                "sha256": "sale001",
                 "fields": {
-                    "invoice_number": "03062026125326",
-                    "total_amount": "5703.10",
-                    "vat_amount": "373.10",
+                    "document_type": "Invoice",
+                    "has_vat": True,
+                    "vat_type": "deferred",
+                    "payment_method": "wire",
+                    "source_document": "invoice",
+                    "invoice_number": "AR-001",
+                    "invoice_date": "2026-06-08",
+                    "gross_amount": 2140.0,
+                    "net_amount": 2000.0,
+                    "vat_amount": 140.0,
+                },
+            }
+            output = post_journal_entry(extraction, compiled)
+            self.assertTrue(output["is_balanced"])
+            self.assertEqual(output["rule_id"], "RRL-SALE-CREDIT")
+            self.assertEqual(output["express_gl"]["book_code"], "AR")
+
+    def test_receipt_route_and_post_balanced_with_wht(self):
+        with TemporaryDirectory() as tmp:
+            yaml_path = self._prepare_company_rules(Path(tmp))
+            compiled = compile_rules(yaml_path)
+            extraction = {
+                "sha256": "receipt001",
+                "fields": {
+                    "document_type": "Receipt",
+                    "has_vat": True,
+                    "has_wht": True,
+                    "vat_type": "recognize",
+                    "invoice_number": "RV-001",
+                    "invoice_date": "2026-06-09",
+                    "net_received": 2000.00,
+                    "wht_amount": 57.69,
+                    "receivable_amount": 2057.69,
+                    "vat_amount": 134.62,
                 },
             }
 
-            output = run_journal_router(
-                extraction_output,
-                cache_root=Path(tmp) / "cache",
-                rules_root=Path(tmp) / "rules",
-            )
-
-            expense_line = next(
-                p for p in output["postings"] if p["line_type"] == "expense"
-            )
-            vat_line = next(p for p in output["postings"] if p["line_type"] == "vat")
-            ap_line = next(p for p in output["postings"] if p["line_type"] == "ap")
-
-            self.assertEqual(round(expense_line["debit"], 2), 5330.00)
-            self.assertEqual(round(vat_line["debit"], 2), 373.10)
-            self.assertEqual(round(ap_line["credit"], 2), 5703.10)
+            output = post_journal_entry(extraction, compiled)
             self.assertTrue(output["is_balanced"])
+            self.assertEqual(output["rule_id"], "RRL-RECEIVE-PAYMENT")
+            self.assertEqual(output["express_gl"]["book_code"], "RV")
 
-    def test_fallback_exclusive_doc_keeps_net_vat_gross(self):
+    def test_payment_route_flags_variable_account_for_review(self):
         with TemporaryDirectory() as tmp:
-            extraction_output = {
-                "sha256": "doc130550",
+            yaml_path = self._prepare_company_rules(Path(tmp))
+            compiled = compile_rules(yaml_path)
+            extraction = {
+                "sha256": "payment001",
                 "fields": {
-                    "invoice_number": "03062026130550",
-                    "net_amount": "4900.00",
-                    "vat_amount": "343.00",
-                    "total_amount": "5243.00",
+                    "document_type": "Bill",
+                    "payment_method": "cash",
+                    "has_vat": True,
+                    "vat_type": "normal",
+                    "invoice_number": "PV-001",
+                    "net_amount": 1000.0,
+                    "vat_amount": 70.0,
+                    "payment_amount": 1070.0,
+                    "wht_amount": 0.0,
+                    "seller_type": "corporate",
+                    "source_text": "ค่าไฟสำนักงาน",
                 },
             }
 
-            output = run_journal_router(
-                extraction_output,
-                cache_root=Path(tmp) / "cache",
-                rules_root=Path(tmp) / "rules",
-            )
+            routed = route_journal(extraction, compiled)
+            self.assertEqual(routed["rule_id"], "RRL-EXPENSE-CASH")
+            self.assertIn("needs_human_account_pick", routed.get("flags", []))
 
-            expense_line = next(
-                p for p in output["postings"] if p["line_type"] == "expense"
-            )
-            vat_line = next(p for p in output["postings"] if p["line_type"] == "vat")
-            ap_line = next(p for p in output["postings"] if p["line_type"] == "ap")
+            with self.assertRaises(InvalidChartOfAccountsError):
+                post_journal_entry(extraction, compiled)
 
-            self.assertEqual(round(expense_line["debit"], 2), 4900.00)
-            self.assertEqual(round(vat_line["debit"], 2), 343.00)
-            self.assertEqual(round(ap_line["credit"], 2), 5243.00)
+    def test_multi_line_wht_tolerance_balance(self):
+        with TemporaryDirectory() as tmp:
+            yaml_path = self._prepare_company_rules(Path(tmp))
+            compiled = compile_rules(yaml_path)
+            extraction = {
+                "sha256": "receipt-rounding-001",
+                "fields": {
+                    "document_type": "Receipt",
+                    "has_vat": True,
+                    "has_wht": True,
+                    "vat_type": "recognize",
+                    "invoice_number": "RV-RND-001",
+                    "net_received": 999.99,
+                    "wht_amount": 30.00,
+                    "receivable_amount": 1029.99,
+                    "vat_amount": 70.00,
+                },
+            }
+            output = post_journal_entry(extraction, compiled)
             self.assertTrue(output["is_balanced"])
 
-    def test_fallback_total_only_uses_inclusive_vat_formula(self):
+    def test_unbalanced_entry_raises_exception(self):
         with TemporaryDirectory() as tmp:
-            extraction_output = {
-                "sha256": "doc_total_only",
+            yaml_path = self._prepare_company_rules(Path(tmp))
+            compiled = compile_rules(yaml_path)
+            extraction = {
+                "sha256": "receipt-unbalanced-001",
                 "fields": {
-                    "invoice_number": "INV-TOTAL-ONLY",
-                    "total_amount": "5703.10",
+                    "document_type": "Receipt",
+                    "has_vat": True,
+                    "has_wht": True,
+                    "vat_type": "recognize",
+                    "invoice_number": "RV-BAD-001",
+                    "net_received": 2000.00,
+                    "wht_amount": 57.69,
+                    "receivable_amount": 2055.00,
+                    "vat_amount": 134.62,
                 },
             }
 
-            output = run_journal_router(
-                extraction_output,
-                cache_root=Path(tmp) / "cache",
-                rules_root=Path(tmp) / "rules",
-            )
-
-            expense_line = next(
-                p for p in output["postings"] if p["line_type"] == "expense"
-            )
-            vat_line = next(p for p in output["postings"] if p["line_type"] == "vat")
-            ap_line = next(p for p in output["postings"] if p["line_type"] == "ap")
-
-            self.assertEqual(round(vat_line["debit"], 2), 373.10)
-            self.assertEqual(round(expense_line["debit"], 2), 5330.00)
-            self.assertEqual(round(ap_line["credit"], 2), 5703.10)
-            self.assertTrue(output["is_balanced"])
+            with self.assertRaises(UnbalancedEntryError):
+                post_journal_entry(extraction, compiled)
 
 
 if __name__ == "__main__":
