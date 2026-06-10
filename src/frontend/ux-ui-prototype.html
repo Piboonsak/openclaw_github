@@ -470,13 +470,47 @@
 
           <div class="coa-preview hidden" id="coaRuleResultWrap">
             <div class="coa-preview-header">
-              <span class="preview-label">Generated Rules Confidence</span>
-              <button type="button" class="btn btn-primary btn-sm" id="coaApproveRulesBtn">✓ Approve & Save</button>
+              <span class="preview-label">Step 3: Results — Confidence Report</span>
+              <div class="settings-inline-actions" style="margin-top:0">
+                <button type="button" class="btn btn-primary btn-sm" id="coaApproveRulesBtn">✓ Approve & Save</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="coaEditRulesBtn">✏ Edit Rules</button>
+              </div>
             </div>
-            <table class="settings-table" style="margin-top:var(--sp-3)">
-              <thead><tr><th>Rule ID</th><th>Confidence</th><th>Status</th></tr></thead>
-              <tbody id="coaRuleConfidenceBody"></tbody>
-            </table>
+            <p class="field-hint field-hint--ok" id="coaRuleSummary"></p>
+
+            <div class="coa-confidence-block" style="margin-top:var(--sp-3)">
+              <div class="coa-confidence-title">COA Extraction</div>
+              <table class="settings-table" style="margin-top:var(--sp-2)">
+                <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Confidence</th></tr></thead>
+                <tbody id="coaRuleAccountsBody"></tbody>
+              </table>
+            </div>
+
+            <div class="coa-confidence-block" style="margin-top:var(--sp-4)">
+              <div class="coa-confidence-title">Journal Entry Rules</div>
+              <table class="settings-table" style="margin-top:var(--sp-2)">
+                <thead><tr><th>Rule ID</th><th>Name</th><th>Dr/Cr</th><th>Confidence</th><th>Status</th></tr></thead>
+                <tbody id="coaRuleConfidenceBody"></tbody>
+              </table>
+            </div>
+
+            <div class="field-hint field-hint--warn hidden" id="coaRuleWarning"></div>
+
+            <div class="settings-inline-actions" style="margin-top:var(--sp-4)">
+              <button type="button" class="btn btn-ghost btn-sm" id="coaDownloadYamlBtnSecondary" disabled>↓ Download YAML</button>
+            </div>
+          </div>
+
+          <div class="coa-preview hidden" id="coaRuleInlineEditorWrap">
+            <div class="coa-preview-header">
+              <span class="preview-label">Edit Rules — GL Input (Inline)</span>
+              <div class="settings-inline-actions" style="margin-top:0">
+                <button type="button" class="btn btn-primary btn-sm" id="coaRuleSaveEditsBtn">Save Changes</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="coaRuleBackToReportBtn">↩ Back to Report</button>
+              </div>
+            </div>
+            <p class="field-hint" id="coaRuleEditorHint"></p>
+            <div class="voucher-list" id="coaRuleEditorBody" aria-label="Rule editor voucher list"></div>
           </div>
         </div>
       </div>
@@ -707,6 +741,7 @@
       pollingTimer: null,
       result: null,
       yamlText: '',
+      inlineRules: [],
       jobsByCompany: JSON.parse(JSON.stringify(STORED_COA_RULE_JOBS)),
     },
   };
@@ -939,6 +974,9 @@
     });
     $('coaCsvMode')?.classList.toggle('hidden', state.coaMode !== 'csv');
     $('coaGeneratorMode')?.classList.toggle('hidden', state.coaMode !== 'generator');
+    if (state.coaMode !== 'generator') {
+      $('coaRuleInlineEditorWrap')?.classList.add('hidden');
+    }
   }
 
   function setCoaRuleHint(message, level = 'info') {
@@ -967,15 +1005,267 @@
     }).join('');
   }
 
-  function renderRuleResult(result) {
-    const tbody = $('coaRuleConfidenceBody');
-    if (!tbody) return;
-    const rows = Array.isArray(result?.rules_confidence) ? result.rules_confidence : [];
-    tbody.innerHTML = rows.map(item => {
-      const status = String(item.status || '').toLowerCase();
-      const score = Number(item.confidence || 0).toFixed(1);
-      return `<tr><td class="mono">${escapeHtml(item.rule_id || '-')}</td><td class="mono">${escapeHtml(score)}%</td><td><span class="status-chip ${escapeAttr(status)}">${escapeHtml(status || 'unknown')}</span></td></tr>`;
+  function confidenceMeter(score) {
+    const value = Math.max(0, Math.min(100, Number(score || 0)));
+    const blocks = Math.round(value / 10);
+    return `${'█'.repeat(blocks)}${'░'.repeat(10 - blocks)}`;
+  }
+
+  function confidenceClass(score) {
+    const value = Number(score || 0);
+    if (value >= 90) return 'conf-high';
+    if (value >= 85) return 'conf-med';
+    return 'conf-low';
+  }
+
+  function ruleStatusMeta(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'auto') return { icon: '✓', label: 'auto' };
+    if (normalized === 'review') return { icon: '⚠', label: 'review' };
+    return { icon: '△', label: normalized || 'edit' };
+  }
+
+  function getExampleAmountForField(fieldName) {
+    const defaults = {
+      net_amount: 76570.00,
+      vat_amount: 5359.90,
+      total_amount: 81929.90,
+      gross_amount: 81929.90,
+      amount_paid: 81929.90,
+      wht_amount: 0,
+    };
+    return Number(defaults[String(fieldName || '').trim()] || 0);
+  }
+
+  function normalizeInlineRuleRows(rule) {
+    return Array.isArray(rule?.entries) ? rule.entries.map(entry => ({
+      ...entry,
+      account_code: String(entry.account_code || '').trim(),
+      account_name: String(entry.account_name || '').trim() || getLabelForCode(entry.account_code),
+      amount_field: String(entry.amount_field || '').trim(),
+      example_amount: Number(entry.example_amount ?? getExampleAmountForField(entry.amount_field)),
+      side: String(entry.side || '').toLowerCase() === 'credit' ? 'credit' : 'debit',
+    })) : [];
+  }
+
+  function renderRuleInlineEditor(result) {
+    const wrap = $('coaRuleInlineEditorWrap');
+    const body = $('coaRuleEditorBody');
+    if (!wrap || !body) return;
+
+    if (!Array.isArray(state.coaRule.inlineRules) || !state.coaRule.inlineRules.length) {
+      const srcRules = Array.isArray(result?.journal_rules) ? result.journal_rules : [];
+      state.coaRule.inlineRules = srcRules.map(rule => ({
+        ...rule,
+        entries: normalizeInlineRuleRows(rule),
+      }));
+    }
+
+    const coaOptions = getCOA();
+    const reference = String(result?.mapping_reference_excerpt || '').trim();
+    $('coaRuleEditorHint').textContent = reference
+      ? `Reference from uploaded mapping DOCX: ${reference}`
+      : 'Reference from uploaded mapping DOCX will appear here when available.';
+
+    body.innerHTML = state.coaRule.inlineRules.map((rule, ruleIndex) => {
+      const entries = Array.isArray(rule.entries) ? rule.entries : [];
+      const totalDr = entries.reduce((sum, entry) => sum + (entry.side === 'debit' ? Number(entry.example_amount || 0) : 0), 0);
+      const totalCr = entries.reduce((sum, entry) => sum + (entry.side === 'credit' ? Number(entry.example_amount || 0) : 0), 0);
+      const balanced = Math.abs(totalDr - totalCr) < 0.01;
+      return `
+        <div class="voucher-card">
+          <div class="voucher-card-header">
+            <div class="voucher-meta">
+              <span class="voucher-no mono">${escapeHtml(rule.rule_id || '-')}</span>
+              <span class="voucher-sep">·</span>
+              <span class="voucher-vendor">${escapeHtml(rule.name || 'Unnamed Rule')}</span>
+              <span class="voucher-sep">·</span>
+              <span class="voucher-date">${entries.length} lines</span>
+            </div>
+            <span class="voucher-gross mono">${balanced ? 'Balanced' : 'Needs balance'}</span>
+          </div>
+          <table class="voucher-table">
+            <thead>
+              <tr>
+                <th class="vt-type">Dr/Cr</th>
+                <th class="vt-code">Account Code</th>
+                <th class="vt-name">Account Name</th>
+                <th class="vt-amt">Debit (฿) / Field</th>
+                <th class="vt-amt">Credit (฿) / Field</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${entries.map((entry, entryIndex) => {
+                const codeNorm = normalizeAccountCode(entry.account_code);
+                const hasSelected = coaOptions.some(c => normalizeAccountCode(c.code) === codeNorm);
+                const placeholderOpt = hasSelected ? '' : '<option value="" selected disabled>— Please select account —</option>';
+                const options = coaOptions.map(c => {
+                  const selected = normalizeAccountCode(c.code) === codeNorm;
+                  return `<option value="${escapeAttr(c.code)}" ${selected ? 'selected' : ''}>${escapeHtml(c.code)} — ${escapeHtml(c.name)}</option>`;
+                }).join('');
+                const amount = Number(entry.example_amount || 0);
+                const amountLabel = `${fmt(amount)} (${entry.amount_field || 'manual'})`;
+                const debitText = entry.side === 'debit' ? amountLabel : '—';
+                const creditText = entry.side === 'credit' ? amountLabel : '—';
+                return `
+                  <tr>
+                    <td class="vt-type"><span class="vtype-chip ${entry.side === 'credit' ? 'vtype-cr' : 'vtype-dr'}">${entry.side === 'credit' ? 'Cr' : 'Dr'}</span></td>
+                    <td class="vt-code">
+                      <select class="account-select ${hasSelected ? '' : 'is-missing'} rule-account-select" data-rule-index="${ruleIndex}" data-entry-index="${entryIndex}">
+                        ${placeholderOpt}${options}
+                      </select>
+                    </td>
+                    <td class="vt-name" id="rule-name-${ruleIndex}-${entryIndex}">${escapeHtml(entry.account_name || getLabelForCode(entry.account_code))}</td>
+                    <td class="vt-amt mono">
+                      ${entry.side === 'debit' ? `<input type="number" step="0.01" min="0" class="field-input mono rule-amount-input" data-rule-index="${ruleIndex}" data-entry-index="${entryIndex}" value="${amount.toFixed(2)}" />` : debitText}
+                    </td>
+                    <td class="vt-amt mono">
+                      ${entry.side === 'credit' ? `<input type="number" step="0.01" min="0" class="field-input mono rule-amount-input" data-rule-index="${ruleIndex}" data-entry-index="${entryIndex}" value="${amount.toFixed(2)}" />` : creditText}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+              <tr class="vt-totals">
+                <td colspan="3" class="vt-totals-label">Totals</td>
+                <td class="vt-amt mono">${fmt(totalDr)}</td>
+                <td class="vt-amt mono">${fmt(totalCr)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="voucher-card-footer">
+            <span class="${balanced ? 'balance-ok' : 'balance-warn'}">${balanced ? '✓ Balanced' : '⚠ Unbalanced'}</span>
+            <span class="field-hint">Adjust COA and sample values from uploaded DOCX guidance.</span>
+          </div>
+        </div>
+      `;
     }).join('');
+
+    wrap.classList.remove('hidden');
+  }
+
+  function openRuleInlineEditor() {
+    if (!state.coaRule.result) {
+      setCoaRuleHint('Generate rules first before editing.', 'warn');
+      return;
+    }
+    state.coaRule.inlineRules = [];
+    $('coaRuleResultWrap')?.classList.add('hidden');
+    renderRuleInlineEditor(state.coaRule.result);
+    setCoaRuleHint('Editing rules inline. Save changes when done.', 'info');
+  }
+
+  function closeRuleInlineEditor() {
+    $('coaRuleInlineEditorWrap')?.classList.add('hidden');
+    $('coaRuleResultWrap')?.classList.remove('hidden');
+  }
+
+  async function saveInlineRuleEdits() {
+    if (!state.coaRule.result || !Array.isArray(state.coaRule.inlineRules)) return;
+    const hasUnbalanced = state.coaRule.inlineRules.some(rule => {
+      const entries = Array.isArray(rule.entries) ? rule.entries : [];
+      const totalDr = entries.reduce((sum, entry) => sum + (entry.side === 'debit' ? Number(entry.example_amount || 0) : 0), 0);
+      const totalCr = entries.reduce((sum, entry) => sum + (entry.side === 'credit' ? Number(entry.example_amount || 0) : 0), 0);
+      return Math.abs(totalDr - totalCr) >= 0.01;
+    });
+    if (hasUnbalanced) {
+      setCoaRuleHint('Cannot save: one or more rules are unbalanced.', 'warn');
+      showToast('Fix unbalanced rules before saving', 'warn');
+      return;
+    }
+
+    const jobId = String(state.coaRule.jobId || state.coaRule.result.job_id || '').trim();
+    if (!jobId) {
+      setCoaRuleHint('Cannot save: missing job id.', 'warn');
+      showToast('Missing job id', 'err');
+      return;
+    }
+
+    const saveBtn = $('coaRuleSaveEditsBtn');
+    const originalLabel = saveBtn?.textContent || 'Save Changes';
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
+    try {
+      const response = await fetch(apiUrl(`/api/v1/rules/generate/${encodeURIComponent(jobId)}/save-edits`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ journal_rules: state.coaRule.inlineRules }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = payload?.detail || `Save failed (${response.status})`;
+        throw new Error(String(detail));
+      }
+
+      state.coaRule.result = payload;
+      state.coaRule.yamlText = String(payload.yaml_content || state.coaRule.yamlText || '');
+      renderRuleResult(payload);
+      closeRuleInlineEditor();
+      setCoaRuleHint('Rule edits saved to YAML successfully.', 'ok');
+      showToast('Rule edits saved to YAML', 'ok');
+    } catch (error) {
+      setCoaRuleHint(String(error.message || error), 'warn');
+      showToast('Save edits failed', 'err');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalLabel;
+      }
+    }
+  }
+
+  function renderRuleResult(result) {
+    const rulesBody = $('coaRuleConfidenceBody');
+    const accountsBody = $('coaRuleAccountsBody');
+    const summary = $('coaRuleSummary');
+    const warning = $('coaRuleWarning');
+    if (!rulesBody || !accountsBody) return;
+
+    $('coaRuleInlineEditorWrap')?.classList.add('hidden');
+
+    const rows = Array.isArray(result?.rules_confidence) ? result.rules_confidence : [];
+    const accounts = Array.isArray(result?.accounts_confidence) ? result.accounts_confidence : [];
+
+    accountsBody.innerHTML = accounts.map(item => {
+      const score = Number(item.confidence || 0);
+      return `<tr>
+        <td class="mono">${escapeHtml(item.code || '-')}</td>
+        <td>${escapeHtml(item.name || '-')}</td>
+        <td>${escapeHtml(item.type || '-')}</td>
+        <td class="mono"><span class="coa-meter">${confidenceMeter(score)}</span> <span class="${confidenceClass(score)}">${score.toFixed(1)}%</span></td>
+      </tr>`;
+    }).join('');
+
+    rulesBody.innerHTML = rows.map(item => {
+      const status = String(item.status || '').toLowerCase();
+      const score = Number(item.confidence || 0);
+      const statusMeta = ruleStatusMeta(status);
+      const lineCount = Number(item.line_count || 0);
+      return `<tr>
+        <td class="mono">${escapeHtml(item.rule_id || '-')}</td>
+        <td>${escapeHtml(item.name || '-')}</td>
+        <td class="mono">${lineCount > 0 ? `${lineCount} lines` : '-'}</td>
+        <td class="mono"><span class="coa-meter">${confidenceMeter(score)}</span> <span class="${confidenceClass(score)}">${score.toFixed(1)}%</span></td>
+        <td><span class="status-chip ${escapeAttr(status)}">${statusMeta.icon} ${statusMeta.label}</span></td>
+      </tr>`;
+    }).join('');
+
+    if (summary) {
+      summary.textContent = `✓ Rule generation complete — ${rows.length} rules generated • COA Extraction: ${accounts.length} accounts found`;
+    }
+
+    const lowCount = rows.filter(item => Number(item.confidence || 0) < 85).length;
+    if (warning) {
+      warning.textContent = lowCount > 0
+        ? `⚠ ${lowCount} rules below 85% threshold — recommend human review`
+        : '';
+      warning.classList.toggle('hidden', lowCount === 0);
+    }
+
+    $('coaDownloadYamlBtnSecondary').disabled = !$('coaDownloadYamlBtn') || $('coaDownloadYamlBtn').disabled;
     $('coaRuleResultWrap')?.classList.toggle('hidden', rows.length === 0);
   }
 
@@ -1414,9 +1704,34 @@
     return f.mismatch === true || (co && buyerTax && companyTax && buyerTax !== companyTax);
   }
 
+  const STANDARD_ACCOUNT_LABELS = {
+    '1151': 'ภาษีซื้อ',
+    '1154': 'ภาษีซื้อ',
+    '2110': 'เจ้าหนี้การค้า',
+    '2120': 'เจ้าหนี้การค้า',
+    '2135': 'ภาษีขาย',
+    '2150': 'ภาษีหัก ณ ที่จ่าย',
+    '2195': 'เจ้าหนี้การค้า',
+    '5040': 'ค่าน้ำค่าไฟ',
+    '500000': 'ค่าใช้จ่าย',
+    '5000': 'ค่าใช้จ่าย',
+  };
+
+  function normalizeAccountCode(value) {
+    return String(value || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+  }
+
+  function findCoaEntryByCode(code) {
+    const normalized = normalizeAccountCode(code);
+    return getCOA().find(entry => normalizeAccountCode(entry.code) === normalized) || null;
+  }
+
   function getLabelForCode(code) {
-    const entry = getCOA().find(c => c.code === code);
-    return entry ? entry.name : code;
+    const normalized = normalizeAccountCode(code);
+    const entry = findCoaEntryByCode(code);
+    if (entry?.name) return entry.name;
+    if (STANDARD_ACCOUNT_LABELS[normalized]) return STANDARD_ACCOUNT_LABELS[normalized];
+    return String(code || '').trim() || '-';
   }
 
   function inferExpenseCode(f) {
@@ -2189,14 +2504,20 @@
           <tbody>
             ${v.lines.map((line, li) => {
               if (line.isEditable) {
-                const opts = expCoa.map(c =>
-                  `<option value="${c.code}" ${c.code === line.code ? 'selected' : ''}>${c.code} — ${c.name}</option>`
-                ).join('');
+                const currentCodeNorm = normalizeAccountCode(line.code);
+                const hasSelected = expCoa.some(c => normalizeAccountCode(c.code) === currentCodeNorm);
+                const placeholderOpt = hasSelected
+                  ? ''
+                  : '<option value="" selected disabled>— Please select account —</option>';
+                const opts = expCoa.map(c => {
+                  const selected = normalizeAccountCode(c.code) === currentCodeNorm;
+                  return `<option value="${escapeAttr(c.code)}" ${selected ? 'selected' : ''}>${escapeHtml(c.code)} — ${escapeHtml(c.name)}</option>`;
+                }).join('');
                 return `<tr class="vt-dr">
                   <td class="vt-type"><span class="vtype-chip vtype-dr">Dr</span></td>
                   <td class="vt-code">
-                    <select class="account-select" data-voucher="${v.voucherNo}" data-line="${li}">
-                      ${opts}
+                    <select class="account-select ${hasSelected ? '' : 'is-missing'}" data-voucher="${v.voucherNo}" data-line="${li}">
+                      ${placeholderOpt}${opts}
                     </select>
                   </td>
                   <td class="vt-name vt-name-auto" id="vtname-${v.voucherNo}-${li}">${line.label}</td>
@@ -2236,10 +2557,12 @@
     list.querySelectorAll('.account-select').forEach(sel => {
       sel.addEventListener('change', function () {
         const code = this.value;
+        if (!code) return;
         const vno = this.dataset.voucher;
         const li = parseInt(this.dataset.line);
         const v = state.vouchers.find(x => x.voucherNo === vno);
         if (v) { v.lines[li].code = code; v.lines[li].label = getLabelForCode(code); }
+        this.classList.remove('is-missing');
         const nameEl = document.getElementById(`vtname-${vno}-${li}`);
         if (nameEl) nameEl.textContent = getLabelForCode(code);
         console.log(`[ML Pending] voucher=${vno} override → ${code}`);
@@ -2727,9 +3050,12 @@
 
     stopRuleProgressPolling();
     $('coaRuleResultWrap')?.classList.add('hidden');
+    $('coaRuleInlineEditorWrap')?.classList.add('hidden');
     $('coaDownloadYamlBtn').disabled = true;
+    $('coaDownloadYamlBtnSecondary').disabled = true;
     state.coaRule.result = null;
     state.coaRule.yamlText = '';
+    state.coaRule.inlineRules = [];
 
     const form = new FormData();
     form.append('company_id', companyId);
@@ -2793,6 +3119,18 @@
     showToast('Rules approved', 'ok');
   });
 
+  $('coaEditRulesBtn').addEventListener('click', () => {
+    openRuleInlineEditor();
+  });
+
+  $('coaRuleBackToReportBtn').addEventListener('click', () => {
+    closeRuleInlineEditor();
+  });
+
+  $('coaRuleSaveEditsBtn').addEventListener('click', async () => {
+    await saveInlineRuleEdits();
+  });
+
   $('coaDownloadYamlBtn').addEventListener('click', () => {
     if (!state.coaRule.yamlText) {
       setCoaRuleHint('No YAML generated yet.', 'warn');
@@ -2808,6 +3146,36 @@
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  });
+
+  $('coaDownloadYamlBtnSecondary').addEventListener('click', () => {
+    $('coaDownloadYamlBtn').click();
+  });
+
+  $('coaRuleEditorBody').addEventListener('change', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const ruleIndex = Number(target.dataset.ruleIndex);
+    const entryIndex = Number(target.dataset.entryIndex);
+    if (Number.isNaN(ruleIndex) || Number.isNaN(entryIndex)) return;
+    const rule = state.coaRule.inlineRules?.[ruleIndex];
+    const entry = rule?.entries?.[entryIndex];
+    if (!entry) return;
+
+    if (target.classList.contains('rule-account-select')) {
+      const nextCode = String(target.value || '').trim();
+      if (!nextCode) return;
+      entry.account_code = nextCode;
+      entry.account_name = getLabelForCode(nextCode);
+      renderRuleInlineEditor(state.coaRule.result);
+      return;
+    }
+
+    if (target.classList.contains('rule-amount-input')) {
+      const nextAmount = Number(target.value || 0);
+      entry.example_amount = Number.isFinite(nextAmount) ? Math.max(nextAmount, 0) : 0;
+      renderRuleInlineEditor(state.coaRule.result);
+    }
   });
 
   coaFileInput.addEventListener('change', async function () {

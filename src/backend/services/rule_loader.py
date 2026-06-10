@@ -11,9 +11,21 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from config.settings import settings
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RULES_ROOT = REPO_ROOT / "rules"
 DEFAULT_SCHEMA_PATH = DEFAULT_RULES_ROOT / "rule_schema.json"
+
+
+def _rules_root() -> Path:
+    settings.reload()
+    return settings.RULES_ROOT
+
+
+def _schema_path_for(rules_root: Path) -> Path:
+    scoped_schema = rules_root / "rule_schema.json"
+    return scoped_schema if scoped_schema.exists() else DEFAULT_SCHEMA_PATH
 
 
 @dataclass(frozen=True)
@@ -147,8 +159,8 @@ def load_company_rules(
     rules_root: Path | None = None,
     schema_path: Path | None = None,
 ) -> CompiledRules:
-    resolved_rules_root = rules_root or DEFAULT_RULES_ROOT
-    resolved_schema_path = schema_path or DEFAULT_SCHEMA_PATH
+    resolved_rules_root = rules_root or _rules_root()
+    resolved_schema_path = schema_path or _schema_path_for(resolved_rules_root)
     rule_path = resolved_rules_root / company_id / "rule_coa.yaml"
 
     globals_root = resolved_rules_root / "global"

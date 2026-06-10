@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
+from config.settings import settings
 from src.backend.ml.amount_reconciler import apply_amount_confidence, reconcile_amounts
 from src.backend.ml.field_extractor import run_extraction
 from src.backend.ml.llm_claude import STAGE_C_SYSTEM_PROMPT
@@ -309,11 +310,14 @@ async def run_pipeline(
     force_refresh: bool = False,
 ) -> PipelineContext:
     """Run OCR -> extraction -> Stage C cascade repair -> journal routing."""
+    settings.reload()
     ctx = PipelineContext(source_file=image_path, company_id=company_id)
     try:
-        ctx.ocr_output = run_ocr(image_path, force_refresh=force_refresh)
+        ctx.ocr_output = run_ocr(
+            image_path, cache_root=settings.CACHE_ROOT, force_refresh=force_refresh
+        )
         ctx.extraction_output = run_extraction(
-            ctx.ocr_output, force_refresh=force_refresh
+            ctx.ocr_output, cache_root=settings.CACHE_ROOT, force_refresh=force_refresh
         )
         ctx.extraction_output["company_id"] = company_id
 
@@ -469,6 +473,8 @@ async def run_pipeline(
         ctx.journal_output = run_journal_router(
             ctx.extraction_output,
             company_id=company_id,
+            cache_root=settings.CACHE_ROOT,
+            rules_root=settings.RULES_ROOT,
             force_refresh=force_refresh,
         )
     except Exception as exc:  # pragma: no cover - safety net for runtime failures

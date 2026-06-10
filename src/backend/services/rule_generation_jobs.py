@@ -10,14 +10,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from config.settings import settings
 from src.backend.services.rule_generator import (
     approve_generated_rules,
     run_rule_generation_job,
+    save_edited_rules,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-JOBS_ROOT = REPO_ROOT / "rules" / "_jobs"
-JOBS_ROOT.mkdir(parents=True, exist_ok=True)
+
+def _jobs_root() -> Path:
+    settings.reload()
+    root = settings.RULES_ROOT / "_jobs"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
 
 _STAGE_LABELS = {
     1: "Uploading & validating files",
@@ -37,7 +43,7 @@ class RuleGenerationJobStore:
 
     def _restore_jobs_from_disk(self) -> None:
         """Restore persisted jobs so progress/result survives server restarts."""
-        for path in JOBS_ROOT.glob("gen_*.json"):
+        for path in _jobs_root().glob("gen_*.json"):
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
             except Exception:
@@ -63,7 +69,7 @@ class RuleGenerationJobStore:
         payload = self._jobs.get(job_id)
         if not payload:
             return
-        (JOBS_ROOT / f"{job_id}.json").write_text(
+        (_jobs_root() / f"{job_id}.json").write_text(
             __import__("json").dumps(payload, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
@@ -179,6 +185,23 @@ class RuleGenerationJobStore:
             job["updated_at"] = datetime.now(UTC).isoformat()
             self._persist(job_id)
 
+    async def save_rule_edits(
+        self, job_id: str, edited_rules: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        async with self._lock:
+            job = self._jobs[job_id]
+            if job["status"] != "done":
+                raise RuntimeError("Job is not complete")
+
+            result = dict(job.get("result") or {})
+            result["approved"] = bool(job.get("approved", False))
+            updated_result = save_edited_rules(result, edited_rules)
+
+            job["result"] = updated_result
+            job["updated_at"] = datetime.now(UTC).isoformat()
+            self._persist(job_id)
+            return updated_result
+
     async def get_job(self, job_id: str) -> dict[str, Any] | None:
         async with self._lock:
             return self._jobs.get(job_id)
@@ -222,6 +245,7 @@ class RuleGenerationJobStore:
                     provider=request.get("provider", "auto"),
                     model=request.get("model", ""),
                     progress_callback=progress_cb,
+                    rules_root=settings.RULES_ROOT,
                 ),
                 timeout=JOB_TIMEOUT_SECONDS,
             )

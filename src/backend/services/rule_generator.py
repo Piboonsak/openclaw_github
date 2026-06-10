@@ -29,6 +29,23 @@ DEFAULT_MODELS = {
 LLM_REQUEST_TIMEOUT_SECONDS = 45
 
 
+def _rules_root() -> Path:
+    settings.reload()
+    return settings.RULES_ROOT
+
+
+def _schema_path_for(rules_root: Path) -> Path:
+    scoped_schema = rules_root / "rule_schema.json"
+    return scoped_schema if scoped_schema.exists() else DEFAULT_SCHEMA_PATH
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def _now_ms() -> int:
     return int(time.time() * 1000)
 
@@ -451,13 +468,13 @@ def run_rule_generation_job(
 ) -> dict[str, Any]:
     load_llm_keys()
     settings.reload()
-    root = rules_root or DEFAULT_RULES_ROOT
+    root = rules_root or _rules_root()
     company_root = root / company_id
     source_root = company_root / "source"
     audit_root = company_root / "audit"
     source_root.mkdir(parents=True, exist_ok=True)
     audit_root.mkdir(parents=True, exist_ok=True)
-    schema_path = root / "rule_schema.json"
+    schema_path = _schema_path_for(root)
     draft_path = company_root / "rule_coa.generated.yaml"
     active_path = company_root / "rule_coa.yaml"
     confidence_path = company_root / "confidence.json"
@@ -535,7 +552,9 @@ def run_rule_generation_job(
         stage4_raw_second = _call_llm(
             provider, stage4_prompt, "Return only valid YAML.", model
         )
-        stage4_payload_second = yaml.safe_load(_strip_code_fence(stage4_raw_second)) or {}
+        stage4_payload_second = (
+            yaml.safe_load(_strip_code_fence(stage4_raw_second)) or {}
+        )
     except Exception:
         # Keep generation usable even when the optional second-pass confidence probe fails.
         stage4_raw_second = ""
@@ -583,6 +602,8 @@ def run_rule_generation_job(
         rules_confidence.append(
             {
                 "rule_id": rule_id,
+                "name": str(rule.get("name", "")).strip() or rule_id,
+                "line_count": len(rule.get("entries", []) or []),
                 "confidence": overall,
                 "status": status,
                 "signals": {
@@ -657,7 +678,7 @@ def run_rule_generation_job(
     return {
         "job_id": job_id,
         "status": "done",
-        "output_path": str(draft_path.relative_to(REPO_ROOT)),
+        "output_path": _display_path(draft_path),
         "draft_path": str(draft_path),
         "active_path": str(active_path),
         "confidence_path": str(confidence_path),
@@ -666,6 +687,8 @@ def run_rule_generation_job(
         "overall_confidence": confidence_payload["overall_confidence"],
         "accounts_confidence": account_confidence,
         "rules_confidence": rules_confidence,
+        "journal_rules": journal_rules,
+        "mapping_reference_excerpt": mapping_text[:600].strip(),
         "flags": confidence_payload["flags"],
         "yaml_content": draft_path.read_text(encoding="utf-8"),
     }
@@ -690,7 +713,162 @@ def save_rule_text(
     payload = yaml.safe_load(yaml_text)
     if not isinstance(payload, dict):
         raise RuntimeError("Edited YAML root must be a mapping.")
-    _validate_schema(payload, schema_path or DEFAULT_SCHEMA_PATH)
+    _validate_schema(payload, schema_path or _schema_path_for(_rules_root()))
     target = Path(path)
     _write_yaml(target, payload)
     return payload
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def validate_edited_rules(
+    chart_of_accounts: list[dict[str, Any]],
+    edited_rules: list[dict[str, Any]],
+) -> None:
+    if not isinstance(edited_rules, list) or not edited_rules:
+        raise RuntimeError("Edited rules must be a non-empty list.")
+
+    valid_codes = {
+        str(item.get("code", "")).strip()
+        for item in (chart_of_accounts or [])
+        if str(item.get("code", "")).strip()
+    }
+    seen_rule_ids: set[str] = set()
+
+    for rule in edited_rules:
+        rule_id = str(rule.get("rule_id", "")).strip()
+        if not rule_id:
+            raise RuntimeError("Each rule must include a non-empty rule_id.")
+        if rule_id in seen_rule_ids:
+            raise RuntimeError(f"Duplicate rule_id detected: {rule_id}")
+        seen_rule_ids.add(rule_id)
+
+        entries = rule.get("entries", []) or []
+        if not isinstance(entries, list) or not entries:
+            raise RuntimeError(f"Rule {rule_id} must include at least one entry.")
+
+        debit_total = 0.0
+        credit_total = 0.0
+        has_debit = False
+        has_credit = False
+
+        for entry in entries:
+            side = str(entry.get("side", "")).strip().lower()
+            if side not in {"debit", "credit"}:
+                raise RuntimeError(
+                    f"Rule {rule_id} has invalid entry side: {entry.get('side')}"
+                )
+
+            account_code = str(entry.get("account_code", "")).strip()
+            if not account_code:
+                raise RuntimeError(
+                    f"Rule {rule_id} has an entry with empty account_code"
+                )
+
+            is_variable = bool(entry.get("is_variable", False)) or (
+                "xxx" in account_code.lower()
+            )
+            if not is_variable and account_code not in valid_codes:
+                raise RuntimeError(
+                    f"Rule {rule_id} account_code '{account_code}' is not in company COA"
+                )
+
+            amount_field = str(entry.get("amount_field", "")).strip()
+            if not amount_field:
+                raise RuntimeError(
+                    f"Rule {rule_id} has an entry with empty amount_field"
+                )
+
+            amount = _to_float(entry.get("example_amount"), 0.0)
+            if amount < 0:
+                raise RuntimeError(
+                    f"Rule {rule_id} has negative example_amount for {account_code}"
+                )
+
+            if side == "debit":
+                has_debit = True
+                debit_total += amount
+            else:
+                has_credit = True
+                credit_total += amount
+
+        if not has_debit or not has_credit:
+            raise RuntimeError(
+                f"Rule {rule_id} must contain both debit and credit entries"
+            )
+
+        if abs(debit_total - credit_total) >= 0.01:
+            raise RuntimeError(
+                f"Rule {rule_id} is unbalanced (debit={debit_total:.2f}, credit={credit_total:.2f})"
+            )
+
+
+def save_edited_rules(
+    job_result: dict[str, Any], edited_rules: list[dict[str, Any]]
+) -> dict[str, Any]:
+    draft_path = Path(job_result["draft_path"])
+    active_path = Path(job_result["active_path"])
+    schema_path = _schema_path_for(draft_path.parents[1])
+
+    if not draft_path.exists():
+        raise FileNotFoundError(f"Draft rule file not found: {draft_path}")
+
+    current_payload = yaml.safe_load(draft_path.read_text(encoding="utf-8")) or {}
+    if not isinstance(current_payload, dict):
+        raise RuntimeError("Draft rule file has invalid YAML root.")
+
+    chart_of_accounts = list(current_payload.get("chart_of_accounts", []) or [])
+    validate_edited_rules(chart_of_accounts, edited_rules)
+
+    sanitized_rules: list[dict[str, Any]] = []
+    for rule in edited_rules:
+        sanitized = dict(rule)
+        entries: list[dict[str, Any]] = []
+        for entry in rule.get("entries", []) or []:
+            cleaned = dict(entry)
+            cleaned.pop("example_amount", None)
+            entries.append(cleaned)
+        sanitized["entries"] = entries
+        sanitized_rules.append(sanitized)
+
+    current_payload["journal_entry_rules"] = sanitized_rules
+    _validate_schema(current_payload, schema_path)
+    _write_yaml(draft_path, current_payload)
+
+    # Keep active YAML in sync if this generation has already been approved.
+    if bool(job_result.get("approved", False)):
+        active_path.write_text(draft_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+    confidence_index = {
+        str(item.get("rule_id", "")).strip(): item
+        for item in (job_result.get("rules_confidence", []) or [])
+        if str(item.get("rule_id", "")).strip()
+    }
+    updated_confidence: list[dict[str, Any]] = []
+    for rule in sanitized_rules:
+        rule_id = str(rule.get("rule_id", "")).strip()
+        previous = dict(confidence_index.get(rule_id, {}))
+        previous["rule_id"] = rule_id
+        previous["name"] = str(rule.get("name", "")).strip() or rule_id
+        previous["line_count"] = len(rule.get("entries", []) or [])
+        if not previous.get("status"):
+            previous["status"] = "review"
+        if "confidence" not in previous:
+            previous["confidence"] = 80.0
+        updated_confidence.append(previous)
+
+    updated_result = dict(job_result)
+    updated_result["journal_rules"] = sanitized_rules
+    updated_result["rules_confidence"] = updated_confidence
+    updated_result["rule_count"] = len(sanitized_rules)
+    updated_result["yaml_content"] = draft_path.read_text(encoding="utf-8")
+    updated_result["flags"] = [
+        f"{sum(1 for item in updated_confidence if _to_float(item.get('confidence')) < 85)} rules below 85% threshold"
+    ]
+
+    return updated_result

@@ -23,6 +23,11 @@ router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+def _safe_upload_name(filename: str | None, fallback: str) -> str:
+    cleaned = Path(filename or fallback).name.strip()
+    return cleaned or fallback
+
+
 def _normalize_tax_id(value: str | None) -> str:
     return "".join(ch for ch in str(value or "") if ch.isdigit())
 
@@ -61,18 +66,12 @@ async def process(
     file: UploadFile | None = File(None, description="Uploaded document blob"),
 ) -> dict[str, Any]:
     """Process a document (OCR -> Field Extraction -> GL Alignment Routing)."""
-    temp_dir = (
-        Path(__file__).resolve().parents[3]
-        / "src"
-        / "backend"
-        / "ml"
-        / "cache"
-        / "uploads"
-    )
+    settings.reload()
+    temp_dir = settings.UPLOAD_ROOT
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     if file:
-        target_path = temp_dir / file.filename
+        target_path = temp_dir / _safe_upload_name(file.filename, "upload.bin")
         content = await file.read()
         target_path.write_bytes(content)
         resolved_path = str(target_path)
@@ -188,14 +187,8 @@ async def export_excel(
 ) -> FileResponse:
     """Generate professional Double-Entry Accounting General Ledger in Excel."""
     try:
-        temp_dir = (
-            Path(__file__).resolve().parents[3]
-            / "src"
-            / "backend"
-            / "ml"
-            / "cache"
-            / "exports"
-        )
+        settings.reload()
+        temp_dir = settings.EXPORT_ROOT
         temp_dir.mkdir(parents=True, exist_ok=True)
         xlsx_path = temp_dir / "double_entry_ledgers.xlsx"
 
@@ -222,11 +215,17 @@ async def generate_rules(
     coa_file: UploadFile = File(...),
     mapping_file: UploadFile = File(...),
 ) -> dict[str, Any]:
-    uploads_dir = REPO_ROOT / "src" / "backend" / "ml" / "cache" / "rule_uploads"
+    settings.reload()
+    uploads_dir = settings.UPLOAD_ROOT / "rule_uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
-    coa_path = uploads_dir / f"{company_id}_{coa_file.filename}"
-    mapping_path = uploads_dir / f"{company_id}_{mapping_file.filename}"
+    coa_path = (
+        uploads_dir / f"{company_id}_{_safe_upload_name(coa_file.filename, 'coa.pdf')}"
+    )
+    mapping_path = (
+        uploads_dir
+        / f"{company_id}_{_safe_upload_name(mapping_file.filename, 'mapping.docx')}"
+    )
 
     with coa_path.open("wb") as handle:
         shutil.copyfileobj(coa_file.file, handle)
@@ -300,3 +299,40 @@ async def approve_rule_job(job_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=409, detail="Job is not done")
     await RULE_GENERATION_JOBS.mark_approved(job_id)
     return {"job_id": job_id, "status": "approved"}
+
+
+@router.post("/v1/rules/generate/{job_id}/save-edits")
+async def save_rule_edits(
+    job_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    job = await RULE_GENERATION_JOBS.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job["status"] != "done":
+        raise HTTPException(status_code=409, detail="Job is not done")
+
+    edited_rules = payload.get("journal_rules")
+    if not isinstance(edited_rules, list):
+        raise HTTPException(
+            status_code=422,
+            detail="payload.journal_rules must be a non-empty array",
+        )
+
+    try:
+        updated_result = await RULE_GENERATION_JOBS.save_rule_edits(
+            job_id, edited_rules
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    return {
+        **updated_result,
+        "job_id": job_id,
+        "status": "done",
+        "approved": bool(
+            (await RULE_GENERATION_JOBS.get_job(job_id) or {}).get("approved", False)
+        ),
+    }

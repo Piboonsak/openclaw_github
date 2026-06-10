@@ -1,6 +1,14 @@
 """Configuration settings."""
 
 import os
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _path_from_env(name: str, default: Path) -> Path:
+    value = os.getenv(name, "").strip()
+    return Path(value).expanduser() if value else default
 
 
 class Settings:
@@ -8,6 +16,14 @@ class Settings:
         self.reload()
 
     def reload(self) -> None:
+        self.APP_ENV = os.getenv("APP_ENV", "development")
+        self.PUBLIC_ENV = os.getenv("PUBLIC_ENV", self.APP_ENV)
+        self.RULES_ROOT = _path_from_env("RULES_ROOT", REPO_ROOT / "rules")
+        self.CACHE_ROOT = _path_from_env(
+            "CACHE_ROOT", REPO_ROOT / "src" / "backend" / "ml" / "cache"
+        )
+        self.UPLOAD_ROOT = _path_from_env("UPLOAD_ROOT", self.CACHE_ROOT / "uploads")
+        self.EXPORT_ROOT = _path_from_env("EXPORT_ROOT", self.CACHE_ROOT / "exports")
         self.ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
         self.OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
