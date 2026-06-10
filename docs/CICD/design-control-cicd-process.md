@@ -151,3 +151,48 @@ Deployments follow an automated lifecycle to ensure code in main is always stabl
    * The deploy GHA workflow URL.
    * The deployed Git commit SHA.
    * The output report of the **22-point automated health check**.
+
+---
+
+## 🌐 6. Demo Site Deployment (Branch `demo`)
+
+To deliver clickable preview builds safely, demo deployments are run from the **Control Plane** (`Piboonsak/Openclaw`) and pull source from `YAHWAN-SHOP/ai-accounting-copilot` branch `demo`.
+
+### Demo Infrastructure
+
+* **Domain:** `demo-aiaccount.yahwan.biz`
+* **VPS:** `76.13.210.250`
+* **Remote web root:** `/var/www/demo-aiaccount`
+* **Nginx conf:** `/etc/nginx/conf.d/demo-aiaccount.conf`
+* **Content:** static prototype (`ux-ui-prototype.html` + `ux-ui-prototype.css`)
+
+### Deploy Flow
+
+1. Push code to branch `demo` in `YAHWAN-SHOP/ai-accounting-copilot`.
+
+2. Trigger Control Plane workflow `deploy-ai-accounting-copilot-demo.yml` in `Piboonsak/Openclaw` (manual or orchestrated dispatch).
+
+3. Workflow deploy job performs SCP upload of HTML/CSS and nginx config.
+
+4. Workflow deploy job runs `nginx -t`, `systemctl reload nginx`, and host-header health check (`HTTP 200` expected).
+
+5. Workflow verify job performs Playwright post-deploy smoke checks against live demo URL.
+
+### Post-Deploy Playwright Checks (Required)
+
+* Page loads successfully with expected title.
+* Main interactive UI renders (topbar + stepper + action buttons).
+* Core click path works (open page, click key controls, no broken state).
+* No console `error` messages.
+* Screenshot artifact uploaded for visual regression reference.
+
+### Required Secrets (Control Plane)
+
+* `VPS_HOST`
+* `VPS_USER`
+* `VPS_SSH_KEY` (or equivalent deploy key secret)
+* `GH_TOKEN` (read access to target repo branch)
+
+### Rollback
+
+Rollback is commit-based: redeploy a known-good commit from `demo` branch through the same workflow. No direct VPS mutation outside workflow execution.
