@@ -3,6 +3,8 @@
 Quick-reference for deploying each environment.  
 All production/PoC deploys are triggered from the **Control Plane** (`Piboonsak/Openclaw`).
 
+> **Full CI/CD process & quality gates:** See [`docs/CICD/design-control-cicd-process.md`](../docs/CICD/design-control-cicd-process.md)
+
 ---
 
 ## Environment Matrix

@@ -2,6 +2,8 @@
 
 This document defines the development lifecycle, quality gates, and automated integration standards for the **AI Pre-Accounting Copilot** (`ai-accounting-copilot`). It integrates workspace governance policies with GitHub Projects Best Practices to establish a reliable release pipeline.
 
+> **Deploy quick-reference:** See [`deploy/README.md`](../../deploy/README.md) for exact `gh workflow run` commands and per-environment details.
+
 ---
 
 ## ⛔ 1. Workspace Governance & The Hybrid Two-Plane Model
