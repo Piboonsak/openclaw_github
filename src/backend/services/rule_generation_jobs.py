@@ -32,7 +32,7 @@ _STAGE_LABELS = {
     4: "Generating journal entry rules",
     5: "Validating & writing rule file",
 }
-JOB_TIMEOUT_SECONDS = 600
+JOB_TIMEOUT_SECONDS = 420  # 2× measured wall-clock (206 s) for 246-account COA via auto provider
 
 
 class RuleGenerationJobStore:
