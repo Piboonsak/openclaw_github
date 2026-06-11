@@ -75,7 +75,9 @@ def classify_reporting_branch(
                     branch=branch, matched_term=term, source="source_text"
                 )
 
-    return ReportingClassification(branch=ReportingBranch.NONE, matched_term=None, source="")
+    return ReportingClassification(
+        branch=ReportingBranch.NONE, matched_term=None, source=""
+    )
 
 
 def is_reporting_document(

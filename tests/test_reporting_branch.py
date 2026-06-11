@@ -53,9 +53,7 @@ class TestReportingBranchClassifier:
 
     def test_thai_payments_report_via_source_text(self):
         """Test: Thai 'รายงานจ่าย' in source_text → PAYMENTS."""
-        result = classify_reporting_branch(
-            source_text="รายงานจ่ายค่าใช้บริการเดือนนี้"
-        )
+        result = classify_reporting_branch(source_text="รายงานจ่ายค่าใช้บริการเดือนนี้")
         assert result.branch == ReportingBranch.PAYMENTS
         assert result.source == "source_text"
 

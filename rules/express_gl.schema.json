@@ -42,11 +42,7 @@
       "description": "Journal line items",
       "items": {
         "type": "object",
-        "required": [
-          "account",
-          "debit",
-          "credit"
-        ],
+        "required": ["account", "debit", "credit"],
         "properties": {
           "account": {
             "type": "string",

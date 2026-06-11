@@ -4,8 +4,10 @@ import pytest
 
 from src.backend.services.express_gl_contract import (
     ExpressGLContractError,
+    check_balance_tolerance,
     is_valid_express_gl,
     validate_express_gl,
+    validate_express_gl_lines,
 )
 
 
@@ -21,7 +23,12 @@ class TestExpressGLSchema:
             "reference": "INV-001",
             "book_code": "AP",
             "lines": [
-                {"account": "1110", "description": "Expense", "debit": 100.0, "credit": 0.0}
+                {
+                    "account": "1110",
+                    "description": "Expense",
+                    "debit": 100.0,
+                    "credit": 0.0,
+                }
             ],
             "total_debit": 100.0,
             "total_credit": 0.0,
@@ -58,7 +65,12 @@ class TestExpressGLSchema:
             "reference": "INV-001",
             "book_code": "AP",
             "lines": [
-                {"account": "1110", "description": "Expense", "debit": 100.0, "credit": 0.0}
+                {
+                    "account": "1110",
+                    "description": "Expense",
+                    "debit": 100.0,
+                    "credit": 0.0,
+                }
             ],
             "total_debit": 100.0,
             "total_credit": 0.0,
@@ -116,7 +128,12 @@ class TestExpressGLSchema:
             "reference": "INV-001",
             "book_code": "AP",
             "lines": [
-                {"account": "1110", "description": "Expense", "debit": -50.0, "credit": 0.0}
+                {
+                    "account": "1110",
+                    "description": "Expense",
+                    "debit": -50.0,
+                    "credit": 0.0,
+                }
             ],
             "total_debit": -50.0,
             "total_credit": 0.0,
@@ -136,7 +153,12 @@ class TestExpressGLSchema:
             "reference": "INV-001",
             "book_code": "AP",
             "lines": [
-                {"account": "1110", "description": "Expense", "debit": 100.0, "credit": 0.0}
+                {
+                    "account": "1110",
+                    "description": "Expense",
+                    "debit": 100.0,
+                    "credit": 0.0,
+                }
             ],
             "total_debit": 100.0,
             "total_credit": 0.0,
@@ -156,7 +178,12 @@ class TestExpressGLSchema:
             "reference": "INV-001",
             "book_code": "AP",
             "lines": [
-                {"account": "1110", "description": "Expense", "debit": 100.0, "credit": 0.0}
+                {
+                    "account": "1110",
+                    "description": "Expense",
+                    "debit": 100.0,
+                    "credit": 0.0,
+                }
             ],
             "total_debit": 100.0,
             "total_credit": 0.0,
@@ -168,3 +195,113 @@ class TestExpressGLSchema:
 
         invalid_payload = {**valid_payload, "doc_id": None}
         assert is_valid_express_gl(invalid_payload) is False
+
+
+class TestValidateExpressGLLines:
+    """D7-02: Per-line validation with validate_express_gl_lines()."""
+
+    def _valid_line(self, **overrides) -> dict:
+        line = {"account": "1110", "debit": 100.0, "credit": 0.0}
+        line.update(overrides)
+        return line
+
+    def test_valid_lines_returns_empty_errors(self):
+        payload = {"lines": [self._valid_line()]}
+        assert validate_express_gl_lines(payload) == []
+
+    def test_missing_account_field_reported(self):
+        payload = {"lines": [{"debit": 100.0, "credit": 0.0}]}
+        errors = validate_express_gl_lines(payload)
+        assert any(e["field"] == "account" for e in errors)
+        assert errors[0]["line_index"] == 0
+
+    def test_missing_debit_field_reported(self):
+        payload = {"lines": [{"account": "1110", "credit": 0.0}]}
+        errors = validate_express_gl_lines(payload)
+        assert any(e["field"] == "debit" for e in errors)
+
+    def test_missing_credit_field_reported(self):
+        payload = {"lines": [{"account": "1110", "debit": 100.0}]}
+        errors = validate_express_gl_lines(payload)
+        assert any(e["field"] == "credit" for e in errors)
+
+    def test_negative_debit_reported(self):
+        payload = {"lines": [self._valid_line(debit=-50.0)]}
+        errors = validate_express_gl_lines(payload)
+        assert any(e["field"] == "debit" for e in errors)
+
+    def test_negative_credit_reported(self):
+        payload = {"lines": [self._valid_line(credit=-10.0)]}
+        errors = validate_express_gl_lines(payload)
+        assert any(e["field"] == "credit" for e in errors)
+
+    def test_string_amount_reported(self):
+        payload = {"lines": [self._valid_line(debit="not_a_number")]}
+        errors = validate_express_gl_lines(payload)
+        assert any(e["field"] == "debit" for e in errors)
+
+    def test_error_contains_line_index(self):
+        payload = {"lines": [self._valid_line(), {"account": "2000"}]}
+        errors = validate_express_gl_lines(payload)
+        indices = {e["line_index"] for e in errors}
+        assert 1 in indices
+        assert 0 not in indices
+
+    def test_non_dict_line_reported(self):
+        payload = {"lines": ["not_a_dict"]}
+        errors = validate_express_gl_lines(payload)
+        assert len(errors) == 1
+        assert errors[0]["field"] == "line"
+
+    def test_empty_lines_returns_empty(self):
+        assert validate_express_gl_lines({"lines": []}) == []
+
+    def test_missing_lines_key_returns_empty(self):
+        assert validate_express_gl_lines({}) == []
+
+
+class TestCheckBalanceTolerance:
+    """D7-02: Balance tolerance policy — check_balance_tolerance()."""
+
+    def test_exact_balance_is_balanced(self):
+        payload = {"total_debit": 100.0, "total_credit": 100.0}
+        result = check_balance_tolerance(payload)
+        assert result["balanced"] is True
+        assert result["delta"] == 0.0
+        assert result["within_tolerance"] is True
+
+    def test_within_default_tolerance(self):
+        """delta=0.005 is within default tolerance of 0.01."""
+        payload = {"total_debit": 100.005, "total_credit": 100.0}
+        result = check_balance_tolerance(payload)
+        assert result["balanced"] is False
+        assert result["within_tolerance"] is True
+
+    def test_at_tolerance_boundary(self):
+        """delta just below boundary (0.009) is within default tolerance 0.01."""
+        # Avoid floating-point drift; use values whose diff is provably < 0.01
+        payload = {"total_debit": 1001 / 100, "total_credit": 1000 / 100}
+        result = check_balance_tolerance(payload)
+        # delta = 0.009999... < 0.01 → within_tolerance
+        assert result["within_tolerance"] is True
+
+    def test_outside_default_tolerance(self):
+        """delta=0.02 exceeds default tolerance of 0.01."""
+        payload = {"total_debit": 100.02, "total_credit": 100.0}
+        result = check_balance_tolerance(payload)
+        assert result["within_tolerance"] is False
+        assert result["delta"] == pytest.approx(0.02, abs=1e-9)
+
+    def test_custom_tolerance(self):
+        payload = {"total_debit": 100.5, "total_credit": 100.0}
+        assert check_balance_tolerance(payload, tolerance=1.0)["within_tolerance"] is True
+        assert check_balance_tolerance(payload, tolerance=0.1)["within_tolerance"] is False
+
+    def test_returns_tolerance_used(self):
+        payload = {"total_debit": 100.0, "total_credit": 100.0}
+        assert check_balance_tolerance(payload, tolerance=0.05)["tolerance"] == 0.05
+
+    def test_missing_totals_treated_as_zero(self):
+        result = check_balance_tolerance({})
+        assert result["balanced"] is True
+        assert result["delta"] == 0.0
