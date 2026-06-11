@@ -1524,6 +1524,16 @@ input[type="checkbox"]:focus-visible {
 }
 .account-select:focus { outline: none; border-color: var(--accent); }
 
+.account-select.is-missing {
+  border-color: var(--warn);
+  background: color-mix(in oklab, var(--warn) 10%, white 90%);
+}
+
+.rule-amount-input {
+  width: 160px;
+  margin-left: auto;
+}
+
 .voucher-card-footer {
   display: flex;
   align-items: center;
@@ -1756,6 +1766,25 @@ input[type="checkbox"]:focus-visible {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--sp-3);
+}
+
+.coa-confidence-block {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-3);
+  background: var(--surface);
+}
+
+.coa-confidence-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.coa-meter {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--accent-strong);
 }
 
 .coa-mode-switch {

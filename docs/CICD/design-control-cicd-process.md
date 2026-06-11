@@ -2,6 +2,8 @@
 
 This document defines the development lifecycle, quality gates, and automated integration standards for the **AI Pre-Accounting Copilot** (`ai-accounting-copilot`). It integrates workspace governance policies with GitHub Projects Best Practices to establish a reliable release pipeline.
 
+> **Deploy quick-reference:** See [`deploy/README.md`](../../deploy/README.md) for exact `gh workflow run` commands and per-environment details.
+
 ---
 
 ## ⛔ 1. Workspace Governance & The Hybrid Two-Plane Model
@@ -196,3 +198,87 @@ To deliver clickable preview builds safely, demo deployments are run from the **
 ### Rollback
 
 Rollback is commit-based: redeploy a known-good commit from `demo` branch through the same workflow. No direct VPS mutation outside workflow execution.
+
+---
+
+## 🧪 7. PoC User-Trial Deployment (Branch `poc`)
+
+The PoC user-trial deployment is for users to try the real webapp workflow and help discover requirements. It is separate from the static demo and separate from production.
+
+### Environment Identity
+
+| Item | Value |
+| :--- | :--- |
+| **Environment name** | `poc-user-trial` |
+| **Preferred domain** | `poc-aiaccount.yahwan.biz` |
+| **Fallback route** | `demo-aiaccount.yahwan.biz/poc` only if DNS is constrained |
+| **Source branch** | `poc` |
+| **Runtime** | API-backed webapp, not static-only prototype |
+| **Data class** | Sanitized or explicitly approved PoC trial data only |
+| **Secrets** | Non-prod OpenRouter/Anthropic keys only |
+
+### Why This Exists
+
+The webapp is still discovering workflow requirements. Users need to try the upload, review, COA mapping, confidence report, rule edit/save, and export paths before the team locks MVP requirements.
+
+The PoC deployment must answer:
+
+* Which document types fail?
+* Which fields are missing or confusing?
+* Which COA mappings need memory/automation?
+* Whether the new Edit Rules screen is understandable to accounting users.
+* Which export format is required next.
+
+### PoC Infrastructure
+
+* **Remote app root:** `/opt/aiacc-poc` or workflow-defined equivalent.
+* **Rules root:** PoC-only path, for example `/opt/aiacc-poc/data/rules`.
+* **Cache root:** PoC-only path, for example `/opt/aiacc-poc/data/cache`.
+* **Uploads root:** PoC-only path, for example `/opt/aiacc-poc/data/uploads`.
+* **Exports root:** PoC-only path, for example `/opt/aiacc-poc/data/exports`.
+* **Nginx routing:** `/` to frontend, `/api/` to FastAPI backend.
+
+### PoC Deploy Flow
+
+1. Push trial-ready code to branch `poc` in `YAHWAN-SHOP/ai-accounting-copilot`.
+
+2. Trigger a Control Plane workflow in `Piboonsak/Openclaw` dedicated to PoC deployment.
+
+3. Workflow provisions or refreshes PoC app files and environment variables.
+
+4. Workflow applies Nginx config and service restart through the approved deployment path.
+
+5. Workflow runs health checks and a short UI smoke test.
+
+6. Workflow records deployment proof: run URL, commit SHA, health output, and screenshot artifact.
+
+### Required PoC Validation
+
+* Page loads successfully.
+* `/api/health` returns OK.
+* No console `error` on first load.
+* Company selection works.
+* COA mapping displays account names correctly.
+* Confidence report renders COA Extraction and Journal Entry Rules.
+* Edit Rules calls backend save endpoint and persists YAML under the PoC rules root.
+* Export/download path works or returns a clear PoC limitation message.
+
+### Hard Separation Rules
+
+* Do not deploy PoC from branch `demo`; `demo` remains static-only.
+* Do not mount production storage or production rule roots.
+* Do not use production API keys.
+* Do not promote PoC-generated YAML to production without review.
+* Do not mutate VPS directly over SSH; all changes must flow through Control Plane deployment.
+
+### User Feedback Output
+
+Each PoC trial should produce a short feedback note with:
+
+* Trial date and deployed commit.
+* Documents tested.
+* Steps that worked.
+* Steps that confused the user.
+* Missing fields/rules/export columns.
+* Bugs found.
+* Next requirement decisions.

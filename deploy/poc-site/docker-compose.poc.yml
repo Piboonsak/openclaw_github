@@ -1,0 +1,38 @@
+services:
+  aiacc-poc-api:
+    build:
+      context: ./app
+      dockerfile: docker/Dockerfile.backend
+      target: production
+    container_name: aiacc-poc-api
+    restart: unless-stopped
+    env_file:
+      - ./.env.poc
+    environment:
+      APP_ENV: poc-user-trial
+      PUBLIC_ENV: PoC User Trial
+      RULES_ROOT: /opt/aiacc-poc/data/rules
+      CACHE_ROOT: /opt/aiacc-poc/data/cache
+      UPLOAD_ROOT: /opt/aiacc-poc/data/uploads
+      EXPORT_ROOT: /opt/aiacc-poc/data/exports
+      STAGE_C_PROVIDER: openrouter
+      OPENROUTER_BASE_URL: https://openrouter.ai/api/v1
+    ports:
+      - "127.0.0.1:18080:8000"
+    volumes:
+      - ./data/rules:/opt/aiacc-poc/data/rules
+      - ./data/cache:/opt/aiacc-poc/data/cache
+      - ./data/uploads:/opt/aiacc-poc/data/uploads
+      - ./data/exports:/opt/aiacc-poc/data/exports
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s

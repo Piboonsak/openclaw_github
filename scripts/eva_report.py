@@ -24,6 +24,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POC_ROOT = REPO_ROOT / "private_data" / "poc"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "tmp" / "benchmark" / "eva_report"
 DEFAULT_API_URL = "http://127.0.0.1:8000/api/process"
+CONFIDENCE_HIGH_THRESHOLD = 85.0
+CONFIDENCE_MED_THRESHOLD = 70.0
 
 
 @dataclass(frozen=True)
@@ -178,7 +180,9 @@ def resolve_doc_path(comp_dir: Path, row: dict[str, Any]) -> Path | None:
     return None
 
 
-def load_company_expectations(comp_name: str, expectation_path: Path) -> list[dict[str, Any]]:
+def load_company_expectations(
+    comp_name: str, expectation_path: Path
+) -> list[dict[str, Any]]:
     comp_dir = expectation_path.parent
     text = expectation_path.read_text(encoding="utf-8-sig")
     docs: list[dict[str, Any]] = []
@@ -223,7 +227,9 @@ def load_company_expectations(comp_name: str, expectation_path: Path) -> list[di
     return docs
 
 
-def build_answer_key_payload(company_docs: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+def build_answer_key_payload(
+    company_docs: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
     per_company: dict[str, Any] = {}
     combined_docs: list[dict[str, Any]] = []
 
@@ -245,7 +251,9 @@ def build_answer_key_payload(company_docs: dict[str, list[dict[str, Any]]]) -> d
     }
 
 
-def encode_multipart(fields: dict[str, str], file_field: str, file_path: Path) -> tuple[bytes, str]:
+def encode_multipart(
+    fields: dict[str, str], file_field: str, file_path: Path
+) -> tuple[bytes, str]:
     boundary = f"----aiacc-eva-{uuid.uuid4().hex}"
     chunks: list[bytes] = []
 
@@ -335,7 +343,9 @@ def compare_field(field: FieldSpec, expected: Any, predicted: Any) -> bool:
     return str(expected or "").strip() == str(predicted or "").strip()
 
 
-def build_doc_result(doc: dict[str, Any], api_response: dict[str, Any]) -> dict[str, Any]:
+def build_doc_result(
+    doc: dict[str, Any], api_response: dict[str, Any]
+) -> dict[str, Any]:
     expected_fields = doc["fields"]
     extraction = api_response.get("extraction") or {}
     reconciliation = extraction.get("reconciliation") or {}
@@ -371,12 +381,29 @@ def build_doc_result(doc: dict[str, Any], api_response: dict[str, Any]) -> dict[
         "split": doc.get("split", ""),
         "layout": layout,
         "reconciled": bool(reconciled),
-        "confidence_pct": round(confidence_pct, 2) if confidence_pct is not None else None,
+        "confidence_pct": round(confidence_pct, 2)
+        if confidence_pct is not None
+        else None,
         "comparisons": comparisons,
     }
 
 
 def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
+    confidence_values = [
+        float(row["confidence_pct"])
+        for row in results
+        if isinstance(row.get("confidence_pct"), (int, float))
+    ]
+    overall_confidence = (
+        round(sum(confidence_values) / len(confidence_values), 2)
+        if confidence_values
+        else 0.0
+    )
+    reconciled_count = sum(1 for row in results if row.get("reconciled", False))
+    reconciled_pct = (
+        round((reconciled_count * 100.0) / len(results), 2) if results else 0.0
+    )
+
     summary_fields: dict[str, dict[str, Any]] = {}
     for field in FIELDS:
         total = len(results)
@@ -390,6 +417,10 @@ def summarize_results(results: list[dict[str, Any]]) -> dict[str, Any]:
         }
     return {
         "sample_size": len(results),
+        "overall_confidence_pct": overall_confidence,
+        "reconciled_count": reconciled_count,
+        "reconciled_pct": reconciled_pct,
+        "reconciled_all": bool(results) and reconciled_count == len(results),
         "fields": summary_fields,
     }
 
@@ -409,17 +440,105 @@ def render_summary_table(summary: dict[str, Any]) -> str:
     return "\n".join(rows)
 
 
+def confidence_band(score: float, reconciled: bool = True) -> str:
+    if score >= CONFIDENCE_HIGH_THRESHOLD and reconciled:
+        return "conf-high"
+    if score >= CONFIDENCE_MED_THRESHOLD:
+        return "conf-med"
+    return "conf-low"
+
+
+def render_kpi_metric(
+    label: str,
+    score: float,
+    reconciled: bool = True,
+    hero: bool = False,
+) -> str:
+    band = confidence_band(score, reconciled=reconciled)
+    hero_class = " metric-hero" if hero else ""
+    value_text = format_percent(score)
+    return (
+        f"<article class='metric-card {band}{hero_class}'>"
+        f"<div class='metric-label'>{html_escape(label)}</div>"
+        f"<div class='metric-value'>{html_escape(value_text)}</div>"
+        f"<div class='metric-band'>{html_escape(band.replace('conf-', '').upper())}</div>"
+        "</article>"
+    )
+
+
+def render_kpi_tier(
+    title: str,
+    subtitle: str,
+    tone_class: str,
+    metrics_html: str,
+    grid_class: str = "",
+) -> str:
+    grid_attr = f" tier-grid {grid_class}".rstrip()
+    return (
+        f"<section class='kpi-tier {tone_class}'>"
+        "<div class='tier-head'>"
+        f"<div class='tier-kicker'>{html_escape(title)}</div>"
+        f"<div class='tier-note'>{html_escape(subtitle)}</div>"
+        "</div>"
+        f"<div class='{grid_attr}'>{metrics_html}</div>"
+        "</section>"
+    )
+
+
 def render_kpi_cards(summary: dict[str, Any]) -> str:
-    cards: list[str] = []
-    for field in FIELDS:
-        data = summary["fields"][field.key]
-        cards.append(
-            "<div class='item'>"
-            f"<div>{html_escape(data['label'])}</div>"
-            f"<div class='val'>{format_percent(float(data['accuracy_pct']))}</div>"
-            "</div>"
+    field_map = {field.key: summary["fields"][field.key] for field in FIELDS}
+
+    high_priority = render_kpi_tier(
+        title="Level 1 · Highest priority",
+        subtitle=(
+            "Executive signal for the entire evaluation run "
+            f"(Reconciled {summary.get('reconciled_count', 0)}/{summary.get('sample_size', 0)})."
+        ),
+        tone_class="tier-high",
+        grid_class="tier-grid-single",
+        metrics_html=render_kpi_metric(
+            label="Over all confidence",
+            score=float(summary.get("overall_confidence_pct", 0.0)),
+            reconciled=bool(summary.get("reconciled_all", False)),
+            hero=True,
+        ),
+    )
+
+    medium_metrics: list[str] = []
+    for key in ("net_amount", "total_amount", "vat_amount", "wht_amount"):
+        data = field_map[key]
+        medium_metrics.append(
+            render_kpi_metric(
+                label=data["label"],
+                score=float(data["accuracy_pct"]),
+            )
         )
-    return "\n".join(cards)
+
+    medium_priority = render_kpi_tier(
+        title="Level 2 · Financial correctness",
+        subtitle="Core accounting amounts that drive tax and payable impact.",
+        tone_class="tier-medium",
+        metrics_html="".join(medium_metrics),
+    )
+
+    low_metrics: list[str] = []
+    for key in ("buyer_tax_id", "seller_tax_id", "invoice_number", "invoice_date"):
+        data = field_map[key]
+        low_metrics.append(
+            render_kpi_metric(
+                label=data["label"],
+                score=float(data["accuracy_pct"]),
+            )
+        )
+
+    low_priority = render_kpi_tier(
+        title="Level 3 · Reference identity",
+        subtitle="Document identity fields for traceability and matching support.",
+        tone_class="tier-low",
+        metrics_html="".join(low_metrics),
+    )
+
+    return "\n".join([high_priority, medium_priority, low_priority])
 
 
 def render_detail_table(results: list[dict[str, Any]]) -> str:
@@ -451,7 +570,9 @@ def render_detail_table(results: list[dict[str, Any]]) -> str:
             cells.append(f"<td>{html_escape(exp_text)}</td>")
             cells.append(f"<td class='{status_class}'>{status}</td>")
 
-        confidence = "" if row["confidence_pct"] is None else f"{row['confidence_pct']:.2f}"
+        confidence = (
+            "" if row["confidence_pct"] is None else f"{row['confidence_pct']:.2f}"
+        )
         cells.append(f"<td>{html_escape(confidence)}</td>")
         cells.append(f"<td>{html_escape(row['layout'])}</td>")
         cells.append(f"<td>{'True' if row['reconciled'] else 'False'}</td>")
@@ -478,16 +599,17 @@ def render_report_html(
     sections.append("<h2>Combined Summary</h2>")
     sections.append("<div class='kpi'>" + render_kpi_cards(combined_summary) + "</div>")
     sections.append(
-        "<div class='card'><h3>Summary Table</h3><table><thead><tr>"
+        "<div class='card'><details class='table-dd'><summary>Summary Table</summary>"
+        "<table><thead><tr>"
         "<th>Metric</th><th>Matched</th><th>Total</th><th>Accuracy</th>"
         "</tr></thead><tbody>"
         + render_summary_table(combined_summary)
-        + "</tbody></table></div>"
+        + "</tbody></table></details></div>"
     )
     sections.append(
-        "<div class='card'><h3>Per-file Detail (Predicted vs Expected)</h3>"
+        "<div class='card'><details class='table-dd'><summary>Per-file Detail (Predicted vs Expected)</summary>"
         + render_detail_table(combined_results)
-        + "</div>"
+        + "</details></div>"
     )
 
     for comp_name in sorted(per_company_payload.keys()):
@@ -497,16 +619,16 @@ def render_report_html(
         sections.append(f"<h2>Company: {html_escape(comp_name)}</h2>")
         sections.append("<div class='kpi'>" + render_kpi_cards(summary) + "</div>")
         sections.append(
-            "<div class='card'><h3>Summary Table</h3><table><thead><tr>"
+            "<div class='card'><details class='table-dd'><summary>Summary Table</summary><table><thead><tr>"
             "<th>Metric</th><th>Matched</th><th>Total</th><th>Accuracy</th>"
             "</tr></thead><tbody>"
             + render_summary_table(summary)
-            + "</tbody></table></div>"
+            + "</tbody></table></details></div>"
         )
         sections.append(
-            "<div class='card'><h3>Per-file Detail (Predicted vs Expected)</h3>"
+            "<div class='card'><details class='table-dd'><summary>Per-file Detail (Predicted vs Expected)</summary>"
             + render_detail_table(results)
-            + "</div>"
+            + "</details></div>"
         )
 
     return (
@@ -515,19 +637,57 @@ def render_report_html(
         "<meta name='viewport' content='width=device-width,initial-scale=1' />"
         f"<title>{html_escape(title)}</title>"
         "<style>"
-        "body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; background:#f7f9fc; color:#1f2937; }"
-        "h1 { margin: 0 0 8px 0; }"
-        "h2 { margin: 28px 0 10px 0; }"
-        ".small { color:#6b7280; margin-bottom:16px; }"
-        ".card { background:white; border:1px solid #e5e7eb; border-radius:10px; padding:16px; margin-bottom:16px; }"
+        ":root { --bg:#f3f5fa; --card:#ffffff; --ink:#172033; --muted:#5f6b85; --line:#dbe2f0; --brand:#173fcf; --brand-soft:#ebf1ff; --amber:#b54708; --amber-soft:#fff7e8; --green:#067647; --green-soft:#ecfdf3; --danger:#b42318; --danger-soft:#fef0f0; --slate:#344054; }"
+        "* { box-sizing:border-box; }"
+        "body { font-family: 'Segoe UI', Tahoma, sans-serif; margin:0; padding:24px; color:var(--ink); background:radial-gradient(circle at top left, rgba(23,63,207,0.12), transparent 35%), linear-gradient(180deg, #f8faff 0%, var(--bg) 100%); }"
+        "h1 { margin:0 0 8px 0; font-size:1.9rem; letter-spacing:-0.02em; }"
+        "h2 { margin:28px 0 10px 0; color:var(--slate); font-size:1.15rem; }"
+        ".small { color:var(--muted); margin-bottom:16px; }"
+        ".card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 6px 18px rgba(20,32,61,0.05); }"
         "table { border-collapse: collapse; width: 100%; background:white; }"
-        "th, td { border:1px solid #e5e7eb; padding:8px; font-size:12px; }"
-        "th { background:#f3f4f6; text-align:left; position: sticky; top: 0; }"
+        "th, td { border:1px solid var(--line); padding:8px; font-size:12px; }"
+        "th { background:#f4f7ff; text-align:left; position: sticky; top: 0; color:var(--slate); }"
         ".ok { color:#065f46; font-weight:600; }"
         ".no { color:#991b1b; font-weight:600; }"
-        ".kpi { display:grid; grid-template-columns:repeat(4,minmax(220px,1fr)); gap:12px; margin-bottom: 16px; }"
-        ".kpi .item{ background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:10px; }"
-        ".kpi .val{ font-size:22px; font-weight:700; }"
+        ".kpi { display:grid; gap:14px; margin-bottom:16px; }"
+        ".kpi-tier { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px; box-shadow:0 6px 18px rgba(20,32,61,0.05); position:relative; overflow:hidden; }"
+        ".kpi-tier::before { content:''; position:absolute; inset:0 auto 0 0; width:6px; border-radius:18px 0 0 18px; }"
+        ".tier-high { background:linear-gradient(135deg, rgba(235,241,255,0.95), rgba(255,255,255,0.98)); }"
+        ".tier-high::before { background:linear-gradient(180deg, #173fcf 0%, #4c77ff 100%); }"
+        ".tier-medium { background:linear-gradient(135deg, rgba(255,247,232,0.95), rgba(255,255,255,0.98)); }"
+        ".tier-medium::before { background:linear-gradient(180deg, #b54708 0%, #f79009 100%); }"
+        ".tier-low { background:linear-gradient(135deg, rgba(244,247,252,0.98), rgba(255,255,255,0.98)); }"
+        ".tier-low::before { background:linear-gradient(180deg, #667085 0%, #98a2b3 100%); }"
+        ".tier-head { display:flex; justify-content:space-between; gap:12px; align-items:end; margin-bottom:12px; flex-wrap:wrap; }"
+        ".tier-kicker { font-size:0.86rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }"
+        ".tier-high .tier-kicker { color:var(--brand); }"
+        ".tier-medium .tier-kicker { color:var(--amber); }"
+        ".tier-low .tier-kicker { color:#475467; }"
+        ".tier-note { color:var(--muted); font-size:0.82rem; }"
+        ".tier-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; }"
+        ".tier-grid-single { grid-template-columns:minmax(280px, 1fr); }"
+        ".metric-card { border-radius:14px; padding:14px 16px; border:1px solid transparent; position:relative; overflow:hidden; min-height:96px; }"
+        ".metric-card::after { content:''; position:absolute; inset:auto -24px -24px auto; width:88px; height:88px; border-radius:50%; opacity:0.22; }"
+        ".metric-label { font-size:0.9rem; color:var(--ink); margin-bottom:8px; }"
+        ".metric-value { font-size:2rem; line-height:1; font-weight:800; letter-spacing:-0.03em; }"
+        ".metric-band { margin-top:10px; font-size:0.72rem; font-weight:700; letter-spacing:0.04em; }"
+        ".metric-card.conf-high { background:var(--green-soft); border-color:color-mix(in oklab, var(--green) 35%, white 65%); }"
+        ".metric-card.conf-high .metric-value, .metric-card.conf-high .metric-band { color:var(--green); }"
+        ".metric-card.conf-high::after { background:color-mix(in oklab, var(--green) 30%, white 70%); }"
+        ".metric-card.conf-med { background:var(--amber-soft); border-color:color-mix(in oklab, var(--amber) 35%, white 65%); }"
+        ".metric-card.conf-med .metric-value, .metric-card.conf-med .metric-band { color:var(--amber); }"
+        ".metric-card.conf-med::after { background:color-mix(in oklab, var(--amber) 28%, white 72%); }"
+        ".metric-card.conf-low { background:var(--danger-soft); border-color:color-mix(in oklab, var(--danger) 35%, white 65%); }"
+        ".metric-card.conf-low .metric-value, .metric-card.conf-low .metric-band { color:var(--danger); }"
+        ".metric-card.conf-low::after { background:color-mix(in oklab, var(--danger) 26%, white 74%); }"
+        ".metric-card.metric-hero { box-shadow:0 14px 32px rgba(23,63,207,0.14); }"
+        ".metric-card.metric-hero.conf-high { background:linear-gradient(135deg, color-mix(in oklab, var(--green-soft) 78%, white 22%), #ffffff 98%); }"
+        ".metric-card.metric-hero.conf-med { background:linear-gradient(135deg, color-mix(in oklab, var(--amber-soft) 78%, white 22%), #ffffff 98%); }"
+        ".metric-card.metric-hero.conf-low { background:linear-gradient(135deg, color-mix(in oklab, var(--danger-soft) 80%, white 20%), #ffffff 98%); }"
+        ".table-dd { width:100%; }"
+        ".table-dd summary { cursor:pointer; font-weight:700; margin-bottom:10px; color:var(--brand); }"
+        ".table-dd[open] summary { margin-bottom:12px; }"
+        "@media (max-width: 720px) { body { padding:16px; } .metric-value { font-size:1.7rem; } .tier-head { align-items:start; } }"
         "</style></head><body>"
         f"<h1>{html_escape(title)}</h1>"
         f"<div class='small'>Generated: {html_escape(generated_at)} | Source: expectations + live compare</div>"
@@ -538,10 +698,14 @@ def render_report_html(
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
-def select_company(expectation_files: dict[str, Path], selector: str) -> tuple[str, Path]:
+def select_company(
+    expectation_files: dict[str, Path], selector: str
+) -> tuple[str, Path]:
     if selector in expectation_files:
         return selector, expectation_files[selector]
 
@@ -600,13 +764,17 @@ def evaluate_company(
     return results
 
 
-def run_jsonanswer_mode(output_dir: Path, company_docs: dict[str, list[dict[str, Any]]]) -> int:
+def run_jsonanswer_mode(
+    output_dir: Path, company_docs: dict[str, list[dict[str, Any]]]
+) -> int:
     payload = build_answer_key_payload(company_docs)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_json = output_dir / f"aiacc_eva_answer_key_{ts}.json"
     write_json(out_json, payload)
     print(f"OUT_JSON|{out_json}")
-    print(f"SUMMARY|companies={len(company_docs)}|documents={payload['combined']['count']}")
+    print(
+        f"SUMMARY|companies={len(company_docs)}|documents={payload['combined']['count']}"
+    )
     return 0
 
 
@@ -672,11 +840,29 @@ def run_report_mode(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="AI Accounting evaluation report generator")
+    parser = argparse.ArgumentParser(
+        description="AI Accounting evaluation report generator"
+    )
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("-jsonanswer", "--jsonanswer", action="store_true", help="Generate normalized answer-key JSON from expectations files")
-    mode.add_argument("-full-report", "--full-report", action="store_true", help="Generate full report for all companies with expectations")
-    mode.add_argument("-comp-report", "--comp-report", type=str, default="", help="Generate report for a single company: Comp_1 or 1/Comp_1")
+    mode.add_argument(
+        "-jsonanswer",
+        "--jsonanswer",
+        action="store_true",
+        help="Generate normalized answer-key JSON from expectations files",
+    )
+    mode.add_argument(
+        "-full-report",
+        "--full-report",
+        action="store_true",
+        help="Generate full report for all companies with expectations",
+    )
+    mode.add_argument(
+        "-comp-report",
+        "--comp-report",
+        type=str,
+        default="",
+        help="Generate report for a single company: Comp_1 or 1/Comp_1",
+    )
 
     parser.add_argument("--poc-root", type=Path, default=DEFAULT_POC_ROOT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -699,11 +885,15 @@ def main() -> int:
 
     if args.comp_report:
         try:
-            comp_name, expectation_path = select_company(expectation_files, args.comp_report)
+            comp_name, expectation_path = select_company(
+                expectation_files, args.comp_report
+            )
         except ValueError as exc:
             print(f"ERROR|{exc}")
             return 1
-        company_docs = {comp_name: load_company_expectations(comp_name, expectation_path)}
+        company_docs = {
+            comp_name: load_company_expectations(comp_name, expectation_path)
+        }
     else:
         company_docs = {
             comp_name: load_company_expectations(comp_name, path)

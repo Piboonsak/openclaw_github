@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from config.settings import settings
 from src.backend.ml.amount_reconciler import classify_vat_layout
 from src.backend.services.rule_loader import JournalRule, load_company_rules
 
@@ -675,7 +676,8 @@ def run_journal_router(
 ) -> dict[str, Any]:
     """Create journal output and persist `journal_output.json` under cache/{sha256}/."""
     sha = str(extraction_output.get("sha256") or _hash_for_payload(extraction_output))
-    root = cache_root or DEFAULT_CACHE_ROOT
+    settings.reload()
+    root = cache_root or settings.CACHE_ROOT
     resolved_company_id = company_id or extraction_output.get("company_id")
     artifact_key = sha if not resolved_company_id else f"{sha}_{resolved_company_id}"
     artifact_dir = root / artifact_key
@@ -687,13 +689,12 @@ def run_journal_router(
             return cached
 
     fields = extraction_output.get("fields", {})
-    rules = _load_rule_defaults(rules_root or DEFAULT_RULES_ROOT)
+    resolved_rules_root = rules_root or settings.RULES_ROOT
+    rules = _load_rule_defaults(resolved_rules_root)
     payload: dict[str, Any]
 
     if resolved_company_id:
-        loaded = load_company_rules(
-            resolved_company_id, rules_root=rules_root or DEFAULT_RULES_ROOT
-        )
+        loaded = load_company_rules(resolved_company_id, rules_root=resolved_rules_root)
         context = _derive_routing_context(fields, rules)
         context["company_id"] = resolved_company_id
         chosen = pick_best_rule(context, loaded.journal_rules)

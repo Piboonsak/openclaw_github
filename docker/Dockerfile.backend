@@ -1,5 +1,6 @@
 # Multi-stage Dockerfile for FastAPI Python Backend (ai-accounting-copilot)
 FROM python:3.12-slim AS base
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
@@ -18,29 +19,29 @@ RUN apt-get update && apt-get install -y \
 
 # Copy and install requirements
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # --- Development stage ---
 FROM base AS development
 ENV STAGE=SIT
 COPY . .
-CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["python", "-m", "uvicorn", "src.backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # --- SIT stage ---
 FROM base AS sit
 ENV STAGE=SIT
 COPY . .
-CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "src.backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # --- UAT stage ---
 FROM base AS uat
 ENV STAGE=UAT
 COPY . .
-CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "src.backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # --- Production stage ---
 FROM base AS production
 ENV STAGE=Prod
 COPY . .
 EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "src.api.endpoints:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "src.backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

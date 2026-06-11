@@ -27,6 +27,8 @@ paddlepaddle==3.0.0
 # - macOS: brew install tesseract
 python-multipart==0.0.6
 pdf2image==1.16.3
+pypdf==4.3.1
+pypdfium2==4.30.0
 Pillow==10.1.0
 pytesseract==0.3.10
 
@@ -39,7 +41,7 @@ python-dotenv==1.0.0
 python-magic==0.4.27
 
 # Data Export
-openpyxl==3.11.0
+openpyxl==3.1.5
 xlsxwriter==3.1.9
 
 # Logging & Monitoring
@@ -49,7 +51,7 @@ structlog==23.2.0
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-PyJWT==2.8.1
+PyJWT==2.8.0
 
 # Testing
 pytest==7.4.3
