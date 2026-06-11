@@ -52,8 +52,8 @@ class TestRuleGenerationIntegration:
 
         # load_company_rules returns None or CompiledRules per company
         # This is a sanity check that the function doesn't cross-contaminate
-        co1_rules = load_company_rules("co1", rules_root)
-        co2_rules = load_company_rules("co2", rules_root)
+        co1_rules = load_company_rules("co1", rules_root=rules_root)
+        co2_rules = load_company_rules("co2", rules_root=rules_root)
 
         # Both should either both be None or independent
         assert co1_rules is None or co2_rules is None or co1_rules != co2_rules

@@ -127,3 +127,4 @@ docs/Engagement_Proposal*.pdf
 # Local private vault for raw datasets and customer docs
 private_data/**
 !private_data/.gitkeep
+data/companies.json
