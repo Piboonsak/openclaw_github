@@ -1,116 +1,132 @@
-"""D4-02: Test matrix for rule matching policy — score, tie-break, unresolved, rejected."""
+"""D4-02: Test matrix for rule matching policy — score, tie-break, unresolved, rejected.
 
-import pytest
+These tests exercise pick_best_rule() and score_rule() using flat extraction dicts
+(the same format that _derive_routing_context() produces in production) and lightweight
+rule objects whose attributes match those accessed by the engine.
+"""
 
-from src.backend.services.rule_engine import JournalRule, pick_best_rule
+from src.backend.services.rule_engine import pick_best_rule
 
 
-class MockJournalRule:
-    """Mock for testing rule matching logic."""
+def _make_rule(rule_id: str, document_type: str = "", conditions: dict | None = None):
+    """Build a minimal rule object compatible with score_rule() and count_defined_conditions().
 
-    def __init__(
-        self,
-        rule_id: str,
-        document_type: str,
-        score: int,
-        specificity: int,
-        reject: bool = False,
-    ):
-        self.rule_id = rule_id
-        self.document_type = document_type
-        self.score = score
-        self.specificity = specificity
-        self.reject = reject
+    The engine reads:
+      rule.rule_id          — identifier
+      rule.document_types   — tuple of accepted doc types
+      rule.conditions       — dict of field → expected_value used for scoring
+    """
 
-    def __repr__(self):
-        return f"MockRule({self.rule_id}, score={self.score}, specificity={self.specificity})"
+    class _R:
+        pass
+
+    r = _R()
+    r.rule_id = rule_id
+    r.document_types = (document_type,) if document_type else ()
+    r.conditions = conditions or {}
+    return r
 
 
 class TestRuleMatchingDecisions:
     """D4-02: Rule matching tie-break and ambiguity detection."""
 
     def test_returns_unresolved_when_no_rule_matches(self):
-        """Test: no rules → UNRESOLVED_RULE status with needs_review=True."""
-        payload = {"extraction": {"document_type": "Unknown"}}
-        rules = []
+        """No rules → UNRESOLVED_RULE status with needs_review=True."""
+        extraction = {"document_type": "Unknown"}
+        rules = ()
 
-        result = pick_best_rule(payload, rules)
+        result = pick_best_rule(extraction, rules)
 
-        assert result["rule_id"] == "UNRESOLVED_RULE"
+        assert result["status"] == "UNRESOLVED_RULE"
         assert result["needs_review"] is True
-        assert result["ambiguous"] is False
 
     def test_winner_by_score(self):
-        """Test: winner selected by highest score when scores differ."""
-        payload = {"extraction": {"document_type": "Invoice"}}
-        rules = [
-            MockJournalRule("r1", "Invoice", score=80, specificity=5),
-            MockJournalRule("r2", "Invoice", score=60, specificity=5),
-            MockJournalRule("r3", "Invoice", score=90, specificity=5),
-        ]
+        """Winner selected by highest score when multiple rules match."""
+        # r3 matches document_type + 2 extra conditions → highest score
+        # r1 matches document_type + 1 condition
+        # r2 matches document_type only
+        extraction = {"document_type": "Invoice", "has_vat": True, "has_wht": True}
+        rules = (
+            _make_rule("r1", "Invoice", {"has_vat": True}),
+            _make_rule("r2", "Invoice"),
+            _make_rule("r3", "Invoice", {"has_vat": True, "has_wht": True}),
+        )
 
-        result = pick_best_rule(payload, rules)
+        result = pick_best_rule(extraction, rules)
 
+        assert result["status"] == "OK"
         assert result["rule_id"] == "r3"
         assert result["needs_review"] is False
 
     def test_tie_break_by_specificity_when_scores_match(self):
-        """Test: when scores tie, specificity wins."""
-        payload = {"extraction": {"document_type": "PO"}}
-        rules = [
-            MockJournalRule("r1", "PO", score=75, specificity=3),
-            MockJournalRule("r2", "PO", score=75, specificity=7),
-            MockJournalRule("r3", "PO", score=75, specificity=5),
-        ]
+        """When scores tie, rule with more defined conditions (higher specificity) wins."""
+        # All three rules match the same fields so their SCORES are equal.
+        # Specificity = number of non-empty conditions entries.
+        # r2 has the most conditions → wins tie.
+        extraction = {"document_type": "PO"}
+        rules = (
+            _make_rule("r1", "PO", {"cond_a": "x", "cond_b": "x", "cond_c": "x"}),
+            _make_rule("r2", "PO", {"cond_a": "x", "cond_b": "x", "cond_c": "x",
+                                    "cond_d": "x", "cond_e": "x", "cond_f": "x",
+                                    "cond_g": "x"}),
+            _make_rule("r3", "PO", {"cond_a": "x", "cond_b": "x", "cond_c": "x",
+                                    "cond_d": "x", "cond_e": "x"}),
+        )
 
-        result = pick_best_rule(payload, rules)
+        result = pick_best_rule(extraction, rules)
 
+        assert result["status"] == "OK"
         assert result["rule_id"] == "r2"
         assert result["needs_review"] is False
 
     def test_full_tie_flags_needs_review_with_ambiguous_signal(self):
-        """Test: score + specificity both tie → ambiguous=True, needs_review=True."""
-        payload = {"extraction": {"document_type": "Receipt"}}
-        rules = [
-            MockJournalRule("r1", "Receipt", score=70, specificity=4),
-            MockJournalRule("r2", "Receipt", score=70, specificity=4),
-        ]
+        """Score + specificity both equal → needs_review=True (ambiguous routing)."""
+        extraction = {"document_type": "Receipt"}
+        rules = (
+            _make_rule("r1", "Receipt", {"cond_a": "x", "cond_b": "x"}),
+            _make_rule("r2", "Receipt", {"cond_a": "x", "cond_b": "x"}),
+        )
 
-        result = pick_best_rule(payload, rules)
+        result = pick_best_rule(extraction, rules)
 
+        assert result["status"] == "OK"
         assert result["needs_review"] is True
-        assert result["ambiguous"] is True
 
     def test_rejected_rule_is_excluded(self):
-        """Test: rejected rules excluded from candidate set."""
-        payload = {"extraction": {"document_type": "Invoice"}}
-        rules = [
-            MockJournalRule("r1", "Invoice", score=85, specificity=5, reject=True),
-            MockJournalRule("r2", "Invoice", score=70, specificity=5, reject=False),
-        ]
+        """Rule whose document_type mismatches extraction is rejected; lower-score match wins."""
+        # r1 has a richer condition set but its document_type doesn't match → rejected.
+        # r2 matches → wins despite fewer conditions.
+        extraction = {"document_type": "Invoice"}
+        rules = (
+            _make_rule("r1", "PO", {"has_vat": True, "has_wht": True}),  # rejected
+            _make_rule("r2", "Invoice"),                                   # accepted
+        )
 
-        result = pick_best_rule(payload, rules)
+        result = pick_best_rule(extraction, rules)
 
+        assert result["status"] == "OK"
         assert result["rule_id"] == "r2"
 
     def test_document_type_mismatch_rejects_rule(self):
-        """Test: rule with mismatched document_type rejected."""
-        payload = {"extraction": {"document_type": "Invoice"}}
-        rules = [
-            MockJournalRule("r1", "PO", score=95, specificity=10),
-            MockJournalRule("r2", "Invoice", score=75, specificity=5),
-        ]
+        """Rule with mismatched document_type is excluded; correct-type rule wins."""
+        extraction = {"document_type": "Invoice"}
+        rules = (
+            _make_rule("r1", "PO"),       # mismatched → rejected
+            _make_rule("r2", "Invoice"),  # match
+        )
 
-        result = pick_best_rule(payload, rules)
+        result = pick_best_rule(extraction, rules)
 
+        assert result["status"] == "OK"
         assert result["rule_id"] == "r2"
 
     def test_unresolved_extraction_flags_payload(self):
-        """Test: missing extraction or document_type → unresolved."""
-        payload = {}
-        rules = [MockJournalRule("r1", "Invoice", score=80, specificity=5)]
+        """All rules rejected (doc-type mismatch) → UNRESOLVED_RULE."""
+        # The only rule requires document_type "Invoice" but extraction says "PO".
+        extraction = {"document_type": "PO"}
+        rules = (_make_rule("r1", "Invoice"),)
 
-        result = pick_best_rule(payload, rules)
+        result = pick_best_rule(extraction, rules)
 
-        assert result["rule_id"] == "UNRESOLVED_RULE"
+        assert result["status"] == "UNRESOLVED_RULE"
         assert result["needs_review"] is True

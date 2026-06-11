@@ -52,8 +52,8 @@ def commit_generated_rules_to_runtime(
     # TODO: Call rule_generator.approve_generated_rules(job_result, company_id, rules_root)
 
     # Step 2: Verify compilation
-    compiled = load_company_rules(company_id, rules_root)
-    if not compiled or compiled.rules is None:
+    compiled = load_company_rules(company_id, rules_root=rules_root)
+    if not compiled or not compiled.journal_rules:
         raise RuntimeError(
             f"Failed to compile rules for company '{company_id}' after promotion"
         )
@@ -82,11 +82,11 @@ def verify_company_isolation(
     all_account_codes: dict[str, list[str]] = {}  # account_code → [company, ...]
 
     for company_id in company_ids:
-        compiled = load_company_rules(company_id, rules_root)
-        if not compiled or not compiled.rules:
+        compiled = load_company_rules(company_id, rules_root=rules_root)
+        if not compiled or not compiled.journal_rules:
             continue
 
-        for rule in compiled.rules:
+        for rule in compiled.journal_rules:
             rule_id = getattr(rule, "rule_id", None)
             if rule_id:
                 if rule_id not in all_rule_ids:
@@ -94,8 +94,7 @@ def verify_company_isolation(
                 all_rule_ids[rule_id].append(company_id)
 
         # Also track account codes (for informational purposes)
-        coa = compiled.coa or {}
-        for account_code in coa.keys():
+        for account_code in {a.get("code", "") for a in compiled.chart_of_accounts}:
             if account_code not in all_account_codes:
                 all_account_codes[account_code] = []
             all_account_codes[account_code].append(company_id)
