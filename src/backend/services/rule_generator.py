@@ -253,7 +253,39 @@ def _validate_schema(payload: dict[str, Any], schema_path: Path) -> None:
     raise RuntimeError(f"Rule schema validation failed at {location}: {first.message}")
 
 
+def _rejoin_wrapped_coa_rows(text: str) -> str:
+    """Join rows that pypdf wrapped across two lines in Thai accounting COA PDFs.
+
+    Some account rows split mid-row when the name contains English text (e.g. bank
+    account numbers).  In those cases pypdf emits the code+name on one line and
+    the หมวด/ระดับ/ประเภท/บัญชีคุม metadata on the next.  This function detects
+    that pattern and rejoins them so the LLM sees one coherent row per account.
+    """
+    import re
+
+    category_start = re.compile(
+        r"^(ส/ท|หนี้สิน|ทุน|รายได้|ค่าใช้จ่าย)\s+\d"
+    )
+    lines = text.splitlines()
+    result: list[str] = []
+    i = 0
+    while i < len(lines):
+        current = lines[i]
+        if i + 1 < len(lines):
+            nxt = lines[i + 1].strip()
+            # If the next line starts with Thai category metadata but the current
+            # line does not already contain it, merge them.
+            if nxt and category_start.match(nxt) and not category_start.match(current.strip()):
+                result.append(current.rstrip() + "  " + nxt)
+                i += 2
+                continue
+        result.append(current)
+        i += 1
+    return "\n".join(result)
+
+
 def _build_stage3_prompt(company_name: str, business_type: str, coa_text: str) -> str:
+    cleaned = _rejoin_wrapped_coa_rows(coa_text)
     return f"""
 You are a senior Thai accounting system analyst.
 Extract the chart of accounts from the source document.
@@ -273,7 +305,7 @@ Company name: {company_name}
 Business type: {business_type}
 
 COA source text:
-{coa_text[:24000]}
+{cleaned[:40000]}
 """.strip()
 
 

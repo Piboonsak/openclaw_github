@@ -654,7 +654,38 @@
   function persistCompanies() {
     try {
       window.localStorage.setItem(STORAGE_KEY_COMPANIES, JSON.stringify(COMPANIES));
+      _syncCompaniesToServer();
     } catch {}
+  }
+
+  // Fire-and-forget: push full company list to backend so all browsers share state.
+  function _syncCompaniesToServer() {
+    fetch('/api/v1/companies/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companies: COMPANIES }),
+    }).catch(() => {}); // localStorage remains the fallback when API is unavailable
+  }
+
+  // Called once at startup: pull server-side company list and override localStorage.
+  function _initCompaniesFromServer() {
+    fetch('/api/v1/companies')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (!data || !Array.isArray(data.companies) || !data.companies.length) return;
+        COMPANIES.splice(0, COMPANIES.length, ...data.companies);
+        window.localStorage.setItem(STORAGE_KEY_COMPANIES, JSON.stringify(COMPANIES));
+        const validId = COMPANIES.some(c => c.id === state.selectedCompanyId)
+          ? state.selectedCompanyId
+          : COMPANIES[0]?.id || '';
+        if (validId !== state.selectedCompanyId) {
+          state.selectedCompanyId = validId;
+          persistSelectedCompany();
+        }
+        syncCompanyUi(state.selectedCompanyId);
+        applyCompanySelection(state.selectedCompanyId);
+      })
+      .catch(() => {}); // offline / local dev: keep localStorage data
   }
 
   function persistCOA() {
@@ -3262,6 +3293,7 @@
   /* ─── INIT ─── */
   syncCompanyUi();
   applyCompanySelection(state.selectedCompanyId);
+  _initCompaniesFromServer(); // async: replace localStorage with server state
   syncCoaRuleCompanyDefaults();
   restoreCoaRuleState($('coaCompanySelect')?.value || state.selectedCompanyId || '').catch(() => {});
   setStep(1);

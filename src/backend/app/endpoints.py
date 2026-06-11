@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 import importlib
 import io
+import json
+import os
 import shutil
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 
 from config.settings import settings
@@ -21,6 +23,48 @@ from src.backend.services.rule_generation_jobs import RULE_GENERATION_JOBS
 
 router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# Default demo companies — mirrors DEFAULT_COMPANIES in ux-ui-prototype.html
+_DEFAULT_COMPANIES: list[dict[str, Any]] = [
+    {"id": "co-1", "name": "บริษัท ยะวัน เทค จำกัด", "taxId": "0105559123456"},
+    {"id": "co-2", "name": "บริษัท ยะวัน เทรดดิ้ง จำกัด", "taxId": "0105559654321"},
+]
+
+
+def _companies_store_path() -> Path:
+    """Return path for the shared companies JSON store.
+
+    Resolution order:
+      1. COMPANIES_STORE env var (explicit override)
+      2. Parent of RULES_ROOT env var (same data tree as rule files)
+      3. REPO_ROOT/data/companies.json (local dev fallback)
+    """
+    explicit = os.getenv("COMPANIES_STORE", "").strip()
+    if explicit:
+        return Path(explicit)
+    rules_root_env = os.getenv("RULES_ROOT", "").strip()
+    if rules_root_env:
+        return Path(rules_root_env).parent / "companies.json"
+    return REPO_ROOT / "data" / "companies.json"
+
+
+def _read_companies() -> list[dict[str, Any]]:
+    path = _companies_store_path()
+    if not path.exists():
+        return list(_DEFAULT_COMPANIES)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, list) and data:
+            return data
+    except Exception:
+        pass
+    return list(_DEFAULT_COMPANIES)
+
+
+def _write_companies(companies: list[dict[str, Any]]) -> None:
+    path = _companies_store_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(companies, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _safe_upload_name(filename: str | None, fallback: str) -> str:
@@ -336,3 +380,34 @@ async def save_rule_edits(
             (await RULE_GENERATION_JOBS.get_job(job_id) or {}).get("approved", False)
         ),
     }
+
+
+# ── Company store ─────────────────────────────────────────────────────────────
+
+@router.get("/v1/companies")
+async def get_companies() -> dict[str, Any]:
+    """Return the shared company list from server-side storage."""
+    return {"companies": _read_companies()}
+
+
+@router.post("/v1/companies/sync")
+async def sync_companies(
+    payload: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """Persist the full company list from the frontend to server-side storage.
+
+    The frontend calls this on every company create/edit/delete so data is
+    shared across all browsers and machines.
+    """
+    companies = payload.get("companies")
+    if not isinstance(companies, list):
+        raise HTTPException(status_code=422, detail="'companies' must be a list")
+    # Basic structural validation — each item needs id, name, taxId
+    for item in companies:
+        if not isinstance(item, dict) or not all(k in item for k in ("id", "name", "taxId")):
+            raise HTTPException(
+                status_code=422,
+                detail="Each company must have 'id', 'name', and 'taxId' fields",
+            )
+    _write_companies(companies)
+    return {"ok": True, "count": len(companies)}
