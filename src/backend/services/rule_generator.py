@@ -27,6 +27,7 @@ DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",
 }
 LLM_REQUEST_TIMEOUT_SECONDS = 120
+MAX_TOKENS = 15000
 
 
 def _rules_root() -> Path:
@@ -103,7 +104,7 @@ def _call_anthropic(prompt: str, system: str, model: str) -> str:
     response = client.messages.create(
         model=model,
         temperature=0,
-        max_tokens=8000,
+        max_tokens=MAX_TOKENS,
         system=system,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -129,6 +130,7 @@ def _call_openai(prompt: str, system: str, model: str) -> str:
     completion = client.chat.completions.create(
         model=model,
         temperature=0,
+        max_tokens=MAX_TOKENS,
         timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         messages=[
             {"role": "system", "content": system},
@@ -161,6 +163,7 @@ def _call_openrouter(prompt: str, system: str, model: str) -> str:
     completion = client.chat.completions.create(
         model=model,
         temperature=0,
+        max_tokens=MAX_TOKENS,
         timeout=LLM_REQUEST_TIMEOUT_SECONDS,
         messages=[
             {"role": "system", "content": system},
