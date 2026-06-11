@@ -514,6 +514,15 @@
           </div>
         </div>
       </div>
+
+      <!-- ─── RESET DEMO DATA ─── -->
+      <div style="padding:var(--sp-4) var(--sp-5);border-top:1px solid var(--line);margin-top:var(--sp-2)">
+        <div class="settings-section-header" style="margin-bottom:var(--sp-2)">
+          <span class="settings-section-title" style="color:var(--danger)">Reset Demo</span>
+        </div>
+        <p class="field-hint" style="margin-bottom:var(--sp-3)">ล้างข้อมูล localStorage ทั้งหมด (companies, COA, mapping rules) แล้วโหลด demo data ใหม่ — ใช้เมื่อข้อมูลใน browser ไม่ตรงกับที่ควรจะเป็น</p>
+        <button type="button" class="btn btn-ghost btn-sm" id="resetDemoBtn" style="border-color:var(--danger);color:var(--danger)">↺ Reset to Demo Data</button>
+      </div>
     </div>
   </div>
 
@@ -3219,6 +3228,20 @@
     updateCoaImportButtonState();
     setCoaImportHint('COA imported successfully.', 'ok');
     showToast('COA imported successfully', 'ok');
+  });
+
+  /* ─── RESET DEMO ─── */
+  $('resetDemoBtn').addEventListener('click', () => {
+    if (!window.confirm('Reset all demo data?\n\nThis clears companies, COA, and mapping rules from this browser, then reloads with default demo data.')) return;
+    [
+      STORAGE_KEY_COMPANIES,
+      STORAGE_KEY_COA,
+      STORAGE_KEY_MAPPING_RULES,
+      STORAGE_KEY_COA_RULE_JOBS,
+      STORAGE_KEY_SELECTED_COMPANY,
+      STORAGE_KEY_RESET_BACKUP,
+    ].forEach(key => { try { window.localStorage.removeItem(key); } catch {} });
+    window.location.reload();
   });
 
   /* ─── TOAST ─── */
