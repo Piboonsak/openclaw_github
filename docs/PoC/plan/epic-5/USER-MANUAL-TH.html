@@ -1,0 +1,1227 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LedgerFlow — คู่มือการใช้งานสำหรับนักบัญชี</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ══ TOKENS ══════════════════════════════ */
+    :root {
+      --bg:#f3f5fa; --card:#fff; --ink:#172033; --muted:#5f6b85; --line:#dbe2f0;
+      --brand:#173fcf; --brand-soft:#ebf1ff;
+      --red:#b42318; --red-soft:#fef0f0;
+      --amber:#b54708; --amber-soft:#fff7e8;
+      --green:#067647; --green-soft:#ecfdf3;
+      --slate:#344054; --purple:#6941c6; --purple-soft:#f4f3ff;
+      --cyan:#0e7490; --cyan-soft:#ecfeff;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      font-family:"Sarabun","Segoe UI",sans-serif;
+      font-size:15px;color:var(--ink);
+      background:radial-gradient(circle at top left,rgba(23,63,207,.08),transparent 35%),
+        linear-gradient(180deg,#f8faff 0%,#f3f5fa 100%);
+      line-height:1.65;
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:28px 20px 80px;}
+
+    /* ── Hero ────────────────────────────── */
+    .hero{
+      background:linear-gradient(135deg,#1733a5 0%,#2353ea 68%,#4c77ff 100%);
+      border-radius:20px;padding:36px 32px;color:#fff;
+      box-shadow:0 18px 42px rgba(23,51,165,.22);margin-bottom:24px;
+      position:relative;overflow:hidden;
+    }
+    .hero::after{content:"";position:absolute;top:-60px;right:-60px;width:260px;height:260px;
+      border-radius:50%;background:rgba(255,255,255,.06);}
+    .hero-badge{display:inline-block;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
+      border-radius:999px;padding:4px 14px;font-size:.78rem;font-weight:600;
+      letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;}
+    .hero h1{margin:0 0 10px;font-size:2.1rem;font-weight:700;letter-spacing:-.02em;}
+    .hero .subtitle{margin:0 0 20px;opacity:.92;font-size:1.05rem;max-width:700px;}
+    .hero-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:.85rem;opacity:.85;}
+
+    /* ── Sticky nav ─────────────────────── */
+    .sticky-toc{
+      position:sticky;top:0;z-index:100;
+      background:rgba(248,250,255,.95);backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--line);
+      padding:10px 20px;display:flex;align-items:center;gap:16px;
+      overflow-x:auto;margin-bottom:24px;font-size:.82rem;
+    }
+    .sticky-toc a{text-decoration:none;color:var(--muted);font-weight:500;white-space:nowrap;}
+    .sticky-toc a:hover{color:var(--brand);}
+    .sticky-brand{font-weight:700;color:var(--brand);margin-right:8px;flex-shrink:0;}
+
+    /* ── TOC card ────────────────────────── */
+    .toc-card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+      padding:20px 24px;margin-bottom:24px;box-shadow:0 4px 12px rgba(20,32,61,.05);}
+    .toc-card h2{margin:0 0 14px;font-size:.9rem;font-weight:700;text-transform:uppercase;
+      letter-spacing:.07em;color:var(--muted);}
+    .toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+    .toc-item{display:flex;align-items:center;gap:10px;padding:9px 12px;
+      border-radius:10px;border:1px solid var(--line);text-decoration:none;
+      color:var(--ink);font-size:.88rem;font-weight:500;transition:all .15s;}
+    .toc-item:hover{background:var(--brand-soft);border-color:#c5d5ff;color:var(--brand);}
+    .toc-num{width:26px;height:26px;border-radius:8px;background:var(--brand);color:#fff;
+      font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    /* ── Overview strip ──────────────────── */
+    .overview-strip{display:flex;flex-wrap:wrap;background:var(--card);
+      border:1px solid var(--line);border-radius:16px;overflow:hidden;
+      margin-bottom:24px;box-shadow:0 4px 12px rgba(20,32,61,.05);}
+    .ov-step{flex:1 1 130px;padding:18px 14px;text-align:center;
+      border-right:1px solid var(--line);position:relative;}
+    .ov-step:last-child{border-right:none;}
+    .ov-step::after{content:"›";position:absolute;right:-1px;top:50%;transform:translateY(-50%);
+      font-size:1.3rem;color:var(--muted);z-index:1;}
+    .ov-step:last-child::after{display:none;}
+    .ov-num{display:inline-flex;align-items:center;justify-content:center;
+      width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;
+      font-weight:700;font-size:1rem;margin:0 auto 8px;}
+    .ov-step-title{font-size:.82rem;font-weight:700;color:var(--ink);margin-bottom:3px;}
+    .ov-step-sub{font-size:.72rem;color:var(--muted);line-height:1.4;}
+
+    /* ── Step sections ───────────────────── */
+    .step-section{background:var(--card);border:1px solid var(--line);
+      border-radius:18px;margin-bottom:20px;overflow:hidden;
+      box-shadow:0 6px 18px rgba(20,32,61,.05);}
+    .step-header{display:flex;align-items:center;gap:16px;padding:20px 24px 0;}
+    .step-badge{width:48px;height:48px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+    .step-heading-wrap{flex:1;}
+    .step-num-label{font-size:.72rem;font-weight:700;text-transform:uppercase;
+      letter-spacing:.08em;color:var(--muted);margin-bottom:2px;}
+    .step-title{margin:0;font-size:1.25rem;font-weight:700;color:var(--ink);}
+    .step-subtitle{margin:4px 0 0;font-size:.88rem;color:var(--muted);}
+    .step-body{padding:16px 24px 24px;}
+
+    .s1 .step-badge{background:#ebf1ff;} .s1{border-top:4px solid #173fcf;}
+    .s2 .step-badge{background:#ecfdf3;} .s2{border-top:4px solid #067647;}
+    .s3 .step-badge{background:#fff7e8;} .s3{border-top:4px solid #b54708;}
+    .s4 .step-badge{background:#f4f3ff;} .s4{border-top:4px solid #6941c6;}
+    .s5 .step-badge{background:#ecfeff;} .s5{border-top:4px solid #0e7490;}
+    .s6 .step-badge{background:#e6faf5;} .s6{border-top:4px solid #0d7560;}
+
+    /* ── Typography ───────────────────────── */
+    h3{margin:18px 0 8px;font-size:.96rem;color:var(--slate);font-weight:700;}
+    p{margin:0 0 10px;color:var(--muted);font-size:.9rem;line-height:1.65;}
+    p.lead{color:var(--ink);font-size:.95rem;margin-bottom:14px;}
+
+    /* ── Steps list ───────────────────────── */
+    ol.steps{padding-left:0;list-style:none;counter-reset:step;margin:0 0 16px;}
+    ol.steps li{counter-increment:step;display:flex;gap:12px;
+      padding:10px 0;border-bottom:1px solid var(--line);font-size:.9rem;}
+    ol.steps li:last-child{border-bottom:none;}
+    ol.steps li::before{content:counter(step);min-width:26px;height:26px;border-radius:8px;
+      background:var(--brand);color:#fff;font-size:.75rem;font-weight:700;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+    ol.steps li strong{color:var(--ink);}
+    ol.steps li em{color:var(--muted);font-style:normal;font-size:.84rem;display:block;margin-top:3px;}
+
+    /* ── Notes ────────────────────────────── */
+    .note{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;
+      border-radius:10px;font-size:.86rem;margin:12px 0;line-height:1.55;}
+    .note-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px;}
+    .note.tip{background:var(--brand-soft);border:1px solid #c5d5ff;color:#1a3a8f;}
+    .note.warn{background:var(--amber-soft);border:1px solid #f5d99a;color:#7a4500;}
+    .note.success{background:var(--green-soft);border:1px solid #b7e4c7;color:#035c35;}
+    .note.info{background:var(--purple-soft);border:1px solid #d6d0f7;color:#4a2fa0;}
+
+    /* ── Misc ─────────────────────────────── */
+    .field-pill{display:inline-flex;align-items:center;gap:4px;
+      background:var(--brand-soft);border:1px solid #c5d5ff;border-radius:6px;
+      padding:1px 8px;font-size:.82rem;font-weight:600;color:var(--brand);white-space:nowrap;}
+    .data-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.86rem;}
+    .data-table th{background:#f4f7ff;color:var(--slate);text-transform:uppercase;
+      letter-spacing:.05em;font-size:.74rem;padding:8px 10px;
+      border-bottom:2px solid var(--line);text-align:left;}
+    .data-table td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+    .data-table tr:last-child td{border-bottom:none;}
+    .data-table tr:hover td{background:#fafbff;}
+    .journal-box{background:#f8faff;border:1px solid #dbe5ff;border-radius:12px;
+      padding:14px 16px;font-size:.86rem;margin:12px 0;}
+    .journal-box .jb-head{font-size:.72rem;font-weight:700;text-transform:uppercase;
+      letter-spacing:.07em;color:var(--muted);margin-bottom:10px;}
+    .journal-box table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace;}
+    .journal-box th{font-size:.74rem;color:var(--muted);padding:4px 8px;
+      border-bottom:1px solid var(--line);text-align:left;}
+    .journal-box td{padding:5px 8px;font-size:.84rem;}
+    .journal-box .dr{color:var(--brand);}
+    .journal-box .cr{color:var(--red);}
+    .journal-box .amount{text-align:right;font-weight:600;}
+    .journal-box .total-row td{border-top:2px solid var(--line);padding-top:7px;font-weight:700;}
+    .chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 10px;font-size:.74rem;font-weight:700;}
+    .chip-blue{background:var(--brand-soft);color:var(--brand);}
+    .chip-green{background:var(--green-soft);color:var(--green);}
+    .chip-amber{background:var(--amber-soft);color:var(--amber);}
+    .chip-red{background:var(--red-soft);color:var(--red);}
+    .col2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0;}
+    .mini-card{background:#fafbff;border:1px solid var(--line);border-radius:12px;padding:14px;}
+    .mini-card h4{margin:0 0 6px;font-size:.86rem;color:var(--ink);font-weight:700;}
+    .mini-card p{margin:0;font-size:.82rem;}
+    .faq-item{border-bottom:1px solid var(--line);padding:14px 0;}
+    .faq-item:last-child{border-bottom:none;}
+    .faq-q{font-weight:700;color:var(--ink);font-size:.92rem;margin-bottom:5px;}
+    .faq-q::before{content:"Q: ";color:var(--brand);}
+    .faq-a{color:var(--muted);font-size:.87rem;line-height:1.6;padding-left:20px;}
+    .faq-a::before{content:"A: ";color:var(--green);font-weight:700;margin-left:-20px;}
+    .manual-footer{text-align:center;font-size:.8rem;color:var(--muted);
+      padding-top:32px;border-top:1px solid var(--line);margin-top:40px;}
+
+    /* ══════════════════════════════════════════
+       SCREEN MOCKUP SYSTEM
+    ══════════════════════════════════════════ */
+    .screen-wrap{
+      margin:20px 0 28px;
+      background:#e8ecf7;
+      border-radius:14px;
+      padding:16px;
+    }
+    .screen-frame{
+      background:#f8faff;
+      border:1.5px solid #c8d5f0;
+      border-radius:10px;
+      overflow:hidden;
+      font-family:"Segoe UI",Tahoma,sans-serif;
+      font-size:13px;
+      box-shadow:0 8px 24px rgba(20,32,61,.13);
+    }
+    /* browser chrome bar */
+    .sf-chrome{
+      background:linear-gradient(to bottom,#e4e9f5,#d8e0f0);
+      border-bottom:1px solid #c0cce0;
+      padding:8px 14px;
+      display:flex;align-items:center;gap:10px;
+    }
+    .sf-dots{display:flex;gap:5px;}
+    .sf-dots span{width:10px;height:10px;border-radius:50%;}
+    .sf-dots span:nth-child(1){background:#ff5f57;}
+    .sf-dots span:nth-child(2){background:#febc2e;}
+    .sf-dots span:nth-child(3){background:#28c840;}
+    .sf-url{flex:1;background:#fff;border:1px solid #c8d5f0;border-radius:6px;
+      padding:3px 10px;font-size:.72rem;color:#5f6b85;font-family:"JetBrains Mono",monospace;}
+    /* app topbar inside frame */
+    .sf-topbar{
+      background:linear-gradient(135deg,#1733a5,#2353ea);
+      color:#fff;padding:9px 16px;
+      display:flex;align-items:center;gap:12px;
+    }
+    .sf-brand{font-size:.85rem;font-weight:700;letter-spacing:.01em;}
+    .sf-stepper{display:flex;align-items:center;gap:0;flex:1;justify-content:center;margin:0 12px;}
+    .sf-step{
+      display:flex;align-items:center;gap:5px;
+      padding:4px 10px;
+      font-size:.68rem;font-weight:600;
+      color:rgba(255,255,255,.55);
+      position:relative;
+    }
+    .sf-step.done{color:rgba(255,255,255,.75);}
+    .sf-step.active{color:#fff;background:rgba(255,255,255,.18);border-radius:999px;}
+    .sf-step-num{
+      width:18px;height:18px;border-radius:6px;
+      background:rgba(255,255,255,.2);color:#fff;
+      font-size:.65rem;font-weight:700;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .sf-step.active .sf-step-num{background:#fff;color:#1733a5;}
+    .sf-step.done .sf-step-num{background:rgba(255,255,255,.4);}
+    /* app body inside frame */
+    .sf-body{padding:14px 16px;background:#f8faff;}
+    .sf-heading{font-size:.95rem;font-weight:700;color:#172033;margin:0 0 4px;}
+    .sf-subtext{font-size:.74rem;color:#5f6b85;margin:0 0 12px;}
+    /* mini field */
+    .sf-field-lbl{font-size:.68rem;font-weight:600;color:#344054;margin-bottom:3px;display:block;}
+    .sf-select,.sf-input{
+      width:100%;padding:6px 8px;border:1.5px solid #dbe2f0;border-radius:6px;
+      font-size:.78rem;color:#172033;background:#fff;font-family:inherit;
+    }
+    .sf-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6b85' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;}
+    .sf-select.selected{border-color:#173fcf;color:#173fcf;background-color:#ebf1ff;}
+    .sf-input.mono{font-family:"JetBrains Mono",monospace;font-size:.72rem;}
+    .sf-input.filled{border-color:#173fcf;}
+    /* dropzone */
+    .sf-dropzone{
+      border:2px dashed #c5d5ff;border-radius:10px;
+      background:#f0f5ff;text-align:center;padding:18px 12px;
+      color:#5f6b85;font-size:.74rem;cursor:pointer;
+    }
+    .sf-dropzone svg{display:block;margin:0 auto 8px;color:#93aee8;}
+    .sf-dropzone strong{color:#173fcf;font-size:.8rem;}
+    /* folder tree */
+    .sf-folder-section{margin-bottom:6px;}
+    .sf-folder-row{
+      display:flex;align-items:center;gap:6px;
+      padding:5px 8px;border-radius:7px;background:#f0f5ff;
+      font-size:.76rem;font-weight:600;color:#344054;cursor:pointer;
+    }
+    .sf-file-list{list-style:none;padding:0;margin:3px 0 0 16px;}
+    .sf-file-row{
+      display:flex;align-items:center;gap:6px;
+      padding:4px 8px;border-radius:6px;font-size:.72rem;color:#5f6b85;
+      border-bottom:1px solid #f0f2f8;
+    }
+    .sf-file-row:last-child{border-bottom:none;}
+    .sf-file-name{flex:1;font-weight:500;color:#172033;}
+    .badge-ok{background:#ecfdf3;color:#067647;border-radius:999px;padding:1px 7px;font-size:.64rem;font-weight:700;}
+    .badge-warn{background:#fff7e8;color:#b54708;border-radius:999px;padding:1px 7px;font-size:.64rem;font-weight:700;}
+    .badge-done{background:#ecfdf3;color:#067647;border-radius:999px;padding:1px 7px;font-size:.64rem;font-weight:700;}
+    .badge-proc{background:#ebf1ff;color:#173fcf;border-radius:999px;padding:1px 7px;font-size:.64rem;font-weight:700;}
+    .badge-err{background:#fef0f0;color:#b42318;border-radius:999px;padding:1px 7px;font-size:.64rem;font-weight:700;}
+    /* process table */
+    .sf-proc-table{width:100%;border-collapse:collapse;font-size:.7rem;}
+    .sf-proc-table th{background:#f4f7ff;padding:5px 6px;text-align:left;
+      color:#5f6b85;font-size:.65rem;text-transform:uppercase;letter-spacing:.04em;
+      border-bottom:1.5px solid #dbe2f0;}
+    .sf-proc-table td{padding:5px 6px;border-bottom:1px solid #f0f2f8;vertical-align:middle;}
+    .sf-stage-dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+      background:#d0d8ee;margin:0 auto;display:block;}
+    .sf-stage-dot.done{background:#067647;}
+    .sf-stage-dot.proc{background:#173fcf;animation:blink 1s infinite;}
+    .sf-stage-dot.err{background:#b42318;}
+    .sf-fname{font-family:"JetBrains Mono",monospace;font-size:.65rem;color:#172033;max-width:160px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    /* scan review split */
+    .sf-review-split{display:grid;grid-template-columns:180px 1fr;gap:10px;}
+    .sf-docnav{background:#fff;border:1px solid #dbe2f0;border-radius:8px;overflow:hidden;}
+    .sf-docnav-item{display:flex;align-items:center;gap:6px;padding:6px 8px;
+      border-bottom:1px solid #f0f2f8;cursor:pointer;font-size:.71rem;color:#5f6b85;}
+    .sf-docnav-item.active{background:#ebf1ff;color:#173fcf;font-weight:600;}
+    .sf-docnav-item.approved{color:#067647;}
+    .sf-scanform{background:#fff;border:1px solid #dbe2f0;border-radius:8px;padding:10px 12px;}
+    .sf-form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;}
+    .sf-amounts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;}
+    /* voucher card */
+    .sf-voucher{background:#fff;border:1px solid #dbe2f0;border-radius:8px;
+      overflow:hidden;margin-bottom:8px;}
+    .sf-voucher-hdr{display:flex;align-items:center;justify-content:space-between;
+      padding:7px 10px;background:#f4f7ff;font-size:.72rem;font-weight:600;color:#344054;
+      border-bottom:1px solid #dbe2f0;}
+    .sf-vtable{width:100%;border-collapse:collapse;font-size:.68rem;}
+    .sf-vtable th{padding:4px 6px;border-bottom:1.5px solid #dbe2f0;color:#5f6b85;
+      text-transform:uppercase;font-size:.62rem;letter-spacing:.04em;background:#fafbff;}
+    .sf-vtable td{padding:4px 6px;border-bottom:1px solid #f0f2f8;}
+    .sf-vtable tr:last-child td{border-bottom:none;}
+    .sf-dr{color:#173fcf;font-weight:600;font-size:.65rem;}
+    .sf-cr{color:#b42318;font-weight:600;font-size:.65rem;}
+    .sf-amt{text-align:right;font-family:"JetBrains Mono",monospace;font-size:.67rem;}
+    .sf-account-select{width:100%;padding:3px 5px;border:1px solid #dbe2f0;
+      border-radius:4px;font-size:.66rem;background:#fff;color:#172033;}
+    /* export */
+    .sf-col-toggle-grid{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;}
+    .sf-col-badge{
+      padding:3px 9px;border-radius:5px;font-size:.66rem;font-weight:600;
+      background:#ecfdf3;border:1px solid #b7e4c7;color:#067647;cursor:pointer;
+    }
+    .sf-col-badge.off{background:#f4f7ff;border-color:#dbe2f0;color:#5f6b85;}
+    .sf-export-stats{display:flex;gap:12px;margin-bottom:10px;}
+    .sf-stat{background:#f8faff;border:1px solid #dbe2f0;border-radius:7px;
+      padding:7px 12px;text-align:center;flex:1;}
+    .sf-stat-n{font-size:1.1rem;font-weight:700;color:#173fcf;}
+    .sf-stat-l{font-size:.64rem;color:#5f6b85;}
+    .sf-csv-row{display:flex;gap:6px;padding:3px 6px;border-bottom:1px solid #f0f2f8;font-size:.64rem;}
+    .sf-csv-row:first-child{background:#f4f7ff;font-weight:700;color:#344054;}
+    .sf-csv-row:last-child{border-bottom:none;}
+    .sf-csv-cell{flex:1;font-family:"JetBrains Mono",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    /* buttons */
+    .sf-btn{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:6px 14px;border-radius:7px;border:none;cursor:pointer;
+      font-size:.76rem;font-weight:700;font-family:inherit;
+    }
+    .sf-btn-primary{background:#173fcf;color:#fff;}
+    .sf-btn-ghost{background:transparent;border:1.5px solid #dbe2f0;color:#5f6b85;}
+    .sf-btn-lg{padding:9px 20px;font-size:.82rem;}
+    .sf-progress-bar{
+      height:4px;background:#dbe2f0;border-radius:2px;overflow:hidden;margin-bottom:10px;
+    }
+    .sf-progress-fill{height:100%;background:linear-gradient(90deg,#173fcf,#4c77ff);
+      border-radius:2px;transition:width .3s;}
+    .sf-confidence{
+      display:inline-block;padding:2px 8px;border-radius:999px;font-size:.65rem;font-weight:700;
+      background:#ecfdf3;color:#067647;border:1px solid #b7e4c7;
+    }
+    .sf-doctype{font-size:.72rem;font-weight:700;background:#ebf1ff;color:#173fcf;
+      padding:2px 8px;border-radius:5px;display:inline-block;margin-bottom:6px;}
+    .sf-footer{display:flex;justify-content:space-between;align-items:center;
+      padding:8px 16px;border-top:1px solid #dbe2f0;background:#fff;}
+    .sf-toolbar{display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:8px;font-size:.74rem;}
+    /* annotation / callouts */
+    .annotation-legend{
+      display:flex;flex-wrap:wrap;gap:8px;
+      margin-top:12px;
+    }
+    .anno{
+      display:flex;align-items:flex-start;gap:7px;
+      background:#fff;border:1px solid var(--line);border-radius:8px;
+      padding:7px 10px;font-size:.78rem;flex:1 1 200px;
+    }
+    .anno-num{
+      min-width:20px;height:20px;border-radius:6px;background:var(--amber);color:#fff;
+      font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+    .anno-text{color:var(--muted);line-height:1.45;}
+    .anno-text strong{color:var(--ink);}
+    /* callout marker inside frames */
+    .callout{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:18px;height:18px;border-radius:5px;background:var(--amber);color:#fff;
+      font-size:.62rem;font-weight:700;margin-left:4px;vertical-align:middle;flex-shrink:0;
+    }
+    @media(max-width:700px){
+      .col2{grid-template-columns:1fr;}
+      .overview-strip{flex-direction:column;}
+      .ov-step::after{display:none;}
+      .hero h1{font-size:1.55rem;}
+      .sf-review-split{grid-template-columns:1fr;}
+      .sf-amounts{grid-template-columns:1fr 1fr;}
+    }
+  </style>
+</head>
+<body>
+
+<nav class="sticky-toc">
+  <span class="sticky-brand">📖 LedgerFlow</span>
+  <a href="#step1">1. อัปโหลด</a>
+  <a href="#step2">2. ยืนยันไฟล์</a>
+  <a href="#step3">3. ประมวลผล</a>
+  <a href="#step4">4. ตรวจสอบยอด</a>
+  <a href="#step5">5. รหัสบัญชี</a>
+  <a href="#step6">6. Export</a>
+  <a href="#faq">FAQ</a>
+</nav>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">คู่มือการใช้งาน · ฉบับนักบัญชี</div>
+    <h1>LedgerFlow — AI Pre-Accounting Copilot</h1>
+    <p class="subtitle">ระบบช่วยเตรียมข้อมูลก่อนลงบัญชี ด้วย AI อ่านเอกสาร สกัดข้อมูล และจับคู่รหัสบัญชีให้อัตโนมัติ พร้อม Export ไฟล์นำเข้า Express Accounting</p>
+    <div class="hero-meta">
+      <span>📄 รองรับ: ใบกำกับภาษี, ใบเสร็จ, ใบหัก ณ ที่จ่าย</span>
+      <span>🤖 ประมวลผล: OCR + AI จัดประเภท + จับคู่ผังบัญชี</span>
+      <span>💾 ผลลัพธ์: CSV นำเข้า Express GL Voucher</span>
+    </div>
+  </section>
+
+  <!-- TOC -->
+  <section class="toc-card">
+    <h2>สารบัญ</h2>
+    <div class="toc-grid">
+      <a class="toc-item" href="#step1"><div class="toc-num">1</div> อัปโหลดเอกสาร</a>
+      <a class="toc-item" href="#step2"><div class="toc-num">2</div> ยืนยันรายการไฟล์</a>
+      <a class="toc-item" href="#step3"><div class="toc-num">3</div> ประมวลผลอัตโนมัติ</a>
+      <a class="toc-item" href="#step4"><div class="toc-num">4</div> ตรวจสอบข้อมูลเอกสาร</a>
+      <a class="toc-item" href="#step5"><div class="toc-num">5</div> ทบทวนรหัสบัญชี</a>
+      <a class="toc-item" href="#step6"><div class="toc-num">6</div> Export นำเข้าบัญชี</a>
+      <a class="toc-item" href="#faq"><div class="toc-num">?</div> คำถามที่พบบ่อย</a>
+    </div>
+  </section>
+
+  <!-- OVERVIEW -->
+  <div class="overview-strip">
+    <div class="ov-step"><div class="ov-num">1</div><div class="ov-step-title">Upload</div><div class="ov-step-sub">วางไฟล์เอกสาร</div></div>
+    <div class="ov-step"><div class="ov-num">2</div><div class="ov-step-title">Select</div><div class="ov-step-sub">ยืนยันคิวประมวลผล</div></div>
+    <div class="ov-step"><div class="ov-num">3</div><div class="ov-step-title">Process</div><div class="ov-step-sub">AI อ่านและวิเคราะห์</div></div>
+    <div class="ov-step"><div class="ov-num">4</div><div class="ov-step-title">Scan Review</div><div class="ov-step-sub">ตรวจยอดเงิน &amp; Tax ID</div></div>
+    <div class="ov-step"><div class="ov-num">5</div><div class="ov-step-title">Map Review</div><div class="ov-step-sub">อนุมัติรหัส Dr/Cr</div></div>
+    <div class="ov-step"><div class="ov-num">6</div><div class="ov-step-title">Export</div><div class="ov-step-sub">ดาวน์โหลด CSV</div></div>
+  </div>
+
+  <!-- ══════════════ STEP 1 ══════════════ -->
+  <section class="step-section s1" id="step1">
+    <div class="step-header">
+      <div class="step-badge">📁</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label">ขั้นตอนที่ 1</div>
+        <h2 class="step-title">อัปโหลดเอกสาร (Upload Documents)</h2>
+        <p class="step-subtitle">นำเข้าใบกำกับภาษี ใบเสร็จ หรือเอกสารทางบัญชีที่ต้องการบันทึก</p>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <!-- SCREEN MOCKUP -->
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div class="sf-topbar">
+            <span class="sf-brand">⬛ LedgerFlow</span>
+            <nav class="sf-stepper">
+              <div class="sf-step active"><span class="sf-step-num">1</span> Upload</div>
+              <div class="sf-step"><span class="sf-step-num">2</span> Select</div>
+              <div class="sf-step"><span class="sf-step-num">3</span> Process</div>
+              <div class="sf-step"><span class="sf-step-num">4</span> Scan Review</div>
+              <div class="sf-step"><span class="sf-step-num">5</span> Map Review</div>
+              <div class="sf-step"><span class="sf-step-num">6</span> Export</div>
+            </nav>
+            <span style="font-size:.72rem;opacity:.7;">⚙ AP</span>
+          </div>
+          <div class="sf-body">
+            <div class="sf-heading">Upload Documents</div>
+            <div class="sf-subtext">Select a company first, then drop PDF or image scans. The system pre-checks Tax ID on every file.</div>
+            <!-- company selector -->
+            <div style="margin-bottom:10px;">
+              <span class="sf-field-lbl">Processing for Company <span style="color:#b42318;">*</span>
+                <span class="callout">①</span>
+              </span>
+              <select class="sf-select selected">
+                <option>บริษัท ยะวัน เทค จำกัด — Tax ID: 0105559123456</option>
+              </select>
+            </div>
+            <!-- dropzone -->
+            <div class="sf-dropzone" style="position:relative;">
+              <span class="callout" style="position:absolute;top:8px;right:8px;">②</span>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <div><strong>ลากไฟล์วางที่นี่ หรือคลิกเพื่อเลือก</strong></div>
+              <div style="margin-top:4px;font-size:.7rem;">PDF, JPG, PNG — สูงสุด 50 MB ต่อไฟล์ · รองรับการเลือกทั้งโฟลเดอร์</div>
+            </div>
+            <!-- uploaded files preview -->
+            <ul style="list-style:none;padding:0;margin:8px 0 0;">
+              <li style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:#fff;border:1px solid #dbe2f0;border-radius:7px;font-size:.72rem;margin-bottom:4px;">
+                <span style="color:#173fcf;">📄</span>
+                <span style="flex:1;font-weight:500;color:#172033;">INV-Metro-Electric-001.pdf</span>
+                <span class="badge-ok"><span class="callout" style="font-size:.55rem;padding:0 3px;">③</span> ✓ Tax ID Match</span>
+                <span style="color:#5f6b85;font-family:'JetBrains Mono',monospace;font-size:.65rem;">1.2 MB</span>
+              </li>
+              <li style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:#fff;border:1px solid #dbe2f0;border-radius:7px;font-size:.72rem;">
+                <span style="color:#173fcf;">📄</span>
+                <span style="flex:1;font-weight:500;color:#172033;">RECEIPT-PTT-Gas-002.pdf</span>
+                <span class="badge-warn"><span class="callout" style="font-size:.55rem;padding:0 3px;">④</span> ⚠ Tax ID Mismatch</span>
+                <span style="color:#5f6b85;font-family:'JetBrains Mono',monospace;font-size:.65rem;">0.8 MB</span>
+              </li>
+            </ul>
+          </div>
+          <div class="sf-footer">
+            <button class="sf-btn sf-btn-ghost" disabled>← Back</button>
+            <button class="sf-btn sf-btn-primary">Continue →</button>
+          </div>
+        </div>
+        <!-- annotations -->
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>เลือกบริษัทก่อนเสมอ</strong> — ระบบจะล็อก Drop Zone จนกว่าจะเลือก ป้องกันปนเอกสารข้ามกิจการ</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>Drop Zone</strong> — ลากไฟล์มาวาง หรือคลิกเปิด File Browser รองรับเลือกทั้งโฟลเดอร์พร้อมกัน</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>Tax ID Match</strong> — Tax ID บนเอกสารตรงกับบริษัทที่เลือก ผ่าน</div></div>
+          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>Tax ID Mismatch</strong> — Tax ID ไม่ตรง ต้องยืนยันหรือนำออกก่อนกด Continue</div></div>
+        </div>
+      </div>
+
+      <p class="lead">ก่อนจะอัปโหลดไฟล์ใดๆ ระบบกำหนดให้<strong>เลือกชื่อบริษัทก่อนเสมอ</strong> เพื่อตรวจสอบว่าเอกสารทุกใบมีเลขประจำตัวผู้เสียภาษี (Tax ID) ตรงกับกิจการที่ถูกต้อง</p>
+
+      <h3>วิธีอัปโหลดทีละขั้น</h3>
+      <ol class="steps">
+        <li><strong>เลือกชื่อบริษัท ①</strong><em>คลิก Dropdown แล้วเลือกกิจการที่ต้องการ หากยังไม่มีให้เพิ่มผ่านเมนู ⚙ Settings ก่อน</em></li>
+        <li><strong>นำเข้าไฟล์ ②</strong><em>ลากไฟล์วางใน Drop Zone หรือคลิกเปิด File Browser — PDF, JPG, PNG ไม่เกิน 50 MB ต่อไฟล์</em></li>
+        <li><strong>ตรวจสถานะ Tax ID ③④</strong><em>ไฟล์ที่ Tax ID ตรงแสดง ✓ สีเขียว ไม่ตรงแสดง ⚠ สีเหลือง ต้องจัดการก่อนดำเนินต่อ</em></li>
+        <li><strong>กด "Continue →"</strong><em>เมื่อรายการไฟล์ครบถ้วน กดดำเนินต่อ</em></li>
+      </ol>
+
+      <h3>ประเภทเอกสารที่รองรับ</h3>
+      <table class="data-table">
+        <thead><tr><th>ประเภท</th><th>ตัวอย่าง</th><th>ข้อมูลที่ระบบดึง</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip chip-blue">ใบกำกับภาษี</span></td><td>Invoice จากซัพพลายเออร์</td><td>วันที่, เลขที่, Tax ID ผู้ขาย/ผู้ซื้อ, ยอดสุทธิ, VAT 7%, ส่วนลด</td></tr>
+          <tr><td><span class="chip chip-green">ใบเสร็จรับเงิน</span></td><td>Receipt, ใบเสร็จค่าใช้จ่าย</td><td>วันที่, เลขที่, ยอดรวม, ผู้รับเงิน</td></tr>
+          <tr><td><span class="chip chip-amber">ใบหัก ณ ที่จ่าย</span></td><td>หนังสือรับรองการหักภาษี</td><td>อัตราภาษี (1%, 3%, 5%), ยอดเงินที่หัก</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn"><span class="note-icon">⚠️</span><div><strong>ข้อควรระวัง:</strong> ต้องเลือกบริษัทก่อนเสมอ ระบบล็อก Drop Zone จนกว่าจะเลือก เพื่อป้องกันการบันทึกข้ามกิจการ</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 2 ══════════════ -->
+  <section class="step-section s2" id="step2">
+    <div class="step-header">
+      <div class="step-badge">✅</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label">ขั้นตอนที่ 2</div>
+        <h2 class="step-title">ยืนยันรายการไฟล์ (Confirm File Queue)</h2>
+        <p class="step-subtitle">ตรวจสอบรายการก่อนส่งประมวลผล จัดการไฟล์ที่ Tax ID ไม่ตรง</p>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div class="sf-topbar">
+            <span class="sf-brand">⬛ LedgerFlow</span>
+            <nav class="sf-stepper">
+              <div class="sf-step done"><span class="sf-step-num">1</span> Upload</div>
+              <div class="sf-step active"><span class="sf-step-num">2</span> Select</div>
+              <div class="sf-step"><span class="sf-step-num">3</span> Process</div>
+              <div class="sf-step"><span class="sf-step-num">4</span> Scan Review</div>
+              <div class="sf-step"><span class="sf-step-num">5</span> Map Review</div>
+              <div class="sf-step"><span class="sf-step-num">6</span> Export</div>
+            </nav>
+          </div>
+          <div class="sf-body">
+            <div class="sf-heading">Confirm File Queue</div>
+            <div class="sf-subtext">Review files staged for processing. Mismatched Tax IDs are flagged — acknowledge or remove before continuing.</div>
+            <div class="sf-toolbar">
+              <label style="display:flex;align-items:center;gap:5px;font-size:.73rem;cursor:pointer;">
+                <input type="checkbox" checked style="accent-color:#173fcf;" /> Select all
+              </label>
+              <span style="font-size:.72rem;color:#5f6b85;">12 files selected</span>
+              <span class="badge-warn" style="font-size:.7rem;"><span class="callout">①</span> 1 Tax ID mismatch — review before confirming</span>
+            </div>
+            <!-- folder tree -->
+            <div class="sf-folder-section">
+              <div class="sf-folder-row">
+                <span>▾</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>📁 2026-05-Invoices</span>
+                <span style="font-size:.65rem;color:#5f6b85;margin-left:4px;">7 files</span>
+                <span class="badge-warn" style="margin-left:4px;">1 mismatch</span>
+                <span class="callout">②</span>
+              </div>
+              <ul class="sf-file-list">
+                <li class="sf-file-row">
+                  <input type="checkbox" checked style="accent-color:#173fcf;" />
+                  <span class="sf-file-name">INV-Metro-Electric-001.pdf</span>
+                  <span style="font-size:.65rem;color:#9aa8c0;">1.2 MB</span>
+                  <span class="badge-ok">✓ Match</span>
+                </li>
+                <li class="sf-file-row">
+                  <input type="checkbox" checked style="accent-color:#173fcf;" />
+                  <span class="sf-file-name">INV-CPALL-002.pdf</span>
+                  <span style="font-size:.65rem;color:#9aa8c0;">0.9 MB</span>
+                  <span class="badge-ok">✓ Match</span>
+                </li>
+                <li class="sf-file-row">
+                  <input type="checkbox" checked style="accent-color:#173fcf;" />
+                  <span class="sf-file-name">INV-SiamGas-003.pdf</span>
+                  <span style="font-size:.65rem;color:#9aa8c0;">1.1 MB</span>
+                  <span class="badge-warn"><span class="callout" style="font-size:.55rem;padding:0 2px;">③</span> ⚠ Mismatch</span>
+                </li>
+              </ul>
+            </div>
+            <div class="sf-folder-section">
+              <div class="sf-folder-row">
+                <span>▾</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>📁 2026-05-Receipts</span>
+                <span style="font-size:.65rem;color:#5f6b85;margin-left:4px;">5 files</span>
+              </div>
+              <ul class="sf-file-list">
+                <li class="sf-file-row">
+                  <input type="checkbox" checked style="accent-color:#173fcf;" />
+                  <span class="sf-file-name">REC-PTT-Gas-001.pdf</span>
+                  <span style="font-size:.65rem;color:#9aa8c0;">0.7 MB</span>
+                  <span class="badge-ok">✓ Match</span>
+                </li>
+              </ul>
+            </div>
+            <div style="background:#f4f7ff;border-top:1px solid #dbe2f0;padding:6px 10px;font-size:.72rem;color:#5f6b85;display:flex;justify-content:space-between;">
+              <span>12 files · 14.3 MB total</span>
+              <span class="badge-warn">⚠ 1 mismatch requires review</span>
+            </div>
+          </div>
+          <div class="sf-footer">
+            <button class="sf-btn sf-btn-ghost">← Back</button>
+            <button class="sf-btn sf-btn-primary">Confirm &amp; Process →</button>
+          </div>
+        </div>
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>แถบเตือน Mismatch</strong> — แสดงจำนวนไฟล์ที่ Tax ID ไม่ตรง ต้องจัดการก่อนดำเนินต่อได้</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>โฟลเดอร์</strong> — ระบบจัดกลุ่มตามโฟลเดอร์เดิมที่อัปโหลด กดชื่อโฟลเดอร์เพื่อยุบ/ขยาย</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>ไฟล์ที่ Tax ID ไม่ตรง</strong> — ต้องตัดสินใจ: ยืนยันว่าเป็นของกิจการ หรือนำออกจากคิว</div></div>
+        </div>
+      </div>
+
+      <p class="lead">ขั้นตอนนี้คือ "ด่านตรวจสอบก่อนส่งงาน" — ระบบแสดงรายการเอกสารทั้งหมดพร้อมเตือนไฟล์ที่มีปัญหา Tax ID</p>
+      <ol class="steps">
+        <li><strong>ตรวจสอบ Tax ID ที่แจ้งเตือน ③</strong><em>อาจเป็นบริษัทในเครือ หรือ Tax ID พิมพ์ผิดบนต้นฉบับ</em></li>
+        <li><strong>เลือกดำเนินการ: ยืนยัน หรือ นำออก</strong><em>หากมั่นใจว่าเป็นของกิจการให้ยืนยัน ถ้าเป็นของบริษัทอื่นให้ untick ออก</em></li>
+        <li><strong>กด "Confirm &amp; Process →"</strong><em>ระบบส่งเฉพาะไฟล์ที่ติ๊กเข้าสู่ขั้นตอน AI Processing</em></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 3 ══════════════ -->
+  <section class="step-section s3" id="step3">
+    <div class="step-header">
+      <div class="step-badge">⚙️</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label">ขั้นตอนที่ 3</div>
+        <h2 class="step-title">ประมวลผลอัตโนมัติ (AI Processing)</h2>
+        <p class="step-subtitle">ระบบทำงาน 4 เฟสโดยอัตโนมัติ — รอผลลัพธ์โดยไม่ต้องดำเนินการใดๆ</p>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div class="sf-topbar">
+            <span class="sf-brand">⬛ LedgerFlow</span>
+            <nav class="sf-stepper">
+              <div class="sf-step done"><span class="sf-step-num">1</span> Upload</div>
+              <div class="sf-step done"><span class="sf-step-num">2</span> Select</div>
+              <div class="sf-step active"><span class="sf-step-num">3</span> Process</div>
+              <div class="sf-step"><span class="sf-step-num">4</span> Scan Review</div>
+              <div class="sf-step"><span class="sf-step-num">5</span> Map Review</div>
+              <div class="sf-step"><span class="sf-step-num">6</span> Export</div>
+            </nav>
+          </div>
+          <div class="sf-body">
+            <div class="sf-heading">Processing Documents</div>
+            <div class="sf-subtext">OCR extraction, classification, field validation, and COA mapping recommendation.</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:.74rem;color:#5f6b85;">Processing 9 / 12 files…</span>
+              <span style="font-size:.74rem;color:#173fcf;font-weight:600;">75%</span>
+            </div>
+            <div class="sf-progress-bar"><div class="sf-progress-fill" style="width:75%;"></div></div>
+            <div style="overflow-x:auto;">
+              <table class="sf-proc-table">
+                <thead>
+                  <tr>
+                    <th>File</th>
+                    <th style="text-align:center;"><span class="callout">①</span> OCR</th>
+                    <th style="text-align:center;">Classify</th>
+                    <th style="text-align:center;">Extract</th>
+                    <th style="text-align:center;"><span class="callout">②</span> Map COA</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="sf-fname">INV-Metro-Electric-001.pdf</td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td><span class="badge-done">✓ Done</span></td>
+                  </tr>
+                  <tr>
+                    <td class="sf-fname">INV-CPALL-002.pdf</td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td><span class="badge-done">✓ Done</span></td>
+                  </tr>
+                  <tr style="background:#fffef8;">
+                    <td class="sf-fname">INV-SiamGas-003.pdf</td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot proc"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot"></span></td>
+                    <td><span class="badge-proc"><span class="callout" style="font-size:.55rem;padding:0 3px;">③</span> Processing…</span></td>
+                  </tr>
+                  <tr>
+                    <td class="sf-fname">REC-PTT-Gas-004.pdf</td>
+                    <td style="text-align:center;"><span class="sf-stage-dot done"></span></td>
+                    <td style="text-align:center;"><span class="sf-stage-dot err"></span></td>
+                    <td style="text-align:center;">—</td>
+                    <td style="text-align:center;">—</td>
+                    <td><span class="badge-err"><span class="callout" style="font-size:.55rem;padding:0 3px;">④</span> Error</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="sf-footer">
+            <button class="sf-btn sf-btn-ghost">← Back</button>
+            <button class="sf-btn sf-btn-ghost" disabled>Processing… (wait)</button>
+          </div>
+        </div>
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>OCR</strong> — อ่านข้อความจากภาพ/PDF ต้องเสร็จก่อนขั้นถัดไปจะทำงานได้</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>Map COA</strong> — เฟสสุดท้าย จับคู่รหัสบัญชีตามผังบัญชีของกิจการ สร้าง Voucher Draft Dr/Cr</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>กำลังประมวลผล</strong> — จุดสีน้ำเงินกะพริบ รอให้เปลี่ยนเป็นสีเขียว อย่ากด Back</div></div>
+          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>Error</strong> — ระบบอ่านไม่ได้ (ภาพไม่ชัด/แฟ้มเสีย) ไฟล์นี้จะถูกข้ามไป ต้องสแกนใหม่</div></div>
+        </div>
+      </div>
+
+      <p class="lead">ขั้นตอนนี้ระบบทำงานเองทั้งหมด 4 เฟสต่อเนื่อง: อ่าน → จัดประเภท → สกัดข้อมูล → จับคู่บัญชี</p>
+      <table class="data-table">
+        <thead><tr><th>เฟส</th><th>ชื่อกระบวนการ</th><th>ความหมายในทางบัญชี</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip chip-blue">OCR ①</span></td><td>อ่านข้อความจากเอกสาร</td><td>แปลงภาพสแกน/PDF เป็นตัวอักษรที่นำมาใช้งานได้</td></tr>
+          <tr><td><span class="chip chip-amber">Classify</span></td><td>จัดประเภทเอกสาร</td><td>แยกว่าเป็น ใบกำกับภาษี / ใบเสร็จ / ใบหัก ณ ที่จ่าย</td></tr>
+          <tr><td><span class="chip chip-amber">Extract</span></td><td>สกัดข้อมูลสำคัญ</td><td>ดึงวันที่, เลขที่, Tax ID, ยอดเงิน, VAT, WHT</td></tr>
+          <tr><td><span class="chip chip-green">Map COA ②</span></td><td>แนะนำรหัสบัญชี</td><td>จับคู่ Dr/Cr ตามผังบัญชีของกิจการ สร้าง Voucher Draft</td></tr>
+        </tbody>
+      </table>
+      <div class="note tip"><span class="note-icon">💡</span><div><strong>เคล็ดลับ:</strong> ห้ามกด Back ขณะประมวลผล ปุ่ม Continue จะยังเป็น Disabled อยู่ รอจนแถบ Progress เป็น 100% ก่อน</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 4 ══════════════ -->
+  <section class="step-section s4" id="step4">
+    <div class="step-header">
+      <div class="step-badge">🔍</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label">ขั้นตอนที่ 4</div>
+        <h2 class="step-title">ตรวจสอบข้อมูลเอกสาร (Review Scan Results)</h2>
+        <p class="step-subtitle">ยืนยันหรือแก้ไขข้อมูลหัวเอกสารที่ AI ดึงมา — หัวใจของความถูกต้องทางบัญชี</p>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div class="sf-topbar">
+            <span class="sf-brand">⬛ LedgerFlow</span>
+            <nav class="sf-stepper">
+              <div class="sf-step done"><span class="sf-step-num">1</span> Upload</div>
+              <div class="sf-step done"><span class="sf-step-num">2</span> Select</div>
+              <div class="sf-step done"><span class="sf-step-num">3</span> Process</div>
+              <div class="sf-step active"><span class="sf-step-num">4</span> Scan Review</div>
+              <div class="sf-step"><span class="sf-step-num">5</span> Map Review</div>
+              <div class="sf-step"><span class="sf-step-num">6</span> Export</div>
+            </nav>
+          </div>
+          <div class="sf-body" style="padding:10px 12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div><div class="sf-heading" style="font-size:.86rem;">Review Scan Results</div>
+              <div class="sf-subtext" style="font-size:.68rem;margin:0;">Verify extracted header fields. Edit any incorrect values, then approve each document.</div></div>
+              <button class="sf-btn sf-btn-ghost" style="font-size:.68rem;padding:4px 10px;">Approve All</button>
+            </div>
+            <div class="sf-review-split">
+              <!-- doc nav -->
+              <div class="sf-docnav">
+                <div style="padding:5px 8px;font-size:.68rem;font-weight:700;color:#5f6b85;border-bottom:1px solid #dbe2f0;">12 documents</div>
+                <div class="sf-docnav-item active">📄 INV-Metro-Electric-001.pdf <span class="callout">①</span></div>
+                <div class="sf-docnav-item">📄 INV-CPALL-002.pdf</div>
+                <div class="sf-docnav-item approved">✅ INV-Office-003.pdf</div>
+                <div class="sf-docnav-item approved">✅ INV-IT-004.pdf</div>
+                <div class="sf-docnav-item">📄 REC-PTT-Gas-005.pdf</div>
+                <div style="padding:5px 8px;font-size:.64rem;color:#9aa8c0;text-align:center;">…7 more</div>
+              </div>
+              <!-- scan form -->
+              <div class="sf-scanform">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <span class="sf-doctype">Invoice</span>
+                  <span class="sf-confidence"><span class="callout">②</span> 94% confidence</span>
+                </div>
+                <div class="sf-form-row">
+                  <div>
+                    <span class="sf-field-lbl">📅 Invoice Date <span class="callout">③</span></span>
+                    <input class="sf-input filled" type="text" value="2026-05-02" readonly />
+                  </div>
+                  <div>
+                    <span class="sf-field-lbl"># Invoice / Voucher No</span>
+                    <input class="sf-input mono filled" type="text" value="INV-2605-001" readonly />
+                  </div>
+                </div>
+                <div class="sf-form-row">
+                  <div>
+                    <span class="sf-field-lbl">🏢 Seller Tax ID <span class="callout">④</span></span>
+                    <input class="sf-input mono filled" type="text" value="0105538001234" readonly />
+                  </div>
+                  <div>
+                    <span class="sf-field-lbl">Seller Name</span>
+                    <input class="sf-input filled" type="text" value="Metro Electric Co., Ltd." readonly />
+                  </div>
+                </div>
+                <div class="sf-form-row">
+                  <div>
+                    <span class="sf-field-lbl">🏢 Buyer Tax ID</span>
+                    <input class="sf-input mono filled" type="text" value="0105559123456" readonly />
+                  </div>
+                  <div>
+                    <span class="sf-field-lbl">Buyer Name</span>
+                    <input class="sf-input filled" type="text" value="บริษัท ยะวัน เทค จำกัด" readonly />
+                  </div>
+                </div>
+                <div class="sf-amounts">
+                  <div>
+                    <span class="sf-field-lbl">💰 Net (฿) <span class="callout">⑤</span></span>
+                    <input class="sf-input mono filled" type="text" value="12,500.00" readonly />
+                  </div>
+                  <div>
+                    <span class="sf-field-lbl">VAT 7% (฿)</span>
+                    <input class="sf-input mono filled" type="text" value="875.00" readonly />
+                  </div>
+                  <div>
+                    <span class="sf-field-lbl">WHT 3% (฿)</span>
+                    <input class="sf-input mono filled" type="text" value="375.00" readonly />
+                  </div>
+                  <div>
+                    <span class="sf-field-lbl">Gross (฿)</span>
+                    <input class="sf-input mono filled" type="text" value="13,000.00" readonly style="font-weight:700;color:#173fcf;" />
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="sf-btn sf-btn-primary"><span class="callout">⑥</span> ✓ Approve Header</button>
+                  <button class="sf-btn sf-btn-ghost">Next →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="sf-footer">
+            <button class="sf-btn sf-btn-ghost">← Back</button>
+            <button class="sf-btn sf-btn-primary">Continue to Mapping →</button>
+          </div>
+        </div>
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>รายการเอกสาร</strong> — คลิกชื่อไฟล์เพื่อสลับดู ✅ = อนุมัติแล้ว 📄 = ยังรอตรวจ</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>ระดับความมั่นใจ</strong> — ยิ่งสูงยิ่งดี ≥ 85% ตรวจคร่าวๆ ได้ &lt;70% ต้องตรวจละเอียด</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>วันที่ใบกำกับ</strong> — กำหนดงวดบัญชี ต้องตรงกับต้นฉบับ อยู่ในรอบบัญชีที่ถูกต้อง</div></div>
+          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>Tax ID ผู้ขาย</strong> — 13 หลัก ใช้ขอคืน VAT และออก ภ.พ.30 ต้องครบถ้วนและถูกต้อง</div></div>
+          <div class="anno"><span class="anno-num">⑤</span><div class="anno-text"><strong>ยอดเงิน</strong> — Net คือฐาน VAT; Gross = Net + VAT − WHT คำนวณอัตโนมัติ</div></div>
+          <div class="anno"><span class="anno-num">⑥</span><div class="anno-text"><strong>Approve Header</strong> — กดอนุมัติ ระบบข้ามไปเอกสารถัดไปอัตโนมัติ</div></div>
+        </div>
+      </div>
+
+      <p class="lead">หน้าจอแบ่งเป็น 2 ส่วน: <strong>ซ้าย</strong> รายการเอกสาร, <strong>ขวา</strong> ฟอร์มข้อมูลที่ AI ดึงออกมา — ตรวจ แก้ไข แล้วกด Approve</p>
+
+      <h3>ตัวอย่างการคำนวณยอดเงิน (สูตรที่ต้องรู้)</h3>
+      <div class="journal-box">
+        <div class="jb-head">ใบกำกับค่าไฟฟ้า 12,500 บาท + VAT 7% − WHT 3%</div>
+        <table>
+          <tr><td>ยอดสุทธิก่อน VAT (Net)</td><td class="amount">12,500.00</td></tr>
+          <tr><td>VAT 7%</td><td class="amount">875.00</td></tr>
+          <tr><td>หัก ณ ที่จ่าย 3% (คำนวณจาก Net)</td><td class="amount">( 375.00 )</td></tr>
+          <tr class="total-row"><td><strong>ยอดที่โอนจ่ายจริง (Gross)</strong></td><td class="amount"><strong>13,000.00</strong></td></tr>
+        </table>
+      </div>
+
+      <table class="data-table">
+        <thead><tr><th>ฟิลด์</th><th>ความสำคัญทางบัญชี</th><th>สิ่งที่ต้องตรวจ</th></tr></thead>
+        <tbody>
+          <tr><td><span class="field-pill">📅 วันที่ใบกำกับ</span></td><td>กำหนดงวดบัญชีที่บันทึก</td><td>ตรงต้นฉบับ อยู่ในรอบบัญชีที่ถูกต้อง</td></tr>
+          <tr><td><span class="field-pill">🏢 Tax ID ผู้ขาย</span></td><td>ใช้ขอคืน VAT / ออก ภ.พ.30</td><td>ครบ 13 หลัก ตรงกับชื่อผู้ขาย</td></tr>
+          <tr><td><span class="field-pill">💰 ยอดสุทธิ Net</span></td><td>ฐานคำนวณ VAT และ WHT</td><td>ตรงกับยอดก่อน VAT บนเอกสาร</td></tr>
+          <tr><td><span class="field-pill">📊 VAT 7%</span></td><td>ภาษีซื้อ/ขาย สำหรับ ภ.พ.</td><td>= Net × 7% ± ปัดเศษ 1 บาท</td></tr>
+          <tr><td><span class="field-pill">📉 WHT &amp; อัตรา</span></td><td>หัก ณ ที่จ่าย ออก ภ.ง.ด.3/53</td><td>อัตราถูก (1%, 3%, 5%) ยอดคำนวณตรง</td></tr>
+        </tbody>
+      </table>
+      <div class="note warn"><span class="note-icon">⚠️</span><div><strong>สำคัญ:</strong> ถ้ากด "Approve All" โดยไม่ตรวจ ต้องมั่นใจว่า Confidence ทุกไฟล์ ≥ 85% และเป็นซัพพลายเออร์ประจำที่รูปแบบเอกสารสม่ำเสมอ</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 5 ══════════════ -->
+  <section class="step-section s5" id="step5">
+    <div class="step-header">
+      <div class="step-badge">📒</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label">ขั้นตอนที่ 5</div>
+        <h2 class="step-title">ทบทวนรหัสบัญชี (Review COA Mapping)</h2>
+        <p class="step-subtitle">ตรวจสอบรายการ Dr/Cr ที่ AI แนะนำ ปรับรหัสบัญชีให้ถูกต้องก่อนยืนยัน</p>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div class="sf-topbar">
+            <span class="sf-brand">⬛ LedgerFlow</span>
+            <nav class="sf-stepper">
+              <div class="sf-step done"><span class="sf-step-num">1</span> Upload</div>
+              <div class="sf-step done"><span class="sf-step-num">2</span> Select</div>
+              <div class="sf-step done"><span class="sf-step-num">3</span> Process</div>
+              <div class="sf-step done"><span class="sf-step-num">4</span> Scan Review</div>
+              <div class="sf-step active"><span class="sf-step-num">5</span> Map Review</div>
+              <div class="sf-step"><span class="sf-step-num">6</span> Export</div>
+            </nav>
+          </div>
+          <div class="sf-body" style="padding:10px 12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div><div class="sf-heading" style="font-size:.86rem;">Review COA Mapping</div>
+              <div class="sf-subtext" style="font-size:.68rem;margin:0;">Verify double-entry voucher lines. Change account codes — each confirmation trains the model.</div></div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:.72rem;color:#5f6b85;">3 / 12 confirmed</span>
+                <button class="sf-btn sf-btn-primary" style="font-size:.68rem;padding:4px 10px;">Confirm All</button>
+              </div>
+            </div>
+
+            <!-- voucher 1 — confirmed -->
+            <div class="sf-voucher" style="border-color:#b7e4c7;">
+              <div class="sf-voucher-hdr" style="background:#ecfdf3;color:#067647;">
+                <div>✅ INV-2605-001 · 2026-05-02 · Metro Electric Co., Ltd.</div>
+                <div>฿13,000.00</div>
+              </div>
+              <div style="padding:4px 8px;font-size:.65rem;color:#067647;background:#f8fff8;">Confirmed — account codes accepted</div>
+            </div>
+
+            <!-- voucher 2 — pending -->
+            <div class="sf-voucher">
+              <div class="sf-voucher-hdr">
+                <div>
+                  <span class="callout">①</span>
+                  INV-2605-002 · 2026-05-05 · CP ALL PCL
+                </div>
+                <div>฿21,400.00</div>
+              </div>
+              <div style="padding:4px 8px;">
+                <table class="sf-vtable">
+                  <thead>
+                    <tr>
+                      <th style="width:42px;">Dr/Cr</th>
+                      <th style="width:90px;">Account Code</th>
+                      <th>Account Name</th>
+                      <th class="sf-amt">Debit (฿)</th>
+                      <th class="sf-amt">Credit (฿)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="sf-dr">Dr</span></td>
+                      <td>
+                        <select class="sf-account-select">
+                          <option>5201 — ค่าสินค้า</option>
+                        </select>
+                        <span class="callout">②</span>
+                      </td>
+                      <td style="font-size:.65rem;color:#5f6b85;">ค่าสินค้า/วัสดุ</td>
+                      <td class="sf-amt sf-dr">20,000.00</td>
+                      <td class="sf-amt">—</td>
+                    </tr>
+                    <tr>
+                      <td><span class="sf-dr">Dr</span></td>
+                      <td><select class="sf-account-select"><option>1152 — ภาษีซื้อ</option></select></td>
+                      <td style="font-size:.65rem;color:#5f6b85;">ภาษีซื้อ (VAT Input)</td>
+                      <td class="sf-amt sf-dr">1,400.00</td>
+                      <td class="sf-amt">—</td>
+                    </tr>
+                    <tr>
+                      <td><span class="sf-cr">Cr</span></td>
+                      <td><select class="sf-account-select"><option>2161 — WHT ค้างจ่าย</option></select></td>
+                      <td style="font-size:.65rem;color:#5f6b85;">ภาษีหัก ณ ที่จ่ายค้างจ่าย</td>
+                      <td class="sf-amt">—</td>
+                      <td class="sf-amt sf-cr">600.00</td>
+                    </tr>
+                    <tr>
+                      <td><span class="sf-cr">Cr</span></td>
+                      <td><select class="sf-account-select"><option>2110 — เจ้าหนี้การค้า</option></select></td>
+                      <td style="font-size:.65rem;color:#5f6b85;">เจ้าหนี้การค้า</td>
+                      <td class="sf-amt">—</td>
+                      <td class="sf-amt sf-cr">20,800.00</td>
+                    </tr>
+                    <tr style="background:#f8faff;font-weight:700;">
+                      <td colspan="3" style="font-size:.67rem;text-align:right;color:#344054;">รวม (Dr = Cr) <span class="callout">③</span></td>
+                      <td class="sf-amt sf-dr">21,400.00</td>
+                      <td class="sf-amt sf-cr">21,400.00</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div style="display:flex;gap:6px;padding:6px 0 2px;">
+                  <button class="sf-btn sf-btn-primary" style="font-size:.7rem;padding:4px 12px;"><span class="callout">④</span> ✓ Confirm</button>
+                  <button class="sf-btn sf-btn-ghost" style="font-size:.7rem;padding:4px 10px;">Skip</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="sf-footer">
+            <button class="sf-btn sf-btn-ghost">← Back</button>
+            <button class="sf-btn sf-btn-primary">Continue to Export →</button>
+          </div>
+        </div>
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>Voucher Header</strong> — เลขที่, วันที่, ชื่อซัพพลายเออร์, ยอดรวม (Gross)</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>Dropdown รหัสบัญชี</strong> — คลิกเพื่อเปลี่ยน พิมพ์ชื่อ/รหัสค้นหา เลือกจากผังบัญชีของกิจการ</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>ยอด Dr = Cr</strong> — ต้องสมดุลเสมอ ถ้าไม่เท่ากันต้องแก้ก่อน Confirm</div></div>
+          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>Confirm</strong> — ยืนยัน Voucher นี้ ระบบจดจำการจับคู่ไว้ใช้ซัพพลายเออร์รายนี้ในอนาคต</div></div>
+        </div>
+      </div>
+
+      <p class="lead">ระบบสร้าง "Voucher Draft" สำหรับแต่ละเอกสาร คล้ายใบสำคัญทั่วไป (General Voucher) มีรายการ Dr/Cr ครบถ้วน</p>
+
+      <h3>ตัวอย่าง Voucher รับใบกำกับค่าสาธารณูปโภค</h3>
+      <div class="journal-box">
+        <div class="jb-head">ใบกำกับ INV-2605-001 — Metro Electric Co., Ltd. | Net 12,500 + VAT 875 − WHT 375</div>
+        <table>
+          <thead><tr><th>รหัสบัญชี</th><th>ชื่อบัญชี</th><th class="amount">เดบิต (Dr)</th><th class="amount">เครดิต (Cr)</th></tr></thead>
+          <tbody>
+            <tr><td>5210</td><td class="dr">ค่าสาธารณูปโภค</td><td class="amount dr">12,500.00</td><td class="amount">—</td></tr>
+            <tr><td>1152</td><td class="dr">ภาษีซื้อ (VAT Input)</td><td class="amount dr">875.00</td><td class="amount">—</td></tr>
+            <tr><td>2161</td><td class="cr">WHT ค้างจ่าย</td><td class="amount">—</td><td class="amount cr">375.00</td></tr>
+            <tr><td>2110</td><td class="cr">เจ้าหนี้การค้า</td><td class="amount">—</td><td class="amount cr">13,000.00</td></tr>
+            <tr class="total-row"><td colspan="2"><strong>รวม</strong></td><td class="amount"><strong>13,375.00</strong></td><td class="amount"><strong>13,375.00</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note info"><span class="note-icon">🎓</span><div><strong>การเรียนรู้ของระบบ:</strong> ทุกครั้งที่ยืนยันหรือแก้ไขรหัสบัญชี ระบบจะจำรูปแบบนั้น และแนะนำรหัสเดิมสำหรับซัพพลายเออร์/ประเภทค่าใช้จ่ายเดียวกันในครั้งต่อไปโดยอัตโนมัติ</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ STEP 6 ══════════════ -->
+  <section class="step-section s6" id="step6">
+    <div class="step-header">
+      <div class="step-badge">💾</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label">ขั้นตอนที่ 6</div>
+        <h2 class="step-title">Export นำเข้าบัญชี (Export Express GL)</h2>
+        <p class="step-subtitle">ดาวน์โหลด CSV ในรูปแบบ Express Accounting GL Voucher Import พร้อมนำเข้าทันที</p>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div class="sf-topbar">
+            <span class="sf-brand">⬛ LedgerFlow</span>
+            <nav class="sf-stepper">
+              <div class="sf-step done"><span class="sf-step-num">1</span> Upload</div>
+              <div class="sf-step done"><span class="sf-step-num">2</span> Select</div>
+              <div class="sf-step done"><span class="sf-step-num">3</span> Process</div>
+              <div class="sf-step done"><span class="sf-step-num">4</span> Scan Review</div>
+              <div class="sf-step done"><span class="sf-step-num">5</span> Map Review</div>
+              <div class="sf-step active"><span class="sf-step-num">6</span> Export</div>
+            </nav>
+          </div>
+          <div class="sf-body" style="padding:10px 12px;">
+            <div class="sf-heading" style="font-size:.86rem;margin-bottom:2px;">Export Express GL</div>
+            <div class="sf-subtext" style="font-size:.68rem;margin-bottom:10px;">Configure columns and download the Express Accounting GL Voucher import file.</div>
+
+            <!-- column toggles -->
+            <div style="font-size:.72rem;font-weight:700;color:#344054;margin-bottom:5px;">Export Columns <span class="callout">①</span></div>
+            <div class="sf-col-toggle-grid">
+              <span class="sf-col-badge">✓ Voucher_No</span>
+              <span class="sf-col-badge">✓ Date</span>
+              <span class="sf-col-badge">✓ Book_Code</span>
+              <span class="sf-col-badge">✓ Account_Code</span>
+              <span class="sf-col-badge">✓ Debit_Amount</span>
+              <span class="sf-col-badge">✓ Credit_Amount</span>
+              <span class="sf-col-badge">✓ Line_Description</span>
+              <span class="sf-col-badge">✓ Seller_TaxID</span>
+              <span class="sf-col-badge">✓ WHT_Rate</span>
+              <span class="sf-col-badge off">VAT_Rate</span>
+              <span class="sf-col-badge off">Discount</span>
+              <span class="sf-col-badge off">Address</span>
+            </div>
+
+            <!-- stats -->
+            <div class="sf-export-stats" style="margin-top:8px;">
+              <div class="sf-stat"><div class="sf-stat-n">12</div><div class="sf-stat-l">Documents <span class="callout">②</span></div></div>
+              <div class="sf-stat"><div class="sf-stat-n">48</div><div class="sf-stat-l">Journal Lines</div></div>
+              <div class="sf-stat"><div class="sf-stat-n" style="font-size:.9rem;">฿135,750</div><div class="sf-stat-l">Total Debit</div></div>
+            </div>
+
+            <!-- csv preview -->
+            <div style="background:#f4f7ff;border:1px solid #dbe2f0;border-radius:7px;padding:6px 8px;margin-bottom:10px;overflow-x:auto;">
+              <div style="font-size:.65rem;font-weight:700;color:#5f6b85;margin-bottom:4px;">CSV Preview (first 3 rows) <span class="callout">③</span></div>
+              <div class="sf-csv-row"><div class="sf-csv-cell">Voucher_No</div><div class="sf-csv-cell">Date</div><div class="sf-csv-cell">Account_Code</div><div class="sf-csv-cell">Debit_Amount</div><div class="sf-csv-cell">Credit_Amount</div><div class="sf-csv-cell">Seller_TaxID</div></div>
+              <div class="sf-csv-row"><div class="sf-csv-cell">INV-2605-001</div><div class="sf-csv-cell">2026-05-02</div><div class="sf-csv-cell">5210</div><div class="sf-csv-cell">12500.00</div><div class="sf-csv-cell">0.00</div><div class="sf-csv-cell">0105538001234</div></div>
+              <div class="sf-csv-row"><div class="sf-csv-cell">INV-2605-001</div><div class="sf-csv-cell">2026-05-02</div><div class="sf-csv-cell">1152</div><div class="sf-csv-cell">875.00</div><div class="sf-csv-cell">0.00</div><div class="sf-csv-cell">0105538001234</div></div>
+              <div class="sf-csv-row"><div class="sf-csv-cell">INV-2605-001</div><div class="sf-csv-cell">2026-05-02</div><div class="sf-csv-cell">2110</div><div class="sf-csv-cell">0.00</div><div class="sf-csv-cell">13000.00</div><div class="sf-csv-cell">0105538001234</div></div>
+            </div>
+
+            <!-- download button -->
+            <button class="sf-btn sf-btn-primary sf-btn-lg" style="width:100%;justify-content:center;">
+              <span class="callout">④</span>
+              ⬇ Download Express-Journal.CSV
+            </button>
+          </div>
+        </div>
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>เลือกคอลัมน์</strong> — ติ๊กคอลัมน์ที่ต้องการ สีเขียว = เลือก สีเทา = ไม่เลือก ปรับตามรูปแบบที่ Express Accounting ต้องการ</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>สรุปยอด</strong> — ตรวจ cross-check: จำนวนเอกสาร, จำนวนบรรทัด, ยอด Debit รวม ก่อน Download</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>CSV Preview</strong> — ตัวอย่าง 6 แถวแรก ยืนยันว่ารูปแบบถูกต้องก่อนดาวน์โหลดจริง</div></div>
+          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>Download</strong> — บันทึกไฟล์ จากนั้นเปิด Express Accounting → Import → GL Voucher → เลือกไฟล์นี้</div></div>
+        </div>
+      </div>
+
+      <p class="lead">ขั้นตอนสุดท้าย ระบบสร้างไฟล์ CSV ที่พร้อม Import เข้า Express Accounting ในรูปแบบ GL Voucher — ไม่ต้องพิมพ์ข้อมูลใหม่</p>
+
+      <div class="col2">
+        <div class="mini-card">
+          <h4>📂 วิธีนำเข้า Express Accounting</h4>
+          <ol style="padding-left:16px;margin:0;font-size:.84rem;color:var(--muted);line-height:1.8;">
+            <li>เปิด Express Accounting</li>
+            <li>เมนู → นำเข้าข้อมูล</li>
+            <li>เลือก "นำเข้า GL Voucher"</li>
+            <li>Browse เลือกไฟล์ Express-Journal.CSV</li>
+            <li>ตรวจ Preview แล้วกด ยืนยัน</li>
+          </ol>
+        </div>
+        <div class="mini-card">
+          <h4>✅ การตรวจสอบหลัง Import</h4>
+          <ul style="padding-left:16px;margin:0;font-size:.84rem;color:var(--muted);line-height:1.8;">
+            <li>Trial Balance งวดนั้น Dr = Cr</li>
+            <li>เลขที่เอกสารไม่ซ้ำ</li>
+            <li>ตรวจ VAT Report กับ ภ.พ.30</li>
+            <li>ตรวจ WHT Report กับ ภ.ง.ด.3/53</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="note success"><span class="note-icon">🎉</span><div><strong>เสร็จสิ้น!</strong> ข้อมูลบัญชีทุกรายการถูกบันทึกผ่าน LedgerFlow เรียบร้อยแล้ว ลดเวลาพิมพ์ข้อมูลซ้ำ และลดข้อผิดพลาดจากการกรอกมือ</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ FAQ ══════════════ -->
+  <section class="step-section" id="faq" style="border-top:4px solid var(--amber);">
+    <div class="step-header">
+      <div class="step-badge" style="background:#fff7e8;">❓</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label">ภาคผนวก</div>
+        <h2 class="step-title">คำถามที่พบบ่อย (FAQ)</h2>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="faq-item">
+        <div class="faq-q">AI อ่านตัวเลขผิด เช่น 10,000 เป็น 100,000 ทำอย่างไร?</div>
+        <div class="faq-a">แก้ไขได้ทันทีในขั้นตอนที่ 4 คลิกที่ฟิลด์ยอดเงินและพิมพ์ค่าที่ถูกต้อง ระบบจะคำนวณ VAT, WHT และ Gross ใหม่อัตโนมัติ</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">ระบบแนะนำรหัสบัญชีผิด เช่น บัญชีค่าเช่าถูกจัดเป็นค่าใช้จ่ายทั่วไป ทำอย่างไร?</div>
+        <div class="faq-a">ในขั้นตอนที่ 5 ให้คลิก Dropdown ที่บรรทัดนั้น พิมพ์ชื่อหรือรหัสบัญชีที่ถูกต้องแล้วเลือก กด Confirm — ครั้งต่อไประบบจะแนะนำรหัสที่ถูกต้องสำหรับซัพพลายเออร์รายนี้โดยอัตโนมัติ</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">อัปโหลดเอกสารข้ามบริษัทได้ไหม?</div>
+        <div class="faq-a">ต้องแยกทำทีละบริษัท เลือกบริษัท A ทำให้เสร็จก่อน Export แล้วค่อยกลับมาเลือกบริษัท B ป้องกันการปนเอกสารข้ามกิจการ</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">ไฟล์ PDF ภาพไม่ชัด ระบบอ่านไม่ออก ทำอย่างไร?</div>
+        <div class="faq-a">ระบบแสดง ❌ Error ในคอลัมน์ OCR แนะนำสแกนใหม่ที่ความละเอียด ≥ 300 DPI หรือถ่ายรูปในที่แสงสว่างพอ หลีกเลี่ยงภาพเบลอหรือหน้ากระดาษโค้ง</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">ต้องเพิ่มบริษัทใหม่ในระบบ ทำอย่างไร?</div>
+        <div class="faq-a">คลิกไอคอน ⚙ (Settings) มุมขวาบน เลือก "Company &amp; COA Settings" แล้วกด "+ Add Company" กรอกชื่อบริษัทและ Tax ID 13 หลัก กด Save — บริษัทจะปรากฏใน Dropdown ขั้นตอนที่ 1 ทันที</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Export แล้ว Import ไม่เข้า Express — บอกว่า "รหัสบัญชีไม่พบ"</div>
+        <div class="faq-a">รหัสบัญชีในไฟล์ CSV ไม่ตรงกับที่ตั้งใน Express ตรวจ 2 จุด: (1) ผังบัญชีใน Settings ของ LedgerFlow ตรงกับที่ตั้งใน Express หรือไม่ (2) รหัสที่แก้ไขในขั้น 5 ถูกต้องครบถ้วนหรือไม่</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">VAT ที่ดึงมาเป็น "ภาษีซื้อ" หรือ "ภาษีขาย"?</div>
+        <div class="faq-a">พิจารณาจากประเภทเอกสาร: รับใบกำกับจากซัพพลายเออร์ (เราเป็น Buyer) → VAT คือ "ภาษีซื้อ" (Dr 1152). ออกใบกำกับให้ลูกค้า (เราเป็น Seller) → VAT คือ "ภาษีขาย" (Cr 2151). ตรวจสอบจาก Tax ID ผู้ขาย/ผู้ซื้อในขั้นตอนที่ 4</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="manual-footer">
+    <p>LedgerFlow — AI Pre-Accounting Copilot &nbsp;|&nbsp; คู่มือฉบับนักบัญชี ภาษาไทย</p>
+    <p>จัดทำโดย: Piboonsak Pimsarn &nbsp;·&nbsp; อัปเดต: มิถุนายน 2569 &nbsp;·&nbsp; เวอร์ชัน PoC Epic 5</p>
+  </div>
+
+</div>
+</body>
+</html>
