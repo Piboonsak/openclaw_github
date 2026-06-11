@@ -1204,7 +1204,226 @@
       </div>
       <div class="faq-item">
         <div class="faq-q">ต้องเพิ่มบริษัทใหม่ในระบบ ทำอย่างไร?</div>
-        <div class="faq-a">คลิกไอคอน ⚙ (Settings) มุมขวาบน เลือก "Company &amp; COA Settings" แล้วกด "+ Add Company" กรอกชื่อบริษัทและ Tax ID 13 หลัก กด Save — บริษัทจะปรากฏใน Dropdown ขั้นตอนที่ 1 ทันที</div>
+        <div class="faq-a" style="margin-bottom:4px;">เปิด Settings แล้วทำตามขั้นตอนด้านล่าง — ใช้เวลาไม่เกิน 30 วินาที</div>
+
+        <!-- ── Step-by-step visual guide ── -->
+        <div style="padding-left:20px;margin-top:14px;">
+
+          <!-- STEP 1 -->
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+            <div style="min-width:26px;height:26px;border-radius:8px;background:var(--brand);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
+            <div>
+              <strong style="color:var(--ink);font-size:.9rem;">คลิกไอคอน ⚙ (Settings) มุมขวาบนของหน้าจอ</strong>
+              <div style="font-size:.83rem;color:var(--muted);margin-top:3px;">ไอคอนรูปเฟืองอยู่ที่ด้านขวาของ Topbar ถัดจากชื่อผู้ใช้</div>
+            </div>
+          </div>
+          <!-- mockup: topbar gear highlight -->
+          <div class="screen-wrap" style="margin:0 0 18px 36px;">
+            <div class="screen-frame">
+              <div class="sf-chrome">
+                <div class="sf-dots"><span></span><span></span><span></span></div>
+                <div class="sf-url">poc-aiaccount.yahwan.biz</div>
+              </div>
+              <div class="sf-topbar" style="justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <svg width="22" height="22" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="rgba(255,255,255,.25)"/><path d="M8 20V8h4l4 6 4-6h4v12h-3v-8l-3.5 5h-3L11 12v8H8z" fill="#fff"/></svg>
+                  <span class="sf-brand">LedgerFlow</span>
+                </div>
+                <div class="sf-stepper">
+                  <div class="sf-step active"><span class="sf-step-num">1</span> Upload</div>
+                  <div class="sf-step"><span class="sf-step-num">2</span> Select</div>
+                  <div class="sf-step"><span class="sf-step-num">3</span> Process</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <!-- book icon -->
+                  <div style="width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                  </div>
+                  <!-- gear icon highlighted -->
+                  <div style="width:30px;height:30px;border-radius:7px;background:#fff;box-shadow:0 0 0 3px #ffd60a,0 0 14px rgba(255,214,10,.6);display:flex;align-items:center;justify-content:center;position:relative;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#173fcf" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <!-- arrow pointing -->
+                    <div style="position:absolute;right:-44px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:3px;white-space:nowrap;">
+                      <span style="font-size:.62rem;font-weight:700;color:#ffd60a;background:rgba(0,0,0,.55);border-radius:4px;padding:1px 5px;">คลิกที่นี่</span>
+                    </div>
+                  </div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;">AP</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2 -->
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+            <div style="min-width:26px;height:26px;border-radius:8px;background:var(--brand);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</div>
+            <div>
+              <strong style="color:var(--ink);font-size:.9rem;">แผง Settings เปิดขึ้น — แท็บ <span class="field-pill">Companies</span> เปิดอยู่โดยอัตโนมัติ</strong>
+              <div style="font-size:.83rem;color:var(--muted);margin-top:3px;">กด <strong style="color:var(--brand);">+ Add Company</strong> มุมขวาบนของส่วน Company Profiles</div>
+            </div>
+          </div>
+          <!-- mockup: settings panel companies tab -->
+          <div class="screen-wrap" style="margin:0 0 18px 36px;">
+            <div class="screen-frame">
+              <div style="background:#fff;border-radius:10px;overflow:hidden;max-width:420px;margin:0 auto;">
+                <!-- header -->
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--line);">
+                  <span style="font-size:.95rem;font-weight:700;color:var(--ink);">Settings</span>
+                  <span style="font-size:.9rem;color:var(--muted);cursor:pointer;">✕</span>
+                </div>
+                <!-- tabs -->
+                <div style="display:flex;border-bottom:1px solid var(--line);padding:0 16px;">
+                  <div style="padding:8px 14px;font-size:.82rem;font-weight:700;color:var(--brand);border-bottom:2px solid var(--brand);">Companies</div>
+                  <div style="padding:8px 14px;font-size:.82rem;color:var(--muted);">Chart of Accounts</div>
+                </div>
+                <!-- section header -->
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;">
+                  <span style="font-size:.8rem;font-weight:700;color:var(--slate);">Company Profiles</span>
+                  <button style="padding:4px 10px;border-radius:6px;background:var(--brand);color:#fff;border:none;font-size:.75rem;font-weight:700;cursor:pointer;box-shadow:0 0 0 3px #ffd60a,0 0 12px rgba(255,214,10,.5);">+ Add Company</button>
+                </div>
+                <!-- existing companies table -->
+                <div style="padding:0 16px 14px;">
+                  <table style="width:100%;font-size:.75rem;border-collapse:collapse;">
+                    <thead><tr style="border-bottom:1px solid var(--line);">
+                      <th style="text-align:left;padding:4px 6px;color:var(--muted);font-size:.68rem;text-transform:uppercase;">Company Name</th>
+                      <th style="text-align:left;padding:4px 6px;color:var(--muted);font-size:.68rem;text-transform:uppercase;">Tax ID</th>
+                      <th style="padding:4px 6px;color:var(--muted);font-size:.68rem;text-transform:uppercase;">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr style="border-bottom:1px solid #f0f2f8;">
+                        <td style="padding:6px 6px;color:var(--ink);">บริษัท ยะวัน เทค จำกัด</td>
+                        <td style="padding:6px 6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);">0105559123456</td>
+                        <td style="padding:6px 6px;text-align:center;"><span style="font-size:.65rem;color:var(--muted);">✎ 🗑</span></td>
+                      </tr>
+                      <tr>
+                        <td style="padding:6px 6px;color:var(--ink);">บริษัท ยะวัน เทรดดิ้ง จำกัด</td>
+                        <td style="padding:6px 6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);">0105559654321</td>
+                        <td style="padding:6px 6px;text-align:center;"><span style="font-size:.65rem;color:var(--muted);">✎ 🗑</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3 -->
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+            <div style="min-width:26px;height:26px;border-radius:8px;background:var(--brand);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">3</div>
+            <div>
+              <strong style="color:var(--ink);font-size:.9rem;">กรอกข้อมูลบริษัท แล้วกด <span class="field-pill">Save Company</span></strong>
+              <div style="font-size:.83rem;color:var(--muted);margin-top:3px;">กรอก <strong>ชื่อบริษัทเต็ม</strong> และ <strong>Tax ID 13 หลัก</strong> ตามหนังสือรับรองบริษัท</div>
+            </div>
+          </div>
+          <!-- mockup: add company form filled -->
+          <div class="screen-wrap" style="margin:0 0 18px 36px;">
+            <div class="screen-frame">
+              <div style="background:#fff;border-radius:10px;overflow:hidden;max-width:420px;margin:0 auto;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--line);">
+                  <span style="font-size:.95rem;font-weight:700;color:var(--ink);">Settings</span>
+                  <span style="font-size:.9rem;color:var(--muted);">✕</span>
+                </div>
+                <div style="display:flex;border-bottom:1px solid var(--line);padding:0 16px;">
+                  <div style="padding:8px 14px;font-size:.82rem;font-weight:700;color:var(--brand);border-bottom:2px solid var(--brand);">Companies</div>
+                  <div style="padding:8px 14px;font-size:.82rem;color:var(--muted);">Chart of Accounts</div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;">
+                  <span style="font-size:.8rem;font-weight:700;color:var(--slate);">Company Profiles</span>
+                  <button style="padding:4px 10px;border-radius:6px;background:var(--brand);color:#fff;border:none;font-size:.75rem;font-weight:700;">+ Add Company</button>
+                </div>
+                <!-- form panel (visible) -->
+                <div style="margin:0 16px 12px;padding:12px;background:#f4f7ff;border:1.5px solid #c5d5ff;border-radius:10px;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                    <div>
+                      <div style="font-size:.7rem;font-weight:600;color:#344054;margin-bottom:4px;">Company Name <span style="color:#b42318;">*</span></div>
+                      <input style="width:100%;padding:6px 8px;border:1.5px solid #173fcf;border-radius:6px;font-size:.76rem;color:#172033;background:#fff;font-family:inherit;" value="บริษัท ฤทธิ์ล้ำเลิศ จำกัด" readonly />
+                    </div>
+                    <div>
+                      <div style="font-size:.7rem;font-weight:600;color:#344054;margin-bottom:4px;">Tax ID <span style="color:#b42318;">*</span></div>
+                      <input style="width:100%;padding:6px 8px;border:1.5px solid #173fcf;border-radius:6px;font-size:.76rem;color:#172033;background:#fff;font-family:'JetBrains Mono',monospace;" value="0105566543210" readonly />
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    <button style="padding:5px 14px;border-radius:6px;background:var(--brand);color:#fff;border:none;font-size:.75rem;font-weight:700;cursor:pointer;">Save Company</button>
+                    <button style="padding:5px 12px;border-radius:6px;background:#fff;color:var(--muted);border:1px solid var(--line);font-size:.75rem;cursor:pointer;">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 4 -->
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+            <div style="min-width:26px;height:26px;border-radius:8px;background:var(--green);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">✓</div>
+            <div>
+              <strong style="color:var(--green);font-size:.9rem;">บริษัทถูกบันทึก — ปรากฏในตารางและใน Dropdown ขั้นตอนที่ 1 ทันที</strong>
+              <div style="font-size:.83rem;color:var(--muted);margin-top:3px;">ปิด Settings แล้วกลับมาที่หน้า Upload — กด Dropdown เลือกบริษัทที่เพิ่งเพิ่มได้เลย</div>
+            </div>
+          </div>
+          <!-- mockup: company saved in table + dropdown -->
+          <div class="screen-wrap" style="margin:0 0 4px 36px;">
+            <div class="screen-frame">
+              <div style="background:#fff;border-radius:10px;overflow:hidden;max-width:420px;margin:0 auto;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--line);">
+                  <span style="font-size:.95rem;font-weight:700;color:var(--ink);">Settings</span>
+                  <span style="font-size:.9rem;color:var(--muted);">✕</span>
+                </div>
+                <div style="display:flex;border-bottom:1px solid var(--line);padding:0 16px;">
+                  <div style="padding:8px 14px;font-size:.82rem;font-weight:700;color:var(--brand);border-bottom:2px solid var(--brand);">Companies</div>
+                  <div style="padding:8px 14px;font-size:.82rem;color:var(--muted);">Chart of Accounts</div>
+                </div>
+                <div style="padding:8px 16px 6px;background:#ecfdf3;border-bottom:1px solid #b7e4c7;display:flex;align-items:center;gap:8px;">
+                  <span style="color:#067647;font-size:.8rem;">✓</span>
+                  <span style="font-size:.78rem;color:#035c35;font-weight:600;">บันทึกบริษัทเรียบร้อยแล้ว</span>
+                </div>
+                <div style="padding:8px 16px 14px;">
+                  <table style="width:100%;font-size:.75rem;border-collapse:collapse;">
+                    <thead><tr style="border-bottom:1px solid var(--line);">
+                      <th style="text-align:left;padding:4px 6px;color:var(--muted);font-size:.68rem;text-transform:uppercase;">Company Name</th>
+                      <th style="text-align:left;padding:4px 6px;color:var(--muted);font-size:.68rem;text-transform:uppercase;">Tax ID</th>
+                      <th style="padding:4px 6px;color:var(--muted);font-size:.68rem;text-transform:uppercase;">Actions</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr style="border-bottom:1px solid #f0f2f8;">
+                        <td style="padding:6px 6px;color:var(--ink);">บริษัท ยะวัน เทค จำกัด</td>
+                        <td style="padding:6px 6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);">0105559123456</td>
+                        <td style="padding:6px 6px;text-align:center;font-size:.65rem;color:var(--muted);">✎ 🗑</td>
+                      </tr>
+                      <tr style="border-bottom:1px solid #f0f2f8;">
+                        <td style="padding:6px 6px;color:var(--ink);">บริษัท ยะวัน เทรดดิ้ง จำกัด</td>
+                        <td style="padding:6px 6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);">0105559654321</td>
+                        <td style="padding:6px 6px;text-align:center;font-size:.65rem;color:var(--muted);">✎ 🗑</td>
+                      </tr>
+                      <!-- newly added company, highlighted -->
+                      <tr style="background:#ecfdf3;">
+                        <td style="padding:6px 6px;color:#035c35;font-weight:600;">บริษัท ฤทธิ์ล้ำเลิศ จำกัด</td>
+                        <td style="padding:6px 6px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#067647;">0105566543210</td>
+                        <td style="padding:6px 6px;text-align:center;font-size:.65rem;color:var(--muted);">✎ 🗑</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- dropdown preview -->
+                <div style="padding:0 16px 14px;">
+                  <div style="font-size:.72rem;color:var(--muted);margin-bottom:5px;">→ ตอนนี้ปรากฏใน Dropdown หน้า Upload แล้ว:</div>
+                  <select style="width:100%;padding:7px 10px;border:1.5px solid #173fcf;border-radius:6px;font-size:.76rem;color:#173fcf;background:#ebf1ff;" disabled>
+                    <option>บริษัท ฤทธิ์ล้ำเลิศ จำกัด (Tax ID: 0105566543210)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- tip note -->
+          <div class="note tip" style="margin:12px 0 0 36px;">
+            <span class="note-icon">💡</span>
+            <div><strong>Tax ID ต้องครบ 13 หลัก</strong> ระบบจะไม่ยอมรับถ้าน้อยกว่า — ตรวจสอบจาก<em>หนังสือรับรองนิติบุคคล</em>หรือใบกำกับภาษีของบริษัทนั้น</div>
+          </div>
+          <div class="note warn" style="margin:8px 0 0 36px;">
+            <span class="note-icon">⚠️</span>
+            <div><strong>ข้อมูลบริษัทซิงค์กับเซิร์ฟเวอร์</strong> — ทุก browser และทุกอุปกรณ์จะเห็นรายการเดียวกันทันที ไม่ต้องเพิ่มซ้ำในแต่ละเครื่อง</div>
+          </div>
+
+        </div><!-- end step guide -->
       </div>
       <div class="faq-item">
         <div class="faq-q">Export แล้ว Import ไม่เข้า Express — บอกว่า "รหัสบัญชีไม่พบ"</div>

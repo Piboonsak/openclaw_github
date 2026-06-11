@@ -58,7 +58,7 @@ def get_manual():
         )
     return HTMLResponse(
         MANUAL_PATH.read_text(encoding="utf-8"),
-        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 
