@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Express GL Journal Voucher Contract",
+  "description": "Boundary contract for journal voucher payloads destined for GL export",
+  "type": "object",
+  "required": [
+    "doc_id",
+    "doc_type",
+    "voucher_date",
+    "reference",
+    "book_code",
+    "lines",
+    "total_debit",
+    "total_credit",
+    "balanced",
+    "status"
+  ],
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "description": "Document SHA256 hash or unique identifier"
+    },
+    "doc_type": {
+      "type": "string",
+      "description": "Document type (Invoice, PO, Receipt, etc.)"
+    },
+    "voucher_date": {
+      "type": "string",
+      "description": "Voucher date (ISO 8601 or Thai format)"
+    },
+    "reference": {
+      "type": "string",
+      "description": "Invoice number, PO number, or reference"
+    },
+    "book_code": {
+      "type": "string",
+      "description": "Journal/book code for GL"
+    },
+    "lines": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Journal line items",
+      "items": {
+        "type": "object",
+        "required": [
+          "account",
+          "debit",
+          "credit"
+        ],
+        "properties": {
+          "account": {
+            "type": "string",
+            "description": "GL account code"
+          },
+          "description": {
+            "type": "string",
+            "description": "Line description"
+          },
+          "debit": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Debit amount (>= 0)"
+          },
+          "credit": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Credit amount (>= 0)"
+          }
+        }
+      }
+    },
+    "total_debit": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Sum of debit amounts"
+    },
+    "total_credit": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Sum of credit amounts"
+    },
+    "balanced": {
+      "type": "boolean",
+      "description": "Whether debit == credit (within tolerance)"
+    },
+    "status": {
+      "type": "string",
+      "description": "Voucher status (posted, draft, etc.)"
+    }
+  }
+}
