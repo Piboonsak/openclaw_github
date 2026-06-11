@@ -15,6 +15,7 @@ from src.backend.services.rule_loader import JournalRule, load_company_rules
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CACHE_ROOT = REPO_ROOT / "src" / "backend" / "services" / "cache"
 DEFAULT_RULES_ROOT = REPO_ROOT / "rules"
+_MAPPING_CACHE_SUBDIR = "mapping_cache"
 JOURNAL_SCHEMA_VERSION = "v2"
 SCORE_WEIGHTS = {
     "document_type": 20,
@@ -373,22 +374,98 @@ def _select_account_for_entry(
     }
 
 
+def _make_mapping_cache_key(vendor_name: str, line_desc: str) -> str:
+    """Return a stable MD5 key from normalized vendor + description."""
+    combined = f"{vendor_name.strip().lower()}|{line_desc.strip().lower()}"
+    return hashlib.md5(combined.encode("utf-8")).hexdigest()
+
+
+def _get_mapping_cache_path(company_id: str, cache_root: Path) -> Path:
+    return cache_root / _MAPPING_CACHE_SUBDIR / f"{company_id}.json"
+
+
+def _read_mapping_cache(
+    company_id: str, key: str, cache_root: Path
+) -> dict[str, Any] | None:
+    """Return cached mapping entry or None if not found."""
+    path = _get_mapping_cache_path(company_id, cache_root)
+    if not path.exists():
+        return None
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data.get(key)
+
+
+def _write_mapping_cache(
+    company_id: str,
+    key: str,
+    account_code: str,
+    account_name: str,
+    source: str,
+    cache_root: Path,
+) -> None:
+    """Persist a mapping entry into the per-company JSON cache file."""
+    path = _get_mapping_cache_path(company_id, cache_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data: dict[str, Any] = {}
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+    data[key] = {"account_code": account_code, "account_name": account_name, "source": source}
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def on_map_review_confirmed(
+    company_id: str,
+    vendor_name: str,
+    line_desc: str,
+    approved_account_code: str,
+    approved_account_name: str = "",
+    *,
+    cache_root: Path | None = None,
+) -> str:
+    """Record a Map Review confirmation into the mapping cache (F-loop write-back).
+
+    Returns the cache key so callers can verify persistence.
+    """
+    root = cache_root or DEFAULT_CACHE_ROOT
+    key = _make_mapping_cache_key(vendor_name, line_desc)
+    _write_mapping_cache(company_id, key, approved_account_code, approved_account_name, "map_review", root)
+    return key
+
+
 def resolve_variable_account(
-    selected: dict[str, Any], context: dict[str, Any]
+    selected: dict[str, Any],
+    context: dict[str, Any],
+    *,
+    cache_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Resolve variable placeholders using seller/source text keyword mapping."""
+    """Resolve variable placeholders using (1) mapping cache, (2) keyword lookup.
+
+    Tier 1 — per-company mapping cache (learned from Map Review confirmations).
+    Tier 2 — static VARIABLE_ACCOUNT_KEYWORDS table.
+    """
     account_code = str(selected.get("account_code", "")).strip()
-    account_name = str(selected.get("account_name", "")).strip()
 
     if account_code and "xxx" not in account_code.lower():
         return selected
 
-    source_text = _coalesce_text(
-        context.get("source_text"),
-        context.get("seller_name"),
-        context.get("vendor_name"),
-    ).lower()
+    vendor_name = _coalesce_text(context.get("seller_name"), context.get("vendor_name"))
+    line_desc = _coalesce_text(context.get("source_text"))
+    company_id = str(context.get("company_id") or "")
 
+    # Tier 1: mapping cache
+    if company_id:
+        key = _make_mapping_cache_key(vendor_name, line_desc)
+        cached = _read_mapping_cache(company_id, key, cache_root or DEFAULT_CACHE_ROOT)
+        if cached:
+            return {
+                "account_code": cached["account_code"],
+                "account_name": cached.get("account_name", ""),
+                "cache_hit": True,
+                "cache_source": cached.get("source", "map_review"),
+            }
+
+    # Tier 2: keyword lookup
+    source_text = _coalesce_text(vendor_name, line_desc).lower()
     for keyword, mapped in VARIABLE_ACCOUNT_KEYWORDS.items():
         if keyword in source_text:
             return {
@@ -618,6 +695,7 @@ def run_journal_router(
             resolved_company_id, rules_root=rules_root or DEFAULT_RULES_ROOT
         )
         context = _derive_routing_context(fields, rules)
+        context["company_id"] = resolved_company_id
         chosen = pick_best_rule(context, loaded.journal_rules)
         if chosen.get("status") == "OK":
             payload = _build_payload_from_rule(chosen, context, sha)

@@ -4,8 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator, ValidationError
-
+from jsonschema import Draft202012Validator
 
 # Load schema at module import time
 _SCHEMA_PATH = Path(__file__).parent.parent.parent / "rules" / "express_gl.schema.json"
@@ -111,3 +110,68 @@ def is_valid_express_gl(payload: dict[str, Any]) -> bool:
         return True
     except ExpressGLContractError:
         return False
+
+
+def validate_express_gl_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Validate individual lines in an express_gl payload.
+
+    Returns a list of per-line error dicts (empty list if all lines valid).
+    Each error contains: line_index (int), field (str), message (str).
+
+    Args:
+        payload: Journal voucher payload whose lines[] to inspect
+
+    Returns:
+        List of error dicts, empty if no errors found
+    """
+    lines = payload.get("lines", [])
+    errors: list[dict[str, Any]] = []
+    for i, line in enumerate(lines):
+        if not isinstance(line, dict):
+            errors.append({"line_index": i, "field": "line", "message": "Line must be an object"})
+            continue
+        for required_field in ("account", "debit", "credit"):
+            if required_field not in line:
+                errors.append({
+                    "line_index": i,
+                    "field": required_field,
+                    "message": f"Missing required field '{required_field}'",
+                })
+        for amount_field in ("debit", "credit"):
+            val = line.get(amount_field)
+            if val is not None and (not isinstance(val, (int, float)) or val < 0):
+                errors.append({
+                    "line_index": i,
+                    "field": amount_field,
+                    "message": f"'{amount_field}' must be a non-negative number, got {val!r}",
+                })
+    return errors
+
+
+def check_balance_tolerance(
+    payload: dict[str, Any], tolerance: float = 0.01
+) -> dict[str, Any]:
+    """
+    Check if total_debit and total_credit are balanced within tolerance.
+
+    Args:
+        payload: Journal voucher payload with total_debit / total_credit fields
+        tolerance: Maximum allowed absolute difference (default 0.01)
+
+    Returns:
+        Dict with keys:
+          balanced (bool): exact equality,
+          delta (float): abs(debit - credit),
+          within_tolerance (bool): delta <= tolerance,
+          tolerance (float): the tolerance value used
+    """
+    total_debit = float(payload.get("total_debit", 0))
+    total_credit = float(payload.get("total_credit", 0))
+    delta = abs(total_debit - total_credit)
+    return {
+        "balanced": total_debit == total_credit,
+        "delta": round(delta, 6),
+        "within_tolerance": delta <= tolerance,
+        "tolerance": tolerance,
+    }
