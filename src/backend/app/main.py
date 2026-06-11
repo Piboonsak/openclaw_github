@@ -13,7 +13,7 @@ from src.backend.services.secrets_loader import load_llm_keys
 app = FastAPI(
     title="AI Pre-Accounting Copilot",
     description="Automated document processing backend for OCR, extraction, and validation.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 # Include API endpoints router
