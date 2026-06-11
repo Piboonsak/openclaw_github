@@ -32,7 +32,7 @@ _STAGE_LABELS = {
     4: "Generating journal entry rules",
     5: "Validating & writing rule file",
 }
-JOB_TIMEOUT_SECONDS = 180
+JOB_TIMEOUT_SECONDS = 600
 
 
 class RuleGenerationJobStore:

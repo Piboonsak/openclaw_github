@@ -26,7 +26,7 @@ DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-20250514",
     "openai": "gpt-4o-mini",
 }
-LLM_REQUEST_TIMEOUT_SECONDS = 45
+LLM_REQUEST_TIMEOUT_SECONDS = 120
 
 
 def _rules_root() -> Path:
@@ -103,7 +103,7 @@ def _call_anthropic(prompt: str, system: str, model: str) -> str:
     response = client.messages.create(
         model=model,
         temperature=0,
-        max_tokens=7000,
+        max_tokens=8000,
         system=system,
         messages=[{"role": "user", "content": prompt}],
     )
