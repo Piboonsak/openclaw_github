@@ -394,6 +394,7 @@
   <a href="#step4">4. ตรวจสอบยอด</a>
   <a href="#step5">5. รหัสบัญชี</a>
   <a href="#step6">6. Export</a>
+  <a href="#settings-rule-gen">⚙ Rule Generator</a>
   <a href="#faq">FAQ</a>
 </nav>
 
@@ -421,6 +422,7 @@
       <a class="toc-item" href="#step4"><div class="toc-num">4</div> ตรวจสอบข้อมูลเอกสาร</a>
       <a class="toc-item" href="#step5"><div class="toc-num">5</div> ทบทวนรหัสบัญชี</a>
       <a class="toc-item" href="#step6"><div class="toc-num">6</div> Export นำเข้าบัญชี</a>
+      <a class="toc-item" href="#settings-rule-gen"><div class="toc-num" style="background:var(--purple);">⚙</div> ตั้งค่า Rule Generator</a>
       <a class="toc-item" href="#faq"><div class="toc-num">?</div> คำถามที่พบบ่อย</a>
     </div>
   </section>
@@ -780,11 +782,12 @@
     </div>
     <div class="step-body">
 
+      <!-- ── Mockup: 3-panel layout matching real PoC UI ── -->
       <div class="screen-wrap">
         <div class="screen-frame">
           <div class="sf-chrome">
             <div class="sf-dots"><span></span><span></span><span></span></div>
-            <div class="sf-url">app.ledgerflow.local/prototype</div>
+            <div class="sf-url">poc-aiaccount.yahwan.biz</div>
           </div>
           <div class="sf-topbar">
             <span class="sf-brand">⬛ LedgerFlow</span>
@@ -797,100 +800,155 @@
               <div class="sf-step"><span class="sf-step-num">6</span> Export</div>
             </nav>
           </div>
-          <div class="sf-body" style="padding:10px 12px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <div><div class="sf-heading" style="font-size:.86rem;">Review Scan Results</div>
-              <div class="sf-subtext" style="font-size:.68rem;margin:0;">Verify extracted header fields. Edit any incorrect values, then approve each document.</div></div>
-              <button class="sf-btn sf-btn-ghost" style="font-size:.68rem;padding:4px 10px;">Approve All</button>
+          <!-- 3-column body -->
+          <div style="display:grid;grid-template-columns:148px 1fr 200px;height:420px;background:#f4f6fb;overflow:hidden;">
+
+            <!-- COL 1: document list -->
+            <div style="background:#fff;border-right:1px solid #dbe2f0;overflow-y:auto;font-size:.68rem;">
+              <div style="padding:6px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #dbe2f0;background:#f8faff;">
+                <span style="font-weight:700;color:#5f6b85;">1 document</span>
+                <button style="font-size:.6rem;padding:2px 7px;border-radius:4px;background:#fff;border:1px solid #dbe2f0;color:#5f6b85;cursor:pointer;">Approve All</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;padding:6px 8px;background:#ebf1ff;border-left:2px solid #173fcf;">
+                <span style="font-size:.65rem;">📄</span>
+                <span style="color:#173fcf;font-weight:600;word-break:break-all;line-height:1.3;">030602026<br/>125257.pdf</span>
+                <span style="margin-left:auto;color:#b54708;font-size:.7rem;">🔔</span>
+              </div>
             </div>
-            <div class="sf-review-split">
-              <!-- doc nav -->
-              <div class="sf-docnav">
-                <div style="padding:5px 8px;font-size:.68rem;font-weight:700;color:#5f6b85;border-bottom:1px solid #dbe2f0;">12 documents</div>
-                <div class="sf-docnav-item active">📄 INV-Metro-Electric-001.pdf <span class="callout">①</span></div>
-                <div class="sf-docnav-item">📄 INV-CPALL-002.pdf</div>
-                <div class="sf-docnav-item approved">✅ INV-Office-003.pdf</div>
-                <div class="sf-docnav-item approved">✅ INV-IT-004.pdf</div>
-                <div class="sf-docnav-item">📄 REC-PTT-Gas-005.pdf</div>
-                <div style="padding:5px 8px;font-size:.64rem;color:#9aa8c0;text-align:center;">…7 more</div>
+
+            <!-- COL 2: PDF viewer -->
+            <div style="background:#6b7280;display:flex;flex-direction:column;overflow:hidden;">
+              <!-- viewer toolbar -->
+              <div style="background:#374151;padding:4px 8px;display:flex;align-items:center;gap:8px;font-size:.62rem;color:#d1d5db;">
+                <span style="background:#4b5563;border-radius:3px;padding:1px 6px;cursor:pointer;">Wide x3</span>
+                <span>−</span><span style="background:#4b5563;border-radius:3px;padding:1px 6px;">100%</span><span>+</span>
+                <span style="background:#4b5563;border-radius:3px;padding:1px 6px;cursor:pointer;">Reset</span>
+                <span style="margin-left:auto;">◀ 1 / 1 ▶</span>
               </div>
-              <!-- scan form -->
-              <div class="sf-scanform">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <span class="sf-doctype">Invoice</span>
-                  <span class="sf-confidence"><span class="callout">②</span> 94% confidence</span>
-                </div>
-                <div class="sf-form-row">
-                  <div>
-                    <span class="sf-field-lbl">📅 Invoice Date <span class="callout">③</span></span>
-                    <input class="sf-input filled" type="text" value="2026-05-02" readonly />
+              <!-- PDF page mock -->
+              <div style="flex:1;overflow:auto;display:flex;justify-content:center;padding:8px;">
+                <div style="background:#fff;width:260px;min-height:360px;box-shadow:0 2px 12px rgba(0,0,0,.35);border-radius:2px;padding:10px 12px;font-size:6.5px;color:#111;line-height:1.4;font-family:'Sarabun',sans-serif;">
+                  <!-- invoice header -->
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;border-bottom:1.5px solid #000;padding-bottom:4px;">
+                    <div>
+                      <div style="font-size:8.5px;font-weight:700;">PLANET LANNA CO., LTD.</div>
+                      <div style="color:#555;">บริษัท แพลเน็ต ลานนา จำกัด</div>
+                      <div style="color:#555;margin-top:1px;">123/45 ถ.นิมมานเหมินท์ ต.สุเทพ อ.เมือง</div>
+                      <div style="color:#555;">จ.เชียงใหม่ 50200</div>
+                      <div style="margin-top:2px;">Tax ID: <strong>0105540886322</strong></div>
+                    </div>
+                    <div style="text-align:right;">
+                      <div style="font-size:9px;font-weight:700;color:#b42318;">ใบกำกับภาษี</div>
+                      <div style="font-size:7.5px;font-weight:700;color:#b42318;">TAX INVOICE</div>
+                      <div style="margin-top:3px;font-size:6px;color:#555;">เลขที่ / No.</div>
+                      <div style="font-weight:700;">IVSK268358</div>
+                      <div style="margin-top:2px;font-size:6px;color:#555;">วันที่ / Date</div>
+                      <div style="font-weight:700;">31/03/2026</div>
+                    </div>
                   </div>
-                  <div>
-                    <span class="sf-field-lbl"># Invoice / Voucher No</span>
-                    <input class="sf-input mono filled" type="text" value="INV-2605-001" readonly />
+                  <!-- buyer section -->
+                  <div style="background:#f9f9f9;border:0.5px solid #ddd;border-radius:2px;padding:4px 6px;margin-bottom:5px;">
+                    <div style="font-size:7px;font-weight:700;margin-bottom:2px;">ชื่อผู้ซื้อ / Bill To:</div>
+                    <div style="font-weight:600;">บริษัท ฤทธิ์ลำเลิศ จำกัด</div>
+                    <div style="color:#555;">56/7 ถ.พหลโยธิน กรุงเทพฯ 10400</div>
+                    <div style="margin-top:1px;">Tax ID: <strong style="color:#b42318;">0125561025180</strong></div>
                   </div>
-                </div>
-                <div class="sf-form-row">
-                  <div>
-                    <span class="sf-field-lbl">🏢 Seller Tax ID <span class="callout">④</span></span>
-                    <input class="sf-input mono filled" type="text" value="0105538001234" readonly />
+                  <!-- items table -->
+                  <table style="width:100%;border-collapse:collapse;font-size:6px;margin-bottom:5px;">
+                    <thead><tr style="background:#f0f0f0;">
+                      <th style="border:0.5px solid #ccc;padding:2px 3px;text-align:left;">รายการ</th>
+                      <th style="border:0.5px solid #ccc;padding:2px 3px;text-align:right;">จำนวนเงิน</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr><td style="border:0.5px solid #ccc;padding:2px 3px;">บริการออกแบบซอฟต์แวร์ ม.ค.-มี.ค. 2569</td><td style="border:0.5px solid #ccc;padding:2px 3px;text-align:right;">76,570.00</td></tr>
+                    </tbody>
+                  </table>
+                  <!-- totals -->
+                  <div style="display:flex;justify-content:flex-end;">
+                    <table style="font-size:6px;border-collapse:collapse;width:140px;">
+                      <tr><td style="padding:1px 3px;color:#555;">ราคาสินค้า/บริการ</td><td style="padding:1px 3px;text-align:right;">76,570.00</td></tr>
+                      <tr><td style="padding:1px 3px;color:#555;">ภาษีมูลค่าเพิ่ม 7%</td><td style="padding:1px 3px;text-align:right;">5,359.90</td></tr>
+                      <tr style="border-top:0.5px solid #000;font-weight:700;">
+                        <td style="padding:2px 3px;">รวมทั้งสิ้น</td>
+                        <td style="padding:2px 3px;text-align:right;font-size:7px;">81,929.90</td>
+                      </tr>
+                    </table>
                   </div>
-                  <div>
-                    <span class="sf-field-lbl">Seller Name</span>
-                    <input class="sf-input filled" type="text" value="Metro Electric Co., Ltd." readonly />
+                  <div style="margin-top:6px;font-size:5.5px;color:#777;border-top:0.5px solid #ddd;padding-top:3px;">
+                    ใบกำกับภาษีนี้ออกโดย PLANET LANNA CO., LTD. • ชำระเงินภายใน 30 วัน
                   </div>
-                </div>
-                <div class="sf-form-row">
-                  <div>
-                    <span class="sf-field-lbl">🏢 Buyer Tax ID</span>
-                    <input class="sf-input mono filled" type="text" value="0105559123456" readonly />
-                  </div>
-                  <div>
-                    <span class="sf-field-lbl">Buyer Name</span>
-                    <input class="sf-input filled" type="text" value="บริษัท ยะวัน เทค จำกัด" readonly />
-                  </div>
-                </div>
-                <div class="sf-amounts">
-                  <div>
-                    <span class="sf-field-lbl">💰 Net (฿) <span class="callout">⑤</span></span>
-                    <input class="sf-input mono filled" type="text" value="12,500.00" readonly />
-                  </div>
-                  <div>
-                    <span class="sf-field-lbl">VAT 7% (฿)</span>
-                    <input class="sf-input mono filled" type="text" value="875.00" readonly />
-                  </div>
-                  <div>
-                    <span class="sf-field-lbl">WHT 3% (฿)</span>
-                    <input class="sf-input mono filled" type="text" value="375.00" readonly />
-                  </div>
-                  <div>
-                    <span class="sf-field-lbl">Gross (฿)</span>
-                    <input class="sf-input mono filled" type="text" value="13,000.00" readonly style="font-weight:700;color:#173fcf;" />
-                  </div>
-                </div>
-                <div style="display:flex;gap:8px;">
-                  <button class="sf-btn sf-btn-primary"><span class="callout">⑥</span> ✓ Approve Header</button>
-                  <button class="sf-btn sf-btn-ghost">Next →</button>
                 </div>
               </div>
+            </div>
+
+            <!-- COL 3: extracted fields form -->
+            <div style="background:#fff;border-left:1px solid #dbe2f0;overflow-y:auto;padding:8px 10px;font-size:.68rem;">
+              <!-- warning banners -->
+              <div style="background:#fef0f0;border:1px solid #fca5a5;border-radius:5px;padding:3px 7px;margin-bottom:4px;color:#b42318;font-size:.62rem;font-weight:600;display:flex;align-items:center;gap:4px;">
+                ⚠ Buyer Tax ID ≠ company <span class="callout" style="font-size:.52rem;padding:0 3px;">①</span>
+              </div>
+              <div style="background:#fff7e8;border:1px solid #f5d99a;border-radius:5px;padding:3px 7px;margin-bottom:6px;color:#b54708;font-size:.62rem;font-weight:600;">
+                บวก VAT (exclusive) <span class="callout" style="font-size:.52rem;padding:0 3px;">②</span>
+              </div>
+              <!-- confidence -->
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+                <span style="background:#ebf1ff;color:#173fcf;border-radius:999px;padding:2px 8px;font-size:.62rem;font-weight:700;">Invoice</span>
+                <span style="background:#fff7e8;color:#b54708;border-radius:999px;padding:2px 8px;font-size:.62rem;font-weight:700;">⚡ 69% confidence <span class="callout" style="font-size:.52rem;padding:0 2px;">③</span></span>
+              </div>
+              <!-- fields -->
+              <div style="margin-bottom:4px;">
+                <div style="font-size:.6rem;color:#344054;font-weight:600;margin-bottom:2px;">INVOICE DATE</div>
+                <input style="width:100%;padding:3px 5px;border:1px solid #dbe2f0;border-radius:4px;font-size:.65rem;" value="03/31/2026" readonly />
+              </div>
+              <div style="margin-bottom:4px;">
+                <div style="font-size:.6rem;color:#344054;font-weight:600;margin-bottom:2px;">INVOICE / VOUCHER NO</div>
+                <input style="width:100%;padding:3px 5px;border:1px solid #dbe2f0;border-radius:4px;font-size:.65rem;font-family:'JetBrains Mono',monospace;" value="IVSK268358" readonly />
+              </div>
+              <div style="margin-bottom:4px;">
+                <div style="font-size:.6rem;color:#344054;font-weight:600;margin-bottom:2px;">SELLER TAX ID</div>
+                <input style="width:100%;padding:3px 5px;border:1px solid #dbe2f0;border-radius:4px;font-size:.65rem;font-family:'JetBrains Mono',monospace;" value="0105540886322" readonly />
+              </div>
+              <div style="margin-bottom:4px;">
+                <div style="font-size:.6rem;color:#344054;font-weight:600;margin-bottom:2px;">SELLER NAME</div>
+                <input style="width:100%;padding:3px 5px;border:1px solid #dbe2f0;border-radius:4px;font-size:.65rem;" value="บริษัท แพลเน็ต แมนนา" readonly />
+              </div>
+              <div style="margin-bottom:2px;">
+                <div style="font-size:.6rem;color:#344054;font-weight:600;margin-bottom:2px;">BUYER TAX ID <span class="callout" style="font-size:.52rem;padding:0 2px;">①</span></div>
+                <input style="width:100%;padding:3px 5px;border:1.5px solid #fca5a5;border-radius:4px;font-size:.65rem;font-family:'JetBrains Mono',monospace;background:#fef0f0;" value="0125561025180" readonly />
+                <div style="font-size:.58rem;color:#b42318;margin-top:1px;">⚠ Mismatch (Co: 0105559123456)</div>
+              </div>
+              <div style="margin-bottom:4px;margin-top:4px;">
+                <div style="font-size:.6rem;color:#344054;font-weight:600;margin-bottom:2px;">NET AMOUNT (฿) <span class="callout" style="font-size:.52rem;padding:0 2px;">④</span></div>
+                <input style="width:100%;padding:3px 5px;border:1px solid #173fcf;border-radius:4px;font-size:.65rem;font-family:'JetBrains Mono',monospace;font-weight:600;" value="76,570.00" readonly />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;">
+                <div>
+                  <div style="font-size:.58rem;color:#344054;font-weight:600;margin-bottom:2px;">VAT 7% (฿)</div>
+                  <input style="width:100%;padding:3px 5px;border:1px solid #dbe2f0;border-radius:4px;font-size:.63rem;font-family:'JetBrains Mono',monospace;" value="5,359.90" readonly />
+                </div>
+                <div>
+                  <div style="font-size:.58rem;color:#344054;font-weight:600;margin-bottom:2px;">GROSS (฿)</div>
+                  <input style="width:100%;padding:3px 5px;border:1px solid #173fcf;border-radius:4px;font-size:.63rem;font-family:'JetBrains Mono',monospace;color:#173fcf;font-weight:700;" value="81,929.90" readonly />
+                </div>
+              </div>
+              <button style="width:100%;padding:5px;border-radius:5px;background:#173fcf;color:#fff;border:none;font-size:.65rem;font-weight:700;cursor:pointer;margin-top:2px;">✓ Approve Header <span class="callout" style="font-size:.52rem;padding:0 2px;">⑤</span></button>
             </div>
           </div>
-          <div class="sf-footer">
+          <div class="sf-footer" style="padding:8px 12px;">
             <button class="sf-btn sf-btn-ghost">← Back</button>
             <button class="sf-btn sf-btn-primary">Continue to Mapping →</button>
           </div>
         </div>
         <div class="annotation-legend">
-          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>รายการเอกสาร</strong> — คลิกชื่อไฟล์เพื่อสลับดู ✅ = อนุมัติแล้ว 📄 = ยังรอตรวจ</div></div>
-          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>ระดับความมั่นใจ</strong> — ยิ่งสูงยิ่งดี ≥ 85% ตรวจคร่าวๆ ได้ &lt;70% ต้องตรวจละเอียด</div></div>
-          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>วันที่ใบกำกับ</strong> — กำหนดงวดบัญชี ต้องตรงกับต้นฉบับ อยู่ในรอบบัญชีที่ถูกต้อง</div></div>
-          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>Tax ID ผู้ขาย</strong> — 13 หลัก ใช้ขอคืน VAT และออก ภ.พ.30 ต้องครบถ้วนและถูกต้อง</div></div>
-          <div class="anno"><span class="anno-num">⑤</span><div class="anno-text"><strong>ยอดเงิน</strong> — Net คือฐาน VAT; Gross = Net + VAT − WHT คำนวณอัตโนมัติ</div></div>
-          <div class="anno"><span class="anno-num">⑥</span><div class="anno-text"><strong>Approve Header</strong> — กดอนุมัติ ระบบข้ามไปเอกสารถัดไปอัตโนมัติ</div></div>
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>Buyer Tax ID ≠ company</strong> — Tax ID บนเอกสาร (<code>0125561025180</code>) ไม่ตรงกับ Tax ID บริษัทที่เลือก (<code>0105559123456</code>) ต้องตรวจสอบก่อน Approve</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>บวก VAT (exclusive)</strong> — ยอด Net บนเอกสารยังไม่รวม VAT ระบบจะคำนวณ VAT 7% เพิ่มให้อัตโนมัติ</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>Confidence 69%</strong> — ต่ำกว่า 70% ต้องตรวจทุกฟิลด์อย่างละเอียด เปรียบกับต้นฉบับ PDF ทางซ้าย</div></div>
+          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>Net Amount</strong> — ยอดก่อน VAT ใช้เป็นฐานคำนวณ Gross = Net + VAT ระบบทำให้อัตโนมัติ</div></div>
+          <div class="anno"><span class="anno-num">⑤</span><div class="anno-text"><strong>Approve Header</strong> — กดเมื่อตรวจครบ ระบบบันทึกและย้ายไปเอกสารถัดไป กด Continue เมื่อครบทุกไฟล์</div></div>
         </div>
       </div>
 
-      <p class="lead">หน้าจอแบ่งเป็น 2 ส่วน: <strong>ซ้าย</strong> รายการเอกสาร, <strong>ขวา</strong> ฟอร์มข้อมูลที่ AI ดึงออกมา — ตรวจ แก้ไข แล้วกด Approve</p>
+      <p class="lead">หน้าจอแบ่งเป็น <strong>3 ส่วน</strong>: รายการไฟล์ (ซ้าย) — <strong>ต้นฉบับ PDF จริง</strong> (กลาง) — ฟอร์มข้อมูลที่ AI ดึงมา (ขวา) — เปรียบเทียบ PDF กับฟอร์มได้พร้อมกัน</p>
 
       <h3>ตัวอย่างการคำนวณยอดเงิน (สูตรที่ต้องรู้)</h3>
       <div class="journal-box">
@@ -1173,6 +1231,253 @@
       </div>
 
       <div class="note success"><span class="note-icon">🎉</span><div><strong>เสร็จสิ้น!</strong> ข้อมูลบัญชีทุกรายการถูกบันทึกผ่าน LedgerFlow เรียบร้อยแล้ว ลดเวลาพิมพ์ข้อมูลซ้ำ และลดข้อผิดพลาดจากการกรอกมือ</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ SETTINGS — RULE GENERATOR ══════════════ -->
+  <section class="step-section" id="settings-rule-gen" style="border-top:4px solid var(--purple);">
+    <div class="step-header">
+      <div class="step-badge" style="background:var(--purple-soft);font-size:1.1rem;">⚙</div>
+      <div class="step-heading-wrap">
+        <div class="step-num-label" style="color:var(--purple);">การตั้งค่า</div>
+        <h2 class="step-title">สร้าง COA + Journal Rule ด้วย AI (Rule Generator)</h2>
+        <p class="step-subtitle">อัปโหลด PDF ผังบัญชี + DOCX GL Mapping ให้ระบบ AI วิเคราะห์และสร้าง Rule โดยอัตโนมัติ — ใช้ครั้งเดียวต่อบริษัท ไม่ต้องตั้งค่าซ้ำ</p>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <!-- ── Mockup: Settings panel open at COA → Rule Generator ── -->
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div class="sf-topbar">
+            <span class="sf-brand">⬛ LedgerFlow</span>
+            <nav class="sf-stepper" style="justify-content:flex-start;gap:0;flex:1;margin:0 12px;">
+              <div class="sf-step done"><span class="sf-step-num">1</span> Upload</div>
+              <div class="sf-step done"><span class="sf-step-num">2</span> Select</div>
+              <div class="sf-step active"><span class="sf-step-num">3</span> Process</div>
+            </nav>
+            <!-- gear icon in topbar -->
+            <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;" title="Settings">⚙</div>
+          </div>
+
+          <!-- Settings overlay (slide-in panel) -->
+          <div style="display:grid;grid-template-columns:1fr;background:#f8faff;min-height:340px;">
+            <!-- settings panel -->
+            <div style="background:#fff;border:1px solid #dbe2f0;border-radius:12px;margin:10px;overflow:hidden;box-shadow:0 8px 24px rgba(20,32,61,.12);">
+              <!-- panel header -->
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #dbe2f0;background:#fff;">
+                <span style="font-size:.85rem;font-weight:700;color:#172033;">Settings</span>
+                <span style="font-size:.72rem;color:#5f6b85;border:1px solid #dbe2f0;border-radius:6px;padding:2px 8px;cursor:pointer;">✕ Close</span>
+              </div>
+              <!-- tabs -->
+              <div style="display:flex;border-bottom:1px solid #dbe2f0;background:#fafbff;">
+                <div style="padding:7px 16px;font-size:.76rem;color:#5f6b85;cursor:pointer;">Companies</div>
+                <div style="padding:7px 16px;font-size:.76rem;font-weight:700;color:#173fcf;border-bottom:2px solid #173fcf;cursor:pointer;">Chart of Accounts <span class="callout">①</span></div>
+              </div>
+              <!-- tab body -->
+              <div style="padding:12px 14px;">
+                <!-- section header with mode switch -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <span style="font-size:.78rem;font-weight:700;color:#344054;">Chart of Accounts</span>
+                  <div style="display:flex;gap:4px;">
+                    <span style="padding:3px 10px;border:1px solid #dbe2f0;border-radius:5px;font-size:.68rem;color:#5f6b85;cursor:pointer;">CSV Import</span>
+                    <span style="padding:3px 10px;border:1.5px solid #173fcf;border-radius:5px;font-size:.68rem;font-weight:700;color:#173fcf;background:#ebf1ff;cursor:pointer;">Rule Generator <span class="callout">②</span></span>
+                  </div>
+                </div>
+
+                <!-- company select -->
+                <div style="margin-bottom:10px;">
+                  <div class="sf-field-lbl">Company</div>
+                  <div class="sf-select selected">บริษัท ฤทธิ์ล้ำเลิศ จำกัด ▾</div>
+                </div>
+
+                <!-- dropzones -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                  <div style="border:2px dashed #93aee8;border-radius:8px;background:#f0f5ff;padding:12px 8px;text-align:center;">
+                    <div style="font-size:1.1rem;color:#93aee8;margin-bottom:4px;">📄</div>
+                    <div style="font-size:.7rem;font-weight:700;color:#173fcf;">COA PDF <span class="callout">③</span></div>
+                    <div style="font-size:.64rem;color:#5f6b85;margin-top:2px;">ฤทธิ์ล้ำเลิศ ผังบัญชี.pdf</div>
+                    <div class="badge-ok" style="margin-top:4px;">✓ พร้อม</div>
+                  </div>
+                  <div style="border:2px dashed #93aee8;border-radius:8px;background:#f0f5ff;padding:12px 8px;text-align:center;">
+                    <div style="font-size:1.1rem;color:#93aee8;margin-bottom:4px;">📝</div>
+                    <div style="font-size:.7rem;font-weight:700;color:#173fcf;">GL Mapping DOCX <span class="callout">④</span></div>
+                    <div style="font-size:.64rem;color:#5f6b85;margin-top:2px;">GL_Mapping_Template.docx</div>
+                    <div class="badge-ok" style="margin-top:4px;">✓ พร้อม</div>
+                  </div>
+                </div>
+
+                <!-- business type + generate button -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                  <div>
+                    <div class="sf-field-lbl">Business Type</div>
+                    <div class="sf-select selected">Trading ▾</div>
+                  </div>
+                  <div style="display:flex;align-items:flex-end;">
+                    <button class="sf-btn sf-btn-primary" style="width:100%;justify-content:center;font-size:.76rem;">▶ Generate Rules <span class="callout">⑤</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>Tab "Chart of Accounts"</strong> — เปิด Settings (ไอคอน ⚙ มุมขวาบน) แล้วกดแท็บนี้</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>Rule Generator</strong> — สลับโหมดจาก "CSV Import" มาเป็น "Rule Generator" เพื่อเข้าหน้าสร้าง Rule จาก AI</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>COA PDF</strong> — อัปโหลด PDF ผังบัญชีของบริษัท เช่น ไฟล์ที่ส่งออกจาก Express Accounting หรือสร้างเอง</div></div>
+          <div class="anno"><span class="anno-num">④</span><div class="anno-text"><strong>GL Mapping DOCX</strong> — ไฟล์ Template Word ที่กรอกรหัสบัญชีคู่ Dr/Cr สำหรับแต่ละประเภทเอกสาร</div></div>
+          <div class="anno"><span class="anno-num">⑤</span><div class="anno-text"><strong>Generate Rules</strong> — กดเพื่อเริ่ม pipeline 5 ขั้นตอน ใช้เวลาประมาณ 3–5 นาที ขึ้นกับขนาด COA</div></div>
+        </div>
+      </div>
+
+      <p class="lead">หลังกด Generate ระบบจะรัน pipeline อัตโนมัติ 5 ขั้นตอน — ไม่ต้องทำอะไรเพิ่ม รอจนแถบสีเขียวครบทุก Stage แล้วกด Approve &amp; Save</p>
+
+      <!-- ── Mockup: Progress view while pipeline is running ── -->
+      <div class="screen-wrap">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div style="background:#fff;margin:10px;border:1px solid #dbe2f0;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(20,32,61,.08);">
+            <div style="padding:12px 14px;border-bottom:1px solid #dbe2f0;">
+              <div style="font-size:.82rem;font-weight:700;color:#172033;margin-bottom:2px;">⚙ Generating Rules — บริษัท ฤทธิ์ล้ำเลิศ จำกัด</div>
+              <div style="font-size:.68rem;color:#5f6b85;">5-stage AI pipeline · trading · 246 accounts</div>
+            </div>
+            <!-- progress bar -->
+            <div style="padding:12px 14px 0;">
+              <div style="display:flex;justify-content:space-between;font-size:.66rem;color:#5f6b85;margin-bottom:4px;">
+                <span>Overall progress</span><span style="color:#173fcf;font-weight:700;">60%</span>
+              </div>
+              <div class="sf-progress-bar"><div class="sf-progress-fill" style="width:60%;"></div></div>
+            </div>
+            <!-- stage table -->
+            <div style="padding:0 14px 14px;">
+              <table class="sf-proc-table" style="margin-top:8px;">
+                <thead><tr><th>#</th><th>Stage</th><th>Status</th><th>Time</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td style="color:#5f6b85;font-size:.65rem;">1</td>
+                    <td style="font-size:.7rem;color:#172033;">Uploading &amp; validating files</td>
+                    <td><span class="badge-done">✓ Done</span></td>
+                    <td style="font-size:.65rem;color:#5f6b85;font-family:'JetBrains Mono',monospace;">1.2 s</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#5f6b85;font-size:.65rem;">2</td>
+                    <td style="font-size:.7rem;color:#172033;">Extracting text from documents</td>
+                    <td><span class="badge-done">✓ Done</span></td>
+                    <td style="font-size:.65rem;color:#5f6b85;font-family:'JetBrains Mono',monospace;">8.4 s</td>
+                  </tr>
+                  <tr style="background:#ebf1ff;">
+                    <td style="color:#5f6b85;font-size:.65rem;">3</td>
+                    <td style="font-size:.7rem;color:#172033;font-weight:600;">Analyzing COA structure <span class="callout">①</span></td>
+                    <td><span class="badge-proc">● กำลังประมวลผล…</span></td>
+                    <td style="font-size:.65rem;color:#5f6b85;font-family:'JetBrains Mono',monospace;">–</td>
+                  </tr>
+                  <tr style="opacity:.45;">
+                    <td style="color:#5f6b85;font-size:.65rem;">4</td>
+                    <td style="font-size:.7rem;color:#172033;">Generating journal rules</td>
+                    <td><span style="font-size:.64rem;color:#5f6b85;">รอ…</span></td>
+                    <td>–</td>
+                  </tr>
+                  <tr style="opacity:.45;">
+                    <td style="color:#5f6b85;font-size:.65rem;">5</td>
+                    <td style="font-size:.7rem;color:#172033;">Validating &amp; writing rules</td>
+                    <td><span style="font-size:.64rem;color:#5f6b85;">รอ…</span></td>
+                    <td>–</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>Stage 3 (นานที่สุด)</strong> — AI วิเคราะห์โครงสร้างผังบัญชีทั้งหมด 246 รหัส ใช้เวลา ~2–3 นาที ปกติ</div></div>
+        </div>
+      </div>
+
+      <!-- ── Mockup: Completed — Confidence report + Approve ── -->
+      <div class="screen-wrap" style="margin-top:16px;">
+        <div class="screen-frame">
+          <div class="sf-chrome">
+            <div class="sf-dots"><span></span><span></span><span></span></div>
+            <div class="sf-url">app.ledgerflow.local/prototype</div>
+          </div>
+          <div style="background:#fff;margin:10px;border:1px solid #dbe2f0;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(20,32,61,.08);">
+            <div style="padding:12px 14px;border-bottom:1px solid #dbe2f0;background:#ecfdf3;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:.82rem;font-weight:700;color:#067647;">✓ Generation Complete!</div>
+                <div style="font-size:.68rem;color:#344054;">246 accounts · 18 journal rules · avg confidence 91%</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button class="sf-btn sf-btn-primary" style="font-size:.72rem;background:#067647;">✓ Approve &amp; Save <span class="callout">②</span></button>
+                <button class="sf-btn sf-btn-ghost" style="font-size:.72rem;">↓ YAML</button>
+              </div>
+            </div>
+            <div style="padding:10px 14px;">
+              <!-- COA preview table -->
+              <div style="font-size:.72rem;font-weight:700;color:#344054;margin-bottom:5px;">COA Extraction <span class="callout">①</span> <span style="font-weight:400;color:#5f6b85;">(246 accounts)</span></div>
+              <table class="sf-proc-table" style="margin-bottom:10px;">
+                <thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th>Confidence</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.66rem;">1101</td><td style="font-size:.7rem;">เงินสด</td><td style="font-size:.66rem;color:#067647;">asset</td><td><span class="badge-ok">98%</span></td></tr>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.66rem;">1210</td><td style="font-size:.7rem;">ลูกหนี้การค้า</td><td style="font-size:.66rem;color:#067647;">asset</td><td><span class="badge-ok">97%</span></td></tr>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.66rem;">2110</td><td style="font-size:.7rem;">เจ้าหนี้การค้า</td><td style="font-size:.66rem;color:#5f6b85;">liability</td><td><span class="badge-ok">95%</span></td></tr>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.66rem;color:#5f6b85;" colspan="4" style="text-align:center;">… และอีก 243 รายการ</td></tr>
+                </tbody>
+              </table>
+              <!-- Journal rules preview -->
+              <div style="font-size:.72rem;font-weight:700;color:#344054;margin-bottom:5px;">Journal Entry Rules <span class="callout">③</span> <span style="font-weight:400;color:#5f6b85;">(18 rules)</span></div>
+              <table class="sf-proc-table">
+                <thead><tr><th>Rule ID</th><th>Name</th><th>Dr / Cr</th><th>Confidence</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.65rem;">r-001</td><td style="font-size:.7rem;">ซื้อสินค้า (ปกติ)</td><td style="font-size:.67rem;"><span class="sf-dr">Dr</span> 5120 / <span class="sf-cr">Cr</span> 2110</td><td><span class="badge-ok">94%</span></td></tr>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.65rem;">r-002</td><td style="font-size:.7rem;">ซื้อสินค้า + VAT</td><td style="font-size:.67rem;"><span class="sf-dr">Dr</span> 5120,1152 / <span class="sf-cr">Cr</span> 2110</td><td><span class="badge-ok">92%</span></td></tr>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:.65rem;">r-003</td><td style="font-size:.7rem;">ค่าบริการ + WHT 3%</td><td style="font-size:.67rem;"><span class="sf-dr">Dr</span> 5210 / <span class="sf-cr">Cr</span> 2110,2130</td><td><span class="badge-warn">78%</span></td></tr>
+                  <tr><td style="font-size:.65rem;color:#5f6b85;" colspan="4">… และอีก 15 rules</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="annotation-legend">
+          <div class="anno"><span class="anno-num">①</span><div class="anno-text"><strong>COA Extraction</strong> — รายการรหัสบัญชีทั้งหมดที่ AI อ่านได้จาก PDF พร้อมค่า Confidence</div></div>
+          <div class="anno"><span class="anno-num">②</span><div class="anno-text"><strong>Approve &amp; Save</strong> — กดเพื่อบันทึก Rule ลงระบบ หลังจากนี้ทุก Document ที่ประมวลผลจะใช้ Rule ชุดนี้</div></div>
+          <div class="anno"><span class="anno-num">③</span><div class="anno-text"><strong>Journal Rules</strong> — คู่รหัส Dr/Cr สำหรับแต่ละประเภทเอกสาร Confidence ต่ำกว่า 80% = สีเหลือง ควรตรวจสอบก่อน Approve</div></div>
+        </div>
+      </div>
+
+      <div class="col2" style="margin-top:16px;">
+        <div class="mini-card">
+          <h4>📂 ไฟล์ที่ต้องเตรียม</h4>
+          <ul style="padding-left:16px;margin:0;font-size:.84rem;color:var(--muted);line-height:1.9;">
+            <li><strong>COA PDF</strong> — ผังบัญชีทั้งหมดของบริษัท (Export จาก Express Accounting หรือสร้างเอง) รองรับสูงสุด ~300 รหัสบัญชี</li>
+            <li><strong>GL Mapping DOCX</strong> — ไฟล์ Template Word ที่กรอกรหัสบัญชีคู่ Dr/Cr ดาวน์โหลด Template ได้จากหน้า Settings → CSV Import</li>
+          </ul>
+        </div>
+        <div class="mini-card">
+          <h4>⚠ ข้อควรระวัง</h4>
+          <ul style="padding-left:16px;margin:0;font-size:.84rem;color:var(--muted);line-height:1.9;">
+            <li>ระยะเวลา pipeline ~3–5 นาที อย่าปิดหน้าต่างระหว่างรัน</li>
+            <li>Rule ที่ Confidence &lt; 80% ควรตรวจสอบก่อน Approve</li>
+            <li>ทำครั้งเดียวต่อบริษัท หากผังบัญชีเปลี่ยนแปลงให้สร้างใหม่อีกครั้ง</li>
+            <li>หลัง Approve แล้ว ระบบจะใช้ Rule ชุดนี้กับทุก Document โดยอัตโนมัติ</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="note info" style="background:var(--purple-soft);border-color:var(--purple);margin-top:12px;">
+        <span class="note-icon">💡</span>
+        <div><strong>ทำเมื่อไหร่?</strong> — ตั้งค่าครั้งแรกก่อนเริ่มใช้งานระบบ หรือทุกครั้งที่เปลี่ยนผังบัญชี หลังจากนั้นไม่ต้องทำซ้ำ ระบบจะจำ Rule ไว้ให้เสมอ</div>
+      </div>
+
     </div>
   </section>
 

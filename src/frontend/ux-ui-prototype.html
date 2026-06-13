@@ -661,13 +661,24 @@
     } catch {}
   }
 
-  // Fire-and-forget: push full company list to backend so all browsers share state.
-  function _syncCompaniesToServer() {
+  // Push full company list to backend so all browsers share state.
+  // Retries up to 3 times with exponential backoff before giving up.
+  function _syncCompaniesToServer(attempt) {
+    attempt = attempt || 1;
     fetch('/api/v1/companies/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ companies: COMPANIES }),
-    }).catch(() => {}); // localStorage remains the fallback when API is unavailable
+    }).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+    }).catch(function(err) {
+      console.warn('[LedgerFlow] company sync failed (attempt ' + attempt + '):', err);
+      if (attempt < 3) {
+        setTimeout(function() { _syncCompaniesToServer(attempt + 1); }, attempt * 2000);
+      } else {
+        console.error('[LedgerFlow] company sync gave up after 3 attempts — data lives in localStorage only until next successful sync.');
+      }
+    });
   }
 
   // Called once at startup: pull server-side company list and override localStorage.
@@ -688,7 +699,7 @@
         syncCompanyUi(state.selectedCompanyId);
         applyCompanySelection(state.selectedCompanyId);
       })
-      .catch(() => {}); // offline / local dev: keep localStorage data
+      .catch(err => console.warn('[LedgerFlow] init company pull failed — using localStorage fallback:', err));
   }
 
   function persistCOA() {
