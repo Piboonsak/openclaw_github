@@ -129,7 +129,36 @@ We implement 3 specialized, pre-saved views inside the project board to look at 
 
 ---
 
-## ⚙️ 5. Automated CI/CD Lifecycle & Continuous Validation
+## 🌿 5. Protected Branch Map (Non-Negotiable)
+
+The following branches are **permanently protected** — never delete, never force-push, never rename.
+
+| Branch | VPS Target | Purpose |
+| :--- | :--- | :--- |
+| `main` | VPS **prod** (TBD — MVP phase) | Production release gate |
+| `uat` | VPS **uat** (TBD — MVP phase) | User acceptance testing |
+| `poc` | VPS **poc** (`poc-aiaccount.yahwan.biz` via Openclaw/Yahwan) | PoC user trial — live deploy |
+| `dev` | Local only (remote backup) | Integration staging before promoting to `poc` |
+
+### Merge Flow
+
+```text
+dev  ──PR──▶  poc  ──Control Plane──▶  poc-aiaccount.yahwan.biz
+                                        (deploy-ai-accounting-copilot-poc.yml)
+
+(MVP phase)
+dev  ──PR──▶  uat  ──PR──▶  main  ──Control Plane──▶  prod VPS
+```
+
+### Rules for AI Agents
+
+* **NEVER** pass `--delete-branch` when merging PRs that use `dev`, `poc`, `uat`, or `main` as head or base.
+* `dev` is the remote backup of local development — always recreate it if accidentally deleted via `git push origin dev`.
+* Deployments to `poc` or higher are always triggered from the **Control Plane** (`Piboonsak/Openclaw`), never directly from this repo.
+
+---
+
+## ⚙️ 6. Automated CI/CD Lifecycle & Continuous Validation
 
 Deployments follow an automated lifecycle to ensure code in main is always stable and verified:
 

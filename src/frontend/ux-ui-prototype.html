@@ -2479,6 +2479,23 @@
 
   applyPreviewWidthMode();
 
+  // Recalculate WHT amount and Gross Amount whenever any amount field changes.
+  // Formula: WHT = Net × whtRate%; Gross = Net + VAT - WHT
+  function recalcScanAmounts() {
+    const net = toNumber($('scanNet').value, 0);
+    const vat = toNumber($('scanVat').value, 0);
+    const whtRate = parseFloat($('scanWhtRate').value) || 0;
+    const wht = whtRate > 0 ? parseFloat((net * whtRate / 100).toFixed(2)) : 0;
+    const gross = net + vat - wht;
+    $('scanWht').value = fmt(wht);
+    $('scanGross').value = fmt(gross);
+  }
+
+  ['scanNet', 'scanVat', 'scanDiscount'].forEach(id => {
+    $( id).addEventListener('input', recalcScanAmounts);
+  });
+  $('scanWhtRate').addEventListener('change', recalcScanAmounts);
+
   $('approveHeaderBtn').addEventListener('click', () => {
     const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
     const f = files[state.scanCurrentIndex];
