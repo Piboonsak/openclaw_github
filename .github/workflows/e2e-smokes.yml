@@ -5,9 +5,11 @@ on:
     branches:
       - main
       - develop
+      - dev
   pull_request:
     branches:
       - main
+      - dev
 
 jobs:
   smoke-test:

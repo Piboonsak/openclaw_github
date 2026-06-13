@@ -5,6 +5,7 @@ name: Agent Gate Compliance
     branches:
       - main
       - develop
+      - dev
 
 permissions:
   contents: read

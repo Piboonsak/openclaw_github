@@ -30,6 +30,7 @@ ACTION_PATTERNS = [
     re.compile(r"^scripts/"),
     re.compile(r"^config/"),
     re.compile(r"^docker/"),
+    re.compile(r"^\.github/workflows/"),
 ]
 
 PASSIVE_PATTERNS = [
