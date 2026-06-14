@@ -78,7 +78,6 @@ docker-compose.override.yml
 htmlcov/
 .nyc_output/
 coverage/
-test-results/
 
 # OS
 Thumbs.db
@@ -94,7 +93,22 @@ tmp/
 # Runtime/generated caches
 src/backend/ml/cache/
 src/backend/services/cache/
+
+# Playwright (MCP + test reports)
 .playwright-mcp/
+playwright-report/
+test-results/
+
+# Rule generation artifacts (keep only approved rule_coa.yaml per company)
+rules/_jobs/
+rules/timing-test/
+rules/*/source/
+rules/*/audit/
+rules/*/confidence.json
+rules/*/*.generated.yaml
+
+# Export temp files
+exports/
 
 # Customer/accounting data
 samples/sample_documents/*.pdf

@@ -31,6 +31,8 @@ ACTION_PATTERNS = [
     re.compile(r"^config/"),
     re.compile(r"^docker/"),
     re.compile(r"^\.github/workflows/"),
+    re.compile(r"^\.git(ignore|attributes)$"),
+    re.compile(r"^(alembic\.ini|requirements.*\.txt|pyproject\.toml)$"),
 ]
 
 PASSIVE_PATTERNS = [
