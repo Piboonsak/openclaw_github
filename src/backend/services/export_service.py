@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -201,6 +202,243 @@ def create_excel_ledger(vouchers: list[dict[str, Any]], output_path: str | Path)
 
     for col in range(7, 10):
         worksheet.write(row_idx, col, "", total_label_format)
+
+    workbook.close()
+    return path
+
+
+def _reformat_date_to_thai(iso_date: str) -> str:
+    """Convert YYYY-MM-DD to DD/MM/YYYY. Pass through if already formatted."""
+    if not iso_date:
+        return ""
+    parts = iso_date.split("-")
+    if len(parts) == 3 and len(parts[0]) == 4:
+        return f"{parts[2]}/{parts[1]}/{parts[0]}"
+    return iso_date
+
+
+def create_purchase_tax_report(
+    documents: list[dict[str, Any]],
+    output_path: str | Path,
+    company_info: dict[str, Any],
+    report_period: tuple[str, str],
+) -> Path:
+    """Export purchase tax report (รายงานภาษีซื้อ) matching the standard Thai format.
+
+    Args:
+        documents: List of document dicts with keys: invNo, invDate, sellerName,
+            sellerTax, sellerBranch, netAmt, vatRate, vatAmt, whtAmt, category,
+            description, reference.
+        output_path: Destination .xlsx file path.
+        company_info: Dict with keys: name, taxId, branch, branchName, address.
+        report_period: Tuple of (start_date, end_date) in DD/MM/YYYY format.
+    """
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    workbook = xlsxwriter.Workbook(str(path))
+    ws = workbook.add_worksheet("รายงานภาษีซื้อ")
+
+    # ── Fonts & Formats ──────────────────────────────────────────────
+    font = "TH SarabunPSK"
+
+    title_fmt = workbook.add_format(
+        {"bold": True, "font_size": 14, "font_name": font}
+    )
+    meta_fmt = workbook.add_format({"font_size": 12, "font_name": font})
+    header_fmt = workbook.add_format(
+        {
+            "bold": True,
+            "font_size": 11,
+            "font_name": font,
+            "bg_color": "#1F4E78",
+            "font_color": "#FFFFFF",
+            "align": "center",
+            "valign": "vcenter",
+            "border": 1,
+            "border_color": "#D9D9D9",
+            "text_wrap": True,
+        }
+    )
+    text_fmt = workbook.add_format(
+        {
+            "font_size": 11,
+            "font_name": font,
+            "align": "left",
+            "valign": "vcenter",
+            "border": 1,
+            "border_color": "#E0E0E0",
+        }
+    )
+    text_center_fmt = workbook.add_format(
+        {
+            "font_size": 11,
+            "font_name": font,
+            "align": "center",
+            "valign": "vcenter",
+            "border": 1,
+            "border_color": "#E0E0E0",
+        }
+    )
+    currency_fmt = workbook.add_format(
+        {
+            "font_size": 11,
+            "font_name": font,
+            "num_format": '#,##0.00;(#,##0.00);"-"',
+            "align": "right",
+            "valign": "vcenter",
+            "border": 1,
+            "border_color": "#E0E0E0",
+        }
+    )
+    total_label_fmt = workbook.add_format(
+        {
+            "bold": True,
+            "font_size": 11,
+            "font_name": font,
+            "align": "right",
+            "valign": "vcenter",
+            "border": 1,
+            "border_color": "#D9D9D9",
+            "top": 1,
+            "bottom": 6,
+        }
+    )
+    total_currency_fmt = workbook.add_format(
+        {
+            "bold": True,
+            "font_size": 11,
+            "font_name": font,
+            "num_format": '#,##0.00;(#,##0.00);"-"',
+            "align": "right",
+            "valign": "vcenter",
+            "border": 1,
+            "border_color": "#D9D9D9",
+            "top": 1,
+            "bottom": 6,
+        }
+    )
+
+    # ── Column widths (A-S) ──────────────────────────────────────────
+    col_widths = [
+        8, 20, 14, 14, 14, 14, 30, 16, 10,
+        20, 35, 14, 14, 14, 14, 14, 14, 14, 10,
+    ]
+    for ci, w in enumerate(col_widths):
+        ws.set_column(ci, ci, w)
+
+    # ── Header block (rows 0-8) ──────────────────────────────────────
+    period_start, period_end = report_period
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    company_name = company_info.get("name", "")
+    company_tax = company_info.get("taxId", "")
+    branch_name = company_info.get("branchName", "สำนักงานใหญ่")
+    branch_code = company_info.get("branch", "00000")
+    address = company_info.get("address", "")
+
+    ws.merge_range("A1:S1", "รายงานใบสั่งซื้อ", title_fmt)
+    ws.write("A2", "ผู้ออกรายงาน:", meta_fmt)
+    ws.write("A3", company_name, meta_fmt)
+    ws.write("A4", f"เลขประจำตัวผู้เสียภาษี: {company_tax}", meta_fmt)
+    ws.write("A5", f"{branch_name}, {branch_code}", meta_fmt)
+    ws.write("A6", address, meta_fmt)
+    ws.write("A7", now_str, meta_fmt)
+    ws.write("A8", f"{period_start}-{period_end}", meta_fmt)
+    ws.write("A9", "แสดงข้อมูลพื้นฐาน", meta_fmt)
+
+    for r in range(9):
+        ws.set_row(r, 18)
+
+    # ── Column headers (row 11, 0-indexed) ───────────────────────────
+    headers = [
+        "ลำดับที่",
+        "เลขที่เอกสาร",
+        "วันที่ออก",
+        "อ้างอิง",
+        "อ้างอิงจากระบบ",
+        "สถานะ",
+        "ผู้ขาย/ผู้ให้บริการ",
+        "เลขที่ 13 หลัก",
+        "สาขา",
+        "ชื่อสินค้า/บริการ",
+        "คำอธิบาย",
+        "ไม่มี VAT",
+        "VAT 0%",
+        "VAT 7%",
+        "ยอด VAT",
+        "ทั้งหมด",
+        "หัก ณ ที่จ่าย",
+        "ต้องชำระ",
+        "",
+    ]
+    header_row = 11
+    ws.set_row(header_row, 30)
+    for ci, h in enumerate(headers):
+        ws.write(header_row, ci, h, header_fmt)
+
+    # ── Data rows (row 12+) ──────────────────────────────────────────
+    row = 12
+    for seq, doc in enumerate(documents, start=1):
+        net = float(doc.get("netAmt") or 0)
+        vat_rate = float(doc.get("vatRate") or 0)
+        vat_amt = float(doc.get("vatAmt") or 0)
+        wht_amt = float(doc.get("whtAmt") or 0)
+
+        # VAT bucket splitting
+        no_vat = 0.0
+        vat_0 = 0.0
+        vat_7 = 0.0
+        if vat_rate == 0 and vat_amt == 0:
+            no_vat = net
+        elif vat_rate == 0 and vat_amt > 0:
+            vat_0 = net
+        else:
+            vat_7 = net
+
+        total = net + vat_amt
+        net_payable = total - wht_amt
+
+        ws.set_row(row, 22)
+        ws.write(row, 0, seq, text_center_fmt)                         # A: ลำดับที่
+        ws.write(row, 1, doc.get("invNo", ""), text_fmt)               # B: เลขที่เอกสาร
+        ws.write(row, 2, _reformat_date_to_thai(
+            doc.get("invDate", "")), text_center_fmt)                  # C: วันที่ออก
+        ws.write(row, 3, doc.get("reference", ""), text_fmt)           # D: อ้างอิง
+        ws.write(row, 4, "", text_fmt)                                 # E: อ้างอิงจากระบบ
+        ws.write(row, 5, doc.get("status", "ลงบัญชีแล้ว"), text_fmt)  # F: สถานะ
+        ws.write(row, 6, doc.get("sellerName", ""), text_fmt)          # G: ผู้ขาย
+        ws.write(row, 7, doc.get("sellerTax", ""), text_fmt)           # H: เลขที่ 13 หลัก
+        ws.write(row, 8, doc.get("sellerBranch", "00000"),
+                 text_center_fmt)                                      # I: สาขา
+        ws.write(row, 9, doc.get("category", ""), text_fmt)            # J: ชื่อสินค้า/บริการ
+        ws.write(row, 10, doc.get("description", ""), text_fmt)        # K: คำอธิบาย
+        ws.write(row, 11, no_vat, currency_fmt)                        # L: ไม่มี VAT
+        ws.write(row, 12, vat_0, currency_fmt)                         # M: VAT 0%
+        ws.write(row, 13, vat_7, currency_fmt)                         # N: VAT 7%
+        ws.write(row, 14, vat_amt, currency_fmt)                       # O: ยอด VAT
+        ws.write(row, 15, total, currency_fmt)                         # P: ทั้งหมด
+        ws.write(row, 16, wht_amt, currency_fmt)                       # Q: หัก ณ ที่จ่าย
+        ws.write(row, 17, net_payable, currency_fmt)                   # R: ต้องชำระ
+        ws.write(row, 18, "", text_fmt)                                # S: ref
+        row += 1
+
+    # ── Summary row ──────────────────────────────────────────────────
+    if documents:
+        ws.set_row(row, 26)
+        for ci in range(11):
+            ws.write(row, ci, "", total_label_fmt)
+        ws.write(row, 10, "รวมทั้งสิ้น", total_label_fmt)
+
+        data_start = 13  # 1-indexed row number for first data row
+        data_end = row    # 1-indexed row number for last data row
+        for ci in range(11, 18):
+            col_letter = chr(ord("A") + ci)
+            ws.write_formula(
+                row, ci,
+                f"=SUM({col_letter}{data_start}:{col_letter}{data_end})",
+                total_currency_fmt,
+            )
+        ws.write(row, 18, "", total_label_fmt)
 
     workbook.close()
     return path

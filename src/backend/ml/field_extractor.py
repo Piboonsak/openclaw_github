@@ -71,6 +71,12 @@ BUYER_RE = re.compile(
     re.IGNORECASE,
 )
 TAX_ID_RE = re.compile(r"(?<!\d)(\d{13})(?!\d)")
+BRANCH_RE = re.compile(
+    r"(?:สาขา(?:ที่)?)\s*[:：#\-]?\s*(\d{3,5})", re.IGNORECASE
+)
+HEAD_OFFICE_RE = re.compile(
+    r"สำนักงานใหญ่|head\s*office|สนญ\.?", re.IGNORECASE
+)
 COMPANY_HEADER_RE = re.compile(
     r"^(?:บริษัท|ห้างหุ้นส่วน|ห้าง|ร้าน|โรงงาน|company|co\.?,?\s*ltd|partnership|p\.?l\.?c\.?)\b.*",
     re.IGNORECASE,
@@ -1078,6 +1084,31 @@ def _extract_wht_rate(raw_text: str) -> str:
     return ""
 
 
+def _extract_vendor_branch(lines: list[str], seller_tax_id: str) -> str:
+    """Extract vendor branch number from lines near the seller tax ID.
+
+    Returns a zero-padded 5-digit branch code (e.g. "00000" for head office).
+    """
+    # Determine search window: lines near the seller_tax_id location
+    search_lines = lines
+    if seller_tax_id:
+        for idx, line in enumerate(lines):
+            if seller_tax_id in line:
+                start = max(0, idx - 3)
+                end = min(len(lines), idx + 6)
+                search_lines = lines[start:end]
+                break
+
+    for line in search_lines:
+        if HEAD_OFFICE_RE.search(line):
+            return "00000"
+        m = BRANCH_RE.search(line)
+        if m:
+            return m.group(1).zfill(5)
+
+    return "00000"
+
+
 def _extract_party_info(raw_text: str) -> dict[str, str]:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
 
@@ -1137,11 +1168,14 @@ def _extract_party_info(raw_text: str) -> dict[str, str]:
     if buyer_name and seller_name and buyer_name.strip() == seller_name.strip():
         buyer_name = ""
 
+    seller_branch = _extract_vendor_branch(lines, seller_tax_id)
+
     return {
         "seller_name": seller_name,
         "buyer_name": buyer_name,
         "seller_tax_id": seller_tax_id,
         "buyer_tax_id": buyer_tax_id,
+        "seller_branch": seller_branch,
     }
 
 
@@ -1270,6 +1304,7 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
 
     seller_tax_id = party_info["seller_tax_id"]
     buyer_tax_id = party_info["buyer_tax_id"]
+    seller_branch = party_info.get("seller_branch", "00000")
     canonical_seller_applied = False
     canonical_buyer_applied = False
 
@@ -1350,6 +1385,7 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "seller_name": seller_name,
         "buyer_name": buyer_name,
         "seller_tax_id": seller_tax_id,
+        "seller_branch": seller_branch,
         "buyer_tax_id": buyer_tax_id,
         "net_amount": net_amount,
         "vat_amount": vat_amount,
@@ -1473,6 +1509,7 @@ def _extract_with_rules(raw_text: str) -> dict[str, Any]:
         "seller_name": seller_name_conf,
         "buyer_name": buyer_name_conf,
         "seller_tax_id": 0.95 if fields["seller_tax_id"] else 0.3,
+        "seller_branch": 0.9 if fields.get("seller_branch", "00000") != "00000" else 0.6,
         "buyer_tax_id": 0.95 if fields["buyer_tax_id"] else 0.3,
         "net_amount": net_amount_conf,
         "vat_amount": vat_amount_conf,

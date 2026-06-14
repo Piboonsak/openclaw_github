@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LedgerFlow — Template Configurator Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- SortableJS for drag-drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <style>
+    /* ═══ Design Tokens (same as LedgerFlow prototype) ═══ */
+    :root {
+      --bg: oklch(98% 0.005 250);
+      --surface: oklch(96% 0.006 250);
+      --ink: oklch(20% 0.02 250);
+      --muted: oklch(50% 0.02 250);
+      --line: oklch(88% 0.01 250);
+      --accent: oklch(45% 0.15 220);
+      --accent-soft: oklch(92% 0.04 220);
+      --ok: oklch(50% 0.14 155);
+      --ok-soft: oklch(92% 0.05 155);
+      --warn: oklch(60% 0.16 80);
+      --warn-soft: oklch(92% 0.06 80);
+      --danger: oklch(55% 0.18 25);
+      --danger-soft: oklch(92% 0.06 25);
+      --font: "DM Sans", system-ui, -apple-system, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+      --text-xs: 0.75rem;
+      --text-sm: 0.875rem;
+      --text-base: 1rem;
+      --text-lg: 1.333rem;
+      --text-xl: 1.777rem;
+      --leading: 1.55;
+      --leading-tight: 1.25;
+      --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem;
+      --sp-5: 1.25rem; --sp-6: 1.5rem; --sp-8: 2rem; --sp-10: 2.5rem;
+      --sp-12: 3rem; --sp-16: 4rem;
+      --r-sm: 6px; --r-md: 10px; --r-lg: 16px;
+      --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      --duration: 200ms; --duration-md: 300ms;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+    body {
+      min-height: 100vh; display: flex; flex-direction: column;
+      background: var(--bg); color: var(--ink);
+      font-family: var(--font); font-size: var(--text-base);
+      line-height: var(--leading);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ═══ TOP BAR ═══ */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; gap: var(--sp-6);
+      padding: var(--sp-3) var(--sp-6);
+      background: var(--bg); border-bottom: 1px solid var(--line);
+    }
+    .topbar-brand { display: flex; align-items: center; gap: var(--sp-3); }
+    .topbar-title { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.02em; }
+    .topbar-nav { flex: 1; display: flex; gap: var(--sp-2); justify-content: center; }
+    .topbar-nav button {
+      padding: var(--sp-2) var(--sp-4); border: none; border-radius: var(--r-sm);
+      font-family: var(--font); font-size: var(--text-sm); font-weight: 500;
+      cursor: pointer; background: transparent; color: var(--muted);
+      transition: all var(--duration) var(--ease);
+    }
+    .topbar-nav button.active { background: var(--accent-soft); color: var(--ink); }
+    .topbar-nav button:hover:not(.active) { background: var(--surface); }
+    .avatar {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: white;
+      font-size: var(--text-xs); font-weight: 600;
+    }
+    .badge {
+      display: inline-flex; align-items: center; padding: 2px 8px;
+      border-radius: 100px; font-size: var(--text-xs); font-weight: 600;
+    }
+    .badge-master { background: var(--accent-soft); color: var(--accent); }
+    .badge-cloned { background: var(--ok-soft); color: var(--ok); }
+    .badge-custom { background: var(--warn-soft); color: var(--warn); }
+
+    /* ═══ MAIN LAYOUT ═══ */
+    .main { flex: 1; max-width: 1280px; width: 100%; margin: 0 auto; padding: var(--sp-8) var(--sp-6); }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-6); }
+    .page-title { font-size: var(--text-xl); font-weight: 600; line-height: var(--leading-tight); }
+    .page-desc { color: var(--muted); margin-top: var(--sp-1); font-size: var(--text-sm); }
+
+    /* ═══ BUTTONS ═══ */
+    .btn {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-4); border: 1px solid var(--line);
+      border-radius: var(--r-sm); font-family: var(--font);
+      font-size: var(--text-sm); font-weight: 500; cursor: pointer;
+      background: white; color: var(--ink);
+      transition: all var(--duration) var(--ease);
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .btn-primary:hover { opacity: 0.9; color: white; }
+    .btn-danger { color: var(--danger); }
+    .btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+    .btn-sm { padding: var(--sp-1) var(--sp-3); font-size: var(--text-xs); }
+    .btn-icon {
+      padding: var(--sp-1); border: none; background: transparent;
+      cursor: pointer; color: var(--muted); border-radius: var(--r-sm);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all var(--duration) var(--ease);
+    }
+    .btn-icon:hover { background: var(--surface); color: var(--ink); }
+    .btn-icon.danger:hover { background: var(--danger-soft); color: var(--danger); }
+
+    /* ═══ TEMPLATE LIST VIEW ═══ */
+    .template-group {
+      margin-bottom: var(--sp-6); border: 1px solid var(--line);
+      border-radius: var(--r-md); overflow: hidden;
+    }
+    .template-group-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--surface); border-bottom: 1px solid var(--line);
+      font-weight: 600; font-size: var(--text-sm);
+    }
+    .template-row {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line);
+      transition: background var(--duration) var(--ease);
+    }
+    .template-row:last-child { border-bottom: none; }
+    .template-row:hover { background: oklch(97% 0.003 250); }
+    .template-info { flex: 1; }
+    .template-name { font-weight: 500; }
+    .template-meta { font-size: var(--text-xs); color: var(--muted); margin-top: 2px; }
+    .template-actions { display: flex; gap: var(--sp-2); }
+
+    /* ═══ CONFIGURATOR VIEW ═══ */
+    .configurator { display: none; }
+    .configurator.active { display: block; }
+    .config-toolbar {
+      display: flex; align-items: center; gap: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-6);
+      background: var(--surface); border-radius: var(--r-md);
+      border: 1px solid var(--line);
+    }
+    .config-toolbar label { font-size: var(--text-sm); font-weight: 500; color: var(--muted); }
+    .config-toolbar input, .config-toolbar select {
+      padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line);
+      border-radius: var(--r-sm); font-family: var(--font);
+      font-size: var(--text-sm); background: white;
+    }
+    .config-toolbar input:focus, .config-toolbar select:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px oklch(45% 0.15 220 / 0.1);
+    }
+    .name-input { flex: 1; min-width: 200px; }
+
+    .panels { display: grid; grid-template-columns: 280px 1fr; gap: var(--sp-4); margin-bottom: var(--sp-6); }
+
+    /* ─── Available Fields Panel ─── */
+    .field-panel {
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      overflow: hidden; align-self: start;
+    }
+    .field-panel-header {
+      padding: var(--sp-3) var(--sp-4); background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      font-weight: 600; font-size: var(--text-sm);
+    }
+    .field-group-label {
+      padding: var(--sp-2) var(--sp-4); background: oklch(95% 0.005 250);
+      font-size: var(--text-xs); font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .field-item {
+      display: flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-4); cursor: pointer;
+      transition: background var(--duration) var(--ease);
+      font-size: var(--text-sm); user-select: none;
+    }
+    .field-item:hover { background: var(--accent-soft); }
+    .field-item.selected { opacity: 0.45; pointer-events: none; }
+    .field-item input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+
+    /* ─── Selected Columns Panel ─── */
+    .columns-panel {
+      border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden;
+    }
+    .columns-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--sp-3) var(--sp-4); background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      font-weight: 600; font-size: var(--text-sm);
+    }
+    .column-count { font-weight: 400; color: var(--muted); }
+    .columns-list { min-height: 200px; padding: var(--sp-2); }
+    .columns-empty {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 200px; color: var(--muted); font-size: var(--text-sm);
+    }
+
+    .column-card {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-3); margin-bottom: var(--sp-2);
+      border: 1px solid var(--line); border-radius: var(--r-sm);
+      background: white; cursor: grab;
+      transition: all var(--duration) var(--ease);
+    }
+    .column-card:hover { border-color: var(--accent); }
+    .column-card.sortable-ghost {
+      opacity: 0.4; border-style: dashed; border-color: var(--accent);
+    }
+    .column-card.sortable-chosen { box-shadow: 0 4px 12px oklch(0% 0 0 / 0.1); }
+    .drag-handle {
+      cursor: grab; color: var(--muted); flex-shrink: 0;
+      display: flex; align-items: center;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .column-order {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--accent-soft); color: var(--accent);
+      font-size: var(--text-xs); font-weight: 600; flex-shrink: 0;
+    }
+    .column-details { flex: 1; min-width: 0; }
+    .column-header-name {
+      font-weight: 500; font-size: var(--text-sm);
+      display: flex; align-items: center; gap: var(--sp-2);
+    }
+    .column-source {
+      font-size: var(--text-xs); color: var(--muted);
+      font-family: var(--font-mono);
+    }
+    .column-format {
+      display: inline-flex; padding: 1px 6px; border-radius: 4px;
+      font-size: 10px; background: var(--surface); color: var(--muted);
+      font-family: var(--font-mono);
+    }
+    .column-actions { display: flex; gap: var(--sp-1); flex-shrink: 0; }
+
+    /* Inline rename input */
+    .rename-input {
+      padding: var(--sp-1) var(--sp-2); border: 1px solid var(--accent);
+      border-radius: 4px; font-family: var(--font); font-size: var(--text-sm);
+      font-weight: 500; width: 160px; outline: none;
+      box-shadow: 0 0 0 3px oklch(45% 0.15 220 / 0.1);
+    }
+
+    /* ═══ STATIC COLUMN MODAL ═══ */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: oklch(0% 0 0 / 0.3); display: flex;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .modal {
+      background: white; border-radius: var(--r-lg);
+      padding: var(--sp-6); min-width: 400px; max-width: 500px;
+      box-shadow: 0 20px 60px oklch(0% 0 0 / 0.15);
+    }
+    .modal h3 { margin-bottom: var(--sp-4); }
+    .modal-field { margin-bottom: var(--sp-4); }
+    .modal-field label {
+      display: block; font-size: var(--text-sm); font-weight: 500;
+      margin-bottom: var(--sp-1); color: var(--muted);
+    }
+    .modal-field input {
+      width: 100%; padding: var(--sp-2) var(--sp-3);
+      border: 1px solid var(--line); border-radius: var(--r-sm);
+      font-family: var(--font); font-size: var(--text-sm);
+    }
+    .modal-field input:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px oklch(45% 0.15 220 / 0.1);
+    }
+    .modal-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+
+    /* ═══ CLONE MODAL ═══ */
+    .clone-modal select {
+      width: 100%; padding: var(--sp-2) var(--sp-3);
+      border: 1px solid var(--line); border-radius: var(--r-sm);
+      font-family: var(--font); font-size: var(--text-sm);
+    }
+
+    /* ═══ PREVIEW TABLE ═══ */
+    .preview-section {
+      border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden;
+    }
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--sp-3) var(--sp-4); background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    .preview-header span { font-weight: 600; font-size: var(--text-sm); }
+    .preview-table-wrap { overflow-x: auto; }
+    .preview-table {
+      width: 100%; border-collapse: collapse; font-size: var(--text-sm);
+      font-family: var(--font-mono);
+    }
+    .preview-table th {
+      padding: var(--sp-2) var(--sp-3); text-align: left;
+      background: oklch(95% 0.005 250); border-bottom: 2px solid var(--line);
+      font-weight: 600; white-space: nowrap; font-family: var(--font);
+    }
+    .preview-table td {
+      padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    .preview-table tr:hover td { background: oklch(97% 0.003 250); }
+
+    /* ═══ TOAST ═══ */
+    .toast {
+      position: fixed; bottom: var(--sp-6); right: var(--sp-6); z-index: 300;
+      padding: var(--sp-3) var(--sp-5); border-radius: var(--r-sm);
+      background: var(--ink); color: white; font-size: var(--text-sm);
+      font-weight: 500; transform: translateY(100px); opacity: 0;
+      transition: all var(--duration-md) var(--ease);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 768px) {
+      .panels { grid-template-columns: 1fr; }
+      .config-toolbar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ TOP BAR ═══ -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect width="28" height="28" rx="6" fill="var(--accent)"/>
+        <path d="M8 20V8h4l4 6 4-6h4v12h-3v-8l-3.5 5h-3L11 12v8H8z" fill="var(--bg)"/>
+      </svg>
+      <span class="topbar-title">LedgerFlow</span>
+    </div>
+    <nav class="topbar-nav">
+      <button class="active" id="navList" onclick="showView('list')">Template Manager</button>
+      <button id="navConfig" onclick="showView('config')">Configurator</button>
+    </nav>
+    <span class="avatar">AP</span>
+  </header>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+
+    <!-- ════════════ VIEW 1: TEMPLATE LIST ════════════ -->
+    <div id="listView">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Export Templates</h1>
+          <p class="page-desc">จัดการ templates สำหรับ export ข้อมูลเข้าโปรแกรมบัญชี</p>
+        </div>
+        <button class="btn btn-primary" onclick="openCloneModal(null)">+ New Template</button>
+      </div>
+
+      <!-- Master Templates -->
+      <div class="template-group">
+        <div class="template-group-header">
+          <span>Master Templates</span>
+          <span class="badge badge-master">ต้นแบบ</span>
+        </div>
+        <div class="template-row">
+          <div class="template-info">
+            <div class="template-name">Express GL Ledger</div>
+            <div class="template-meta">8 columns &middot; CSV/Excel &middot; สมุดรายวัน GL</div>
+          </div>
+          <div class="template-actions">
+            <button class="btn btn-sm" onclick="previewMaster('gl')">Preview</button>
+            <button class="btn btn-sm btn-primary" onclick="openCloneModal('gl')">Clone to Company</button>
+          </div>
+        </div>
+        <div class="template-row">
+          <div class="template-info">
+            <div class="template-name">Purchase Tax Report</div>
+            <div class="template-meta">12 columns &middot; Excel &middot; รายงานภาษีซื้อ</div>
+          </div>
+          <div class="template-actions">
+            <button class="btn btn-sm" onclick="previewMaster('tax')">Preview</button>
+            <button class="btn btn-sm btn-primary" onclick="openCloneModal('tax')">Clone to Company</button>
+          </div>
+        </div>
+        <div class="template-row">
+          <div class="template-info">
+            <div class="template-name">Sales Tax Report</div>
+            <div class="template-meta">12 columns &middot; Excel &middot; รายงานภาษีขาย</div>
+          </div>
+          <div class="template-actions">
+            <button class="btn btn-sm" onclick="previewMaster('sales')">Preview</button>
+            <button class="btn btn-sm btn-primary" onclick="openCloneModal('sales')">Clone to Company</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Company: ABC Trading -->
+      <div class="template-group" id="companyABC">
+        <div class="template-group-header">
+          <span>ABC Trading Co., Ltd. (0105548012345)</span>
+          <span style="font-weight:400; font-size:var(--text-xs); color:var(--muted)">2 templates</span>
+        </div>
+        <div class="template-row">
+          <div class="template-info">
+            <div class="template-name">ABC GL Ledger <span class="badge badge-cloned">cloned</span></div>
+            <div class="template-meta">10 columns &middot; CSV (UTF-8 BOM) &middot; cloned from Express GL</div>
+          </div>
+          <div class="template-actions">
+            <button class="btn btn-sm" onclick="editTemplate('abc-gl')">Edit</button>
+            <button class="btn btn-sm" onclick="previewCompany('abc-gl')">Preview</button>
+            <button class="btn btn-sm btn-danger" onclick="confirmDelete('abc-gl')">Delete</button>
+          </div>
+        </div>
+        <div class="template-row">
+          <div class="template-info">
+            <div class="template-name">ABC Tax Report <span class="badge badge-custom">custom</span></div>
+            <div class="template-meta">8 columns &middot; Excel &middot; custom template</div>
+          </div>
+          <div class="template-actions">
+            <button class="btn btn-sm" onclick="editTemplate('abc-tax')">Edit</button>
+            <button class="btn btn-sm" onclick="previewCompany('abc-tax')">Preview</button>
+            <button class="btn btn-sm btn-danger" onclick="confirmDelete('abc-tax')">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Company: XYZ -->
+      <div class="template-group">
+        <div class="template-group-header">
+          <span>XYZ Import Export Ltd. (0105561098765)</span>
+          <span style="font-weight:400; font-size:var(--text-xs); color:var(--muted)">1 template</span>
+        </div>
+        <div class="template-row">
+          <div class="template-info">
+            <div class="template-name">XYZ GL Ledger <span class="badge badge-cloned">cloned</span></div>
+            <div class="template-meta">8 columns &middot; CSV (TIS-620) &middot; cloned from Express GL</div>
+          </div>
+          <div class="template-actions">
+            <button class="btn btn-sm" onclick="editTemplate('xyz-gl')">Edit</button>
+            <button class="btn btn-sm" onclick="previewCompany('xyz-gl')">Preview</button>
+            <button class="btn btn-sm btn-danger" onclick="confirmDelete('xyz-gl')">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ VIEW 2: TEMPLATE CONFIGURATOR ════════════ -->
+    <div class="configurator" id="configView">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="configTitle">Edit Template: ABC GL Ledger</h1>
+          <p class="page-desc">เลือก fields, ลาก-วาง เรียงลำดับ, เปลี่ยนชื่อ column headers</p>
+        </div>
+        <div style="display:flex; gap:var(--sp-2)">
+          <button class="btn" onclick="showView('list')">Cancel</button>
+          <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="config-toolbar">
+        <label>Name:</label>
+        <input type="text" class="name-input" id="templateName" value="ABC GL Ledger" />
+        <label>Format:</label>
+        <select id="fileFormat">
+          <option value="csv">CSV</option>
+          <option value="xlsx">Excel (.xlsx)</option>
+        </select>
+        <label>Encoding:</label>
+        <select id="encoding">
+          <option value="utf-8-bom">UTF-8 BOM</option>
+          <option value="utf-8">UTF-8</option>
+          <option value="tis-620">TIS-620 (Legacy)</option>
+        </select>
+        <label id="delimLabel">Delimiter:</label>
+        <select id="delimiter">
+          <option value=",">, (comma)</option>
+          <option value=";">; (semicolon)</option>
+          <option value="tab">Tab</option>
+        </select>
+      </div>
+
+      <!-- Two-panel layout -->
+      <div class="panels">
+
+        <!-- LEFT: Available Fields -->
+        <div class="field-panel">
+          <div class="field-panel-header">Available Fields</div>
+
+          <div class="field-group-label">Extraction Fields</div>
+          <label class="field-item" data-field="invoice_number">
+            <input type="checkbox" onchange="toggleField(this, 'invoice_number', 'Invoice No.')" /> invoice_number
+          </label>
+          <label class="field-item" data-field="invoice_date">
+            <input type="checkbox" onchange="toggleField(this, 'invoice_date', 'Invoice Date')" /> invoice_date
+          </label>
+          <label class="field-item" data-field="seller_name">
+            <input type="checkbox" onchange="toggleField(this, 'seller_name', 'Seller Name')" /> seller_name
+          </label>
+          <label class="field-item" data-field="seller_tax_id">
+            <input type="checkbox" onchange="toggleField(this, 'seller_tax_id', 'Seller Tax ID')" /> seller_tax_id
+          </label>
+          <label class="field-item" data-field="buyer_name">
+            <input type="checkbox" onchange="toggleField(this, 'buyer_name', 'Buyer Name')" /> buyer_name
+          </label>
+          <label class="field-item" data-field="buyer_tax_id">
+            <input type="checkbox" onchange="toggleField(this, 'buyer_tax_id', 'Buyer Tax ID')" /> buyer_tax_id
+          </label>
+          <label class="field-item" data-field="net_amount">
+            <input type="checkbox" onchange="toggleField(this, 'net_amount', 'Net Amount')" /> net_amount
+          </label>
+          <label class="field-item" data-field="vat_amount">
+            <input type="checkbox" onchange="toggleField(this, 'vat_amount', 'VAT Amount')" /> vat_amount
+          </label>
+          <label class="field-item" data-field="wht_amount">
+            <input type="checkbox" onchange="toggleField(this, 'wht_amount', 'WHT Amount')" /> wht_amount
+          </label>
+          <label class="field-item" data-field="total_amount">
+            <input type="checkbox" onchange="toggleField(this, 'total_amount', 'Total Amount')" /> total_amount
+          </label>
+          <label class="field-item" data-field="document_type">
+            <input type="checkbox" onchange="toggleField(this, 'document_type', 'Document Type')" /> document_type
+          </label>
+
+          <div class="field-group-label">Journal Fields</div>
+          <label class="field-item" data-field="voucher_no">
+            <input type="checkbox" checked disabled onchange="toggleField(this, 'voucher_no', 'Voucher No.')" /> voucher_no
+          </label>
+          <label class="field-item selected" data-field="voucher_date">
+            <input type="checkbox" checked disabled onchange="toggleField(this, 'voucher_date', 'Date')" /> voucher_date
+          </label>
+          <label class="field-item selected" data-field="book_code">
+            <input type="checkbox" checked disabled onchange="toggleField(this, 'book_code', 'Book Code')" /> book_code
+          </label>
+          <label class="field-item selected" data-field="account_code">
+            <input type="checkbox" checked disabled onchange="toggleField(this, 'account_code', 'Account Code')" /> account_code
+          </label>
+          <label class="field-item" data-field="account_name">
+            <input type="checkbox" onchange="toggleField(this, 'account_name', 'Account Name')" /> account_name
+          </label>
+          <label class="field-item selected" data-field="debit">
+            <input type="checkbox" checked disabled onchange="toggleField(this, 'debit', 'Debit')" /> debit
+          </label>
+          <label class="field-item selected" data-field="credit">
+            <input type="checkbox" checked disabled onchange="toggleField(this, 'credit', 'Credit')" /> credit
+          </label>
+          <label class="field-item" data-field="description">
+            <input type="checkbox" onchange="toggleField(this, 'description', 'Description')" /> description
+          </label>
+
+          <div class="field-group-label">Computed</div>
+          <label class="field-item" data-field="company_name">
+            <input type="checkbox" onchange="toggleField(this, 'company_name', 'Company Name')" /> company_name
+          </label>
+          <label class="field-item" data-field="company_tax_id">
+            <input type="checkbox" onchange="toggleField(this, 'company_tax_id', 'Company Tax ID')" /> company_tax_id
+          </label>
+          <label class="field-item" data-field="export_date">
+            <input type="checkbox" onchange="toggleField(this, 'export_date', 'Export Date')" /> export_date
+          </label>
+
+          <div class="field-group-label" style="border-top: 1px solid var(--line); margin-top: var(--sp-2); padding-top: var(--sp-3)">
+            Static Value
+          </div>
+          <div style="padding: var(--sp-2) var(--sp-4)">
+            <button class="btn btn-sm" style="width:100%" onclick="openStaticModal()">+ Add Static Column</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: Selected Columns (drag-drop) -->
+        <div class="columns-panel">
+          <div class="columns-panel-header">
+            <span>Selected Columns <span class="column-count" id="colCount">(6 columns)</span></span>
+            <span style="font-size: var(--text-xs); color: var(--muted)">Drag to reorder</span>
+          </div>
+          <div class="columns-list" id="columnsList">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="preview-section">
+        <div class="preview-header">
+          <span>Preview (sample data)</span>
+          <button class="btn btn-sm" onclick="refreshPreview()">Refresh Preview</button>
+        </div>
+        <div class="preview-table-wrap">
+          <table class="preview-table" id="previewTable">
+            <!-- Populated by JS -->
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══ CLONE MODAL ═══ -->
+  <div class="modal-overlay hidden" id="cloneModal">
+    <div class="modal clone-modal">
+      <h3>Clone Template to Company</h3>
+      <div class="modal-field">
+        <label>Source Template</label>
+        <input type="text" id="cloneSource" readonly style="background:var(--surface)" />
+      </div>
+      <div class="modal-field">
+        <label>Target Company</label>
+        <select id="cloneCompany">
+          <option value="">— Select company —</option>
+          <option value="abc">ABC Trading Co., Ltd.</option>
+          <option value="xyz">XYZ Import Export Ltd.</option>
+          <option value="demo">Demo Corp (0105599000001)</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Template Name</label>
+        <input type="text" id="cloneName" placeholder="e.g. ABC GL Ledger" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeCloneModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="cloneTemplate()">Clone & Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STATIC COLUMN MODAL ═══ -->
+  <div class="modal-overlay hidden" id="staticModal">
+    <div class="modal">
+      <h3>Add Static Column</h3>
+      <p style="color:var(--muted); font-size:var(--text-sm); margin-bottom:var(--sp-4)">
+        Static columns have the same value for every row (e.g., company branch code)
+      </p>
+      <div class="modal-field">
+        <label>Column Header</label>
+        <input type="text" id="staticHeader" placeholder="e.g. Branch Code" />
+      </div>
+      <div class="modal-field">
+        <label>Static Value</label>
+        <input type="text" id="staticValue" placeholder="e.g. 00000" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeStaticModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="addStaticColumn()">Add Column</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /* ═══ DATA ═══ */
+
+    // Sample data for preview
+    const SAMPLE_DATA = [
+      { voucher_no: 'PV-2606-001', voucher_date: '2026-06-14', book_code: '11', account_code: '51101', account_name: 'ค่าสินค้า', debit: '10000.00', credit: '', description: 'ซื้อสินค้า - ABC Supplier', invoice_number: 'INV-2026-0142', invoice_date: '2026-06-13', seller_name: 'ABC Supplier Co.', seller_tax_id: '0105548099999', buyer_name: 'ABC Trading Co.', buyer_tax_id: '0105548012345', net_amount: '10000.00', vat_amount: '700.00', wht_amount: '300.00', total_amount: '10400.00', document_type: 'invoice', company_name: 'ABC Trading Co., Ltd.', company_tax_id: '0105548012345', export_date: '2026-06-14' },
+      { voucher_no: 'PV-2606-001', voucher_date: '2026-06-14', book_code: '11', account_code: '14101', account_name: 'ภาษีซื้อ', debit: '700.00', credit: '', description: 'VAT 7% - ABC Supplier', invoice_number: 'INV-2026-0142', invoice_date: '2026-06-13', seller_name: 'ABC Supplier Co.', seller_tax_id: '0105548099999', buyer_name: 'ABC Trading Co.', buyer_tax_id: '0105548012345', net_amount: '10000.00', vat_amount: '700.00', wht_amount: '300.00', total_amount: '10400.00', document_type: 'invoice', company_name: 'ABC Trading Co., Ltd.', company_tax_id: '0105548012345', export_date: '2026-06-14' },
+      { voucher_no: 'PV-2606-001', voucher_date: '2026-06-14', book_code: '11', account_code: '21101', account_name: 'เจ้าหนี้การค้า', debit: '', credit: '10400.00', description: 'เจ้าหนี้ - ABC Supplier', invoice_number: 'INV-2026-0142', invoice_date: '2026-06-13', seller_name: 'ABC Supplier Co.', seller_tax_id: '0105548099999', buyer_name: 'ABC Trading Co.', buyer_tax_id: '0105548012345', net_amount: '10000.00', vat_amount: '700.00', wht_amount: '300.00', total_amount: '10400.00', document_type: 'invoice', company_name: 'ABC Trading Co., Ltd.', company_tax_id: '0105548012345', export_date: '2026-06-14' },
+      { voucher_no: 'PV-2606-001', voucher_date: '2026-06-14', book_code: '11', account_code: '11201', account_name: 'ภาษีหัก ณ ที่จ่าย', debit: '', credit: '300.00', description: 'WHT 3% - ABC Supplier', invoice_number: 'INV-2026-0142', invoice_date: '2026-06-13', seller_name: 'ABC Supplier Co.', seller_tax_id: '0105548099999', buyer_name: 'ABC Trading Co.', buyer_tax_id: '0105548012345', net_amount: '10000.00', vat_amount: '700.00', wht_amount: '300.00', total_amount: '10400.00', document_type: 'invoice', company_name: 'ABC Trading Co., Ltd.', company_tax_id: '0105548012345', export_date: '2026-06-14' },
+      { voucher_no: 'PV-2606-002', voucher_date: '2026-06-14', book_code: '11', account_code: '51101', account_name: 'ค่าสินค้า', debit: '5600.00', credit: '', description: 'ซื้อสินค้า - XYZ Parts', invoice_number: 'INV-XYZ-0088', invoice_date: '2026-06-12', seller_name: 'XYZ Parts Ltd.', seller_tax_id: '0105561000888', buyer_name: 'ABC Trading Co.', buyer_tax_id: '0105548012345', net_amount: '5600.00', vat_amount: '392.00', wht_amount: '', total_amount: '5992.00', document_type: 'invoice', company_name: 'ABC Trading Co., Ltd.', company_tax_id: '0105548012345', export_date: '2026-06-14' },
+    ];
+
+    // Default columns (Express GL)
+    let selectedColumns = [
+      { id: 'c1', source: 'voucher_no',   header: 'Voucher_No',    format: null },
+      { id: 'c2', source: 'voucher_date', header: 'Date',          format: 'YYYY-MM-DD' },
+      { id: 'c3', source: 'book_code',    header: 'Book_Code',     format: null },
+      { id: 'c4', source: 'account_code', header: 'Account_Code',  format: null },
+      { id: 'c5', source: 'debit',        header: 'Debit_Amount',  format: '#,##0.00' },
+      { id: 'c6', source: 'credit',       header: 'Credit_Amount', format: '#,##0.00' },
+    ];
+
+    let colIdCounter = 7;
+    let sortableInstance = null;
+
+    /* ═══ VIEW SWITCHING ═══ */
+
+    function showView(view) {
+      document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
+      const cfg = document.getElementById('configView');
+      cfg.classList.toggle('active', view === 'config');
+      document.getElementById('navList').classList.toggle('active', view === 'list');
+      document.getElementById('navConfig').classList.toggle('active', view === 'config');
+
+      if (view === 'config') {
+        renderColumns();
+        refreshPreview();
+        initSortable();
+      }
+    }
+
+    /* ═══ TEMPLATE LIST ACTIONS ═══ */
+
+    function editTemplate(id) {
+      document.getElementById('templateName').value =
+        id === 'abc-gl' ? 'ABC GL Ledger' :
+        id === 'abc-tax' ? 'ABC Tax Report' : 'XYZ GL Ledger';
+      document.getElementById('configTitle').textContent =
+        'Edit Template: ' + document.getElementById('templateName').value;
+      showView('config');
+    }
+
+    function previewMaster(type) {
+      showToast('Preview: ' + (type === 'gl' ? 'Express GL Ledger' : type === 'tax' ? 'Purchase Tax Report' : 'Sales Tax Report'));
+    }
+
+    function previewCompany(id) {
+      showToast('Loading preview for template...');
+    }
+
+    function confirmDelete(id) {
+      if (confirm('Delete this template? This cannot be undone.')) {
+        showToast('Template deleted');
+      }
+    }
+
+    /* ═══ CLONE MODAL ═══ */
+
+    function openCloneModal(masterType) {
+      const modal = document.getElementById('cloneModal');
+      modal.classList.remove('hidden');
+      const sourceInput = document.getElementById('cloneSource');
+      if (masterType === 'gl') sourceInput.value = 'Express GL Ledger';
+      else if (masterType === 'tax') sourceInput.value = 'Purchase Tax Report';
+      else if (masterType === 'sales') sourceInput.value = 'Sales Tax Report';
+      else sourceInput.value = '(New blank template)';
+      document.getElementById('cloneName').value = '';
+      document.getElementById('cloneCompany').value = '';
+
+      // Auto-fill name when company changes
+      document.getElementById('cloneCompany').onchange = function() {
+        const companyName = this.options[this.selectedIndex].text;
+        if (masterType && this.value) {
+          document.getElementById('cloneName').value = companyName.split(' (')[0] + ' ' +
+            (masterType === 'gl' ? 'GL Ledger' : masterType === 'tax' ? 'Tax Report' : 'Sales Tax');
+        }
+      };
+    }
+
+    function closeCloneModal() {
+      document.getElementById('cloneModal').classList.add('hidden');
+    }
+
+    function cloneTemplate() {
+      const name = document.getElementById('cloneName').value;
+      const company = document.getElementById('cloneCompany').value;
+      if (!name || !company) {
+        showToast('Please select a company and enter a name');
+        return;
+      }
+      closeCloneModal();
+      document.getElementById('templateName').value = name;
+      document.getElementById('configTitle').textContent = 'Edit Template: ' + name;
+      showView('config');
+      showToast('Template cloned! Customize columns below.');
+    }
+
+    /* ═══ FIELD TOGGLE ═══ */
+
+    function toggleField(checkbox, fieldName, defaultHeader) {
+      if (checkbox.checked) {
+        // Add to selected columns
+        const col = {
+          id: 'c' + colIdCounter++,
+          source: fieldName,
+          header: defaultHeader,
+          format: fieldName.includes('amount') || fieldName === 'debit' || fieldName === 'credit' ? '#,##0.00' : null
+        };
+        selectedColumns.push(col);
+        checkbox.closest('.field-item').classList.add('selected');
+      } else {
+        // Remove from selected columns
+        selectedColumns = selectedColumns.filter(c => c.source !== fieldName);
+        checkbox.closest('.field-item').classList.remove('selected');
+      }
+      renderColumns();
+      refreshPreview();
+    }
+
+    /* ═══ COLUMN RENDERING ═══ */
+
+    function renderColumns() {
+      const list = document.getElementById('columnsList');
+      document.getElementById('colCount').textContent = '(' + selectedColumns.length + ' columns)';
+
+      if (selectedColumns.length === 0) {
+        list.innerHTML = '<div class="columns-empty">Click fields on the left to add columns</div>';
+        return;
+      }
+
+      list.innerHTML = selectedColumns.map((col, i) => `
+        <div class="column-card" data-id="${col.id}">
+          <span class="drag-handle" title="Drag to reorder">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="5" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/>
+              <circle cx="5" cy="8" r="1.5"/><circle cx="11" cy="8" r="1.5"/>
+              <circle cx="5" cy="13" r="1.5"/><circle cx="11" cy="13" r="1.5"/>
+            </svg>
+          </span>
+          <span class="column-order">${i + 1}</span>
+          <div class="column-details">
+            <div class="column-header-name" id="header-${col.id}">
+              <span>${col.header}</span>
+              ${col.format ? `<span class="column-format">${col.format}</span>` : ''}
+            </div>
+            <div class="column-source">${col.isStatic ? 'static: "' + col.staticValue + '"' : col.source}</div>
+          </div>
+          <div class="column-actions">
+            <button class="btn-icon" title="Rename column" onclick="renameColumn('${col.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn-icon danger" title="Remove column" onclick="removeColumn('${col.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      // Re-init sortable
+      initSortable();
+    }
+
+    /* ═══ SORTABLE (DRAG-DROP) ═══ */
+
+    function initSortable() {
+      const el = document.getElementById('columnsList');
+      if (sortableInstance) sortableInstance.destroy();
+      sortableInstance = new Sortable(el, {
+        handle: '.drag-handle',
+        animation: 200,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: function() {
+          // Reorder selectedColumns based on DOM order
+          const cards = el.querySelectorAll('.column-card');
+          const newOrder = [];
+          cards.forEach(card => {
+            const col = selectedColumns.find(c => c.id === card.dataset.id);
+            if (col) newOrder.push(col);
+          });
+          selectedColumns = newOrder;
+          renderColumns();
+          refreshPreview();
+        }
+      });
+    }
+
+    /* ═══ RENAME ═══ */
+
+    function renameColumn(colId) {
+      const col = selectedColumns.find(c => c.id === colId);
+      if (!col) return;
+      const headerEl = document.getElementById('header-' + colId);
+      const currentName = col.header;
+
+      headerEl.innerHTML = `<input type="text" class="rename-input" value="${currentName}" id="rename-${colId}" />`;
+      const input = document.getElementById('rename-' + colId);
+      input.focus();
+      input.select();
+
+      function commitRename() {
+        const newName = input.value.trim() || currentName;
+        col.header = newName;
+        renderColumns();
+        refreshPreview();
+        if (newName !== currentName) showToast(`Column renamed: "${currentName}" → "${newName}"`);
+      }
+
+      input.addEventListener('blur', commitRename);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { col.header = currentName; input.blur(); }
+      });
+    }
+
+    /* ═══ REMOVE COLUMN ═══ */
+
+    function removeColumn(colId) {
+      const col = selectedColumns.find(c => c.id === colId);
+      if (!col) return;
+
+      // Uncheck in field list
+      if (!col.isStatic) {
+        const fieldItem = document.querySelector(`.field-item[data-field="${col.source}"]`);
+        if (fieldItem) {
+          fieldItem.classList.remove('selected');
+          const cb = fieldItem.querySelector('input[type="checkbox"]');
+          if (cb) { cb.checked = false; cb.disabled = false; }
+        }
+      }
+
+      selectedColumns = selectedColumns.filter(c => c.id !== colId);
+      renderColumns();
+      refreshPreview();
+    }
+
+    /* ═══ STATIC COLUMN ═══ */
+
+    function openStaticModal() {
+      document.getElementById('staticModal').classList.remove('hidden');
+      document.getElementById('staticHeader').value = '';
+      document.getElementById('staticValue').value = '';
+      document.getElementById('staticHeader').focus();
+    }
+
+    function closeStaticModal() {
+      document.getElementById('staticModal').classList.add('hidden');
+    }
+
+    function addStaticColumn() {
+      const header = document.getElementById('staticHeader').value.trim();
+      const value = document.getElementById('staticValue').value.trim();
+      if (!header) { showToast('Please enter a column header'); return; }
+
+      selectedColumns.push({
+        id: 'c' + colIdCounter++,
+        source: '_static',
+        header: header,
+        format: null,
+        isStatic: true,
+        staticValue: value
+      });
+      closeStaticModal();
+      renderColumns();
+      refreshPreview();
+      showToast(`Static column "${header}" added`);
+    }
+
+    /* ═══ PREVIEW ═══ */
+
+    function refreshPreview() {
+      const table = document.getElementById('previewTable');
+      if (selectedColumns.length === 0) {
+        table.innerHTML = '<tr><td style="padding:var(--sp-4);color:var(--muted);text-align:center">No columns selected</td></tr>';
+        return;
+      }
+
+      let html = '<thead><tr>';
+      selectedColumns.forEach(col => {
+        html += `<th>${col.header}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      SAMPLE_DATA.forEach(row => {
+        html += '<tr>';
+        selectedColumns.forEach(col => {
+          let val = '';
+          if (col.isStatic) {
+            val = col.staticValue;
+          } else {
+            val = row[col.source] || '';
+          }
+          html += `<td>${val}</td>`;
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+      table.innerHTML = html;
+    }
+
+    /* ═══ SAVE ═══ */
+
+    function saveTemplate() {
+      const payload = {
+        name: document.getElementById('templateName').value,
+        format: document.getElementById('fileFormat').value,
+        encoding: document.getElementById('encoding').value,
+        delimiter: document.getElementById('delimiter').value,
+        columns: selectedColumns.map((col, i) => ({
+          order: i + 1,
+          source_field: col.isStatic ? null : col.source,
+          header_label: col.header,
+          format_pattern: col.format,
+          is_static: !!col.isStatic,
+          static_value: col.isStatic ? col.staticValue : null
+        }))
+      };
+
+      console.log('Save payload:', JSON.stringify(payload, null, 2));
+      showToast('Template saved! (' + selectedColumns.length + ' columns)');
+    }
+
+    /* ═══ FORMAT TOGGLE ═══ */
+    document.getElementById('fileFormat').addEventListener('change', function() {
+      const isCSV = this.value === 'csv';
+      document.getElementById('delimLabel').style.display = isCSV ? '' : 'none';
+      document.getElementById('delimiter').style.display = isCSV ? '' : 'none';
+    });
+
+    /* ═══ TOAST ═══ */
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    /* ═══ INIT ═══ */
+    // Mark initial selected fields
+    document.querySelectorAll('.field-item').forEach(item => {
+      const cb = item.querySelector('input[type="checkbox"]');
+      if (cb && cb.checked) item.classList.add('selected');
+    });
+  </script>
+</body>
+</html>

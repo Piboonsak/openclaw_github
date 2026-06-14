@@ -18,6 +18,12 @@ class Settings:
     def reload(self) -> None:
         self.APP_ENV = os.getenv("APP_ENV", "development")
         self.PUBLIC_ENV = os.getenv("PUBLIC_ENV", self.APP_ENV)
+
+        # Database (Phase II)
+        self.DATABASE_URL = os.getenv(
+            "DATABASE_URL",
+            "postgresql://copilot:dev_password@localhost:5432/ai_accounting_sit",
+        )
         self.RULES_ROOT = _path_from_env("RULES_ROOT", REPO_ROOT / "rules")
         self.CACHE_ROOT = _path_from_env(
             "CACHE_ROOT", REPO_ROOT / "src" / "backend" / "ml" / "cache"

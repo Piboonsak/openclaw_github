@@ -321,6 +321,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download Express-Journal.CSV
         </button>
+        <button type="button" class="btn btn-primary btn-lg" id="exportPurchaseTaxBtn" style="background:#2E7D32;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Download รายงานภาษีซื้อ.xlsx
+        </button>
         <span class="export-validate-msg" id="exportValidateMsg" aria-live="polite"></span>
       </div>
     </section>
@@ -538,8 +542,8 @@
 
   /* ─── SAMPLE DATA ─── */
   const DEFAULT_COMPANIES = [
-    { id: 'co-1', name: 'บริษัท ยะวัน เทค จำกัด', taxId: '0105559123456' },
-    { id: 'co-2', name: 'บริษัท ยะวัน เทรดดิ้ง จำกัด', taxId: '0105559654321' },
+    { id: 'co-1', name: 'บริษัท ยะวัน เทค จำกัด', taxId: '0105559123456', branch: '00000', branchName: 'สำนักงานใหญ่', address: '' },
+    { id: 'co-2', name: 'บริษัท ยะวัน เทรดดิ้ง จำกัด', taxId: '0105559654321', branch: '00000', branchName: 'สำนักงานใหญ่', address: '' },
   ];
 
   const DEFAULT_COA = {
@@ -1690,6 +1694,7 @@
     fileItem.invDate = fields.invoice_date || fileItem.invDate;
     fileItem.sellerName = fields.vendor_name || fileItem.sellerName;
     fileItem.sellerTax = fields.seller_tax_id || fileItem.sellerTax;
+    fileItem.sellerBranch = fields.seller_branch || fileItem.sellerBranch || '00000';
     fileItem.buyerTax = String(fields.buyer_tax_id || '').trim();
     fileItem.buyerName = fields.buyer_name || fileItem.buyerName || '';
     if (reconciledNetAmount !== null && reconciledNetAmount > 0) {
@@ -1867,6 +1872,70 @@
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async function downloadPurchaseTaxReport() {
+    const files = state.processedFiles.length > 0 ? state.processedFiles : getActiveFiles();
+    if (!files.length) { showToast('No documents to export.', 'warn'); return; }
+    const company = COMPANIES.find(c => c.id === state.selectedCompanyId) || {};
+
+    const documents = files.map(f => {
+      const net = f.netAmt || 0;
+      const vatRate = f.vatRate || 0;
+      const vatAmt = f._vatAmt !== undefined && f._vatAmt !== null && f._vatAmt > 0
+        ? f._vatAmt
+        : (vatRate > 0 ? parseFloat((net * vatRate / 100).toFixed(2)) : 0);
+      const whtAmt = f._whtAmt || 0;
+      const drLine = state.vouchers.find(v => v.fileId === f.id);
+      const expenseLine = drLine ? drLine.lines.find(l => l.isEditable) : null;
+      return {
+        invNo: f.invNo || '',
+        invDate: f.invDate || '',
+        sellerName: f.sellerName || '',
+        sellerTax: f.sellerTax || '',
+        sellerBranch: f.sellerBranch || '00000',
+        netAmt: net,
+        vatRate: vatRate,
+        vatAmt: vatAmt,
+        whtAmt: whtAmt,
+        category: expenseLine ? expenseLine.label : '',
+        description: expenseLine ? `${expenseLine.label} - ${f.sellerName}` : f.sellerName,
+        reference: '',
+      };
+    });
+
+    // Derive report period from document dates
+    const dates = files.map(f => f.invDate).filter(Boolean).sort();
+    const periodStart = dates.length ? dates[0] : '';
+    const periodEnd = dates.length ? dates[dates.length - 1] : '';
+    const fmtDate = d => { const p = d.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d; };
+
+    const payload = {
+      documents,
+      companyInfo: company,
+      reportPeriod: [fmtDate(periodStart), fmtDate(periodEnd)],
+    };
+
+    try {
+      const res = await fetch(apiUrl('/api/export-purchase-tax-report'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) { showToast('Failed to generate purchase tax report.', 'error'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'purchase_tax_report.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('รายงานภาษีซื้อ downloaded!', 'ok');
+    } catch {
+      showToast('Failed to download purchase tax report.', 'error');
     }
   }
 
@@ -2795,6 +2864,7 @@
   }
 
   $('exportBtn').addEventListener('click', exportCSV);
+  $('exportPurchaseTaxBtn').addEventListener('click', downloadPurchaseTaxReport);
 
   /* ─── SETTINGS ─── */
   $('settingsBtn').addEventListener('click', () => {

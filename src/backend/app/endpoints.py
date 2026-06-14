@@ -17,7 +17,10 @@ from fastapi.responses import FileResponse, Response
 from config.settings import settings
 from src.backend.ml.llm_router import get_routing_diagnostics, read_cost_log_tail
 from src.backend.pipeline.orchestrator import run_pipeline, select_model
-from src.backend.services.export_service import create_excel_ledger
+from src.backend.services.export_service import (
+    create_excel_ledger,
+    create_purchase_tax_report,
+)
 from src.backend.services.rule_engine import validate_required_fields
 from src.backend.services.rule_generation_jobs import RULE_GENERATION_JOBS
 
@@ -246,6 +249,40 @@ async def export_excel(
     except Exception as exc:
         raise HTTPException(
             status_code=500, detail=f"Failed to generate Excel ledger: {exc}"
+        )
+
+
+@router.post("/export-purchase-tax-report")
+async def export_purchase_tax_report(
+    payload: dict[str, Any] = Body(...),
+) -> FileResponse:
+    """Generate Purchase Tax Report (รายงานภาษีซื้อ) in Excel format."""
+    try:
+        settings.reload()
+        temp_dir = settings.EXPORT_ROOT
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        xlsx_path = temp_dir / "purchase_tax_report.xlsx"
+
+        documents = payload.get("documents", [])
+        company_info = payload.get("companyInfo", {})
+        period = payload.get("reportPeriod", ["", ""])
+
+        create_purchase_tax_report(
+            documents=documents,
+            output_path=xlsx_path,
+            company_info=company_info,
+            report_period=tuple(period),
+        )
+
+        return FileResponse(
+            path=str(xlsx_path),
+            filename="purchase_tax_report.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate purchase tax report: {exc}",
         )
 
 

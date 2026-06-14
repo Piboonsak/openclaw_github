@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TASK-503 D1-D7 Explainer</title>
+  <style>
+    :root {
+      --bg: #f3f5fa; --card: #ffffff; --ink: #172033; --muted: #5f6b85;
+      --line: #dbe2f0; --brand: #173fcf; --brand-soft: #ebf1ff;
+      --red: #b42318; --red-soft: #fef0f0; --amber: #b54708; --amber-soft: #fff7e8;
+      --green: #067647; --green-soft: #ecfdf3; --slate: #344054;
+      --purple: #6941c6; --purple-soft: #f4f3ff; --cyan: #0e7490; --cyan-soft: #ecfeff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top left, rgba(23,63,207,0.12), transparent 35%),
+      linear-gradient(180deg, #f8faff 0%, #f3f5fa 100%);
+      line-height: 1.45;
+    }
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 24px; }
+    .hero, .card, .decision-card, .arch-card, .table-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(20,32,61,0.05);
+      margin-bottom: 16px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #1733a5 0%, #2353ea 68%, #4c77ff 100%);
+      color: #fff;
+      border: 0;
+      box-shadow: 0 18px 42px rgba(23,51,165,0.22);
+      padding: 28px;
+    }
+    .hero h1 { margin: 0 0 10px; font-size: 1.95rem; letter-spacing: -0.02em; }
+    .hero p { margin: 0; opacity: 0.95; max-width: 1000px; }
+
+    .card, .decision-card, .arch-card, .table-card { padding: 16px; }
+    .arch-card { border-top: 3px solid var(--brand); }
+    .decision-card { border-top: 3px solid var(--amber); }
+    .table-card { border-top: 3px solid var(--purple); }
+
+    .meta-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .legend, .agenda {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(20,32,61,0.05);
+      padding: 16px;
+    }
+    .legend-list, .agenda ol { margin: 0; padding-left: 18px; }
+    .legend-list li, .agenda li { margin: 6px 0; color: var(--muted); }
+
+    h2 { margin: 0 0 10px; font-size: 1.1rem; color: var(--slate); }
+    h3 { margin: 0 0 8px; font-size: 0.96rem; color: var(--ink); }
+    p { margin: 0 0 10px; color: var(--muted); font-size: 0.88rem; }
+
+    .code-skel {
+      margin-top: 8px;
+      background: #eff4ff;
+      border: 1px solid #d9e5ff;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: "Consolas", "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      line-height: 1.55;
+      overflow-x: auto;
+      color: #1d2c4f;
+      white-space: pre;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 700;
+      font-size: 0.76rem;
+      letter-spacing: 0.02em;
+    }
+    .rag-red { color: var(--red); background: var(--red-soft); }
+    .rag-amber { color: var(--amber); background: var(--amber-soft); }
+    .rag-green { color: var(--green); background: var(--green-soft); }
+    .rag-purple { color: var(--purple); background: var(--purple-soft); }
+
+    .status-done { color: var(--green); background: var(--green-soft); font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; }
+    .status-stub { color: var(--amber); background: var(--amber-soft); font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; }
+    .status-design { color: var(--purple); background: var(--purple-soft); font-weight: 700;
+      padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; }
+
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 0.86rem;
+    }
+    th {
+      color: var(--slate);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: #f9fbff;
+    }
+    .table-wrap { overflow-x: auto; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px;
+      margin-top: 6px;
+    }
+    .mini {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #faf9ff;
+    }
+    .mini p { margin-bottom: 6px; }
+
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .kanban-col {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfcff;
+      padding: 12px;
+      min-height: 260px;
+    }
+    .kanban-col h3 {
+      margin: 0 0 10px;
+      font-size: 0.9rem;
+      color: var(--slate);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .kanban-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .kanban-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+    }
+    .kanban-item strong {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .kanban-item p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .kanban-item .chip { margin-top: 8px; }
+    .kanban-code {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3047a3;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-right: 6px;
+    }
+    .dep-wrap {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 12px;
+      overflow-x: auto;
+    }
+    .dep-title {
+      margin: 0 0 8px;
+      font-size: 0.84rem;
+      color: var(--slate);
+      font-weight: 700;
+    }
+    .dep-grid {
+      min-width: 980px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .dep-col {
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fbfcff;
+    }
+    .dep-col h4 {
+      margin: 0 0 8px;
+      font-size: 0.8rem;
+      color: var(--slate);
+    }
+    .dep-node {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 7px 8px;
+      font-size: 0.77rem;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+    .dep-arrow {
+      display: block;
+      text-align: center;
+      color: #5d6d98;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin: 4px 0;
+    }
+
+    @media (max-width: 920px) {
+      .hero h1 { font-size: 1.5rem; }
+      .meta-grid { grid-template-columns: 1fr; }
+      .kanban-board { grid-template-columns: 1fr; }
+      .dep-grid { grid-template-columns: 1fr; min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="hero">
+    <h1>Phase 3: Journal Router (TASK-503) — D1 to D7 Explainer</h1>
+    <p>
+      This document provides a formal high-level architecture summary for accounting and engineering teams.
+      It explains what executes, where each data element originates, and how design decisions D1-D7 connect from company onboarding to runtime Map Review.
+      เอกสารนี้จัดทำเพื่อให้ทีมบัญชีและทีมพัฒนาเห็นภาพเดียวกันก่อนลงมือพัฒนาเชิงปฏิบัติการ.
+    </p>
+  </section>
+
+  <section class="meta-grid">
+    <section class="legend">
+      <h2>Legend (same color system as primary design document)</h2>
+      <ul class="legend-list">
+        <li><span class="status-done">DONE</span> Implemented and validated behavior.</li>
+        <li><span class="status-stub">STUB</span> Exists but still requires implementation details.</li>
+        <li><span class="status-design">DESIGN</span> Decision approved; implementation must follow this specification.</li>
+        <li><span class="chip rag-green">Execution</span> Runtime operation in production pipeline.</li>
+        <li><span class="chip rag-amber">Decision</span> Design control point affecting accounting behavior.</li>
+        <li><span class="chip rag-red">Risk</span> Requires human review or explicit accounting confirmation.</li>
+      </ul>
+    </section>
+    <section class="agenda">
+      <h2>Reading Order</h2>
+      <ol>
+        <li>Review D1-D7 relationship map.</li>
+        <li>Follow A-F execution flow from onboarding to runtime.</li>
+        <li>Check dependency table for data/file ownership.</li>
+        <li>Review Step 5 Map Review field-by-field controls.</li>
+      </ol>
+    </section>
+  </section>
+
+  <section class="table-card">
+    <h2>Kanban Status Board (D3-D7 + Chunk A)</h2>
+    <p>
+      Visual status board for D3-D7 target scope and implementation status, arranged from backlog (left) to done (right).
+    </p>
+    <div class="kanban-board">
+      <section class="kanban-col">
+        <h3>
+          Backlog
+          <span class="status-design">PLANNED</span>
+        </h3>
+        <ul class="kanban-list">
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D5-01</span>D5 Reporting Branch: Dual Scope Split</strong>
+            <p>แยก logic รายงานรับ/รายงานจ่าย (dual scope) ออกจาก journal payload ให้เป็นโมดูลที่ชัดเจนและทดสอบได้.</p>
+            <span class="chip rag-purple">Design</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D6-01</span>D6 Generation Pipeline</strong>
+            <p>รองรับ generation จาก COA + mapping doc เพื่อสร้าง rule_coa.yaml และ confidence อย่างครบลำดับ.</p>
+            <span class="chip rag-purple">Design</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D6-02</span>D6 Runtime Isolation Audit</strong>
+            <p>ยืนยันว่า runtime โหลด rules แบบ company-isolated ถูกต้องในทุก execution path.</p>
+            <span class="chip rag-red">Risk</span>
+          </li>
+        </ul>
+      </section>
+
+      <section class="kanban-col">
+        <h3>
+          In Progress
+          <span class="status-stub">ACTIVE</span>
+        </h3>
+        <ul class="kanban-list">
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D3-03</span>D3 F-Loop Write-back</strong>
+            <p>เขียนผลจาก Step F (Map Review) กลับ cache พร้อม test เพื่อปิด learning loop ให้ครบถ้วน.</p>
+            <span class="chip rag-amber">Decision</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D4-02</span>D4 Ambiguous/Tie Coverage</strong>
+            <p>เพิ่ม test matrix สำหรับ tie-break และ unresolved path ตาม policy review gate.</p>
+            <span class="chip rag-amber">Decision</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D7-02</span>D7 Contract Validation Tests</strong>
+            <p>เพิ่ม schema/contract validation tests ก่อนส่งออกจริงไปยัง downstream integration.</p>
+            <span class="chip rag-amber">Decision</span>
+          </li>
+        </ul>
+      </section>
+
+      <section class="kanban-col">
+        <h3>
+          Done
+          <span class="status-done">READY</span>
+        </h3>
+        <ul class="kanban-list">
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D3-01</span>D3 Tiered Resolver</strong>
+            <p>รองรับเส้นทาง resolve แบบ cache -> fuzzy -> LLM -> human confirm ตาม target scope.</p>
+            <span class="chip rag-green">Execution</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D3-02</span>D3 Risk Flag Surface</strong>
+            <p>รองรับ risk flags เช่น needs_human_account_pick ในเส้นทาง routing/review.</p>
+            <span class="chip rag-green">Execution</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D4-01</span>D4 Rule Matching Precedence</strong>
+            <p>เลือก rule ด้วย score + specificity tie-break และเชื่อม routing หลักได้แล้ว.</p>
+            <span class="chip rag-green">Execution</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">D7-01</span>D7 Express GL Payload Contract</strong>
+            <p>produce payload มาตรฐานสำหรับ export/import downstream ผ่าน TASK-503 interface.</p>
+            <span class="chip rag-green">Execution</span>
+          </li>
+          <li class="kanban-item">
+            <strong><span class="kanban-code">A-01..03</span>Chunk A Foundations</strong>
+            <p>compile_rules, route_journal, post_journal_entry + COA/DrCr safety gate + core tests พร้อมใช้งาน.</p>
+            <span class="chip rag-green">Execution</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="dep-wrap">
+      <p class="dep-title">Dependency Lines (A->F flow aligned to board work items)</p>
+      <div class="dep-grid">
+        <section class="dep-col">
+          <h4>Backlog (Left)</h4>
+          <div class="dep-node">D6-01 Generate rule_coa.yaml + confidence (A-D onboarding)</div>
+          <span class="dep-arrow">↓ feeds ↓</span>
+          <div class="dep-node">D5-01 Dual-scope reporting module (E runtime branch)</div>
+          <span class="dep-arrow">↓ depends on ↓</span>
+          <div class="dep-node">D6-02 Runtime company isolation audit</div>
+        </section>
+        <section class="dep-col">
+          <h4>In Progress (Center)</h4>
+          <div class="dep-node">D3-03 F-loop cache write-back + tests</div>
+          <span class="dep-arrow">← requires A-01/A-02 | enables F-step learning →</span>
+          <div class="dep-node">D4-02 Ambiguous/tie test matrix</div>
+          <span class="dep-arrow">← verifies D4 gate in E step →</span>
+          <div class="dep-node">D7-02 Schema contract validation tests</div>
+        </section>
+        <section class="dep-col">
+          <h4>Done (Right)</h4>
+          <div class="dep-node">A-01 Public interfaces ready (compile/route/post)</div>
+          <span class="dep-arrow">↓ foundation ↓</span>
+          <div class="dep-node">A-02 COA + balance safety gate ready</div>
+          <span class="dep-arrow">↓ validated by ↓</span>
+          <div class="dep-node">A-03 Core accounting test scenarios ready</div>
+        </section>
+      </div>
+    </div>
+
+    <div class="dep-wrap">
+      <p class="dep-title">Execution Plan (Suggested Order)</p>
+      <div class="dep-node"><strong>Step 1:</strong> ปิด F loop ก่อน: ทำ Map Review cache write-back + tests (D3-03)</div>
+      <div class="dep-node"><strong>Step 2:</strong> เพิ่ม D4 ambiguous/tie tests ให้ครบ policy (D4-02)</div>
+      <div class="dep-node"><strong>Step 3:</strong> เพิ่ม D7 schema contract validation tests (D7-02)</div>
+      <div class="dep-node"><strong>Step 4:</strong> แยก D5 reporting branch เป็นโมดูลชัดเจน (D5-01)</div>
+      <div class="dep-node"><strong>Step 5:</strong> ปิด D6 generation pipeline integration ใน sprint เดียวกันถ้า capacity พอ (D6-01, D6-02)</div>
+    </div>
+  </section>
+
+  <section class="arch-card">
+    <h2>D1-D7 Relationship (Hi-Level)</h2>
+    <p>
+      <span class="chip rag-amber">Design Linkage</span>
+      D6 generates company rule assets. D4 and D3 consume these assets at runtime.
+      D1 and D2 govern extraction quality and model routing, while D5 and D7 govern accounting reporting and export readiness.
+    </p>
+<pre class="code-skel">                          ┌────────────────────────────────────────────┐
+                          │ D6 Multi-company Rule Generator            │
+                          │ rules/{company_id}/rule_coa.yaml           │
+                          │ + confidence.json                           │
+                          └───────────────────┬────────────────────────┘
+                                              │
+                           ┌──────────────────┴──────────────────┐
+                           ▼                                     ▼
+            ┌──────────────────────────────┐      ┌───────────────────────────────────┐
+            │ D4 Rule Matching Precedence  │─────▶│ D3 Variable Account Resolver      │
+            │ score + specificity tie-break│      │ cache -> fuzzy -> LLM -> human    │
+            └──────────────┬───────────────┘      └──────────────────┬────────────────┘
+                           │                                         │
+                           ▼                                         ▼
+            ┌────────────────────────────────────────────────────────────────────────────┐
+            │ Runtime pipeline                                                           │
+            │ D1 OCR (PaddleOCR -> pytesseract fallback) -> D2 model routing            │
+            │ (Haiku 4.5 -> Sonnet 4.6) -> D4 -> D3 -> Dr/Cr postings                   │
+            └───────────────────────────────────┬────────────────────────────────────────┘
+                                                │
+                         ┌──────────────────────┴──────────────────────┐
+                         ▼                                             ▼
+        ┌──────────────────────────────────┐           ┌──────────────────────────────────┐
+        │ D5 รายงานรับ/รายงานจ่าย scope   │           │ D7 Express GL contract            │
+        │ dual-scope reporting logic       │           │ output for Step 5 Map Review      │
+        └──────────────────────────────────┘           └──────────────────────────────────┘</pre>
+  </section>
+
+  <section class="arch-card">
+    <h2>Single Flowchart: Operations A to F</h2>
+    <p>
+      <span class="chip rag-green">Execution Narrative</span>
+      One integrated operational flow from company configuration to controlled human confirmation and learning loop.
+    </p>
+<pre class="code-skel">ONBOARDING (one-time per company)
+
+A. Create Company
+   (company_name, tax_id, business_type)
+                |
+                v
+B. Upload COA PDF (ผังบัญชี) ----------------------.
+                |                                  |
+                | D1 OCR / extract                |
+                v                                  |
+C. Upload GL mapping .docx (การบันทึกบัญชี) -------+-----> D. D6 LLM merge + validate
+                                                     |      Stage 1-5 generation
+                                                     |      Output:
+                                                     |        - rules/{company_id}/rule_coa.yaml
+                                                     |        - rules/{company_id}/confidence.json
+                                                     v
+RUNTIME (per invoice from OCR/user review)
+
+E. Invoice enters processing pipeline
+   D1 OCR -> D2 model routing -> D4 rule pick -> D3 variable account resolution
+   -> Dr/Cr postings (balance tolerance +/-0.01)
+   -> D5 reporting branch (รายงานรับ/รายงานจ่าย)
+   -> D7 Express GL JSON
+   -> Step 5 "Map Review" UI
+                |
+                v
+F. Human confirms/edits mapping in Map Review
+   -> write mapping cache (learning)
+   -> next same vendor/doc pattern resolves faster at D3 Tier 1</pre>
+  </section>
+
+  <section class="table-card">
+    <h2>Execution Dependency Table (What runs where)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Input</th>
+            <th>Operation</th>
+            <th>Output</th>
+            <th>Primary Decision</th>
+            <th>Code/File Relation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A</td>
+            <td>company profile fields</td>
+            <td>Create company context</td>
+            <td>company_id context</td>
+            <td>D6</td>
+            <td>rules/{company_id}/ namespace anchor</td>
+          </tr>
+          <tr>
+            <td>B</td>
+            <td>COA PDF</td>
+            <td>OCR and structured COA extraction</td>
+            <td>chart_of_accounts list</td>
+            <td>D1, D6</td>
+            <td>stored source + generation log</td>
+          </tr>
+          <tr>
+            <td>C</td>
+            <td>GL mapping .docx</td>
+            <td>Rule extraction and condition parsing</td>
+            <td>journal_entry_rules list</td>
+            <td>D6</td>
+            <td>merged into company rule artifact</td>
+          </tr>
+          <tr>
+            <td>D</td>
+            <td>COA + GL extraction</td>
+            <td>Validate schema, cross-ref COA, score confidence</td>
+            <td>rule_coa.yaml + confidence.json</td>
+            <td>D6</td>
+            <td>docs/PoC/Comp_1/rule_coa.yaml (sample pattern)</td>
+          </tr>
+          <tr>
+            <td>E</td>
+            <td>invoice extraction payload</td>
+            <td>Match rule, resolve variable accounts, produce postings</td>
+            <td>journal payload, express_gl payload</td>
+            <td>D2, D3, D4, D5, D7</td>
+            <td>src/validation/rules.py + src/backend/services/rule_engine.py</td>
+          </tr>
+          <tr>
+            <td>F</td>
+            <td>Map Review human decision</td>
+            <td>Confirm/edit mappings then feed cache</td>
+            <td>updated resolver cache and audit trail</td>
+            <td>D3</td>
+            <td>runtime mapping cache (company-scoped)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="table-card">
+    <h2>Step 5: Map Review — Field-by-Field Control Matrix</h2>
+    <p>
+      The table below defines how each accounting field is sourced, validated, reviewed, and finalized at Step 5 (Map Review)
+      before posting approval.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Field (Map Review)</th>
+            <th>Source</th>
+            <th>Validation Logic</th>
+            <th>Human Action</th>
+            <th>Final Use</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>document_type</td>
+            <td>D2 classifier + extraction context</td>
+            <td>Must match accepted type group for selected rule</td>
+            <td>Approve or reclassify document type</td>
+            <td>Selects rule candidate scope in D4</td>
+          </tr>
+          <tr>
+            <td>rule_id</td>
+            <td>D4 score-based matching result</td>
+            <td>Highest score + specificity tie-break</td>
+            <td>Accept or force fallback to review rule</td>
+            <td>Determines posting pattern template</td>
+          </tr>
+          <tr>
+            <td>account_code (line-level)</td>
+            <td>D3 resolver tiers + company COA</td>
+            <td>Code must exist in company chart_of_accounts</td>
+            <td>Edit account mapping when flagged</td>
+            <td>Used for final GL posting/export</td>
+          </tr>
+          <tr>
+            <td>amount_field mapping</td>
+            <td>Extraction fields + selected rule entries</td>
+            <td>Numeric parseable and bound to correct line side</td>
+            <td>Adjust mapped source field if needed</td>
+            <td>Controls debit/credit amounts per line</td>
+          </tr>
+          <tr>
+            <td>debit_total / credit_total</td>
+            <td>Generated postings aggregate</td>
+            <td>Absolute delta <= 0.01</td>
+            <td>Must resolve mismatch before confirm</td>
+            <td>Posting gate (cannot confirm unbalanced)</td>
+          </tr>
+          <tr>
+            <td>flags (unresolved_rule, ambiguous_rule, needs_human_account_pick)</td>
+            <td>D4 + D3 + balance checks</td>
+            <td>Any risk flag requires explicit reviewer attention</td>
+            <td>Clear flag by correction or reject posting</td>
+            <td>Audit trail and reviewer accountability</td>
+          </tr>
+          <tr>
+            <td>express_gl payload</td>
+            <td>TASK-503 interface output</td>
+            <td>Schema fields present and posting lines complete</td>
+            <td>Approve for export handoff</td>
+            <td>Feeds Step 6 export and downstream accounting import</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="decision-card">
+    <h2>Key Decision Details Used in Implementation</h2>
+    <div class="grid">
+      <div class="mini">
+        <h3>D4 Rule Matching</h3>
+        <p>Use score-based selection with specificity tie-break to ensure deterministic posting behavior.</p>
+        <p><strong>Control:</strong> unresolved or tie results are explicitly routed to review workflow.</p>
+      </div>
+      <div class="mini">
+        <h3>D3 Variable Account Resolver</h3>
+        <p>Hybrid pipeline: deterministic cache first, fuzzy matching second, LLM assist third, human confirmation always available.</p>
+        <p><strong>Control objective:</strong> reduce recurring LLM calls while preserving accounting reliability.</p>
+      </div>
+      <div class="mini">
+        <h3>D6 Company Rule Loading</h3>
+        <p>Per-company YAML under <strong>rules/{company_id}/rule_coa.yaml</strong> with shared global defaults.</p>
+        <p><strong>Control objective:</strong> strict company isolation with repeatable generation and auditable updates.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
