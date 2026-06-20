@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบเสนอราคา — LedgerFlow Phase II</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+
+        * { box-sizing: border-box; }
+
+        body {
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 28px 44px;
+            color: #1c1f24;
+            background: #fff;
+            font-family: "Sarabun", "TH SarabunPSK", sans-serif;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        h1 { margin: 0; text-align: center; font-size: 24px; font-weight: 700; color: #111827; }
+        h2 { margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #374151; font-size: 16px; font-weight: 700; color: #111827; }
+        h3 { margin: 14px 0 6px; font-size: 15px; font-weight: 700; }
+        p { margin: 5px 0; }
+        ol, ul { margin: 6px 0 10px 20px; padding: 0; }
+        li { margin: 3px 0; }
+
+        table {
+            width: 100%;
+            margin: 10px 0;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 7px 10px;
+            border: 1px solid #cfd6df;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #eef2f7;
+            font-weight: 700;
+        }
+
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .amount { white-space: nowrap; text-align: right; font-weight: 700; }
+
+        .header-block {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 2px solid #111827;
+        }
+
+        .company-info {
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .company-info .name {
+            font-size: 17px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .doc-info {
+            text-align: right;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .doc-info .doc-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        .client-block {
+            margin: 10px 0;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            background: #fafafa;
+            font-size: 14px;
+        }
+
+        .total-row td {
+            background: #eef2f7;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .remark-box {
+            margin: 14px 0;
+            padding: 12px 16px;
+            border: 2px solid #dc2626;
+            border-radius: 6px;
+            background: #fef2f2;
+            font-size: 14px;
+        }
+
+        .remark-box strong {
+            color: #dc2626;
+        }
+
+        .note-box {
+            margin: 10px 0;
+            padding: 10px 14px;
+            border-left: 4px solid #2563eb;
+            background: #eff6ff;
+            font-size: 13px;
+        }
+
+        .terms-box {
+            margin: 10px 0;
+            padding: 10px 14px;
+            border-left: 4px solid #6b7280;
+            background: #f9fafb;
+            font-size: 13px;
+        }
+
+        .signature-area {
+            display: flex;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .sig-box {
+            flex: 1;
+            min-height: 110px;
+            padding: 14px;
+            border: 1px dashed #9ca3af;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .sig-box .sig-line {
+            display: inline-block;
+            width: 200px;
+            margin-top: 50px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .blank-line {
+            display: inline-block;
+            width: 260px;
+            margin-left: 6px;
+            border-bottom: 1px dotted #6b7280;
+        }
+
+        .blank-short {
+            display: inline-block;
+            width: 120px;
+            margin-left: 6px;
+            border-bottom: 1px dotted #6b7280;
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            background: #f3f4f6;
+            color: #4b5563;
+            font-size: 11px;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 16mm 14mm 18mm 14mm;
+            }
+
+            body { padding: 0; font-size: 14px; }
+
+            table, .remark-box, .note-box, .terms-box,
+            .client-block, .signature-area, .sig-box {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            h1, h2, h3 {
+                break-after: avoid;
+                page-break-after: avoid;
+            }
+
+            .remark-box, .note-box, .terms-box {
+                break-before: avoid;
+                page-break-before: avoid;
+            }
+
+            p, li {
+                orphans: 3;
+                widows: 3;
+            }
+
+            .page-break-before {
+                break-before: page;
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-block">
+    <div class="company-info">
+        <div class="name">บริษัท หญ้าหวานช็อป จำกัด (สำนักงานใหญ่)</div>
+        <div>Yahwan Shop Co., Ltd.</div>
+        <div>ที่อยู่: เลขที่ 99/76 อาคาร สุรวงศ์ ซิตี้ รีสอร์ท ห้องเลขที่ 99/76 ชั้นที่ 6</div>
+        <div>หมู่ที่ 1 ซอยสันติภาพ ถนนนเรศ แขวงสี่พระยา เขตบางรัก กรุงเทพมหานคร</div>
+        <div>โทร: 097-934-2999 อีเมล: <span class="blank-short"></span></div>
+        <div>เลขประจำตัวผู้เสียภาษี: <strong>0105568205433</strong></div>
+    </div>
+    <div class="doc-info">
+        <div class="doc-title">ใบเสนอราคา</div>
+        <div>Quotation</div>
+        <div>เลขที่: QT-2569/____</div>
+        <div>วันที่: ____/____/2569</div>
+        <div>มีผลถึง: 30 วันนับจากวันออก</div>
+    </div>
+</div>
+
+<div class="client-block">
+    <strong>เสนอต่อ (ผู้ว่าจ้าง):</strong><br>
+    ชื่อบริษัท: <strong>บริษัท บีดับบลิวซี แอคเคาท์ จำกัด (สำนักงานใหญ่)</strong><br>
+    ที่อยู่: เลขที่ 5 ซอยลาดพร้าว 101 ซอย 45 ถนนลาดพร้าว แขวงคลองจั่น เขตบางกะปิ กรุงเทพมหานคร<br>
+    เลขประจำตัวผู้เสียภาษี: <strong>0105552024779</strong><br>
+    ผู้ติดต่อ: <span class="blank-line"></span> โทร: <span class="blank-short"></span>
+</div>
+
+<h2>รายการ: พัฒนาซอฟต์แวร์ LedgerFlow / AI Pre-Accounting Copilot — Phase II</h2>
+
+<h3>Phase II — Combined Package (Go-Live MVP + Line Item/Inventory)</h3>
+
+<table>
+    <tr>
+        <th style="width:5%;" class="center">#</th>
+        <th style="width:36%;">รายการ</th>
+        <th style="width:12%;" class="center">Complexity</th>
+        <th style="width:9%;" class="right">Man-day</th>
+        <th style="width:12%;" class="right">Rate/MD</th>
+        <th style="width:13%;" class="right">ราคาเต็ม</th>
+        <th style="width:13%;" class="right">ราคาเสนอ</th>
+    </tr>
+    <tr>
+        <td class="center">1</td>
+        <td>
+            <strong>A. Base Install / Foundation</strong><br>
+            <span style="font-size:12px;color:#6b7280;">Infra, DB, storage, workers, deployment, UAT/Prod environment, PoC carry-over</span>
+        </td>
+        <td class="center">Medium-High</td>
+        <td class="amount">10.0</td>
+        <td class="amount">25,000</td>
+        <td class="amount">250,000</td>
+        <td class="amount">220,000</td>
+    </tr>
+    <tr>
+        <td class="center">2</td>
+        <td>
+            <strong>B. Accuracy Edge Cases</strong><br>
+            <span style="font-size:12px;color:#6b7280;">Basic WHT detection (flag), Wide Review Mode</span>
+        </td>
+        <td class="center">High</td>
+        <td class="amount">1.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">30,000</td>
+        <td class="amount">15,000</td>
+    </tr>
+    <tr>
+        <td class="center">3</td>
+        <td>
+            <strong>C. Template + Admin MVP</strong><br>
+            <span style="font-size:12px;color:#6b7280;">Template manager/configurator (Express format), clone template, export, login/admin, company/COA, vendor/customer CSV import, basic dashboard, document workflow</span>
+        </td>
+        <td class="center">High</td>
+        <td class="amount">6.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">180,000</td>
+        <td class="amount">145,000</td>
+    </tr>
+    <tr>
+        <td class="center">4</td>
+        <td>
+            <strong>D. Line Item + Inventory / Stock Report</strong><br>
+            <span style="font-size:12px;color:#6b7280;">Line item extraction, inventory data preparation, stock report export, Sales Tax Report</span>
+        </td>
+        <td class="center">High</td>
+        <td class="amount">4.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">120,000</td>
+        <td class="amount">95,000</td>
+    </tr>
+    <tr>
+        <td class="center">5</td>
+        <td>
+            <strong>E. UAT / Go-Live / Handover</strong><br>
+            <span style="font-size:12px;color:#6b7280;">UAT deploy, production go-live, smoke test, user guide, handover</span>
+        </td>
+        <td class="center">Medium</td>
+        <td class="amount">2.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">60,000</td>
+        <td class="amount">25,000</td>
+    </tr>
+    <tr class="total-row">
+        <td colspan="3" class="right">รวม Phase II</td>
+        <td class="amount">23.0</td>
+        <td></td>
+        <td class="amount">640,000</td>
+        <td class="amount">500,000</td>
+    </tr>
+    <tr>
+        <td colspan="6" class="right">ส่วนลด (PoC carry-over / early customer / combined package)</td>
+        <td class="amount" style="color:#dc2626;">-140,000</td>
+    </tr>
+</table>
+
+<h3>ค่าบริการรายเดือนหลัง Go-Live</h3>
+
+<table>
+    <tr>
+        <th>รายการ</th>
+        <th style="width:16%;" class="right">ราคาเต็ม</th>
+        <th style="width:16%;" class="right">ราคาเสนอ</th>
+    </tr>
+    <tr>
+        <td>Hosting + Network + DNS + Token/AI-OCR Reserve + MA Support</td>
+        <td class="amount">30,000 / เดือน</td>
+        <td class="amount">25,500 / เดือน</td>
+    </tr>
+    <tr>
+        <td colspan="2" class="right">ส่วนลด 15%</td>
+        <td class="amount" style="color:#dc2626;">-4,500 / เดือน</td>
+    </tr>
+</table>
+
+<h2>สรุปยอดเสนอราคา</h2>
+
+<table>
+    <tr>
+        <th>รายการ</th>
+        <th style="width:22%;" class="right">จำนวนเงิน (บาท)</th>
+    </tr>
+    <tr>
+        <td>Phase II — Combined Package (ค่าพัฒนาครั้งเดียว รวม Line Item/Inventory)</td>
+        <td class="amount">500,000</td>
+    </tr>
+    <tr>
+        <td>ค่าบริการรายเดือนหลัง Go-Live</td>
+        <td class="amount">25,500 / เดือน</td>
+    </tr>
+    <tr class="total-row">
+        <td class="right">รวม Phase II ที่เรียกเก็บเมื่อลงนามสัญญา</td>
+        <td class="amount" style="font-size:17px;">500,000</td>
+    </tr>
+</table>
+
+<div class="note-box">
+    <strong>หมายเหตุ:</strong> ราคาข้างต้นยังไม่รวมภาษีมูลค่าเพิ่ม (VAT) เว้นแต่ระบุเป็นอย่างอื่น
+    ผู้ว่าจ้างที่เป็นนิติบุคคลสามารถหักภาษี ณ ที่จ่ายตามอัตราที่กฎหมายกำหนด
+</div>
+
+<h2>งวดชำระเงิน Phase II</h2>
+
+<table>
+    <tr>
+        <th>งวดที่</th>
+        <th style="width:18%;" class="right">จำนวนเงิน</th>
+        <th>เงื่อนไขการชำระ</th>
+    </tr>
+    <tr>
+        <td><strong>1. Kickoff</strong></td>
+        <td class="amount">180,000 บาท</td>
+        <td>ชำระเต็มจำนวนก่อนเริ่มดำเนินงาน ภายหลังลงนามในสัญญา</td>
+    </tr>
+    <tr>
+        <td><strong>2. Foundation + Core MVP</strong></td>
+        <td class="amount">130,000 บาท</td>
+        <td>เมื่อ Foundation และ core workflow พร้อมทดสอบ</td>
+    </tr>
+    <tr>
+        <td><strong>3. UAT Ready</strong></td>
+        <td class="amount">120,000 บาท</td>
+        <td>เมื่อ deploy UAT และเปิดให้ผู้ว่าจ้างทดสอบ (รวม Line Item/Inventory)</td>
+    </tr>
+    <tr>
+        <td><strong>4. Go-Live / Final Delivery</strong></td>
+        <td class="amount">70,000 บาท</td>
+        <td>เมื่อ Production go-live และ handover เสร็จสิ้น</td>
+    </tr>
+    <tr class="total-row">
+        <td class="right">รวม</td>
+        <td class="amount">500,000 บาท</td>
+        <td></td>
+    </tr>
+</table>
+
+<div class="remark-box">
+    <strong>เงื่อนไขสำคัญเกี่ยวกับการเริ่มดำเนินงาน:</strong>
+    <ol style="margin:6px 0 0 16px;">
+        <li>
+            ผู้รับจ้างจะเริ่มดำเนินการพัฒนาซอฟต์แวร์ตามขอบเขตงาน Phase II — Combined Package
+            <strong>ก็ต่อเมื่อได้รับชำระเงินงวดที่ 1 (Kickoff) เต็มจำนวน 180,000 บาท (หนึ่งแสนแปดหมื่นบาทถ้วน) เรียบร้อยแล้วเท่านั้น</strong>
+            โดยการชำระเงินงวดดังกล่าวถือเป็นเงื่อนไขบังคับก่อน (Condition Precedent) ในการเริ่มต้นดำเนินงาน
+        </li>
+        <li>
+            ระยะเวลาดำเนินงานตามสัญญาจะเริ่มนับจากวันที่ผู้รับจ้างได้รับชำระเงินงวดที่ 1 ครบถ้วน
+            และได้รับข้อมูลที่จำเป็นจากผู้ว่าจ้างครบถ้วนตามหน้าที่ที่ระบุในสัญญา <strong>แล้วแต่เหตุการณ์ใดจะเกิดขึ้นภายหลัง</strong>
+        </li>
+        <li>
+            หากผู้ว่าจ้างชำระเงินงวดที่ 1 ล่าช้าหรือไม่ครบถ้วน ผู้รับจ้างไม่มีหน้าที่เริ่มดำเนินงานใดๆ
+            และไม่ถือเป็นการผิดสัญญาหรือความล่าช้าของผู้รับจ้าง ทั้งนี้ ระยะเวลาส่งมอบงานจะเลื่อนออกไปตามจำนวนวันที่ล่าช้าในการชำระเงินดังกล่าว
+        </li>
+    </ol>
+</div>
+
+<div class="note-box" style="margin-top:16px;">
+    <strong>ช่องทางชำระเงิน:</strong>
+    <table style="margin-top:8px; width:auto;">
+        <tr>
+            <td style="padding:4px 16px 4px 0;">ธนาคาร</td>
+            <td><strong>กสิกรไทย (KBank)</strong></td>
+        </tr>
+        <tr>
+            <td style="padding:4px 16px 4px 0;">ประเภทบัญชี</td>
+            <td>ออมทรัพย์อิเล็กทรอนิกส์ (K-eSavings)</td>
+        </tr>
+        <tr>
+            <td style="padding:4px 16px 4px 0;">ชื่อบัญชี</td>
+            <td><strong>นาย พิบูลย์ศักดิ์ พิมสาร</strong></td>
+        </tr>
+        <tr>
+            <td style="padding:4px 16px 4px 0;">สาขา</td>
+            <td>เอสพละนาด รัชดาภิเษก</td>
+        </tr>
+        <tr>
+            <td style="padding:4px 16px 4px 0;">เลขที่บัญชี</td>
+            <td><strong>095-1-87854-5</strong></td>
+        </tr>
+    </table>
+    <p style="margin:8px 0 0 0; font-size:13px;">
+        กรุณาแจ้งหลักฐานการโอนเงินมาที่ผู้รับจ้างทุกครั้งหลังชำระเงิน
+    </p>
+</div>
+
+<h2 class="page-break-before">ขอบเขตที่รวมอยู่ใน Phase II — Combined Package นี้</h2>
+
+<table>
+    <tr>
+        <th style="width:38%;">รายการ</th>
+        <th>ทำไมต้องมี</th>
+    </tr>
+    <tr>
+        <td><strong>Template engine + Express format</strong></td>
+        <td>ตั้ง field/column export เองได้ ไม่ต้องแก้ code ทุกครั้ง — ลดเวลาคีย์ข้อมูลมากที่สุด</td>
+    </tr>
+    <tr>
+        <td><strong>Template configurator UI (drag-drop)</strong></td>
+        <td>ผู้ใช้ตั้งค่าครั้งเดียว export ได้ทุกครั้ง ไม่ต้องพึ่งนักพัฒนา</td>
+    </tr>
+    <tr>
+        <td><strong>Vendor/Customer CSV import</strong></td>
+        <td>ไม่ต้องพิมพ์รหัสผู้จำหน่าย/ลูกค้าทีละตัว — ลดเวลาคีย์</td>
+    </tr>
+    <tr>
+        <td><strong>COA import + Company management</strong></td>
+        <td>setup ครั้งเดียว ใช้ซ้ำได้ทุกงวดบัญชี</td>
+    </tr>
+    <tr>
+        <td><strong>Login + basic RBAC (2 roles)</strong></td>
+        <td>จำเป็นสำหรับใช้งานจริง production</td>
+    </tr>
+    <tr>
+        <td><strong>Line Item + Inventory / Stock Report</strong></td>
+        <td>ออกรายงาน stock สินค้าจากเอกสาร — ลดภาระงานที่เกินกำลังคนมากที่สุด</td>
+    </tr>
+    <tr>
+        <td><strong>Sales Tax Report</strong></td>
+        <td>ยกมาจาก PoC — ไม่คิดค่าใช้จ่ายเพิ่ม</td>
+    </tr>
+    <tr>
+        <td><strong>Basic WHT detection (flag เตือน)</strong></td>
+        <td>ลดการพลาดรายการหัก ณ ที่จ่าย</td>
+    </tr>
+    <tr>
+        <td><strong>Foundation + UAT/Go-Live</strong></td>
+        <td>โครงสร้างพื้นฐาน, deployment, ส่งมอบ — ไม่มีไม่ได้</td>
+    </tr>
+</table>
+
+<h2>ขอบเขตที่เลื่อนออกไป Phase III (ไม่รวมในราคานี้)</h2>
+
+<table>
+    <tr>
+        <th style="width:38%;">รายการ</th>
+        <th>เหตุผลที่เลื่อน</th>
+    </tr>
+    <tr>
+        <td><strong>COA Rule Generator</strong><br><span style="font-size:12px;color:#6b7280;">AI สร้าง mapping rule จาก PDF/DOCX</span></td>
+        <td>ผลลัพธ์ AI ไม่ predictable ต้องทดสอบหลาย scenario — ผู้ใช้ import COA เองได้ก่อน</td>
+    </tr>
+    <tr>
+        <td><strong>WHT complex edge cases</strong><br><span style="font-size:12px;color:#6b7280;">VAT included/excluded หลาย condition</span></td>
+        <td>เงื่อนไขซ้อนเงื่อนไข ต้องทดสอบละเอียด — basic flag เพียงพอสำหรับ MVP</td>
+    </tr>
+    <tr>
+        <td><strong>OCR gridline preprocessing</strong><br><span style="font-size:12px;color:#6b7280;">แก้ภาพเอกสารที่มีเส้นตารางก่อน OCR</span></td>
+        <td>ต้องทดสอบกับเอกสารหลายรูปแบบ — ใช้วิธีอื่นแก้ปัญหาได้ชั่วคราว</td>
+    </tr>
+    <tr>
+        <td><strong>Dashboard LLM cost meter</strong><br><span style="font-size:12px;color:#6b7280;">แสดงผลค่าใช้จ่าย AI/OCR สำหรับ admin</span></td>
+        <td>เป็นส่วนแสดงผลสำหรับ admin ไม่ช่วยลดเวลาคีย์ข้อมูล</td>
+    </tr>
+</table>
+
+<div class="note-box">
+    <strong>หมายเหตุ:</strong> รายการข้างต้นสามารถเพิ่มเข้ามาภายหลังเป็น Phase III หรือ Change Request
+    โดยคิดค่าบริการตามอัตรา man-day ที่ตกลง เมื่อระบบหลักใช้งานได้เสถียรแล้ว
+</div>
+
+<h2 class="page-break-before">เงื่อนไขทั่วไป</h2>
+
+<div class="terms-box">
+    <ol>
+        <li><strong>ใบเสนอราคานี้มีผลบังคับ 30 วัน</strong> นับจากวันที่ออก หากเกินกำหนดดังกล่าว ผู้รับจ้างขอสงวนสิทธิ์ในการปรับราคาตามความเหมาะสม</li>
+        <li><strong>ขอบเขตงาน:</strong> รายละเอียดขอบเขตงาน ผลส่งมอบ ข้อจำกัด และเงื่อนไขอื่นๆ เป็นไปตามสัญญาจ้างพัฒนาซอฟต์แวร์ Phase II Combined Package (เอกสารแนบ) ใบเสนอราคานี้เป็นเอกสารประกอบสัญญา ไม่ใช่สัญญาในตัวเอง</li>
+        <li><strong>ราคายังไม่รวม VAT:</strong> หากผู้รับจ้างมีสถานะจดทะเบียน VAT จะเรียกเก็บ VAT เพิ่มเติมตามอัตราที่กฎหมายกำหนด</li>
+        <li><strong>Change Request (CR):</strong> งานที่อยู่นอกขอบเขตสัญญาจะคิดค่าบริการในอัตรา 20,000–30,000 บาท/man-day ตามความยากง่าย โดยต้องได้รับอนุมัติจากผู้ว่าจ้างก่อนเริ่มงาน</li>
+        <li><strong>ความรับผิดชอบของผู้ว่าจ้าง:</strong> ผู้ว่าจ้างต้องจัดส่ง (ก) ตัวอย่าง CSV/Excel ที่ import เข้า Express ได้จริง (ข) ผังบัญชี COA (ค) รายชื่อผู้จำหน่ายและรายชื่อลูกค้า (ง) ตัวอย่างเอกสารสำหรับ OCR testing (จ) ข้อมูล DNS/hosting ที่จำเป็น ทั้งนี้ภายในระยะเวลาที่ตกลงร่วมกัน</li>
+        <li><strong>ข้อจำกัดด้าน AI/OCR:</strong> ระบบนี้เป็นเครื่องมือช่วยจัดเตรียมข้อมูล (Pre-Accounting) ไม่ใช่ระบบบัญชีเต็มรูปแบบ ผู้ใช้ต้องตรวจสอบข้อมูลก่อน export ทุกครั้ง</li>
+        <li><strong>ทรัพย์สินทางปัญญา:</strong> เป็นไปตามข้อกำหนดในสัญญาจ้างพัฒนาซอฟต์แวร์ Phase II</li>
+    </ol>
+</div>
+
+<div class="signature-area">
+    <div class="sig-box">
+        <strong>ผู้เสนอราคา (ผู้รับจ้าง)</strong><br>
+        บริษัท หญ้าหวานช็อป จำกัด<br>
+        <div class="sig-line"></div><br>
+        ( พิบูลย์ศักดิ์ พิมสาร )<br>
+        ตำแหน่ง: กรรมการ<br>
+        วันที่: ____/____/2569
+    </div>
+    <div class="sig-box">
+        <strong>ผู้อนุมัติ (ผู้ว่าจ้าง)</strong><br>
+        บริษัท บีดับบลิวซี แอคเคาท์ จำกัด<br>
+        <div class="sig-line"></div><br>
+        (<span class="blank-short"></span>)<br>
+        ตำแหน่ง: <span class="blank-short"></span><br>
+        วันที่: ____/____/2569
+    </div>
+</div>
+
+<div class="footer-note">
+    <strong>หมายเหตุ:</strong> การลงนามอนุมัติในใบเสนอราคานี้ถือเป็นการแสดงเจตนาตอบรับราคาและเงื่อนไขเบื้องต้น
+    แต่ไม่ถือเป็นสัญญาจ้างในตัวเอง คู่สัญญาจะต้องลงนามในสัญญาจ้างพัฒนาซอฟต์แวร์ Phase II แยกต่างหาก
+    และชำระเงินงวดที่ 1 ครบถ้วนก่อนเริ่มดำเนินงาน
+</div>
+
+</body>
+</html>

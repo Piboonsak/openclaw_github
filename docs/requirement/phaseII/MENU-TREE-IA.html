@@ -1,0 +1,1526 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LedgerFlow Phase II — Menu Tree & Information Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: oklch(98% 0.005 250);
+      --surface: oklch(96% 0.006 250);
+      --surface-2: oklch(93% 0.008 250);
+      --ink: oklch(20% 0.02 250);
+      --muted: oklch(50% 0.02 250);
+      --line: oklch(88% 0.01 250);
+      --accent: oklch(45% 0.15 220);
+      --accent-soft: oklch(92% 0.04 220);
+      --accent-mid: oklch(75% 0.08 220);
+      --ok: oklch(50% 0.14 155);
+      --ok-soft: oklch(92% 0.05 155);
+      --warn: oklch(60% 0.16 80);
+      --warn-soft: oklch(92% 0.06 80);
+      --danger: oklch(55% 0.18 25);
+      --danger-soft: oklch(92% 0.06 25);
+      --purple: oklch(52% 0.18 295);
+      --purple-soft: oklch(92% 0.05 295);
+      --font: "DM Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 0.875rem;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── HEADER ─── */
+    .page-header {
+      background: white;
+      border-bottom: 2px solid var(--accent);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1rem; color: var(--accent); }
+    .logo-sq { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: grid; place-items: center; color: white; font-weight: 800; font-size: 0.75rem; }
+    .page-title { font-weight: 600; font-size: 1rem; color: var(--ink); }
+    .page-subtitle { font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
+    .badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    .badge-accent { background: var(--accent-soft); color: var(--accent); }
+    .badge-ok { background: var(--ok-soft); color: var(--ok); }
+    .badge-warn { background: var(--warn-soft); color: var(--warn); }
+    .badge-purple { background: var(--purple-soft); color: var(--purple); }
+    .badge-muted { background: var(--surface-2); color: var(--muted); }
+    .header-meta { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+
+    /* ─── LEGEND ─── */
+    .legend-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      padding: 0.6rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.78rem;
+      flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ─── LAYOUT ─── */
+    .page-body { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+
+    /* ─── SECTION HEADERS ─── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 2rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+    /* ─── OVERVIEW LAYOUT ─── */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .app-layout-card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .app-layout-card h3 { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem; }
+
+    /* ─── SIMULATED APP SHELL ─── */
+    .app-shell {
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 0.78rem;
+    }
+    .shell-topbar {
+      background: white;
+      border-bottom: 1px solid var(--line);
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .shell-logo { font-weight: 700; font-size: 0.85rem; color: var(--accent); display: flex; align-items: center; gap: 0.4rem; }
+    .shell-logo-sq { width: 20px; height: 20px; background: var(--accent); border-radius: 4px; display: grid; place-items: center; color: white; font-weight: 800; font-size: 0.6rem; }
+    .shell-meta { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; font-size: 0.72rem; color: var(--muted); }
+    .shell-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.65rem; display: grid; place-items: center; }
+    .shell-body { display: flex; min-height: 300px; }
+    .shell-sidebar {
+      width: 140px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      padding: 0.75rem 0;
+    }
+    .shell-nav-group { margin-bottom: 0.75rem; }
+    .shell-nav-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 0 0.75rem; margin-bottom: 0.25rem; }
+    .shell-nav-item {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      cursor: default;
+      border-radius: 0;
+    }
+    .shell-nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .shell-nav-item.admin-only { opacity: 0.6; }
+    .shell-divider { height: 1px; background: var(--line); margin: 0.5rem 0; }
+    .shell-content { flex: 1; padding: 1rem; background: var(--bg); }
+    .shell-content-placeholder { width: 100%; height: 100%; background: var(--surface); border-radius: 8px; display: grid; place-items: center; color: var(--muted); font-size: 0.72rem; min-height: 100px; }
+
+    /* ─── MENU TREE ─── */
+    .tree-container { margin-bottom: 2rem; }
+    .tree-root {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .tree-root-header {
+      background: var(--accent);
+      color: white;
+      padding: 0.75rem 1.25rem;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tree-section {
+      border-bottom: 1px solid var(--line);
+    }
+    .tree-section:last-child { border-bottom: none; }
+    .tree-section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      user-select: none;
+    }
+    .tree-section-header:hover { background: var(--accent-soft); }
+    .tree-section-icon { font-size: 1rem; }
+    .tree-section-title { font-weight: 600; font-size: 0.85rem; flex: 1; }
+    .tree-section-meta { display: flex; gap: 0.5rem; align-items: center; }
+    .tree-toggle { font-size: 0.7rem; color: var(--muted); transition: transform 0.2s; }
+    .tree-section.expanded .tree-toggle { transform: rotate(90deg); }
+
+    .tree-pages { padding: 0.5rem 0; display: none; }
+    .tree-section.expanded .tree-pages { display: block; }
+
+    .tree-page {
+      display: grid;
+      grid-template-columns: 220px 1fr auto;
+      align-items: start;
+      gap: 1rem;
+      padding: 0.6rem 1.25rem 0.6rem 2.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .tree-page:last-child { border-bottom: none; }
+    .tree-page:hover { background: var(--surface); }
+    .tree-page-name { font-weight: 600; font-size: 0.82rem; display: flex; align-items: center; gap: 0.5rem; }
+    .tree-page-url { font-family: var(--mono); font-size: 0.7rem; color: var(--accent); }
+    .tree-page-desc { font-size: 0.78rem; color: var(--muted); }
+    .tree-page-actions { font-size: 0.72rem; }
+
+    /* Sub-pages */
+    .tree-subpages { padding: 0 0 0.25rem 0; }
+    .tree-subpage {
+      display: grid;
+      grid-template-columns: 200px 1fr auto;
+      align-items: start;
+      gap: 1rem;
+      padding: 0.4rem 1.25rem 0.4rem 4rem;
+      border-bottom: 1px solid var(--surface-2);
+      font-size: 0.78rem;
+    }
+    .tree-subpage:last-child { border-bottom: none; }
+    .tree-subpage:hover { background: var(--surface); }
+    .tree-subpage-name { color: var(--ink); display: flex; align-items: center; gap: 0.4rem; }
+    .tree-subpage-url { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); }
+    .tree-subpage-desc { font-size: 0.75rem; color: var(--muted); }
+
+    /* ─── FLOW DIAGRAM ─── */
+    .flow-section { margin-bottom: 2rem; }
+    .flow-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem; }
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+    .flow-node {
+      flex-shrink: 0;
+      background: white;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      min-width: 110px;
+      text-align: center;
+    }
+    .flow-node.accent { border-color: var(--accent); background: var(--accent-soft); }
+    .flow-node.ok { border-color: var(--ok); background: var(--ok-soft); }
+    .flow-node.warn { border-color: var(--warn); background: var(--warn-soft); }
+    .flow-node.purple { border-color: var(--purple); background: var(--purple-soft); }
+    .flow-node-step { font-size: 0.62rem; color: var(--muted); margin-bottom: 2px; }
+    .flow-node-name { font-size: 0.78rem; font-weight: 600; }
+    .flow-node-sub { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+    .flow-arrow {
+      flex-shrink: 0;
+      width: 32px;
+      height: 2px;
+      background: var(--line);
+      position: relative;
+    }
+    .flow-arrow::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      top: -4px;
+      border: 5px solid transparent;
+      border-left: 6px solid var(--line);
+    }
+    .flow-arrow.ok { background: var(--ok); }
+    .flow-arrow.ok::after { border-left-color: var(--ok); }
+
+    /* ─── SCREEN CARDS GRID ─── */
+    .screen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .screen-card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .screen-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-color: var(--accent-mid); }
+    .screen-card-header {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .screen-icon { font-size: 1.1rem; }
+    .screen-title { font-weight: 600; font-size: 0.85rem; flex: 1; }
+    .screen-url { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); }
+    .screen-body { padding: 0.85rem 1rem; }
+    .screen-desc { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.75rem; }
+    .screen-elements { margin-bottom: 0.75rem; }
+    .screen-elements-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.35rem; }
+    .screen-element { font-size: 0.75rem; color: var(--ink); display: flex; align-items: baseline; gap: 0.4rem; line-height: 1.6; }
+    .screen-element::before { content: '·'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+    .screen-nav { border-top: 1px solid var(--line); padding: 0.6rem 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .screen-nav-label { font-size: 0.65rem; color: var(--muted); margin-right: 0.25rem; }
+    .nav-chip {
+      font-size: 0.68rem;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .nav-chip.primary { background: var(--accent-soft); border-color: var(--accent-mid); color: var(--accent); }
+
+    /* ─── MODAL/DRAWER TABLE ─── */
+    .modal-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.78rem; }
+    .modal-table th, .modal-table td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; vertical-align: top; }
+    .modal-table th { background: var(--surface); font-weight: 600; font-size: 0.72rem; }
+    .modal-table tr:hover td { background: var(--surface); }
+
+    /* ─── ROLE MATRIX ─── */
+    .role-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .role-table th, .role-table td { border: 1px solid var(--line); padding: 0.5rem 0.75rem; text-align: center; }
+    .role-table th { background: var(--surface); font-weight: 600; font-size: 0.75rem; }
+    .role-table td:first-child { text-align: left; font-weight: 500; }
+    .role-y { color: var(--ok); font-weight: 700; }
+    .role-n { color: var(--line); }
+    .role-p { color: var(--warn); font-weight: 600; font-size: 0.72rem; }
+
+    /* ─── UTILITY ─── */
+    .chip-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    hr.section-hr { border: none; border-top: 1px solid var(--line); margin: 2rem 0; }
+    .note { background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 0.6rem 1rem; font-size: 0.78rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="page-header">
+  <div class="logo">
+    <div class="logo-sq">LF</div>
+    LedgerFlow
+  </div>
+  <div>
+    <div class="page-title">Menu Tree & Information Architecture</div>
+    <div class="page-subtitle">Phase II — UX/UI Design Blueprint — 2026-06-15</div>
+  </div>
+  <div class="header-meta">
+    <span class="badge badge-accent">Phase II/1</span>
+    <span class="badge badge-muted">9 screens · 6 modals · 2 roles</span>
+  </div>
+</header>
+
+<!-- ═══ LEGEND ═══ -->
+<div class="legend-bar">
+  <strong style="font-size:0.72rem">Legend:</strong>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div> Main workflow screen</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--ok)"></div> Admin management screen</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Admin-only screen</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div> Modal / Drawer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--line)"></div> System / Background page</div>
+  <span style="margin-left:auto;font-size:0.72rem;color:var(--muted)">Click section headers to expand ↓</span>
+</div>
+
+<div class="page-body">
+
+<!-- ═══ APP SHELL OVERVIEW ═══ -->
+<div class="section-label">Application Shell Layout</div>
+
+<div class="overview-grid">
+  <div class="app-layout-card">
+    <h3>Layout Architecture</h3>
+    <div class="app-shell">
+      <div class="shell-topbar">
+        <div class="shell-logo"><div class="shell-logo-sq">LF</div> LedgerFlow</div>
+        <div class="shell-meta">
+          <span>บ. ABC จำกัด ▾</span>
+          <div class="shell-avatar">AP</div>
+        </div>
+      </div>
+      <div class="shell-body">
+        <nav class="shell-sidebar">
+          <div class="shell-nav-group">
+            <div class="shell-nav-label">Main</div>
+            <div class="shell-nav-item active">📊 Dashboard</div>
+            <div class="shell-nav-item">📤 Upload</div>
+            <div class="shell-nav-item">⚙️ Processing</div>
+            <div class="shell-nav-item">🔍 Review Scan</div>
+            <div class="shell-nav-item">📋 Review Map</div>
+            <div class="shell-nav-item">📥 Export</div>
+          </div>
+          <div class="shell-divider"></div>
+          <div class="shell-nav-group">
+            <div class="shell-nav-label">Admin</div>
+            <div class="shell-nav-item admin-only">🏢 Companies</div>
+            <div class="shell-nav-item admin-only">📑 Templates</div>
+            <div class="shell-nav-item admin-only">👥 Users</div>
+            <div class="shell-nav-item admin-only">💰 Cost</div>
+            <div class="shell-nav-item admin-only">📜 Audit</div>
+            <div class="shell-nav-item admin-only">⚙️ Settings</div>
+          </div>
+        </nav>
+        <div class="shell-content">
+          <div class="shell-content-placeholder">Content Area</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:0.75rem;font-size:0.75rem;color:var(--muted)">
+      Top bar: Logo · Company selector · User avatar menu<br>
+      Sidebar: Fixed 220px · scrollable on mobile<br>
+      Content: Fluid width · max 1200px center
+    </div>
+  </div>
+
+  <div class="app-layout-card">
+    <h3>Page Count Summary</h3>
+    <table class="modal-table">
+      <thead>
+        <tr><th>Zone</th><th>Screen</th><th>Route</th><th>Access</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>System</td><td>🔐 Login</td><td>/login</td><td><span class="badge badge-muted">Public</span></td></tr>
+        <tr><td rowspan="6">Main Workflow</td><td>📊 Dashboard</td><td>/dashboard</td><td><span class="badge badge-accent">Staff+Admin</span></td></tr>
+        <tr><td>📤 Upload</td><td>/upload</td><td><span class="badge badge-accent">Staff+Admin</span></td></tr>
+        <tr><td>⚙️ Processing</td><td>/processing</td><td><span class="badge badge-accent">Staff+Admin</span></td></tr>
+        <tr><td>🔍 Review Scan</td><td>/review/scan</td><td><span class="badge badge-accent">Staff+Admin</span></td></tr>
+        <tr><td>📋 Review Mapping</td><td>/review/mapping</td><td><span class="badge badge-accent">Staff+Admin</span></td></tr>
+        <tr><td>📥 Export</td><td>/export</td><td><span class="badge badge-accent">Staff+Admin</span></td></tr>
+        <tr><td rowspan="6">Admin</td><td>🏢 Companies</td><td>/admin/companies</td><td><span class="badge badge-ok">Admin</span></td></tr>
+        <tr><td>📑 Templates</td><td>/admin/templates</td><td><span class="badge badge-ok">Admin</span></td></tr>
+        <tr><td>👥 Users</td><td>/admin/users</td><td><span class="badge badge-purple">Admin only</span></td></tr>
+        <tr><td>💰 Cost Control</td><td>/admin/cost</td><td><span class="badge badge-ok">Admin</span></td></tr>
+        <tr><td>📜 Audit Log</td><td>/admin/audit</td><td><span class="badge badge-ok">Admin</span></td></tr>
+        <tr><td>⚙️ Settings</td><td>/admin/settings</td><td><span class="badge badge-purple">Admin only</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note" style="margin-top:0.75rem">
+      <strong>Navigation context:</strong> Company selector ใน top bar — Staff เห็นเฉพาะบริษัทที่ assign, Admin เห็นทุกบริษัทใน tenant. การกรองข้อมูลทุก screen ตาม company ที่เลือก
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAIN WORKFLOW FLOW ═══ -->
+<div class="section-label">Main Workflow Navigation Flow</div>
+
+<div class="flow-section">
+  <div style="margin-bottom:1rem">
+    <div class="flow-row">
+      <div class="flow-node" style="border-color:var(--line);background:var(--surface)">
+        <div class="flow-node-step">Entry</div>
+        <div class="flow-node-name">🔐 Login</div>
+        <div class="flow-node-sub">/login</div>
+      </div>
+      <div class="flow-arrow ok"></div>
+      <div class="flow-node accent">
+        <div class="flow-node-step">Home</div>
+        <div class="flow-node-name">📊 Dashboard</div>
+        <div class="flow-node-sub">/dashboard</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node accent">
+        <div class="flow-node-step">Step 1-2</div>
+        <div class="flow-node-name">📤 Upload</div>
+        <div class="flow-node-sub">/upload</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node accent">
+        <div class="flow-node-step">Step 3</div>
+        <div class="flow-node-name">⚙️ Processing</div>
+        <div class="flow-node-sub">/processing</div>
+      </div>
+      <div class="flow-arrow ok"></div>
+      <div class="flow-node ok">
+        <div class="flow-node-step">Step 4</div>
+        <div class="flow-node-name">🔍 Review Scan</div>
+        <div class="flow-node-sub">/review/scan</div>
+      </div>
+      <div class="flow-arrow ok"></div>
+      <div class="flow-node ok">
+        <div class="flow-node-step">Step 5</div>
+        <div class="flow-node-name">📋 Review Map</div>
+        <div class="flow-node-sub">/review/mapping</div>
+      </div>
+      <div class="flow-arrow ok"></div>
+      <div class="flow-node" style="border-color:var(--accent);background:var(--accent-soft)">
+        <div class="flow-node-step">Step 6</div>
+        <div class="flow-node-name">📥 Export</div>
+        <div class="flow-node-sub">/export</div>
+      </div>
+    </div>
+    <div style="margin-top:0.75rem;font-size:0.75rem;color:var(--muted)">
+      ← Back navigation available at every step · Document batch ID persists through all steps ·
+      "เริ่มใหม่" resets to Upload
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TREE: SYSTEM ═══ -->
+<div class="section-label">Full Menu Tree</div>
+
+<div class="tree-container">
+  <div class="tree-root">
+    <div class="tree-root-header">
+      🗂️ LedgerFlow — Complete Page Hierarchy
+    </div>
+
+    <!-- LOGIN -->
+    <div class="tree-section expanded" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">🔐</span>
+        <span class="tree-section-title">SYSTEM — Authentication</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-muted">Public</span>
+          <span class="badge badge-muted">1 page</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">🔐 Login</div>
+            <div class="tree-page-url">/login</div>
+          </div>
+          <div class="tree-page-desc">หน้าเข้าสู่ระบบ — Username + Password → JWT token → redirect to /dashboard<br>Forgot password link (Phase II/2)</div>
+          <div><span class="badge badge-muted">Public</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="tree-section expanded" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">📊</span>
+        <span class="tree-section-title">MAIN — Dashboard</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-accent">Staff+Admin</span>
+          <span class="badge badge-muted">1 page</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📊 Dashboard</div>
+            <div class="tree-page-url">/dashboard</div>
+          </div>
+          <div class="tree-page-desc">
+            <strong>KPI Cards:</strong> เอกสารวันนี้ / เดือนนี้ / รอ review / ส่ง export แล้ว<br>
+            <strong>Status Breakdown:</strong> Donut chart (uploaded/processing/review_scan/exported)<br>
+            <strong>Cost Meter:</strong> LLM usage this month vs budget (progress bar)<br>
+            <strong>Recent Activity:</strong> Last 10 actions (upload/approve/export)<br>
+            <strong>Quick Actions:</strong> [📤 อัปโหลดใหม่] [🔍 ไปที่รอ Review]
+          </div>
+          <div><span class="badge badge-accent">Staff+Admin</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div class="tree-section expanded" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">📤</span>
+        <span class="tree-section-title">MAIN — Upload</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-accent">Staff+Admin</span>
+          <span class="badge badge-muted">2 sub-steps</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📤 Upload — Step 1: เลือกบริษัท + Drop Zone</div>
+            <div class="tree-page-url">/upload (step=1)</div>
+          </div>
+          <div class="tree-page-desc">
+            Company selector dropdown (filtered by user assignment) →
+            Drop zone รับ PDF/JPG/PNG ≤20MB →
+            File list preview (filename, size, Tax ID detected) →
+            [ต่อไป →] leads to Step 2
+          </div>
+          <div><span class="badge badge-accent">Staff+Admin</span></div>
+        </div>
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📤 Upload — Step 2: Confirm Queue</div>
+            <div class="tree-page-url">/upload (step=2)</div>
+          </div>
+          <div class="tree-page-desc">
+            File list with checkboxes (select/deselect) →
+            Tax ID mismatch warning badges →
+            Summary: N files · M MB →
+            [⚙️ เริ่มประมวลผล] → POST /api/v1/documents/upload → redirect /processing
+          </div>
+          <div><span class="badge badge-accent">Staff+Admin</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROCESSING -->
+    <div class="tree-section expanded" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">⚙️</span>
+        <span class="tree-section-title">MAIN — Processing</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-accent">Staff+Admin</span>
+          <span class="badge badge-muted">1 page + auto-redirect</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">⚙️ Processing</div>
+            <div class="tree-page-url">/processing?batch={id}</div>
+          </div>
+          <div class="tree-page-desc">
+            Progress bar overall (N/M docs) →
+            Table per file: OCR ✓ → Classify ✓ → Extract ✓ → Map COA ✓ →
+            Status badges: queued / processing / done / failed →
+            Poll Celery job status every 3s →
+            Auto-redirect to /review/scan เมื่อทุก doc เสร็จ →
+            [ดู Error] modal สำหรับ failed docs
+          </div>
+          <div><span class="badge badge-accent">Staff+Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">⚠️ Modal: Processing Error Detail</div>
+            <div class="tree-subpage-url">modal overlay</div>
+            <div class="tree-subpage-desc">แสดง error message + ไฟล์ที่ fail + [ลองใหม่] / [ข้าม]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEW SCAN -->
+    <div class="tree-section expanded" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">🔍</span>
+        <span class="tree-section-title">MAIN — Review Scan</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-accent">Staff+Admin</span>
+          <span class="badge badge-muted">Split-pane layout</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">🔍 Review Scan</div>
+            <div class="tree-page-url">/review/scan?batch={id}</div>
+          </div>
+          <div class="tree-page-desc">
+            <strong>Left panel:</strong> Document list (filename, status badge, confidence %) →
+            <strong>Center:</strong> PDF/image preview (zoom, navigate pages) →
+            <strong>Right panel:</strong> Extracted field form (Invoice Date, Invoice No, Seller Tax ID, Seller Name, Net Amount, VAT, WHT, Total, Document Type) →
+            WHT badge / VAT flag chips →
+            [✓ Approve] / [🚩 Flag] per doc →
+            [✓ Approve All] bulk →
+            Progress: N/M approved →
+            [ไปที่ Review Mapping →] เมื่อทุก doc approved
+          </div>
+          <div><span class="badge badge-accent">Staff+Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">🔍 Drawer: Confidence Detail</div>
+            <div class="tree-subpage-url">slide-over drawer</div>
+            <div class="tree-subpage-desc">Per-field confidence score + extraction source (OCR/LLM/regex)</div>
+          </div>
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">⚠️ Modal: Flag Document</div>
+            <div class="tree-subpage-url">modal overlay</div>
+            <div class="tree-subpage-desc">เหตุผลที่ flag + comment box + [บันทึก]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEW MAPPING -->
+    <div class="tree-section expanded" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">📋</span>
+        <span class="tree-section-title">MAIN — Review Mapping</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-accent">Staff+Admin</span>
+          <span class="badge badge-muted">Split-pane layout</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📋 Review Mapping</div>
+            <div class="tree-page-url">/review/mapping?batch={id}</div>
+          </div>
+          <div class="tree-page-desc">
+            <strong>Left panel:</strong> Document list with balance status (balanced ✓ / unbalanced ✗) →
+            <strong>Center/Right:</strong> Journal lines table (Line, Account Code, Account Name, Dr, Cr) →
+            Account Code picker (search COA, click to change) →
+            Balance indicator: Sum(Dr) vs Sum(Cr) →
+            Voucher No / Date / Book Code fields →
+            [✓ Confirm Mapping] per doc →
+            [ไปที่ Export →] เมื่อทุก doc confirmed
+          </div>
+          <div><span class="badge badge-accent">Staff+Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">🔍 Dropdown: Account Code Picker</div>
+            <div class="tree-subpage-url">inline dropdown</div>
+            <div class="tree-subpage-desc">Search COA ด้วย code หรือชื่อ, กด Enter เลือก</div>
+          </div>
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">⚠️ Modal: Unbalanced Warning</div>
+            <div class="tree-subpage-url">modal overlay</div>
+            <div class="tree-subpage-desc">แสดง difference amount + [แก้ไข] / [บังคับ confirm] (Admin only)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div class="tree-section expanded" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">📥</span>
+        <span class="tree-section-title">MAIN — Export</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-accent">Staff+Admin</span>
+          <span class="badge badge-muted">1 page + preview</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📥 Export</div>
+            <div class="tree-page-url">/export?batch={id}</div>
+          </div>
+          <div class="tree-page-desc">
+            Template selector (dropdown: Master + Company templates) →
+            Document checklist (เลือก docs ที่จะ export) →
+            Format: CSV / Excel radio →
+            [👁 Preview] → preview table (แสดง 5 แถวแรก) →
+            Balance validation indicator (all balanced ✓ / N unbalanced ✗) →
+            [📥 Download CSV] / [📥 Download Excel] →
+            Export history (previous exports ของ batch นี้)
+          </div>
+          <div><span class="badge badge-accent">Staff+Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">👁 Modal: Export Preview</div>
+            <div class="tree-subpage-url">modal full-width</div>
+            <div class="tree-subpage-desc">ตาราง 5 แถวแรก + column headers ตาม template + [Download] button</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPANIES -->
+    <div class="tree-section" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">🏢</span>
+        <span class="tree-section-title">ADMIN — Companies</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-ok">Admin</span>
+          <span class="badge badge-muted">2 sub-pages</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">🏢 Company List</div>
+            <div class="tree-page-url">/admin/companies</div>
+          </div>
+          <div class="tree-page-desc">
+            Table: Company Name, Tax ID, Branch, Active, Created →
+            [+เพิ่มบริษัท] → modal/drawer →
+            [แก้ไข] → company detail page →
+            [เปิด/ปิด] toggle → active status
+          </div>
+          <div><span class="badge badge-ok">Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">➕ Drawer: Add / Edit Company</div>
+            <div class="tree-subpage-url">slide-over drawer</div>
+            <div class="tree-subpage-desc">Form: name, tax_id, branch_code, address, business_type · [บันทึก]</div>
+          </div>
+        </div>
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">🏢 Company Detail — COA Management</div>
+            <div class="tree-page-url">/admin/companies/{id}</div>
+          </div>
+          <div class="tree-page-desc">
+            Company info header (name, Tax ID, branch) →
+            <strong>COA Tab:</strong> account list (code, name, type) + search + [+เพิ่ม] + [นำเข้า YAML/CSV] →
+            <strong>Settings Tab:</strong> budget limit per company →
+            [← กลับ]
+          </div>
+          <div><span class="badge badge-ok">Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">📁 Modal: Import COA</div>
+            <div class="tree-subpage-url">modal overlay</div>
+            <div class="tree-subpage-desc">Upload YAML หรือ CSV · Preview N rows · Upsert mode (update existing) · [นำเข้า]</div>
+          </div>
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">➕ Inline: Add COA Row</div>
+            <div class="tree-subpage-url">inline table row</div>
+            <div class="tree-subpage-desc">Inline editable row at top of table · code + name + type + [Save] / [Cancel]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="tree-section" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">📑</span>
+        <span class="tree-section-title">ADMIN — Templates</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-ok">Admin</span>
+          <span class="badge badge-muted">2 sub-pages · configurator</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📑 Template List</div>
+            <div class="tree-page-url">/admin/templates</div>
+          </div>
+          <div class="tree-page-desc">
+            2 Tabs: <strong>Master Templates</strong> (system) + <strong>Company Templates</strong> →
+            Cards แสดง: template name, type, columns count, format, last updated →
+            [Clone to Company] on master → opens clone dialog →
+            [แก้ไข] → Template Configurator →
+            [+สร้างใหม่] → blank configurator
+          </div>
+          <div><span class="badge badge-ok">Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">📋 Modal: Clone Master</div>
+            <div class="tree-subpage-url">modal overlay</div>
+            <div class="tree-subpage-desc">เลือกบริษัทที่ clone ไป · ตั้งชื่อ template ใหม่ · [Clone →] opens configurator</div>
+          </div>
+        </div>
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📑 Template Configurator</div>
+            <div class="tree-page-url">/admin/templates/{id}/configure</div>
+          </div>
+          <div class="tree-page-desc">
+            <strong>Left:</strong> Available Fields (จาก extraction + journal) → click to add →
+            <strong>Center:</strong> Selected Columns (drag ☰ to reorder, click to rename, ✕ to remove) →
+            <strong>Right:</strong> Column Settings (data type, format, transform, default) →
+            <strong>Bottom:</strong> Preview table (5 rows sample data) →
+            Format/Encoding selector (CSV/Excel · UTF-8/TIS-620) →
+            [💾 บันทึก] / [Preview] / [ยกเลิก]
+          </div>
+          <div><span class="badge badge-ok">Admin</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="tree-section" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">👥</span>
+        <span class="tree-section-title">ADMIN — Users</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-purple">Admin only</span>
+          <span class="badge badge-muted">1 page</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">👥 User List</div>
+            <div class="tree-page-url">/admin/users</div>
+          </div>
+          <div class="tree-page-desc">
+            Table: Username, Email, Role, Assigned Companies, Last Login, Active →
+            [+เพิ่มผู้ใช้] → drawer →
+            [แก้ไข] → drawer →
+            [เปิด/ปิด] toggle
+          </div>
+          <div><span class="badge badge-purple">Admin only</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">➕ Drawer: Add / Edit User</div>
+            <div class="tree-subpage-url">slide-over drawer</div>
+            <div class="tree-subpage-desc">Email · Username · Display Name · Role (Admin/Staff) · Company assignments (multi-select) · [บันทึก]</div>
+          </div>
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">🔑 Modal: Reset Password</div>
+            <div class="tree-subpage-url">modal overlay</div>
+            <div class="tree-subpage-desc">Send reset link หรือ set temporary password (Admin only)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COST CONTROL -->
+    <div class="tree-section" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">💰</span>
+        <span class="tree-section-title">ADMIN — Cost Control</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-ok">Admin</span>
+          <span class="badge badge-muted">1 page</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">💰 Cost Control</div>
+            <div class="tree-page-url">/admin/cost</div>
+          </div>
+          <div class="tree-page-desc">
+            <strong>Summary KPIs:</strong> วันนี้ / เดือนนี้ (total $, tokens) →
+            <strong>Budget meter:</strong> Usage vs limit per company (progress bars) →
+            <strong>Breakdown table:</strong> Company, Model, Stage, Tokens, Cost →
+            <strong>Budget Settings:</strong> Set global + per-company monthly limits →
+            [ตั้ง Budget] modal →
+            Date range filter (today/week/month/custom)
+          </div>
+          <div><span class="badge badge-ok">Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">⚙️ Modal: Set Budget Limit</div>
+            <div class="tree-subpage-url">modal overlay</div>
+            <div class="tree-subpage-desc">Global limit · Per-company override · Alert threshold (%) · [บันทึก]</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIT LOG -->
+    <div class="tree-section" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">📜</span>
+        <span class="tree-section-title">ADMIN — Audit Log</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-ok">Admin</span>
+          <span class="badge badge-muted">1 page</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">📜 Audit Log</div>
+            <div class="tree-page-url">/admin/audit</div>
+          </div>
+          <div class="tree-page-desc">
+            Filter bar: User / Action type / Entity / Date range →
+            Table: Timestamp, User, Action, Entity, Entity ID, IP →
+            Click row → detail drawer (old_values / new_values JSON diff) →
+            [📥 Export CSV]
+          </div>
+          <div><span class="badge badge-ok">Admin</span></div>
+        </div>
+        <div class="tree-subpages">
+          <div class="tree-subpage">
+            <div class="tree-subpage-name">📋 Drawer: Audit Log Detail</div>
+            <div class="tree-subpage-url">slide-over drawer</div>
+            <div class="tree-subpage-desc">Full event detail + JSON diff (old vs new values)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tree-section" onclick="this.classList.toggle('expanded')">
+      <div class="tree-section-header">
+        <span class="tree-section-icon">⚙️</span>
+        <span class="tree-section-title">ADMIN — Settings</span>
+        <div class="tree-section-meta">
+          <span class="badge badge-purple">Admin only</span>
+          <span class="badge badge-muted">1 page · tabs</span>
+        </div>
+        <span class="tree-toggle">▶</span>
+      </div>
+      <div class="tree-pages">
+        <div class="tree-page">
+          <div>
+            <div class="tree-page-name">⚙️ Settings</div>
+            <div class="tree-page-url">/admin/settings</div>
+          </div>
+          <div class="tree-page-desc">
+            <strong>Tab: Model Router</strong> — Tier routing config (Gemini Flash/Pro/Claude), budget thresholds, fallback order →
+            <strong>Tab: API Keys</strong> — masked API key display, [Rotate Key], last used →
+            <strong>Tab: System</strong> — version, DB connection status, Celery worker count, MinIO status →
+            <strong>Tab: PDPA</strong> — data retention days per entity type, [Run Cleanup Now]
+          </div>
+          <div><span class="badge badge-purple">Admin only</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tree-root -->
+</div>
+
+<!-- ═══ ROLE MATRIX ═══ -->
+<div class="section-label">Role / Access Matrix</div>
+
+<div class="app-layout-card" style="margin-bottom:2rem">
+  <table class="role-table">
+    <thead>
+      <tr>
+        <th style="text-align:left;min-width:180px">Screen</th>
+        <th>Admin</th>
+        <th>Staff</th>
+        <th>Condition / Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>🔐 Login</td><td class="role-y">✓</td><td class="role-y">✓</td><td>Public</td></tr>
+      <tr><td>📊 Dashboard</td><td class="role-y">✓</td><td class="role-y">✓</td><td>Staff เห็นเฉพาะบริษัทที่ assign</td></tr>
+      <tr><td>📤 Upload</td><td class="role-y">✓</td><td class="role-y">✓</td><td>Company selector filtered by assignment</td></tr>
+      <tr><td>⚙️ Processing</td><td class="role-y">✓</td><td class="role-y">✓</td><td>เห็นเฉพาะ batch ที่ตัวเองสร้าง (Staff)</td></tr>
+      <tr><td>🔍 Review Scan</td><td class="role-y">✓</td><td class="role-y">✓</td><td>—</td></tr>
+      <tr><td>📋 Review Mapping</td><td class="role-y">✓</td><td class="role-y">✓</td><td>—</td></tr>
+      <tr><td>📥 Export</td><td class="role-y">✓</td><td class="role-y">✓</td><td>—</td></tr>
+      <tr><td>🏢 Companies</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin จัดการ company ทั้งหมด</td></tr>
+      <tr><td>📑 Templates</td><td class="role-y">✓</td><td class="role-n">—</td><td>Staff ใช้ template ได้แต่ไม่แก้ไข</td></tr>
+      <tr><td>👥 Users</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only</td></tr>
+      <tr><td>💰 Cost Control</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only — Staff ไม่เห็น cost</td></tr>
+      <tr><td>📜 Audit Log</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only</td></tr>
+      <tr><td>⚙️ Settings</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only</td></tr>
+      <tr><td>Force confirm unbalanced voucher</td><td class="role-p">Admin bypass</td><td class="role-n">—</td><td>Staff ต้องแก้ให้ balance ก่อน export</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ SCREEN CARDS ═══ -->
+<div class="section-label">Screen Details — Elements & Navigation</div>
+
+<div class="screen-grid">
+
+  <!-- LOGIN -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">🔐</span>
+      <div>
+        <div class="screen-title">Login</div>
+        <div class="screen-url">/login</div>
+      </div>
+      <span class="badge badge-muted">Public</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">Single page — ไม่มี sidebar, centered card layout</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">Logo + "LedgerFlow" heading</div>
+        <div class="screen-element">Username input</div>
+        <div class="screen-element">Password input + show/hide toggle</div>
+        <div class="screen-element">[เข้าสู่ระบบ] primary button</div>
+        <div class="screen-element">Error message (invalid credentials)</div>
+        <div class="screen-element">Loading state during JWT call</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip primary">Success → /dashboard</span>
+      <span class="nav-chip">Fail → error inline</span>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">📊</span>
+      <div>
+        <div class="screen-title">Dashboard</div>
+        <div class="screen-url">/dashboard</div>
+      </div>
+      <span class="badge badge-accent">Staff+Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">Home screen หลังจาก login — overview ทุกอย่าง</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">KPI cards (4): วันนี้ / เดือนนี้ / รอ review / exported</div>
+        <div class="screen-element">Status donut chart (processing states)</div>
+        <div class="screen-element">LLM Cost meter (usage/budget progress bar)</div>
+        <div class="screen-element">Recent activity feed (10 items)</div>
+        <div class="screen-element">Quick action buttons: [Upload] [Go to Review]</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip primary">[Upload] → /upload</span>
+      <span class="nav-chip">[Review] → /review/scan</span>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">📤</span>
+      <div>
+        <div class="screen-title">Upload</div>
+        <div class="screen-url">/upload</div>
+      </div>
+      <span class="badge badge-accent">Staff+Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">2-step inline (ไม่ redirect แค่ scroll) — เลือกบริษัท → drop → confirm</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Step 1 Elements</div>
+        <div class="screen-element">Company dropdown (filtered)</div>
+        <div class="screen-element">Drop zone (drag/click, disabled ก่อนเลือก company)</div>
+        <div class="screen-element">File list (filename, size, Tax ID detected, ✓/✗)</div>
+        <div class="screen-elements-label" style="margin-top:0.5rem">Step 2 Elements</div>
+        <div class="screen-element">File checkboxes + select all</div>
+        <div class="screen-element">Tax ID mismatch badges</div>
+        <div class="screen-element">Summary: N files · M MB</div>
+        <div class="screen-element">[⚙️ เริ่มประมวลผล] → POST /api/v1/documents/upload</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip primary">Submit → /processing?batch=X</span>
+    </div>
+  </div>
+
+  <!-- PROCESSING -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">⚙️</span>
+      <div>
+        <div class="screen-title">Processing</div>
+        <div class="screen-url">/processing</div>
+      </div>
+      <span class="badge badge-accent">Staff+Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">Real-time status ผ่าน polling/WebSocket — อย่า refresh</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">Overall progress bar (N/M docs done)</div>
+        <div class="screen-element">Table: File / OCR / Classify / Extract / Map COA / Status</div>
+        <div class="screen-element">Stage badges: ● queued / ⟳ processing / ✓ done / ✗ failed</div>
+        <div class="screen-element">Elapsed time per file</div>
+        <div class="screen-element">[ดู Error] link for failed docs → modal</div>
+        <div class="screen-element">Auto-redirect เมื่อทุก doc เสร็จ (3s countdown)</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip primary">Auto → /review/scan</span>
+      <span class="nav-chip">[Error] → modal</span>
+    </div>
+  </div>
+
+  <!-- REVIEW SCAN -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">🔍</span>
+      <div>
+        <div class="screen-title">Review Scan</div>
+        <div class="screen-url">/review/scan</div>
+      </div>
+      <span class="badge badge-accent">Staff+Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">Split-pane 3 columns: doc list | PDF preview | field form</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">Doc list: filename + confidence % + ✓/🚩/pending badge</div>
+        <div class="screen-element">PDF viewer: zoom, page nav, width toggle</div>
+        <div class="screen-element">Field form: Date, No, Seller Tax ID, Name, Amounts</div>
+        <div class="screen-element">WHT badge · VAT mode badge · flag chips</div>
+        <div class="screen-element">[✓ Approve] / [🚩 Flag] per doc</div>
+        <div class="screen-element">Progress: N/M approved</div>
+        <div class="screen-element">[✓ Approve All] bulk action</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip primary">All approved → /review/mapping</span>
+      <span class="nav-chip">[Flag] → modal</span>
+      <span class="nav-chip">[Confidence] → drawer</span>
+    </div>
+  </div>
+
+  <!-- REVIEW MAPPING -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">📋</span>
+      <div>
+        <div class="screen-title">Review Mapping</div>
+        <div class="screen-url">/review/mapping</div>
+      </div>
+      <span class="badge badge-accent">Staff+Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">Split-pane: doc list (left) | journal lines table (right)</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">Doc list: balance status ✓/✗, voucher no</div>
+        <div class="screen-element">Journal table: Line | Account Code | Name | Dr | Cr</div>
+        <div class="screen-element">Account Code picker (inline search COA)</div>
+        <div class="screen-element">Balance indicator: Sum Dr ←→ Sum Cr</div>
+        <div class="screen-element">Voucher No / Date / Book Code inputs</div>
+        <div class="screen-element">[✓ Confirm] per doc · [⚠️ Unbalanced] warning</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip primary">All confirmed → /export</span>
+      <span class="nav-chip">[Unbalanced] → modal</span>
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">📥</span>
+      <div>
+        <div class="screen-title">Export</div>
+        <div class="screen-url">/export</div>
+      </div>
+      <span class="badge badge-accent">Staff+Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">เลือก template → preview → download</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">Template dropdown (Master + Company templates)</div>
+        <div class="screen-element">Document checklist (N docs)</div>
+        <div class="screen-element">Format radio: CSV / Excel</div>
+        <div class="screen-element">Balance validation: all ✓ / N ✗ warning</div>
+        <div class="screen-element">[👁 Preview] → modal preview table</div>
+        <div class="screen-element">[📥 Download] → file download</div>
+        <div class="screen-element">Export history (previous downloads)</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip primary">[Download] → file</span>
+      <span class="nav-chip">[Preview] → modal</span>
+      <span class="nav-chip">Done → /dashboard</span>
+    </div>
+  </div>
+
+  <!-- COMPANIES -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">🏢</span>
+      <div>
+        <div class="screen-title">Companies</div>
+        <div class="screen-url">/admin/companies</div>
+      </div>
+      <span class="badge badge-ok">Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">List + detail page กับ COA management ใน sub-page</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">List Elements</div>
+        <div class="screen-element">Table: Name, Tax ID, Branch, Active toggle</div>
+        <div class="screen-element">[+เพิ่ม] → drawer</div>
+        <div class="screen-element">Click row → /admin/companies/{id}</div>
+        <div class="screen-elements-label" style="margin-top:0.5rem">Detail Elements</div>
+        <div class="screen-element">Company header info</div>
+        <div class="screen-element">COA tab: account list + [Import] + [+Add]</div>
+        <div class="screen-element">Settings tab: budget limit</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip">[+Add] → drawer</span>
+      <span class="nav-chip">Row → detail page</span>
+      <span class="nav-chip">[Import COA] → modal</span>
+    </div>
+  </div>
+
+  <!-- TEMPLATES -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">📑</span>
+      <div>
+        <div class="screen-title">Templates</div>
+        <div class="screen-url">/admin/templates</div>
+      </div>
+      <span class="badge badge-ok">Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">Template list + Configurator — Core feature Phase II</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">List Elements</div>
+        <div class="screen-element">Tabs: Master | Company templates</div>
+        <div class="screen-element">Cards: name, type, cols count, format, updated</div>
+        <div class="screen-element">[Clone to Company] on master cards</div>
+        <div class="screen-elements-label" style="margin-top:0.5rem">Configurator Elements</div>
+        <div class="screen-element">Available Fields panel (searchable)</div>
+        <div class="screen-element">Selected Columns (drag-drop reorder)</div>
+        <div class="screen-element">Column settings: rename, transform, format</div>
+        <div class="screen-element">Preview table (5 rows sample)</div>
+        <div class="screen-element">Format/Encoding selector</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip">[Edit] → /templates/{id}/configure</span>
+      <span class="nav-chip">[Clone] → modal</span>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">👥</span>
+      <div>
+        <div class="screen-title">Users</div>
+        <div class="screen-url">/admin/users</div>
+      </div>
+      <span class="badge badge-purple">Admin only</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">จัดการผู้ใช้ + role + company assignment</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">Table: Username, Email, Role, Companies, Last Login</div>
+        <div class="screen-element">Active toggle per user</div>
+        <div class="screen-element">[+เพิ่มผู้ใช้] → drawer</div>
+        <div class="screen-element">[แก้ไข] → drawer (same form)</div>
+        <div class="screen-element">[Reset Password] → modal</div>
+        <div class="screen-elements-label" style="margin-top:0.5rem">Drawer Fields</div>
+        <div class="screen-element">Email, Username, Display Name, Role</div>
+        <div class="screen-element">Company assignment (multi-select checkboxes)</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip">[+Add/Edit] → drawer</span>
+      <span class="nav-chip">[Reset PW] → modal</span>
+    </div>
+  </div>
+
+  <!-- COST CONTROL -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">💰</span>
+      <div>
+        <div class="screen-title">Cost Control</div>
+        <div class="screen-url">/admin/cost</div>
+      </div>
+      <span class="badge badge-ok">Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">LLM usage tracking + budget management</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">KPIs: วันนี้ / เดือนนี้ (total $, tokens)</div>
+        <div class="screen-element">Budget meters per company (progress bars)</div>
+        <div class="screen-element">Breakdown table (Company/Model/Stage/Tokens/$)</div>
+        <div class="screen-element">Date range filter</div>
+        <div class="screen-element">[ตั้ง Budget] → modal</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip">[Set Budget] → modal</span>
+    </div>
+  </div>
+
+  <!-- AUDIT LOG -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">📜</span>
+      <div>
+        <div class="screen-title">Audit Log</div>
+        <div class="screen-url">/admin/audit</div>
+      </div>
+      <span class="badge badge-ok">Admin</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">ประวัติทุกการกระทำในระบบ + export</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Elements</div>
+        <div class="screen-element">Filter: User / Action / Entity / Date range</div>
+        <div class="screen-element">Table: Timestamp, User, Action, Entity, IP</div>
+        <div class="screen-element">Click row → detail drawer (JSON diff)</div>
+        <div class="screen-element">[📥 Export CSV] button</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip">Row → drawer</span>
+      <span class="nav-chip">[Export] → CSV file</span>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen-card">
+    <div class="screen-card-header">
+      <span class="screen-icon">⚙️</span>
+      <div>
+        <div class="screen-title">Settings</div>
+        <div class="screen-url">/admin/settings</div>
+      </div>
+      <span class="badge badge-purple">Admin only</span>
+    </div>
+    <div class="screen-body">
+      <div class="screen-desc">Model router, API keys, system status, PDPA config</div>
+      <div class="screen-elements">
+        <div class="screen-elements-label">Tabs</div>
+        <div class="screen-element">Model Router: tier routing + budget thresholds</div>
+        <div class="screen-element">API Keys: masked display + [Rotate] + last used</div>
+        <div class="screen-element">System: version, DB/Celery/MinIO status</div>
+        <div class="screen-element">PDPA: retention days + [Run Cleanup Now]</div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <span class="screen-nav-label">→</span>
+      <span class="nav-chip">[Rotate Key] → confirm modal</span>
+      <span class="nav-chip">[Cleanup] → confirm modal</span>
+    </div>
+  </div>
+
+</div><!-- /screen-grid -->
+
+<!-- ═══ MODALS & DRAWERS ═══ -->
+<div class="section-label">Modals & Drawers Inventory</div>
+
+<table class="modal-table" style="margin-bottom:2rem">
+  <thead>
+    <tr><th>Component</th><th>Type</th><th>Triggered from</th><th>Purpose</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Processing Error Detail</td><td>Modal</td><td>Processing page [ดู Error]</td><td>Error message + retry/skip</td><td>[ลองใหม่] [ข้าม]</td></tr>
+    <tr><td>Confidence Detail</td><td>Drawer (right)</td><td>Review Scan confidence badge</td><td>Per-field confidence + source</td><td>[ปิด]</td></tr>
+    <tr><td>Flag Document</td><td>Modal</td><td>Review Scan [🚩 Flag]</td><td>เหตุผล + comment</td><td>[บันทึก] [ยกเลิก]</td></tr>
+    <tr><td>Unbalanced Warning</td><td>Modal</td><td>Review Mapping [Confirm] on unbalanced</td><td>Difference + options</td><td>[แก้ไข] [Force (Admin)]</td></tr>
+    <tr><td>Export Preview</td><td>Modal (wide)</td><td>Export [👁 Preview]</td><td>Preview table 5 rows</td><td>[Download] [ปิด]</td></tr>
+    <tr><td>Add/Edit Company</td><td>Drawer (right)</td><td>Companies [+เพิ่ม] / [แก้ไข]</td><td>Company form</td><td>[บันทึก] [ยกเลิก]</td></tr>
+    <tr><td>Import COA</td><td>Modal</td><td>Company Detail [นำเข้า YAML/CSV]</td><td>File upload + preview + upsert</td><td>[นำเข้า] [ยกเลิก]</td></tr>
+    <tr><td>Clone Master Template</td><td>Modal</td><td>Templates [Clone to Company]</td><td>เลือกบริษัท + ตั้งชื่อ</td><td>[Clone] [ยกเลิก]</td></tr>
+    <tr><td>Add/Edit User</td><td>Drawer (right)</td><td>Users [+เพิ่ม] / [แก้ไข]</td><td>User form + company multi-select</td><td>[บันทึก] [ยกเลิก]</td></tr>
+    <tr><td>Reset Password</td><td>Modal</td><td>Users [Reset Password]</td><td>Set temp password หรือ send link</td><td>[ส่ง Link] [Set Password]</td></tr>
+    <tr><td>Set Budget Limit</td><td>Modal</td><td>Cost Control [ตั้ง Budget]</td><td>Global + per-company limits</td><td>[บันทึก] [ยกเลิก]</td></tr>
+    <tr><td>Audit Log Detail</td><td>Drawer (right)</td><td>Audit Log row click</td><td>Full event + JSON diff</td><td>[ปิด]</td></tr>
+    <tr><td>Confirm Rotate API Key</td><td>Modal</td><td>Settings [Rotate Key]</td><td>Warning + confirm action</td><td>[Rotate] [ยกเลิก]</td></tr>
+    <tr><td>Confirm PDPA Cleanup</td><td>Modal</td><td>Settings [Run Cleanup Now]</td><td>Confirm delete + dry-run option</td><td>[Dry Run] [Run Now] [ยกเลิก]</td></tr>
+  </tbody>
+</table>
+
+<!-- ═══ DESIGN SYSTEM NOTE ═══ -->
+<div class="section-label">Design System Reference</div>
+<div class="app-layout-card" style="margin-bottom:2rem">
+  <h3>Inherited from existing prototype (ux-ui-prototype.html + ux-ui-prototype.css)</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:0.75rem">
+    <div>
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Colors (oklch)</div>
+      <div style="display:flex;flex-direction:column;gap:0.35rem;font-size:0.75rem">
+        <div style="display:flex;align-items:center;gap:0.5rem"><div style="width:16px;height:16px;border-radius:4px;background:var(--accent)"></div> --accent: primary blue</div>
+        <div style="display:flex;align-items:center;gap:0.5rem"><div style="width:16px;height:16px;border-radius:4px;background:var(--ok)"></div> --ok: success green</div>
+        <div style="display:flex;align-items:center;gap:0.5rem"><div style="width:16px;height:16px;border-radius:4px;background:var(--warn)"></div> --warn: warning amber</div>
+        <div style="display:flex;align-items:center;gap:0.5rem"><div style="width:16px;height:16px;border-radius:4px;background:var(--danger)"></div> --danger: error red</div>
+        <div style="display:flex;align-items:center;gap:0.5rem"><div style="width:16px;height:16px;border-radius:4px;background:var(--surface);border:1px solid var(--line)"></div> --surface: light gray bg</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Typography</div>
+      <div style="font-size:0.75rem;line-height:1.8">
+        DM Sans — body, labels, UI<br>
+        JetBrains Mono — codes, IDs, amounts<br>
+        Scale: xs 0.75 / sm 0.875 / base 1 / lg 1.333<br>
+        Weight: 400 (body) / 500 (emphasis) / 600 (heading)
+      </div>
+    </div>
+    <div>
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Layout Patterns</div>
+      <div style="font-size:0.75rem;line-height:1.8">
+        Sidebar: 220px fixed · scrollable<br>
+        Top bar: sticky · 56px height<br>
+        Content: max-width 1200px · fluid<br>
+        Split-pane: 280px list + fluid detail<br>
+        Cards: 12px radius · 1px --line border<br>
+        Spacing: 4px base × 1,2,3,4,5,6,8,10,12,16
+      </div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:1rem">
+    <strong>Layout change from PoC to Phase II:</strong> PoC ใช้ <em>top stepper navigation</em> (6 steps linear) — Phase II ใช้ <em>sidebar + content area</em> เพื่อรองรับ admin screens ที่เพิ่มขึ้น. Workflow steps ยังคง flow แบบเดิม (Upload → Processing → Review Scan → Review Mapping → Export) แต่ navigate ผ่าน sidebar แทน stepper
+  </div>
+</div>
+
+<div style="text-align:center;color:var(--muted);font-size:0.75rem;padding:2rem 0;border-top:1px solid var(--line);margin-top:1rem">
+  LedgerFlow Phase II — Menu Tree & Information Architecture · 2026-06-15<br>
+  Next: Generate HTML prototype per screen → discuss design decisions per epic
+</div>
+
+</div><!-- /page-body -->
+
+<script>
+  // All sections start collapsed except main workflow ones
+  document.querySelectorAll('.tree-section').forEach(section => {
+    const header = section.querySelector('.tree-section-header');
+    if(header) {
+      header.addEventListener('click', (e) => {
+        e.stopPropagation();
+        section.classList.toggle('expanded');
+      });
+    }
+  });
+</script>
+</body>
+</html>

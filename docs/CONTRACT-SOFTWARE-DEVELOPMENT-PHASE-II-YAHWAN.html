@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สัญญาจ้างพัฒนาซอฟต์แวร์ Phase II — LedgerFlow / AI Pre-Accounting Copilot</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+
+        * { box-sizing: border-box; }
+
+        body {
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 36px 52px;
+            color: #1c1f24;
+            background: #fff;
+            font-family: "Sarabun", "TH SarabunPSK", sans-serif;
+            font-size: 15px;
+            line-height: 1.75;
+        }
+
+        h1, h2, h3 { line-height: 1.35; color: #111827; }
+        h1 { margin: 0 0 4px; text-align: center; font-size: 22px; font-weight: 700; }
+        h2 { margin: 28px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #374151; font-size: 17px; font-weight: 700; }
+        h3 { margin: 18px 0 6px; font-size: 15px; font-weight: 700; }
+        p { margin: 6px 0; }
+        ol, ul { margin: 6px 0 10px 24px; padding: 0; }
+        li { margin: 3px 0; }
+
+        table {
+            width: 100%;
+            margin: 12px 0;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 8px 10px;
+            border: 1px solid #cfd6df;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #eef2f7;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            margin-bottom: 24px;
+            text-align: center;
+            color: #4b5563;
+            font-size: 14px;
+        }
+
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .amount { white-space: nowrap; text-align: right; font-weight: 700; }
+        .muted { color: #6b7280; }
+        .nowrap { white-space: nowrap; }
+
+        .watermark {
+            position: fixed;
+            top: 48%;
+            left: 50%;
+            z-index: -1;
+            transform: translate(-50%, -50%) rotate(-38deg);
+            color: rgba(0, 0, 0, 0.035);
+            font-size: 76px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+
+        .party-block {
+            min-height: 118px;
+            margin: 12px 0;
+            padding: 14px 18px;
+            border: 1px dashed #9ca3af;
+            background: #fafafa;
+        }
+
+        .party-block .label {
+            margin-bottom: 6px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .blank-line {
+            display: inline-block;
+            width: 310px;
+            margin-left: 8px;
+            border-bottom: 1px dotted #6b7280;
+        }
+
+        .blank-short {
+            display: inline-block;
+            width: 140px;
+            margin-left: 8px;
+            border-bottom: 1px dotted #6b7280;
+        }
+
+        .note-box {
+            margin: 12px 0;
+            padding: 10px 14px;
+            border-left: 4px solid #2563eb;
+            background: #eff6ff;
+            font-size: 14px;
+        }
+
+        .warning-box {
+            margin: 12px 0;
+            padding: 10px 14px;
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb;
+            font-size: 14px;
+        }
+
+        .ux-showcase {
+            margin: 14px 0 18px;
+            padding: 12px;
+            border: 1px solid #d8dee8;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        .ux-caption {
+            margin: 0 0 8px;
+            color: #111827;
+            font-weight: 700;
+        }
+
+        .ux-desc {
+            margin: 0 0 10px;
+            color: #4b5563;
+            font-size: 13px;
+        }
+
+        .screen-mockup {
+            overflow: hidden;
+            border: 1px solid #b9c2d0;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .mock-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 10px;
+            background: #172033;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .mock-steps {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 4px;
+            padding: 8px 10px;
+            background: #eef2f7;
+            font-size: 10px;
+        }
+
+        .mock-step {
+            padding: 4px 5px;
+            border-radius: 12px;
+            background: #fff;
+            color: #4b5563;
+            text-align: center;
+            border: 1px solid #d8dee8;
+        }
+
+        .mock-step.active {
+            background: #1d4ed8;
+            color: #fff;
+            border-color: #1d4ed8;
+        }
+
+        .mock-body {
+            display: grid;
+            grid-template-columns: 31% 69%;
+            min-height: 214px;
+        }
+
+        .mock-sidebar {
+            padding: 10px;
+            border-right: 1px solid #d8dee8;
+            background: #f8fafc;
+        }
+
+        .mock-main {
+            padding: 10px;
+        }
+
+        .mock-card {
+            margin-bottom: 8px;
+            padding: 8px;
+            border: 1px solid #d8dee8;
+            border-radius: 7px;
+            background: #fff;
+            font-size: 11px;
+        }
+
+        .mock-card strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #111827;
+        }
+
+        .mock-line {
+            height: 8px;
+            margin: 5px 0;
+            border-radius: 999px;
+            background: #e5e7eb;
+        }
+
+        .mock-line.short { width: 55%; }
+        .mock-line.mid { width: 76%; }
+        .mock-line.full { width: 100%; }
+
+        .mock-row {
+            display: grid;
+            grid-template-columns: 1fr 72px 72px;
+            gap: 6px;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 10px;
+        }
+
+        .mock-chip {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: #dbeafe;
+            color: #1e40af;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .mock-chip.warn {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .mock-split {
+            display: grid;
+            grid-template-columns: 64% 36%;
+            gap: 8px;
+        }
+
+        .mock-doc {
+            min-height: 148px;
+            padding: 10px;
+            border: 1px solid #cfd6df;
+            border-radius: 6px;
+            background: linear-gradient(180deg, #fff 0%, #f9fafb 100%);
+            font-size: 10px;
+        }
+
+        .mock-form {
+            padding: 8px;
+            border: 1px solid #cfd6df;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 10px;
+        }
+
+        .mock-field {
+            margin: 5px 0;
+            padding: 5px 6px;
+            border: 1px solid #d8dee8;
+            border-radius: 5px;
+            background: #f8fafc;
+        }
+
+        .template-mock {
+            display: grid;
+            grid-template-columns: 30% 70%;
+            min-height: 225px;
+        }
+
+        .template-left {
+            padding: 10px;
+            border-right: 1px solid #d8dee8;
+            background: #f8fafc;
+        }
+
+        .template-right {
+            padding: 10px;
+            background: #fff;
+        }
+
+        .template-columns {
+            display: grid;
+            grid-template-columns: 42% 58%;
+            gap: 8px;
+        }
+
+        .mock-list-item {
+            margin: 5px 0;
+            padding: 6px;
+            border: 1px solid #d8dee8;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 10px;
+        }
+
+        .mock-selected {
+            margin: 5px 0;
+            padding: 6px;
+            border: 1px solid #93c5fd;
+            border-radius: 6px;
+            background: #eff6ff;
+            font-size: 10px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .feature-box {
+            padding: 9px 10px;
+            border: 1px solid #d8dee8;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+        }
+
+        .feature-box strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #111827;
+        }
+
+        .arch-diagram {
+            display: grid;
+            grid-template-columns: 1fr 1.25fr 1fr;
+            gap: 10px;
+            margin: 14px 0;
+            padding: 12px;
+            border: 1px solid #d8dee8;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        .arch-zone {
+            min-height: 180px;
+            padding: 10px;
+            border: 1px solid #cfd6df;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 12px;
+        }
+
+        .arch-zone h4 {
+            margin: 0 0 8px;
+            color: #111827;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .arch-box {
+            margin: 7px 0;
+            padding: 7px 8px;
+            border: 1px solid #d8dee8;
+            border-radius: 6px;
+            background: #f8fafc;
+        }
+
+        .arch-arrow {
+            margin: 6px 0;
+            color: #2563eb;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .diagram-container {
+            margin: 16px 0;
+            padding: 10px;
+            border: 1px solid #d8dee8;
+            border-radius: 10px;
+            background: #fff;
+            text-align: center;
+        }
+
+        .diagram-container svg {
+            width: 100%;
+            max-width: 820px;
+            height: auto;
+        }
+
+        .total-row td {
+            background: #f8fafc;
+            font-weight: 700;
+        }
+
+        .signature-area {
+            display: flex;
+            gap: 48px;
+            justify-content: space-between;
+            margin-top: 54px;
+        }
+
+        .sig-box {
+            flex: 1;
+            min-height: 150px;
+            padding-top: 70px;
+            text-align: center;
+        }
+
+        .sig-line {
+            width: 220px;
+            margin: 0 auto 5px;
+            border-top: 1px solid #111827;
+        }
+
+        .sig-label {
+            margin: 2px 0;
+            color: #4b5563;
+            font-size: 13px;
+        }
+
+        .stamp-circle {
+            width: 90px;
+            height: 90px;
+            margin: 8px auto 0;
+            border: 2px dashed #9ca3af;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 11px;
+        }
+
+        .footer-note {
+            margin-top: 36px;
+            padding: 14px 16px;
+            border-radius: 8px;
+            background: #f3f4f6;
+            color: #4b5563;
+            font-size: 12px;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 20mm 18mm 22mm 18mm;
+
+                @top-left {
+                    content: "Yahwan Shop Co., Ltd.  ×  BWC Account Co., Ltd.";
+                    font-size: 8pt;
+                    color: #9ca3af;
+                    font-family: "Sarabun", sans-serif;
+                }
+                @top-right {
+                    content: counter(page) " / " counter(pages);
+                    font-size: 8pt;
+                    color: #9ca3af;
+                    font-family: "Sarabun", sans-serif;
+                }
+            }
+
+            body {
+                padding: 0;
+                font-size: 14px;
+            }
+
+            .watermark { display: none; }
+            .no-print { display: none; }
+
+            /* Prevent page breaks inside key blocks */
+            h1, h2, h3,
+            table, .party-block, .note-box, .warning-box,
+            .ux-showcase, .diagram-container,
+            .signature-area, .sig-box, .footer-note {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            /* Keep headings attached to the content that follows */
+            h1, h2, h3 {
+                break-after: avoid;
+                page-break-after: avoid;
+            }
+
+            /* Keep note/warning boxes with the preceding table */
+            .note-box, .warning-box {
+                break-before: avoid;
+                page-break-before: avoid;
+            }
+
+            p, li {
+                orphans: 3;
+                widows: 3;
+            }
+
+            /* Force page breaks before major sections for clean layout */
+            .page-break-before {
+                break-before: page;
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- watermark removed — ฉบับจริง -->
+
+<h1>สัญญาจ้างพัฒนาซอฟต์แวร์</h1>
+<p class="subtitle">
+    Phase II — LedgerFlow / AI Pre-Accounting Copilot<br>
+    เลขที่สัญญา: ____/2569
+</p>
+
+<p class="center">
+    ทำที่ <span class="blank-short"></span>
+    วันที่ <span class="blank-short"></span>
+    เดือน <span class="blank-short"></span>
+    พ.ศ. <span class="blank-short"></span>
+</p>
+
+<h2>คู่สัญญา</h2>
+
+<div class="party-block">
+    <p class="label">ผู้ว่าจ้าง ("ผู้ว่าจ้าง")</p>
+    <p>ชื่อบริษัท: <strong>บริษัท บีดับบลิวซี แอคเคาท์ จำกัด (สำนักงานใหญ่)</strong></p>
+    <p>ที่อยู่: เลขที่ 5 ซอยลาดพร้าว 101 ซอย 45 ถนนลาดพร้าว แขวงคลองจั่น เขตบางกะปิ กรุงเทพมหานคร</p>
+    <p>เลขประจำตัวผู้เสียภาษี: <strong>0105552024779</strong></p>
+    <p>โทรศัพท์: <span class="blank-short"></span> อีเมล: <span class="blank-short"></span></p>
+    <p>ผู้มีอำนาจลงนาม: <span class="blank-line"></span> ตำแหน่ง: <span class="blank-short"></span></p>
+</div>
+
+<div class="party-block">
+    <p class="label">ผู้รับจ้าง ("ผู้รับจ้าง")</p>
+    <p>ชื่อบริษัท: <strong>บริษัท หญ้าหวานช็อป จำกัด (สำนักงานใหญ่)</strong></p>
+    <p>ที่อยู่: เลขที่ 99/76 อาคาร สุรวงศ์ ซิตี้ รีสอร์ท ห้องเลขที่ 99/76 ชั้นที่ 6 หมู่ที่ 1 ซอยสันติภาพ ถนนนเรศ แขวงสี่พระยา เขตบางรัก กรุงเทพมหานคร</p>
+    <p>เลขประจำตัวผู้เสียภาษี: <strong>0105568205433</strong></p>
+    <p>โทรศัพท์: 097-934-2999 อีเมล: <span class="blank-short"></span></p>
+    <p>ผู้มีอำนาจลงนาม: พิบูลย์ศักดิ์ พิมสาร ตำแหน่ง: กรรมการ</p>
+</div>
+
+<p>
+    คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญาฉบับนี้ เพื่อพัฒนาระบบซอฟต์แวร์ LedgerFlow / AI Pre-Accounting Copilot Phase II
+    โดยมีขอบเขต เงื่อนไขการส่งมอบ และค่าจ้างตามรายละเอียดต่อไปนี้
+</p>
+
+<h2>ข้อ 1. วัตถุประสงค์</h2>
+<p>
+    ผู้ว่าจ้างตกลงว่าจ้าง และผู้รับจ้างตกลงรับจ้างพัฒนาระบบ LedgerFlow / AI Pre-Accounting Copilot
+    สำหรับสนับสนุนงานเตรียมข้อมูลก่อนลงบัญชี (Pre-Accounting) แบบ Human-in-the-Loop
+    ครอบคลุมการอัปโหลดเอกสาร การประมวลผล OCR/AI การตรวจทานข้อมูล การกำหนดผังบัญชีและ template export
+    การส่งออกข้อมูล CSV/Excel และการเตรียมระบบให้พร้อมใช้งานบนสภาพแวดล้อม UAT/Production ตามขอบเขต Phase II ที่ระบุในสัญญานี้
+</p>
+
+<h2>ข้อ 2. ขอบเขตงาน Phase II — Combined Package</h2>
+<p>
+    Phase II เป็นงานพัฒนาต่อยอดจาก PoC เพื่อให้ระบบพร้อมใช้งานจริงในระดับ MVP
+    โดยเน้นการนำระบบที่พิสูจน์แนวคิดแล้วขึ้นสู่สภาพแวดล้อม UAT/Production,
+    เพิ่มความสามารถด้าน template/export, เพิ่มหน้าจอ admin ที่จำเป็น, เพิ่ม line item extraction และ inventory/stock report
+    และปรับความแม่นยำจากปัญหาที่พบจริงระหว่าง PoC
+</p>
+
+<h3>2.1 Requirement และผลส่งมอบของ Phase II</h3>
+<table>
+    <tr>
+        <th style="width:22%;">Requirement Group</th>
+        <th>รายละเอียดงาน</th>
+        <th style="width:26%;">ผลส่งมอบที่ผู้ว่าจ้างจะได้รับ</th>
+    </tr>
+    <tr>
+        <td><strong>A. Base Install / Foundation</strong></td>
+        <td>
+            วางฐานระบบสำหรับใช้งานจริงจาก PoC ได้แก่ database, storage, background worker,
+            health check, backup baseline, deployment path และการจัดสภาพแวดล้อม UAT/Production
+        </td>
+        <td>ระบบพร้อม deploy และรองรับการทดสอบ/ใช้งานแบบแยกสภาพแวดล้อม</td>
+    </tr>
+    <tr>
+        <td><strong>B. Accuracy Edge Cases</strong></td>
+        <td>
+            ปรับ logic จากปัญหาที่พบจริงใน PoC เช่น WHT, การแยก VAT included/excluded,
+            เอกสารที่มีเส้นตารางรบกวน OCR และโหมดดูเอกสารกว้างขึ้นสำหรับตรวจทาน
+        </td>
+        <td>ผล OCR/AI น่าเชื่อถือขึ้น พร้อม flag จุดที่ควรให้คนตรวจ</td>
+    </tr>
+    <tr>
+        <td><strong>C. Template + Admin MVP*</strong></td>
+        <td>
+            เพิ่มหน้าจอจัดการ template export (รองรับ format Express Accounting), clone template รายบริษัท, เลือก/เรียง/เปลี่ยนชื่อ column,
+            login, role ขั้นต้น, company profile, COA import, import รายชื่อผู้จำหน่ายและลูกค้า และ settings ที่จำเป็น
+        </td>
+        <td>ผู้ใช้จัดรูปแบบ export เองได้ ลดการแก้ code เมื่อ format ลูกค้าเปลี่ยน</td>
+    </tr>
+    <tr>
+        <td><strong>D. Line Item + Inventory / Stock Report</strong></td>
+        <td>
+            สกัดรายการสินค้า (line item) จากเอกสาร, จัดเตรียมข้อมูล inventory,
+            ส่งออกรายงาน stock สินค้า และ Sales Tax Report
+        </td>
+        <td>ลดภาระงานจัดทำรายงาน stock ที่ต้องทำด้วยคน ระบบช่วยดึงข้อมูลและจัดรูปแบบให้</td>
+    </tr>
+    <tr>
+        <td><strong>E. UAT / Go-Live / Handover</strong></td>
+        <td>
+            จัดเตรียม UAT, เปิด production, smoke test, handover, user/admin guide
+            และสรุปวิธีใช้งานหลังส่งมอบ
+        </td>
+        <td>ลูกค้าสามารถเริ่มทดสอบและใช้งานจริงตาม workflow ที่ตกลง</td>
+    </tr>
+    <tr>
+        <td><strong>F. Document Workflow</strong></td>
+        <td>
+            ปรับ workflow หลักตั้งแต่อัปโหลดเอกสาร, เลือกไฟล์, ประมวลผล, ตรวจผลสแกน,
+            ตรวจ mapping บัญชี และ export
+        </td>
+        <td>มี flow การทำงานครบตั้งแต่รับเอกสารจนได้ไฟล์ export</td>
+    </tr>
+</table>
+
+<h3>2.2 UX/UI Reference</h3>
+<p>
+    ภาพด้านล่างเป็นภาพจำลองหน้าจอและ workflow ที่จะใช้เป็นแนวทางส่งมอบ Phase II
+    เพื่อให้ผู้ว่าจ้างเห็นภาพว่าระบบที่พัฒนาจะช่วยงานส่วนใด และผู้ใช้จะทำงานผ่านหน้าจอใดบ้าง
+</p>
+
+<div class="ux-showcase">
+    <p class="ux-caption">หน้าหลัก: Upload → Review → Export</p>
+    <p class="ux-desc">
+        ผู้ใช้เลือกบริษัทก่อนอัปโหลดเอกสาร ระบบตรวจ Tax ID, ประมวลผล OCR/AI, ให้ผู้ใช้ตรวจข้อมูลสแกนและ mapping บัญชี
+        ก่อนส่งออกไฟล์สำหรับ Express/Excel
+    </p>
+    <div class="screen-mockup">
+        <div class="mock-topbar">
+            <span>LedgerFlow</span>
+            <span>Company: ABC Trading Co. | User: Admin</span>
+        </div>
+        <div class="mock-steps">
+            <div class="mock-step active">1 Upload</div>
+            <div class="mock-step">2 Select</div>
+            <div class="mock-step">3 Process</div>
+            <div class="mock-step">4 Scan Review</div>
+            <div class="mock-step">5 Map Review</div>
+            <div class="mock-step">6 Export</div>
+        </div>
+        <div class="mock-body">
+            <div class="mock-sidebar">
+                <div class="mock-card">
+                    <strong>Document Queue</strong>
+                    <span class="mock-chip">Tax ID OK</span>
+                    <div class="mock-line full"></div>
+                    <div class="mock-line mid"></div>
+                    <span class="mock-chip warn">WHT</span>
+                    <div class="mock-line short"></div>
+                </div>
+                <div class="mock-card">
+                    <strong>Processing Status</strong>
+                    <div class="mock-row"><span>OCR</span><span class="mock-chip">Done</span><span></span></div>
+                    <div class="mock-row"><span>Extract</span><span class="mock-chip">Done</span><span></span></div>
+                    <div class="mock-row"><span>Map COA</span><span class="mock-chip">Review</span><span></span></div>
+                </div>
+            </div>
+            <div class="mock-main">
+                <div class="mock-split">
+                    <div class="mock-doc">
+                        <strong>Document Preview — Wide Review Mode</strong>
+                        <div class="mock-line full"></div>
+                        <div class="mock-line mid"></div>
+                        <div class="mock-line full"></div>
+                        <div class="mock-line short"></div>
+                        <br>
+                        <div class="mock-line full"></div>
+                        <div class="mock-line mid"></div>
+                        <span class="mock-chip warn">VAT / WHT detected</span>
+                    </div>
+                    <div class="mock-form">
+                        <strong>Extracted Fields</strong>
+                        <div class="mock-field">Invoice Date: 2026-06-14</div>
+                        <div class="mock-field">Seller Tax ID: 01055xxxxxxx</div>
+                        <div class="mock-field">Net / VAT / Gross</div>
+                        <div class="mock-field">WHT Amount</div>
+                        <span class="mock-chip">Approve Header</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ux-showcase">
+    <p class="ux-caption">หน้าตั้งค่า: Company, COA, Vendor/Customer, Rule Generator</p>
+    <p class="ux-desc">
+        ผู้ดูแลระบบเพิ่มบริษัทลูกค้า, import ผังบัญชี, import รายชื่อผู้จำหน่ายและลูกค้า, ตรวจ preview ก่อนบันทึก
+        และใช้ COA Rule Generator เพื่อช่วยสร้าง mapping rule จากไฟล์ PDF/DOCX ที่ลูกค้ามีอยู่
+    </p>
+    <div class="screen-mockup">
+        <div class="mock-topbar">
+            <span>Settings</span>
+            <span>Companies | Chart of Accounts | Vendors / Customers | Rule Generator</span>
+        </div>
+        <div class="mock-body">
+            <div class="mock-sidebar">
+                <div class="mock-card">
+                    <strong>Company Profiles</strong>
+                    <div class="mock-list-item">ABC Trading Co. — Tax ID 01055xxxxxxx</div>
+                    <div class="mock-list-item">XYZ Import Export — Tax ID 01056xxxxxxx</div>
+                    <span class="mock-chip">Add Company</span>
+                </div>
+            </div>
+            <div class="mock-main">
+                <div class="mock-split">
+                    <div class="mock-card">
+                        <strong>COA CSV Import</strong>
+                        <div class="mock-line full"></div>
+                        <div class="mock-line mid"></div>
+                        <div class="mock-list-item">51101 — Purchase Expense</div>
+                        <div class="mock-list-item">14101 — Input VAT</div>
+                        <span class="mock-chip">Import COA</span>
+                    </div>
+                    <div class="mock-card">
+                        <strong>Vendor / Customer Import</strong>
+                        <div class="mock-line full"></div>
+                        <div class="mock-line mid"></div>
+                        <div class="mock-list-item">V001 — บริษัท ABC จำกัด</div>
+                        <div class="mock-list-item">C001 — ลูกค้า XYZ</div>
+                        <span class="mock-chip">Import Vendors</span>
+                        <span class="mock-chip">Import Customers</span>
+                    </div>
+                    <div class="mock-card">
+                        <strong>COA Rule Generator</strong>
+                        <div class="mock-field">Upload COA PDF</div>
+                        <div class="mock-field">Upload GL Mapping DOCX</div>
+                        <div class="mock-field">Business Type</div>
+                        <span class="mock-chip">Generate Rules</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ux-showcase">
+    <p class="ux-caption">หน้า Template Manager / Template Configurator</p>
+    <p class="ux-desc">
+        ผู้ใช้ clone template กลางไปยังบริษัทลูกค้า เลือก field ที่ต้องการ export, ลากสลับลำดับ column,
+        เปลี่ยนชื่อหัวตาราง และ preview ผลลัพธ์ก่อนดาวน์โหลด CSV/Excel
+    </p>
+    <div class="screen-mockup">
+        <div class="mock-topbar">
+            <span>Export Templates</span>
+            <span>Master Template → Company Template → Export Preview</span>
+        </div>
+        <div class="template-mock">
+            <div class="template-left">
+                <div class="mock-card">
+                    <strong>Master Templates</strong>
+                    <div class="mock-list-item">Express GL Ledger <span class="mock-chip">Clone</span></div>
+                    <div class="mock-list-item">Purchase Tax Report <span class="mock-chip">Clone</span></div>
+                    <div class="mock-list-item">Sales Tax Report <span class="mock-chip">Clone</span></div>
+                </div>
+                <div class="mock-card">
+                    <strong>Company Templates</strong>
+                    <div class="mock-list-item">ABC GL Ledger</div>
+                    <div class="mock-list-item">ABC Purchase Tax</div>
+                </div>
+            </div>
+            <div class="template-right">
+                <div class="template-columns">
+                    <div class="mock-card">
+                        <strong>Available Fields</strong>
+                        <div class="mock-list-item">invoice_number</div>
+                        <div class="mock-list-item">invoice_date</div>
+                        <div class="mock-list-item">seller_tax_id</div>
+                        <div class="mock-list-item">net_amount</div>
+                        <div class="mock-list-item">vat_amount</div>
+                        <div class="mock-list-item">account_code</div>
+                    </div>
+                    <div class="mock-card">
+                        <strong>Selected Columns (drag to reorder)</strong>
+                        <div class="mock-selected">1. Voucher_No — Rename</div>
+                        <div class="mock-selected">2. Date — YYYY-MM-DD</div>
+                        <div class="mock-selected">3. Account_Code</div>
+                        <div class="mock-selected">4. Debit_Amount</div>
+                        <div class="mock-selected">5. Credit_Amount</div>
+                        <span class="mock-chip">Preview Export</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table>
+    <tr>
+        <th>Feature</th>
+        <th>ผู้ใช้ทำอะไรได้</th>
+        <th>ประโยชน์ทางธุรกิจ</th>
+    </tr>
+    <tr>
+        <td><strong>Upload + Tax ID Pre-check</strong></td>
+        <td>เลือกบริษัทก่อนอัปโหลด และให้ระบบ flag เอกสารที่ Tax ID ไม่ตรง</td>
+        <td>ลดความเสี่ยงอัปโหลดเอกสารผิดบริษัท</td>
+    </tr>
+    <tr>
+        <td><strong>Scan Review + Wide Mode</strong></td>
+        <td>ดูภาพเอกสารขนาดใหญ่ขึ้น ตรวจ field สำคัญ และ approve ก่อน export</td>
+        <td>ลดเวลาตรวจเอกสารและลดการพลาดตัวเลข</td>
+    </tr>
+    <tr>
+        <td><strong>COA Mapping Review</strong></td>
+        <td>ตรวจรหัสบัญชี Dr/Cr และแก้ account code ก่อนยืนยัน</td>
+        <td>เตรียมข้อมูลให้พร้อมก่อนนำเข้า Express/Excel</td>
+    </tr>
+    <tr>
+        <td><strong>Template Configurator</strong></td>
+        <td>เลือก field, ลากเรียง column, เปลี่ยนชื่อ column, clone template รายบริษัท</td>
+        <td>รองรับ format export ที่ต่างกันของแต่ละบริษัทโดยไม่ต้องแก้ code ทุกครั้ง</td>
+    </tr>
+    <tr>
+        <td><strong>Company + COA + Vendor/Customer Admin</strong></td>
+        <td>เพิ่มบริษัท, import ผังบัญชี, import รายชื่อผู้จำหน่ายและลูกค้า, สร้าง rule mapping จากเอกสารประกอบ</td>
+        <td>รองรับสำนักงานบัญชีที่ดูแลหลายบริษัท และ template engine ค้นหารหัสผู้จำหน่าย/ลูกค้าจาก master data ได้</td>
+    </tr>
+</table>
+
+<div class="note-box">
+    <strong>หมายเหตุ UX/UI:</strong> ภาพจำลองในข้อ 2.2 เป็นแนวทางด้าน flow, feature และหน้าตาโดยรวม
+    ไม่ถือเป็นข้อผูกพันแบบ pixel-perfect เว้นแต่คู่สัญญาจะตกลงเพิ่มเติมเป็นลายลักษณ์อักษร
+</div>
+
+<h3>2.3 สถาปัตยกรรมระบบ (System Architecture)</h3>
+<p>
+    ระบบ Phase II ใช้สถาปัตยกรรมแบบ Web Application ผ่าน HTTPS โดยผู้ใช้งานเข้าผ่าน Browser
+    ระบบประมวลผลเอกสารบน Cloud/VPS, จัดเก็บข้อมูลในฐานข้อมูลและ storage ที่กำหนด,
+    และส่งออกข้อมูลเป็น CSV/Excel สำหรับนำไปใช้งานต่อในระบบบัญชีของผู้ว่าจ้าง
+</p>
+
+<p><strong>ภาพอ้างอิงจาก PoC เดิม:</strong> แสดงแนวคิดการใช้งานจากฝั่งผู้ใช้ อัปโหลดเอกสารเข้า Cloud และดาวน์โหลด CSV/Excel เพื่อนำไปใช้งานต่อ</p>
+
+<div class="diagram-container">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Sarabun, sans-serif" font-size="13">
+    <rect width="820" height="520" fill="#fff"/>
+
+    <rect x="30" y="60" width="240" height="280" rx="8" fill="none" stroke="#e67e22" stroke-width="2"/>
+    <text x="150" y="50" text-anchor="middle" font-weight="700" fill="#e67e22" font-size="14">User Side (PC)</text>
+
+    <circle cx="100" cy="140" r="20" fill="none" stroke="#555" stroke-width="1.5"/>
+    <line x1="100" y1="160" x2="100" y2="200" stroke="#555" stroke-width="1.5"/>
+    <line x1="80" y1="175" x2="120" y2="175" stroke="#555" stroke-width="1.5"/>
+    <line x1="100" y1="200" x2="85" y2="230" stroke="#555" stroke-width="1.5"/>
+    <line x1="100" y1="200" x2="115" y2="230" stroke="#555" stroke-width="1.5"/>
+
+    <rect x="140" y="120" width="70" height="50" rx="3" fill="none" stroke="#555" stroke-width="1.5"/>
+    <line x1="175" y1="170" x2="175" y2="185" stroke="#555" stroke-width="1.5"/>
+    <line x1="155" y1="185" x2="195" y2="185" stroke="#555" stroke-width="2"/>
+    <text x="150" y="240" text-anchor="middle" font-size="11" fill="#555">Accountant / Manager / Owner</text>
+
+    <rect x="50" y="280" width="80" height="40" rx="4" fill="#e8f8e8" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="90" y="305" text-anchor="middle" font-weight="700" fill="#27ae60" font-size="14">CSV</text>
+
+    <rect x="330" y="60" width="320" height="280" rx="8" fill="#e8f4fd" stroke="#2980b9" stroke-width="2"/>
+    <text x="490" y="50" text-anchor="middle" font-weight="700" fill="#2980b9" font-size="16">Cloud</text>
+
+    <rect x="360" y="90" width="260" height="45" rx="5" fill="#fff" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="490" y="118" text-anchor="middle" font-weight="600" fill="#2980b9">WebApp Frontend (HTTPS)</text>
+
+    <rect x="360" y="160" width="180" height="45" rx="5" fill="#fff" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="450" y="188" text-anchor="middle" font-weight="600" fill="#2980b9">Backend API + OCR/AI</text>
+
+    <rect x="560" y="160" width="60" height="45" rx="5" fill="#fff" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="590" y="183" text-anchor="middle" font-size="12" fill="#2980b9">DB</text>
+    <line x1="565" y1="190" x2="615" y2="190" stroke="#2980b9" stroke-width="1"/>
+    <line x1="565" y1="195" x2="615" y2="195" stroke="#2980b9" stroke-width="1"/>
+
+    <defs>
+        <marker id="pocArrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/>
+        </marker>
+        <marker id="pocArrowTeal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#16a085"/>
+        </marker>
+        <marker id="pocArrowOrange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#e67e22"/>
+        </marker>
+        <marker id="pocArrowGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/>
+        </marker>
+    </defs>
+
+    <rect x="265" y="95" width="22" height="28" rx="2" fill="#fff" stroke="#c0392b" stroke-width="1.2"/>
+    <text x="276" y="113" text-anchor="middle" font-size="8" fill="#c0392b" font-weight="700">PDF</text>
+    <polygon points="279,95 287,103 279,103" fill="#c0392b" opacity="0.3"/>
+
+    <line x1="215" y1="140" x2="350" y2="112" stroke="#2980b9" stroke-width="2" marker-end="url(#pocArrowBlue)"/>
+    <text x="280" y="135" text-anchor="middle" font-size="11" fill="#2980b9" font-weight="600">Upload</text>
+
+    <line x1="350" y1="300" x2="140" y2="300" stroke="#16a085" stroke-width="2.5" marker-end="url(#pocArrowTeal)" stroke-dasharray="6,3"/>
+    <text x="245" y="290" text-anchor="middle" font-size="11" fill="#16a085" font-weight="600">Download CSV</text>
+
+    <rect x="580" y="400" width="210" height="80" rx="8" fill="none" stroke="#e67e22" stroke-width="2"/>
+    <text x="685" y="430" text-anchor="middle" font-weight="700" fill="#e67e22" font-size="13">Express On-Prem Server</text>
+    <text x="685" y="450" text-anchor="middle" font-size="11" fill="#e67e22">Import Folder / Job</text>
+    <text x="685" y="468" text-anchor="middle" font-size="10" fill="#999">(ไม่อยู่ในขอบเขตสัญญานี้)</text>
+
+    <line x1="600" y1="340" x2="670" y2="395" stroke="#e67e22" stroke-width="2" marker-end="url(#pocArrowOrange)"/>
+    <text x="665" y="370" text-anchor="middle" font-size="10" fill="#e67e22" font-weight="600">Export CSV (Auto Option)</text>
+
+    <line x1="140" y1="330" x2="575" y2="440" stroke="#27ae60" stroke-width="2" marker-end="url(#pocArrowGreen)"/>
+    <text x="360" y="410" text-anchor="middle" font-size="11" fill="#27ae60" font-weight="600">Upload CSV (Manual Mode)</text>
+
+    <rect x="30" y="10" width="60" height="22" rx="11" fill="#27ae60"/>
+    <text x="60" y="25" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">HTTPS</text>
+    <text x="100" y="26" font-size="11" fill="#555">ผู้ใช้งานทุกคนเข้าหน้า WebApp ผ่าน Browser แบบเข้ารหัส</text>
+
+    <rect x="30" y="475" width="760" height="35" rx="4" fill="#f9f9f9" stroke="#ddd"/>
+    <rect x="50" y="486" width="14" height="14" rx="3" fill="#e8f4fd" stroke="#2980b9"/>
+    <text x="70" y="497" font-size="10">Cloud Components</text>
+    <rect x="180" y="486" width="14" height="14" rx="3" fill="none" stroke="#e67e22"/>
+    <text x="200" y="497" font-size="10">User / On-Prem</text>
+    <rect x="300" y="486" width="14" height="14" rx="3" fill="#16a085"/>
+    <text x="320" y="497" font-size="10">Download CSV Path</text>
+    <rect x="440" y="486" width="14" height="14" rx="3" fill="#27ae60"/>
+    <text x="460" y="497" font-size="10">Manual CSV Path</text>
+    <rect x="580" y="486" width="14" height="14" rx="3" fill="#e67e22"/>
+    <text x="600" y="497" font-size="10">Auto Export (Optional)</text>
+</svg>
+</div>
+
+<div class="warning-box">
+    <strong>ข้อจำกัดความรับผิดชอบ:</strong> ส่วน "Express On-Prem Server" ในแผนภาพ PoC เป็นเพียงการแสดงทางเลือกการนำ CSV เข้าระบบบัญชีของผู้ว่าจ้างเท่านั้น
+    ไม่อยู่ในขอบเขตงาน Phase II ผู้รับจ้างไม่รับผิดชอบต่อ Express, การบันทึกบัญชี หรือการนำข้อมูลเข้าระบบ GL ใด ๆ
+</div>
+
+<p><strong>ภาพสรุปสำหรับ Phase II:</strong> แสดงส่วนประกอบที่เพิ่มจาก PoC เช่น auth, background workers, storage, backup และ monitoring</p>
+
+<div class="arch-diagram">
+    <div class="arch-zone">
+        <h4>User Side</h4>
+        <div class="arch-box">Accountant / Manager / Owner</div>
+        <div class="arch-box">Web Browser ผ่าน HTTPS</div>
+        <div class="arch-box">Upload PDF / JPG / PNG</div>
+        <div class="arch-arrow">CSV / Excel Download</div>
+    </div>
+    <div class="arch-zone">
+        <h4>Cloud / VPS</h4>
+        <div class="arch-box">WebApp Frontend</div>
+        <div class="arch-box">Backend API + Auth/RBAC</div>
+        <div class="arch-box">OCR/AI Pipeline + Background Workers</div>
+        <div class="arch-box">PostgreSQL DB + File/Object Storage</div>
+        <div class="arch-box">Backup / Monitoring / Health Check</div>
+    </div>
+    <div class="arch-zone">
+        <h4>Accounting Output</h4>
+        <div class="arch-box">Express GL CSV/Excel</div>
+        <div class="arch-box">Purchase/Sales Tax Report</div>
+        <div class="arch-box">Inventory / Line Item Export</div>
+        <div class="arch-arrow">Manual Import by User</div>
+    </div>
+</div>
+
+<table>
+    <tr>
+        <th>Layer</th>
+        <th>รายละเอียด</th>
+    </tr>
+    <tr>
+        <td>User / Browser</td>
+        <td>ผู้ใช้งานเข้าระบบผ่าน browser แบบเข้ารหัส HTTPS เพื่ออัปโหลด ตรวจทาน และส่งออกข้อมูล</td>
+    </tr>
+    <tr>
+        <td>Frontend</td>
+        <td>หน้าจอ Upload, Review, Mapping, Export, Company/COA Admin และ Template Configurator</td>
+    </tr>
+    <tr>
+        <td>Backend API</td>
+        <td>จัดการ authentication, document workflow, extraction result, template/export และ admin operation</td>
+    </tr>
+    <tr>
+        <td>OCR/AI Processing</td>
+        <td>อ่านเอกสาร, สกัดข้อมูล, ตรวจ confidence, วิเคราะห์ VAT/WHT และส่งงานที่ต้องตรวจให้ Human Review</td>
+    </tr>
+    <tr>
+        <td>Database / Storage</td>
+        <td>เก็บ metadata, extraction result, template, audit trail และไฟล์เอกสารตาม retention policy ที่ตกลง</td>
+    </tr>
+    <tr>
+        <td>Accounting Output</td>
+        <td>ระบบจัดเตรียมไฟล์ CSV/Excel เท่านั้น ผู้ว่าจ้างเป็นผู้นำเข้า Express Accounting หรือระบบบัญชีอื่นด้วยตนเอง</td>
+    </tr>
+</table>
+
+<div class="warning-box">
+    <strong>ข้อจำกัดสถาปัตยกรรม:</strong> ส่วน Express Accounting, ERP, GL posting, e-filing,
+    on-premise server หรือ automation ที่นำไฟล์เข้าโปรแกรมบัญชีโดยตรง ไม่อยู่ในขอบเขต Phase II
+    เว้นแต่มีการตกลงเป็น Change Request แยกต่างหาก
+</div>
+
+<h3>2.4 ประเมินราคา Phase II ตาม Requirement และ Man-day</h3>
+<p>
+    ตารางนี้แสดงวิธีประเมินราคาตาม effort ของแต่ละ requirement โดยใช้อัตรา man-day ตามความยากง่ายของงาน
+    แล้วแสดงส่วนลดสำหรับงาน Phase II ซึ่งเป็นการต่อยอดจาก PoC และมีบางส่วนที่เตรียมไว้แล้ว
+</p>
+
+<table>
+    <tr>
+        <th style="width:20%;">Requirement</th>
+        <th>รายละเอียดที่คิดราคา</th>
+        <th style="width:10%;">Complexity</th>
+        <th style="width:9%;" class="right">MD</th>
+        <th style="width:13%;" class="right">Rate / MD</th>
+        <th style="width:14%;" class="right">ราคาประเมินเต็ม</th>
+        <th style="width:14%;" class="right">ยอดเสนอหลังส่วนลด</th>
+    </tr>
+    <tr>
+        <td><strong>A. Base Install / Foundation</strong></td>
+        <td>Infra, network, database, storage, workers, deployment base, UAT/Production environment และ PoC carry-over</td>
+        <td>Medium-High</td>
+        <td class="amount">10.0</td>
+        <td class="amount">25,000</td>
+        <td class="amount">250,000</td>
+        <td class="amount">220,000</td>
+    </tr>
+    <tr>
+        <td><strong>B. Accuracy Edge Cases</strong></td>
+        <td>Basic WHT detection (flag), Wide Review Mode จาก feedback PoC</td>
+        <td>High</td>
+        <td class="amount">1.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">30,000</td>
+        <td class="amount">15,000</td>
+    </tr>
+    <tr>
+        <td><strong>C. Template + Admin MVP</strong></td>
+        <td>Template manager, template configurator (รองรับ Express format), clone template, export config, login/admin/company/COA MVP, vendor/customer master import, basic dashboard และ document workflow integration</td>
+        <td>High</td>
+        <td class="amount">6.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">180,000</td>
+        <td class="amount">145,000</td>
+    </tr>
+    <tr>
+        <td><strong>D. Line Item + Inventory / Stock Report</strong></td>
+        <td>Line item extraction, inventory data preparation, stock report export, Sales Tax Report</td>
+        <td>High</td>
+        <td class="amount">4.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">120,000</td>
+        <td class="amount">95,000</td>
+    </tr>
+    <tr>
+        <td><strong>E. UAT / Go-Live / Handover</strong></td>
+        <td>UAT deploy, production go-live, smoke test, user guide, handover และ support ช่วงส่งมอบ</td>
+        <td>Medium</td>
+        <td class="amount">2.0</td>
+        <td class="amount">30,000</td>
+        <td class="amount">60,000</td>
+        <td class="amount">25,000</td>
+    </tr>
+    <tr class="total-row">
+        <td colspan="3" class="right">รวม Man-day / ราคาประเมินเต็ม</td>
+        <td class="amount">23.0</td>
+        <td></td>
+        <td class="amount">640,000</td>
+        <td class="amount">500,000</td>
+    </tr>
+    <tr>
+        <td colspan="6" class="right"><strong>ส่วนลด Phase II จาก PoC carry-over / early customer / combined package</strong></td>
+        <td class="amount">-140,000</td>
+    </tr>
+</table>
+
+<div class="note-box">
+    <strong>สรุปราคา Phase II Combined Package:</strong> ราคาประเมินเต็มตาม man-day เท่ากับ 640,000 บาท
+    ผู้รับจ้างให้ส่วนลด 140,000 บาท ทำให้ยอดเสนอเรียกเก็บจริงสำหรับ Phase II เท่ากับ
+    <strong>500,000 บาท</strong> โดยรายละเอียดงวดชำระอยู่ในข้อ 4
+</div>
+
+<div class="warning-box">
+    <strong>หมายเหตุ Combined Package:</strong>
+    ราคานี้รวม Requirement กลุ่ม A–E ไว้ในแพ็คเกจเดียว ซึ่งรวม Line Item Extraction, Inventory/Stock Report
+    และ Sales Tax Report ที่เดิมแยกเป็น Phase II/2 ไว้ในราคานี้แล้ว
+    ผู้รับจ้างให้ส่วนลดเนื่องจากเป็นลูกค้าที่ต่อยอดจาก PoC เดิม มีบางส่วนของ prototype/logic ที่สามารถนำกลับมาใช้ได้
+    และผู้รับจ้างสามารถนำ platform foundation บางส่วนไปใช้ร่วมกับงานภายในของผู้รับจ้างได้
+</div>
+
+<h2 class="page-break-before">ข้อ 3. (สงวนไว้)</h2>
+<p>
+    ขอบเขตที่เดิมระบุเป็น Phase II/2 Optional Add-on (Line Item Extraction, Inventory/Stock Report, Sales Tax Report)
+    ได้รวมเข้าไว้ใน Phase II — Combined Package ตามข้อ 2 เรียบร้อยแล้ว ข้อนี้จึงสงวนไว้เพื่อคงลำดับข้อสัญญา
+</p>
+
+<h2>ข้อ 4. ค่าจ้างและงวดการชำระเงิน</h2>
+
+<h3>4.1 ค่าพัฒนา Phase II — Combined Package</h3>
+<p>
+    ค่าพัฒนา Phase II — Combined Package รวมทั้งสิ้น <strong>500,000 บาท</strong> แบ่งชำระเป็น 4 งวดดังนี้
+</p>
+
+<table>
+    <tr>
+        <th>งวด</th>
+        <th class="right">Amount</th>
+        <th>Trigger</th>
+    </tr>
+    <tr>
+        <td><strong>1. Kickoff</strong></td>
+        <td class="amount">180,000 บาท</td>
+        <td>ชำระก่อนเริ่มงานหลังลงนามสัญญา (Condition Precedent)</td>
+    </tr>
+    <tr>
+        <td><strong>2. Foundation + Core MVP</strong></td>
+        <td class="amount">130,000 บาท</td>
+        <td>Foundation และ core workflow พร้อมทดสอบ</td>
+    </tr>
+    <tr>
+        <td><strong>3. UAT Ready</strong></td>
+        <td class="amount">120,000 บาท</td>
+        <td>Deploy UAT และเปิดให้ผู้ว่าจ้างทดสอบ</td>
+    </tr>
+    <tr>
+        <td><strong>4. Go-Live / Final Delivery</strong></td>
+        <td class="amount">70,000 บาท</td>
+        <td>Production go-live และ handover</td>
+    </tr>
+    <tr class="total-row">
+        <td class="right">รวม</td>
+        <td class="amount">500,000 บาท</td>
+        <td></td>
+    </tr>
+</table>
+
+<h3>4.2 (สงวนไว้)</h3>
+<p>
+    ขอบเขต Phase II/2 ได้รวมเข้าใน Combined Package ตามข้อ 4.1 แล้ว ข้อนี้จึงสงวนไว้เพื่อคงลำดับข้อสัญญา
+</p>
+
+<h3>4.3 ภาษีมูลค่าเพิ่มและภาษีหัก ณ ที่จ่าย</h3>
+<ul>
+    <li>ราคาข้างต้นยังไม่รวมภาษีมูลค่าเพิ่ม (VAT) เว้นแต่ระบุเป็นอย่างอื่น หากผู้รับจ้างมีสถานะจดทะเบียน VAT ให้เรียกเก็บ VAT ตามอัตราที่กฎหมายกำหนด</li>
+    <li>ผู้ว่าจ้างที่เป็นนิติบุคคลสามารถหักภาษี ณ ที่จ่ายตามอัตราและหลักเกณฑ์ที่กฎหมายกำหนด และต้องออกหนังสือรับรองหัก ณ ที่จ่ายให้ผู้รับจ้าง</li>
+    <li>รายละเอียดบัญชีรับชำระเงินของผู้รับจ้างให้ระบุในเอกสารแนบท้ายหรือใบแจ้งหนี้</li>
+    <li>หากผู้ว่าจ้างผิดนัดชำระเงินเกิน 15 วัน ผู้รับจ้างมีสิทธิ์หยุดงานหรือระงับบริการชั่วคราวจนกว่าจะได้รับชำระครบถ้วน</li>
+</ul>
+
+<h2>ข้อ 5. ค่าบริการรายเดือนหลัง Go-Live</h2>
+<p>
+    หลัง Production Go-Live ผู้ว่าจ้างตกลงชำระค่าบริการรายเดือนสำหรับ hosting, network, DNS, token/AI-OCR usage reserve และ MA support
+    ในราคาก่อนส่วนลด <strong>30,000 บาท/เดือน</strong> และได้รับส่วนลด 15% เหลือ <strong>25,500 บาท/เดือน</strong>
+</p>
+
+<table>
+    <tr>
+        <th>รายการ</th>
+        <th class="right">Amount</th>
+    </tr>
+    <tr>
+        <td>Hosting + Network + DNS</td>
+        <td class="amount">4,000 บาท</td>
+    </tr>
+    <tr>
+        <td>Token / AI-OCR Usage Reserve</td>
+        <td class="amount">20,000 บาท</td>
+    </tr>
+    <tr>
+        <td>MA Support</td>
+        <td class="amount">6,000 บาท</td>
+    </tr>
+    <tr>
+        <td class="right"><strong>รวมก่อนส่วนลด</strong></td>
+        <td class="amount">30,000 บาท</td>
+    </tr>
+    <tr>
+        <td class="right"><strong>ส่วนลด 15%</strong></td>
+        <td class="amount">-4,500 บาท</td>
+    </tr>
+    <tr class="total-row">
+        <td class="right">ยอดเรียกเก็บหลังส่วนลด</td>
+        <td class="amount">25,500 บาท/เดือน</td>
+    </tr>
+</table>
+
+<p>
+    ค่าบริการรายเดือนชำระล่วงหน้าภายในวันที่ 5 ของแต่ละเดือน เว้นแต่คู่สัญญาจะตกลงเป็นอย่างอื่นเป็นลายลักษณ์อักษร
+</p>
+
+<h2>ข้อ 6. ระยะเวลาดำเนินงาน</h2>
+<table>
+    <tr>
+        <th>Phase</th>
+        <th>ระยะเวลาโดยประมาณ</th>
+        <th>หมายเหตุ</th>
+    </tr>
+    <tr>
+        <td>Phase II — Combined Package</td>
+        <td>ประมาณ 10 สัปดาห์</td>
+        <td>นับจากวันที่ได้รับชำระงวด Kickoff และได้รับข้อมูลที่จำเป็นจากผู้ว่าจ้างครบถ้วน</td>
+    </tr>
+</table>
+
+<h2 class="page-break-before">ข้อ 7. จำนวนรอบแก้ไขและ Change Request</h2>
+<table>
+    <tr>
+        <th>รายการ</th>
+        <th>จำนวนที่รวมในสัญญา</th>
+    </tr>
+    <tr>
+        <td>UX/UI revision ก่อน UAT</td>
+        <td>ไม่เกิน 2 รอบ</td>
+    </tr>
+    <tr>
+        <td>UAT revision</td>
+        <td>ไม่เกิน 2 รอบ</td>
+    </tr>
+    <tr>
+        <td>Warranty bug fix หลัง Go-Live</td>
+        <td>7 วัน สำหรับ defect ที่ไม่เป็นไปตาม scope ที่ตกลง</td>
+    </tr>
+    <tr>
+        <td>Template adjustment ใน MA รายเดือน</td>
+        <td>ไม่เกิน 2 ครั้ง/เดือน</td>
+    </tr>
+</table>
+
+<p>
+    งานที่เป็น requirement ใหม่, report format ใหม่, document type ใหม่ที่ต้อง tune/train เพิ่ม, การเชื่อมต่อ Express/ERP โดยตรง,
+    หรือการเปลี่ยนแปลงที่อยู่นอก scope ที่ระบุในสัญญานี้ ให้ถือเป็น Change Request (CR)
+    โดยคิดค่าบริการในอัตรา <strong>20,000-30,000 บาทต่อ 1 man-day</strong> ตามความยากง่ายและผลกระทบของงาน
+    ทั้งนี้ต้องได้รับอนุมัติจากผู้ว่าจ้างก่อนเริ่มงาน CR
+</p>
+
+<h2>ข้อ 8. หน้าที่ของผู้ว่าจ้าง</h2>
+<ol>
+    <li>จัดส่งตัวอย่าง CSV/Excel ที่สามารถ import เข้า Express Accounting ได้จริง รวมถึง column order, encoding และ delimiter ที่ต้องการ</li>
+    <li>จัดส่งผังบัญชี (Chart of Accounts / COA), รายชื่อผู้จำหน่าย (Vendor List) และรายชื่อลูกค้า (Customer List) รวมถึงข้อมูลบริษัทที่เกี่ยวข้อง เช่น ชื่อบริษัท เลขประจำตัวผู้เสียภาษี สาขา และข้อมูล mapping ที่ต้องใช้</li>
+    <li>จัดส่งตัวอย่างเอกสารจริงหรือเอกสารทดสอบที่ได้รับอนุญาตให้ใช้สำหรับ OCR/AI testing ตามจำนวนและรูปแบบที่เพียงพอต่อการทดสอบ</li>
+    <li>ให้ข้อมูล DNS, domain, hosting หรือสิทธิ์ที่จำเป็นต่อการตั้งค่า UAT/Production ตามที่ตกลง</li>
+    <li>ทดสอบ UAT และส่ง feedback ภายในระยะเวลาที่คู่สัญญากำหนดร่วมกัน หากล่าช้า ระยะเวลาส่งมอบอาจเลื่อนออกไปตามจำนวนวันที่ล่าช้า</li>
+    <li>ตรวจสอบความถูกต้องของข้อมูลที่ระบบสกัดก่อนนำไปใช้ด้านบัญชี ภาษี หรือการเงินทุกครั้ง</li>
+</ol>
+
+<h2>ข้อ 9. ข้อจำกัดและข้อสงวนสิทธิ์ด้าน AI/OCR</h2>
+<div class="warning-box">
+    ระบบ LedgerFlow / AI Pre-Accounting Copilot ใช้เทคโนโลยี AI/OCR ในการอ่านและสกัดข้อมูลจากเอกสาร
+    ซึ่งอาจมีความคลาดเคลื่อนจากคุณภาพเอกสาร รูปแบบเอกสาร ภาษา ตาราง เส้นกริด หรือข้อจำกัดของโมเดล
+    ผู้ใช้งานต้องตรวจสอบและยืนยันข้อมูลก่อน export หรือนำไปใช้งานทุกครั้ง
+</div>
+<ol>
+    <li>ระบบนี้เป็นเครื่องมือช่วยจัดเตรียมข้อมูลก่อนลงบัญชี (Pre-Accounting) ไม่ใช่ระบบบัญชีเต็มรูปแบบ</li>
+    <li>ระบบนี้ไม่ใช่และไม่ทดแทน Express Accounting หรือซอฟต์แวร์บัญชีอื่นใด</li>
+    <li>ระบบนี้ไม่ทำหน้าที่บันทึกบัญชีจริง, post GL เข้า ERP, ยื่นภาษี, หรือรับรองความถูกต้องทางบัญชี/ภาษี</li>
+    <li>ผู้รับจ้างไม่รับผิดชอบต่อความเสียหายที่เกิดจากการนำข้อมูลที่ยังไม่ได้ตรวจสอบไปใช้ตัดสินใจทางบัญชี ภาษี หรือการเงิน</li>
+</ol>
+
+<h2>ข้อ 10. การส่งมอบและการยอมรับงาน</h2>
+<ol>
+    <li>ผู้รับจ้างจะส่งมอบงานผ่าน UAT environment, Production environment, เอกสารคู่มือ หรือไฟล์ส่งมอบตามความเหมาะสมของแต่ละ milestone</li>
+    <li>ผู้ว่าจ้างต้องแจ้ง defect หรือ feedback ในขอบเขต UAT ภายในระยะเวลาที่ตกลงร่วมกัน</li>
+    <li>หากผู้ว่าจ้างไม่แจ้ง feedback ภายในเวลาที่กำหนดโดยไม่มีเหตุอันสมควร ให้ถือว่างานใน milestone นั้นได้รับการยอมรับโดยปริยาย</li>
+    <li>Defect หมายถึงการทำงานที่ไม่ตรงกับ scope หรือ acceptance criteria ที่ตกลงไว้ ไม่รวม requirement ใหม่หรือการเปลี่ยนแปลงวิธีทำงานภายหลัง</li>
+</ol>
+
+<h2>ข้อ 11. การดูแลระบบและ MA Support</h2>
+<p>
+    การดูแลระบบหลัง Go-Live รวมอยู่ในค่าบริการรายเดือนตามข้อ 5 โดยครอบคลุมการสนับสนุนออนไลน์
+    การตรวจสอบ incident, bug triage, monitoring, backup operation เบื้องต้น และการปรับ template ตามจำนวนที่ระบุ
+</p>
+
+<h3>11.1 MA Support — Online</h3>
+<table>
+    <tr>
+        <th>รายการ</th>
+        <th>รายละเอียด</th>
+    </tr>
+    <tr>
+        <td>ช่องทาง</td>
+        <td>Email / LINE / Ticket / Online meeting หรือช่องทางอื่นที่คู่สัญญาตกลงร่วมกัน</td>
+    </tr>
+    <tr>
+        <td>เวลาให้บริการ</td>
+        <td>วันจันทร์-ศุกร์ 09:00-18:00 น. ไม่รวมวันหยุดนักขัตฤกษ์ เว้นแต่ตกลงเป็นกรณีพิเศษ</td>
+    </tr>
+    <tr>
+        <td>ขอบเขตที่รวม</td>
+        <td>ตรวจสอบปัญหาระบบ, แก้ไข defect, ให้คำปรึกษาการใช้งาน, ตรวจสอบ backup/monitoring เบื้องต้น และ template adjustment ไม่เกิน 2 ครั้ง/เดือน</td>
+    </tr>
+    <tr>
+        <td>ขอบเขตที่ไม่รวม</td>
+        <td>feature ใหม่, report format ใหม่, document type tuning ใหม่, direct Express/ERP integration, on-site support นอกเวลาทำงาน และปัญหาจากระบบภายนอกที่อยู่นอกการควบคุมของผู้รับจ้าง</td>
+    </tr>
+</table>
+
+<h3>11.2 SLA — Service Level Agreement</h3>
+<table>
+    <tr>
+        <th>รายการ</th>
+        <th>มาตรฐานบริการ</th>
+    </tr>
+    <tr>
+        <td>Uptime Target</td>
+        <td>99.5% ต่อเดือน สำหรับส่วน Web Application ที่ผู้รับจ้างดูแลโดยตรง ไม่รวม scheduled maintenance และ third-party outage</td>
+    </tr>
+    <tr>
+        <td>Response Time</td>
+        <td>Critical: ภายใน 4 ชั่วโมงทำการ / High: ภายใน 1 วันทำการ / Normal: ภายใน 3 วันทำการ</td>
+    </tr>
+    <tr>
+        <td>Bug Fix Target</td>
+        <td>Critical: เริ่มแก้ภายใน 24 ชั่วโมงหลังรับทราบและได้รับข้อมูลครบ / Normal: ภายใน 3-5 วันทำการตามความซับซ้อน</td>
+    </tr>
+    <tr>
+        <td>RTO (Recovery Time Objective)</td>
+        <td>24 ชั่วโมง สำหรับเหตุขัดข้องร้ายแรงที่ต้องกู้ระบบจาก backup หรือ redeploy service</td>
+    </tr>
+    <tr>
+        <td>RPO (Recovery Point Objective)</td>
+        <td>3 ชั่วโมง สำหรับข้อมูลระบบที่อยู่ภายใต้ backup policy ที่ผู้รับจ้างดูแล</td>
+    </tr>
+</table>
+
+<p>
+    <strong>Scheduled maintenance:</strong> ผู้รับจ้างจะแจ้งล่วงหน้าไม่น้อยกว่า 48 ชั่วโมงหากมีการปิดระบบหรือ restart service ที่อาจกระทบผู้ใช้งาน
+    เว้นแต่เป็นเหตุเร่งด่วนด้านความปลอดภัยหรือ incident ที่ต้องแก้ไขทันที
+</p>
+<p>
+    <strong>ข้อยกเว้น SLA:</strong> เหตุสุดวิสัย, ปัญหา internet/network ของผู้ว่าจ้าง, ปัญหาจาก cloud/VPS provider,
+    domain/DNS provider, OCR/LLM/AI API provider, การใช้งานผิดวิธี, ข้อมูลนำเข้าผิดปกติ, หรือการแก้ไขระบบโดยบุคคลภายนอก
+    ไม่ถือเป็น downtime หรือ defect ที่ผู้รับจ้างต้องรับผิดตาม SLA
+</p>
+
+<h3>11.3 MA Support — On-Site</h3>
+<table>
+    <tr>
+        <th>รายการ</th>
+        <th>รายละเอียด</th>
+    </tr>
+    <tr>
+        <td>การนัดหมาย</td>
+        <td>แจ้งล่วงหน้าอย่างน้อย 3 วันทำการ และต้องได้รับการยืนยันจากผู้รับจ้างก่อน</td>
+    </tr>
+    <tr>
+        <td>วัน-เวลาปกติ</td>
+        <td>จันทร์-ศุกร์ 09:00-18:00 น. คิดค่าใช้จ่ายตามที่ตกลงในใบเสนอราคา/ใบอนุมัติงานเพิ่มเติม เว้นแต่มีการระบุว่ารวมไว้แล้ว</td>
+    </tr>
+    <tr>
+        <td>วันเสาร์-อาทิตย์หรือนอกเวลาทำงาน</td>
+        <td>คิดค่าใช้จ่ายเพิ่มเติม 20,000-30,000 บาท/ครั้ง หรือตามที่คู่สัญญาตกลงเป็นลายลักษณ์อักษรก่อนเข้าปฏิบัติงาน</td>
+    </tr>
+    <tr>
+        <td>ขอบเขต On-Site</td>
+        <td>ตรวจปัญหาหน้างาน, ช่วยตั้งค่าที่จำเป็น, อบรมเพิ่มเติม และตรวจสอบเอกสารตัวอย่างตามที่ตกลงร่วมกัน</td>
+    </tr>
+</table>
+
+<div class="note-box">
+    ผู้รับจ้างจะแจ้งค่าใช้จ่ายและขอบเขต On-Site ก่อนเข้าปฏิบัติงานทุกครั้ง
+    และจะเริ่มดำเนินการเมื่อได้รับการยืนยันจากผู้ว่าจ้างเป็นลายลักษณ์อักษรหรือผ่านช่องทางอิเล็กทรอนิกส์ที่ตกลงร่วมกัน
+</div>
+
+<h2 class="page-break-before">ข้อ 12. ทรัพย์สินทางปัญญาและใบอนุญาต (IP & License)</h2>
+<ol>
+    <li><strong>กรรมสิทธิ์ของระบบ:</strong> ระบบ LedgerFlow / AI Pre-Accounting Copilot และส่วนประกอบที่ผู้รับจ้างพัฒนาหรือมีอยู่ก่อนโครงการนี้ รวมถึง algorithm, source code, documentation, prompt, template engine, automation, reusable component, know-how, workflow design และ configuration framework เป็นทรัพย์สินทางปัญญาของผู้รับจ้าง เว้นแต่คู่สัญญาจะตกลงเป็นอย่างอื่นเป็นลายลักษณ์อักษร</li>
+    <li><strong>ใบอนุญาตใช้งาน:</strong> เมื่อผู้ว่าจ้างชำระค่าจ้างครบถ้วนตามงวดที่ถึงกำหนด ผู้ว่าจ้างได้รับสิทธิ์ใช้งานระบบแบบ non-exclusive, non-transferable และ revocable เฉพาะเพื่อใช้ในกิจการภายในของผู้ว่าจ้างและบริษัทลูกค้าของผู้ว่าจ้างตามขอบเขตที่ตกลงในสัญญานี้</li>
+    <li><strong>ข้อห้าม:</strong> ผู้ว่าจ้างจะไม่นำระบบหรือส่วนประกอบของระบบไปขาย ให้เช่า แจกจ่าย ให้บริการต่อบุคคลภายนอก ทำซ้ำ ดัดแปลง สร้าง derivative works, reverse engineer, พยายามถอดรหัส หรือใช้เพื่อพัฒนาระบบแข่งขันกับผู้รับจ้าง เว้นแต่ได้รับอนุญาตเป็นลายลักษณ์อักษรจากผู้รับจ้าง</li>
+    <li><strong>ข้อมูลของผู้ว่าจ้าง:</strong> เอกสารต้นฉบับ ข้อมูลธุรกิจ ผังบัญชี ข้อมูลลูกค้า และข้อมูลที่ผู้ว่าจ้างอัปโหลดเข้าระบบยังคงเป็นทรัพย์สินของผู้ว่าจ้าง ผู้รับจ้างจะไม่นำข้อมูลดังกล่าวไปใช้นอกเหนือจากการพัฒนา ทดสอบ ส่งมอบ และดูแลระบบตามสัญญานี้</li>
+    <li><strong>Open-source / third-party components:</strong> library, service, AI/OCR API, cloud/VPS service หรือ component ของบุคคลภายนอกอยู่ภายใต้เงื่อนไข license และ service terms ของผู้ให้บริการนั้น ๆ ซึ่งคู่สัญญาต้องปฏิบัติตามเท่าที่เกี่ยวข้อง</li>
+    <li><strong>งานส่งมอบเฉพาะลูกค้า:</strong> export template, mapping configuration, report configuration หรือ rule ที่สร้างขึ้นจากข้อมูลของผู้ว่าจ้าง ให้ผู้ว่าจ้างมีสิทธิ์ใช้งานภายในกิจการตามสัญญานี้ แต่ framework และเครื่องมือที่ใช้สร้างยังคงเป็นของผู้รับจ้าง</li>
+</ol>
+
+<h2>ข้อ 13. การรักษาความลับและข้อมูลส่วนบุคคล</h2>
+<ol>
+    <li>คู่สัญญาต้องรักษาความลับของข้อมูลทางธุรกิจ เอกสารบัญชี ข้อมูลลูกค้า ข้อมูลระบบ และข้อมูลอื่นที่ได้รับจากอีกฝ่าย</li>
+    <li>ผู้รับจ้างจะใช้ข้อมูลของผู้ว่าจ้างเฉพาะเพื่อการพัฒนา ทดสอบ ส่งมอบ และดูแลระบบตามสัญญานี้เท่านั้น</li>
+    <li>หากมีข้อมูลส่วนบุคคล คู่สัญญาจะร่วมกันกำหนดวิธีเก็บ ใช้ ลบ หรือจำกัดการเข้าถึงให้เหมาะสมกับกฎหมายและความจำเป็นของโครงการ</li>
+</ol>
+
+<h2>ข้อ 14. การลงนามออนไลน์และเอกสารอิเล็กทรอนิกส์</h2>
+<p>
+    คู่สัญญาตกลงให้การลงนามในสัญญาหรือเอกสารที่เกี่ยวข้องด้วยลายมือชื่ออิเล็กทรอนิกส์,
+    การลงนามบนไฟล์ PDF, การสแกนเอกสารลงนาม, การยืนยันผ่านอีเมล, หรือการยืนยันเป็นลายลักษณ์อักษรผ่านช่องทางอิเล็กทรอนิกส์ที่คู่สัญญาตกลงใช้
+    มีผลผูกพันคู่สัญญาเช่นเดียวกับการลงนามในเอกสารต้นฉบับบนกระดาษ
+</p>
+<p>
+    เอกสารอิเล็กทรอนิกส์ สำเนา PDF หรือสำเนาสแกนที่มีลายมือชื่อหรือหลักฐานการยืนยันของคู่สัญญา
+    สามารถใช้เป็นหลักฐานแห่งข้อตกลงและการอนุมัติได้
+</p>
+
+<h2>ข้อ 15. การยกเลิกสัญญา</h2>
+<ol>
+    <li>หากฝ่ายใดฝ่ายหนึ่งผิดสัญญาอย่างมีนัยสำคัญ อีกฝ่ายต้องแจ้งเป็นลายลักษณ์อักษรเพื่อให้แก้ไขภายใน 15 วัน</li>
+    <li>หากไม่แก้ไขภายในกำหนด ฝ่ายที่ไม่ได้ผิดสัญญามีสิทธิ์ยกเลิกสัญญาหรือระงับการให้บริการตามสมควร</li>
+    <li>ค่าจ้างที่ถึงกำหนดหรือชำระแล้วสำหรับงานที่ดำเนินการแล้วไม่สามารถเรียกคืนได้ เว้นแต่คู่สัญญาจะตกลงเป็นอย่างอื่นเป็นลายลักษณ์อักษร</li>
+    <li>การยกเลิกสัญญาไม่กระทบต่อหน้าที่รักษาความลับ การชำระหนี้ค้าง และข้อจำกัดความรับผิดที่เกิดขึ้นก่อนวันยกเลิก</li>
+</ol>
+
+<h2>ข้อ 16. ข้อจำกัดความรับผิด</h2>
+<ol>
+    <li>ผู้รับจ้างรับผิดชอบเฉพาะการพัฒนาระบบตามขอบเขตและ acceptance criteria ที่ตกลงไว้ในสัญญานี้</li>
+    <li>ผู้รับจ้างไม่รับผิดชอบต่อความเสียหายทางอ้อม กำไรที่สูญหาย ความเสียหายจากการใช้งานข้อมูลโดยไม่ตรวจสอบ หรือความเสียหายจากระบบภายนอกที่ไม่ได้อยู่ภายใต้การควบคุมของผู้รับจ้าง</li>
+    <li>ความรับผิดรวมของผู้รับจ้างภายใต้สัญญานี้ไม่เกินค่าจ้างที่ผู้ว่าจ้างชำระจริงให้ผู้รับจ้างสำหรับ Phase ที่เกี่ยวข้องกับเหตุแห่งความรับผิดนั้น</li>
+</ol>
+
+<h2>ข้อ 17. เหตุสุดวิสัย</h2>
+<p>
+    คู่สัญญาไม่ต้องรับผิดในความล่าช้าหรือการไม่สามารถปฏิบัติตามสัญญา อันเกิดจากเหตุสุดวิสัยหรือเหตุที่อยู่นอกเหนือการควบคุมโดยสมเหตุสมผล
+    เช่น ภัยธรรมชาติ สงคราม โรคระบาด คำสั่งหน่วยงานรัฐ เหตุขัดข้องของ cloud provider, AI provider, network, domain registrar หรือบริการภายนอกอื่น
+    ทั้งนี้ฝ่ายที่ได้รับผลกระทบต้องแจ้งให้อีกฝ่ายทราบภายในเวลาอันสมควร
+</p>
+
+<h2>ข้อ 18. กฎหมายที่ใช้บังคับและข้อพิพาท</h2>
+<ol>
+    <li>สัญญานี้อยู่ภายใต้กฎหมายไทย</li>
+    <li>หากเกิดข้อพิพาท คู่สัญญาจะเจรจาโดยสุจริตเพื่อหาข้อยุติร่วมกันก่อน</li>
+    <li>หากไม่สามารถตกลงกันได้ คู่สัญญาอาจนำข้อพิพาทเข้าสู่ศาลไทยที่มีเขตอำนาจ หรือกระบวนการระงับข้อพิพาทอื่นที่ตกลงร่วมกัน</li>
+</ol>
+
+<h2 class="page-break-before">ลงนาม</h2>
+<p>
+    คู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในสัญญานี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นหลักฐาน
+    ทั้งนี้การลงนามออนไลน์หรือเอกสารอิเล็กทรอนิกส์ให้มีผลตามข้อ 14
+</p>
+
+<div class="signature-area">
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>(..................................................)</p>
+        <p class="sig-label"><strong>ผู้ว่าจ้าง</strong></p>
+        <p class="sig-label">บริษัท บีดับบลิวซี แอคเคาท์ จำกัด</p>
+        <p class="sig-label">ตำแหน่ง: <span class="blank-short"></span></p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+        <div class="stamp-circle">ประทับตรา</div>
+    </div>
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>( พิบูลย์ศักดิ์ พิมสาร )</p>
+        <p class="sig-label"><strong>ผู้รับจ้าง</strong></p>
+        <p class="sig-label">บริษัท หญ้าหวานช็อป จำกัด</p>
+        <p class="sig-label">ตำแหน่ง: กรรมการ</p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+        <div class="stamp-circle">ประทับตรา</div>
+    </div>
+</div>
+
+<div class="signature-area" style="margin-top:28px;">
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>(..................................................)</p>
+        <p class="sig-label"><strong>พยานฝ่ายผู้ว่าจ้าง</strong></p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+    </div>
+    <div class="sig-box">
+        <div class="sig-line"></div>
+        <p>(..................................................)</p>
+        <p class="sig-label"><strong>พยานฝ่ายผู้รับจ้าง</strong></p>
+        <p class="sig-label">วันที่: ____/____/________</p>
+    </div>
+</div>
+
+<div class="footer-note">
+    <p><strong>หมายเหตุ:</strong> สัญญาฉบับนี้จัดทำขึ้นเป็น 2 ฉบับ มีข้อความถูกต้องตรงกัน คู่สัญญาแต่ละฝ่ายถือไว้ฝ่ายละ 1 ฉบับ</p>
+    <p><strong>Reference:</strong> Phase II Epic Roadmap, UX/UI Prototype, Template Configurator Demo, and PoC outputs as of 2026-06-15</p>
+</div>
+
+</body>
+</html>

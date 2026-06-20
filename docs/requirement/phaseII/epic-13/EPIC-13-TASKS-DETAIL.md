@@ -1,0 +1,819 @@
+# Epic 13 — Infrastructure + Deployment: Tasks Detail
+
+> **Phase**: II/1 (parallel W1-W8)
+> **Infrastructure Decision**: Hostinger VPS all-in (compute + DB + storage ทุกอย่างบน VPS)
+> **Created**: 2026-06-15
+
+---
+
+## TASK-1301: VPS Architecture Design
+
+**Owner**: DevOps
+**Risk**: LOW
+**Duration**: ~2 days
+**Closes pain points**: PP-2, PP-3, PP-5
+
+### Purpose
+
+กำหนด blueprint ของ infrastructure ทั้งหมดก่อนเริ่ม build — ป้องกันการ re-work ระหว่าง sprint. Document ว่า service ไหนอยู่ที่ไหน, network flow เป็นอย่างไร, resource sizing เท่าไร.
+
+### What exists today
+
+- PoC Docker Compose (`docker-compose.yml`) มี backend, postgres, redis, minio — แต่เป็น dev mode
+- PoC runs on Hostinger VPS (single instance, demo.bwc.biz)
+- Architecture diagram ใน PHASE-II-EPIC-ROADMAP.md (high-level)
+
+### What to build
+
+1. Detailed service topology document
+2. Network diagram: nginx (SSL termination) → backend (FastAPI) → celery-worker → postgres → redis → minio
+3. Resource sizing justification:
+   - UAT: KVM 2 (2 vCPU, 8GB RAM) — sufficient for testing workloads
+   - PROD: KVM 4 (4 vCPU, 16GB RAM) — handles 10K-20K docs/month
+4. Port mapping (internal Docker network vs exposed)
+5. Volume mount strategy (data persistence)
+6. Environment separation strategy (UAT vs PROD configs)
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `docs/architecture/vps-architecture.md` | Service topology + network diagram |
+| Create | `docs/architecture/resource-sizing.md` | Sizing justification + capacity planning |
+| Create | `docs/architecture/environment-strategy.md` | UAT vs PROD config separation |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1301_01 | Architecture document has service topology diagram | Manual review |
+| ac_1301_02 | Resource sizing justified with workload estimates | Manual review |
+| ac_1301_03 | Network diagram shows all service connections + ports | Manual review |
+| ac_1301_04 | Environment separation strategy documented (UAT vs PROD) | Manual review |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1301",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["docs/**", "docker/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1302: VPS Procurement — UAT + PROD
+
+**Owner**: DevOps
+**Risk**: LOW
+**Duration**: ~1 day
+**Closes pain points**: PP-2, PP-5
+
+### Purpose
+
+สั่งซื้อ VPS instances จาก Hostinger เพื่อให้มี environment พร้อมสำหรับ setup. ต้องได้ Singapore DC เพื่อ latency ต่ำสำหรับ users ในไทย.
+
+### What exists today
+
+- PoC VPS on Hostinger (demo.bwc.biz) — ใช้ต่อสำหรับ demo
+- Hostinger account ready
+
+### What to build
+
+1. Order Hostinger KVM 2 for UAT (~$10-15/mo)
+2. Order Hostinger KVM 4 for PROD (~$16-25/mo)
+3. Verify Singapore DC for both instances
+4. Verify SSH access (key-based)
+5. Document IP addresses, hostnames, specs
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `docs/infrastructure/vps-inventory.md` | IP addresses, specs, DC location, costs |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1302_01 | UAT VPS accessible via SSH | `ssh user@uat-ip 'hostname'` |
+| ac_1302_02 | PROD VPS accessible via SSH | `ssh user@prod-ip 'hostname'` |
+| ac_1302_03 | Both VPS in Singapore DC | Verify in Hostinger panel |
+| ac_1302_04 | VPS specs match order (UAT: 2vCPU/8GB, PROD: 4vCPU/16GB) | `nproc && free -h` |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1302",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["docs/**"],
+  "forbidden_scope": [".env*", "src/**", "docker/**", "scripts/**"],
+  "max_loops": 3,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1303: Base OS Setup + Docker Engine + Security Hardening
+
+**Owner**: DevOps
+**Risk**: MEDIUM
+**Duration**: ~3 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-15
+
+### Purpose
+
+ติดตั้ง Docker Engine + hardening ทั้ง UAT และ PROD — เป็น foundation สำหรับทุก service ที่ deploy ผ่าน Docker Compose. Security hardening ป้องกัน brute-force + unauthorized access.
+
+### What exists today
+
+- PoC VPS มี Docker installed แต่ไม่มี hardening
+- No fail2ban, root SSH still enabled on PoC
+
+### What to build
+
+1. **Docker Engine + Docker Compose** — install on both UAT and PROD
+2. **Security hardening**:
+   - Disable root SSH login
+   - SSH key-only authentication (disable password auth)
+   - Install + configure fail2ban (SSH brute-force protection)
+   - Create system user `deploy` for Docker operations
+3. **System tuning**:
+   - Swap configuration (2GB swap file)
+   - sysctl tuning for PostgreSQL (vm.overcommit_memory, vm.swappiness)
+4. **Setup script** — idempotent, can re-run safely
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `scripts/infra/setup-vps.sh` | Idempotent VPS setup script |
+| Create | `scripts/infra/harden-ssh.sh` | SSH hardening script |
+| Create | `docs/infrastructure/security-hardening.md` | Hardening checklist + verification steps |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1303_01 | Docker Engine runs on both VPS | `docker version` returns version |
+| ac_1303_02 | Docker Compose runs on both VPS | `docker compose version` returns version |
+| ac_1303_03 | Root SSH disabled | `ssh root@host` rejected |
+| ac_1303_04 | SSH key-only auth | `ssh -o PasswordAuthentication=yes` rejected |
+| ac_1303_05 | fail2ban active and monitoring SSH | `fail2ban-client status sshd` shows active |
+| ac_1303_06 | Deploy user can run Docker | `su - deploy -c 'docker ps'` works |
+| ac_1303_07 | Swap configured | `swapon --show` shows 2GB swap |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1303",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["docs/**", "docker/**", "scripts/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1304: DNS Delegation + Certbot SSL
+
+**Owner**: DevOps
+**Risk**: MEDIUM
+**Duration**: ~2 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-15
+
+### Purpose
+
+ตั้ง DNS subdomains ให้ชี้มาที่ VPS ที่ถูกต้อง + SSL certificates สำหรับ HTTPS. External dependency: ต้องขอ DNS delegation จาก bwc.biz admin.
+
+### What exists today
+
+- demo.bwc.biz points to PoC VPS (existing)
+- No SSL on PoC (or self-signed)
+
+### What to build
+
+1. **DNS records** (request from bwc.biz admin):
+   - `app.bwc.biz` → A record → PROD VPS IP
+   - `uat.bwc.biz` → A record → UAT VPS IP
+   - `demo.bwc.biz` → A record → PoC VPS IP (verify existing)
+2. **Certbot Let's Encrypt SSL** for all subdomains
+3. **Auto-renew** cron job (certbot renew --quiet)
+4. **nginx SSL config** template for Docker
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `scripts/infra/setup-certbot.sh` | Certbot installation + certificate issuance |
+| Create | `docker/nginx/nginx.conf.template` | nginx config with SSL termination |
+| Create | `docs/infrastructure/dns-setup.md` | DNS records + SSL certificate details |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1304_01 | app.bwc.biz resolves to PROD VPS IP | `dig app.bwc.biz +short` returns PROD IP |
+| ac_1304_02 | uat.bwc.biz resolves to UAT VPS IP | `dig uat.bwc.biz +short` returns UAT IP |
+| ac_1304_03 | SSL certificate valid for app.bwc.biz | `curl -v https://app.bwc.biz` shows valid cert |
+| ac_1304_04 | SSL certificate valid for uat.bwc.biz | `curl -v https://uat.bwc.biz` shows valid cert |
+| ac_1304_05 | Auto-renew cron configured | `crontab -l` shows certbot renew entry |
+| ac_1304_06 | HTTP → HTTPS redirect works | `curl -I http://app.bwc.biz` returns 301 to HTTPS |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1304",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["docker/**", "scripts/**", "docs/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1305: CI/CD Pipeline Design
+
+**Owner**: DevOps
+**Risk**: LOW
+**Duration**: ~2 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-15, PP-16
+
+### Purpose
+
+ออกแบบ CI/CD pipeline ก่อน implement — กำหนด branch strategy, deploy steps, safety rules สำหรับ PROD. ป้องกัน "deploy succeeded but unhealthy" (PP-16).
+
+### What exists today
+
+- Existing GitHub Actions workflows (lint, test, governance gate)
+- PoC deployed manually via SSH + git pull
+- Branch: dev → main (current), need to add uat
+
+### What to build
+
+1. **Branch strategy document**:
+   - `dev` → development (feature branches merge here)
+   - `uat` → triggers UAT deploy
+   - `main` → triggers PROD deploy
+2. **Deploy workflow design**:
+   - SSH into VPS
+   - `git pull` latest code
+   - `docker compose build` (if Dockerfile changed)
+   - `alembic upgrade head` (DB migration)
+   - `docker compose up -d` (restart services)
+   - Health check (GET /api/health)
+   - Playwright smoke test
+   - LINE notification (success/fail)
+3. **PROD safety rules**:
+   - Must pass UAT first (branch protection)
+   - Snapshot DB before migration
+   - No force push to main
+   - Rollback procedure documented
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `docs/cicd/pipeline-design.md` | Workflow diagrams + branch strategy |
+| Create | `docs/cicd/prod-safety-rules.md` | PROD deployment safety rules + rollback |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1305_01 | Branch strategy documented (dev → uat → main) | Manual review |
+| ac_1305_02 | Deploy workflow steps documented with sequence diagram | Manual review |
+| ac_1305_03 | PROD safety rules include: UAT gate, DB snapshot, no force push | Manual review |
+| ac_1305_04 | Rollback procedure documented step-by-step | Manual review |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1305",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["docs/**", ".github/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1306: CI/CD Pipeline Implementation
+
+**Owner**: DevOps
+**Risk**: HIGH
+**Duration**: ~4 days
+**Closes pain points**: PP-5, PP-8, PP-15, PP-16, PP-17
+
+### Purpose
+
+Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk infra task — deployment automation ต้องทำงานถูกต้อง 100% เพราะผิดพลาดจะกระทบ PROD.
+
+### What exists today
+
+- Existing GitHub Actions: lint, test, governance gate workflows
+- `.github/workflows/` directory with existing YAML files
+- SSH key available for VPS access
+
+### What to build
+
+1. **deploy-uat.yml** — GitHub Actions workflow:
+   - Trigger: push to `uat` branch
+   - Steps: SSH → git pull → docker build → alembic migrate → docker up → health check → smoke test → LINE notify
+2. **deploy-prod.yml** — GitHub Actions workflow:
+   - Trigger: push/merge to `main` branch
+   - Pre-deploy: DB snapshot (pg_dump)
+   - Steps: same as UAT + DB snapshot step
+   - Post-deploy: verify health check + LINE notify
+3. **GitHub secrets setup**:
+   - SSH private key (`VPS_SSH_KEY`)
+   - VPS host/user (`UAT_HOST`, `PROD_HOST`, `DEPLOY_USER`)
+   - LINE notify token (`LINE_NOTIFY_TOKEN`)
+4. **Health check script** for CI/CD to call
+5. **Playwright smoke test** integration in CI/CD
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `.github/workflows/deploy-uat.yml` | UAT deployment workflow |
+| Create | `.github/workflows/deploy-prod.yml` | PROD deployment workflow |
+| Create | `scripts/deploy/health-check.sh` | Health check script (GET /api/health) |
+| Create | `scripts/deploy/pre-deploy-snapshot.sh` | DB snapshot before PROD migration |
+| Create | `scripts/deploy/notify-line.sh` | LINE notification script |
+| Modify | `.github/workflows/` (existing) | Add branch filters for uat/main |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1306_01 | Push to uat branch triggers UAT deploy | test_deploy_uat_trigger |
+| ac_1306_02 | Merge to main triggers PROD deploy | test_deploy_prod_trigger |
+| ac_1306_03 | Health check passes after deploy | `curl /api/health` returns 200 |
+| ac_1306_04 | LINE notification sent on success | LINE message received |
+| ac_1306_05 | LINE notification sent on failure | Simulate failure, verify LINE message |
+| ac_1306_06 | PROD deploy creates DB snapshot before migration | Snapshot file exists on VPS |
+| ac_1306_07 | Deploy fails gracefully if health check fails | Workflow shows failure + LINE alert |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1306",
+  "risk_tier": "HIGH",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": [".github/workflows/**", "scripts/**", "docker/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+  "max_loops": 5,
+  "escalation_policy": "stop"
+}
+```
+
+---
+
+## TASK-1307: Docker Compose — UAT
+
+**Owner**: DevOps
+**Risk**: LOW
+**Duration**: ~2 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-15
+
+### Purpose
+
+สร้าง Docker Compose สำหรับ UAT environment — ให้ client + team ทดสอบได้ก่อน deploy PROD. Environment-specific configs แยก UAT จาก PROD.
+
+### What exists today
+
+- `docker-compose.yml` (dev mode) with backend, postgres, redis, minio
+- Dockerfile for backend service
+- PoC running on single VPS
+
+### What to build
+
+1. **docker-compose.uat.yml** with all services:
+   - nginx (SSL termination, proxy to backend)
+   - backend (FastAPI, uvicorn)
+   - celery-worker (background processing)
+   - celery-beat (scheduled tasks)
+   - postgres (PostgreSQL 16)
+   - redis (Redis 7)
+   - minio (S3-compatible storage)
+2. **Environment-specific configs**:
+   - DB name: `ledgerflow_uat`
+   - API keys via .env.uat (reference only, not committed)
+   - Debug mode: on (for UAT troubleshooting)
+3. **Volume mounts** for data persistence
+4. **Network**: internal Docker network, only nginx exposed
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `docker/docker-compose.uat.yml` | UAT Docker Compose configuration |
+| Create | `docker/.env.uat.example` | Example environment variables (no secrets) |
+| Create | `docker/nginx/nginx-uat.conf` | nginx config for UAT |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1307_01 | `docker compose -f docker-compose.uat.yml up -d` starts all services | All containers in "running" state |
+| ac_1307_02 | Health check endpoint returns 200 via nginx | `curl https://uat.bwc.biz/api/health` |
+| ac_1307_03 | PostgreSQL accessible from backend container | Backend logs show DB connection |
+| ac_1307_04 | Redis accessible from celery container | Celery logs show Redis broker connected |
+| ac_1307_05 | MinIO accessible from backend container | Upload test file, verify stored |
+| ac_1307_06 | Data persists after container restart | Stop + start, verify DB data intact |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1307",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["docker/**", "config/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1308: Docker Compose — PROD
+
+**Owner**: DevOps
+**Risk**: MEDIUM
+**Duration**: ~2 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-15
+
+### Purpose
+
+PROD Docker Compose ต้อง production-grade — resource limits ป้องกัน OOM, restart policies ให้ service recover อัตโนมัติ, log rotation ไม่ให้ disk เต็ม.
+
+### What exists today
+
+- `docker-compose.uat.yml` (from TASK-1307) — base to fork from
+- Dev Docker Compose (no resource limits, no restart policies)
+
+### What to build
+
+1. **docker-compose.prod.yml** with production settings:
+   - All services from UAT + production hardening
+   - Resource limits per container:
+     - backend: 1 CPU, 2GB RAM
+     - celery-worker: 1 CPU, 2GB RAM
+     - postgres: 1.5 CPU, 4GB RAM
+     - redis: 0.5 CPU, 512MB RAM
+     - minio: 0.5 CPU, 1GB RAM
+     - nginx: 0.25 CPU, 256MB RAM
+   - Restart policies: `always` for critical services (backend, postgres, redis, nginx), `on-failure` for workers
+   - Log rotation: `max-size: 10m`, `max-file: 5` per container
+2. **Production environment**:
+   - DB name: `ledgerflow_prod`
+   - Debug mode: off
+   - Gunicorn with 4 workers (instead of uvicorn dev mode)
+3. **Health check** definitions in compose file
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `docker/docker-compose.prod.yml` | PROD Docker Compose configuration |
+| Create | `docker/.env.prod.example` | Example environment variables (no secrets) |
+| Create | `docker/nginx/nginx-prod.conf` | nginx config for PROD (stricter headers) |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1308_01 | PROD compose starts all services | All containers in "running" state |
+| ac_1308_02 | Resource limits applied | `docker stats` shows limits enforced |
+| ac_1308_03 | Restart policy works | `docker kill backend`, verify auto-restart |
+| ac_1308_04 | Log rotation configured | `docker inspect --format='{{.HostConfig.LogConfig}}'` shows limits |
+| ac_1308_05 | Health check endpoint returns 200 | `curl https://app.bwc.biz/api/health` |
+| ac_1308_06 | Gunicorn running with 4 workers | `ps aux | grep gunicorn` shows 4 workers |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1308",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["docker/**", "config/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1309: Network + Firewall Setup
+
+**Owner**: DevOps
+**Risk**: HIGH
+**Duration**: ~3 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-15, PP-16
+
+### Purpose
+
+Lockdown VPS network — only expose necessary ports, block everything else. DB (5432) and MinIO (9000) must NOT be accessible externally. Security-critical task — misconfiguration can expose data.
+
+### What exists today
+
+- VPS has default firewall (likely allow all or minimal rules)
+- No UFW configured
+- No SSH access logging
+
+### What to build
+
+1. **UFW firewall rules** (both VPS):
+   - Allow: 80 (HTTP), 443 (HTTPS), 22 (SSH from whitelist IPs only)
+   - Block: everything else
+   - DB port 5432: internal Docker network only
+   - MinIO port 9000/9001: internal Docker network only
+   - Redis port 6379: internal Docker network only
+2. **SSH access logging**:
+   - Install auditd for SSH session logging
+   - Log: who logged in, when, from where
+3. **BAU support flow** documented:
+   - How to SSH into VPS
+   - How to view logs
+   - How to restart services
+   - Emergency contacts
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `scripts/infra/setup-firewall.sh` | UFW configuration script |
+| Create | `scripts/infra/setup-auditd.sh` | SSH audit logging setup |
+| Create | `docs/infrastructure/bau-support.md` | BAU support procedures |
+| Create | `docs/infrastructure/firewall-rules.md` | Firewall rules documentation |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1309_01 | UFW active on both VPS | `ufw status` shows active |
+| ac_1309_02 | Only ports 80/443/22 open externally | `nmap -Pn host` shows only 80/443/22 |
+| ac_1309_03 | PostgreSQL not accessible externally | `nc -zv host 5432` fails from external |
+| ac_1309_04 | MinIO not accessible externally | `nc -zv host 9000` fails from external |
+| ac_1309_05 | Redis not accessible externally | `nc -zv host 6379` fails from external |
+| ac_1309_06 | auditd logging SSH sessions | `ausearch -m LOGIN` shows entries |
+| ac_1309_07 | BAU support document complete | Manual review |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1309",
+  "risk_tier": "HIGH",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["scripts/**", "docs/**", "docker/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "stop"
+}
+```
+
+---
+
+## TASK-1310: DB Backup Automation
+
+**Owner**: DevOps
+**Risk**: MEDIUM
+**Duration**: ~2 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-16, PP-17
+
+### Purpose
+
+Automated backup ป้องกัน data loss — pg_dump ทุก 6 ชั่วโมง + offsite sync to Cloudflare R2 + LINE alert on failure. RPO: 6hr, RTO: 6hr.
+
+### What exists today
+
+- PostgreSQL running in Docker container (no backup automation)
+- No offsite backup
+- No backup monitoring/alerting
+
+### What to build
+
+1. **Backup script** (`set -euo pipefail`):
+   - pg_dump from Docker postgres container
+   - Compress with gzip
+   - Filename: `ledgerflow_prod_YYYYMMDD_HHMMSS.sql.gz`
+   - Store in `/backup/db/` on VPS
+2. **Schedule**: cron every 6 hours (00:00, 06:00, 12:00, 18:00)
+3. **Cloudflare R2 offsite sync**:
+   - Install rclone
+   - Configure R2 remote
+   - Sync after each backup
+4. **Retention policy**:
+   - Local: 7 days (cleanup old backups)
+   - R2: 30 days
+5. **LINE alert on failure**:
+   - Script exits with error → LINE notification
+   - Daily success summary (optional)
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `scripts/backup/backup-db.sh` | pg_dump + compress + cleanup |
+| Create | `scripts/backup/sync-r2.sh` | rclone sync to Cloudflare R2 |
+| Create | `scripts/backup/setup-backup-cron.sh` | Install cron jobs |
+| Create | `docs/infrastructure/backup-strategy.md` | Backup strategy + RPO/RTO |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1310_01 | pg_dump runs successfully | Backup file created in `/backup/db/` |
+| ac_1310_02 | Backup file compressed with gzip | File ends in `.sql.gz` |
+| ac_1310_03 | Cron runs every 6 hours | `crontab -l` shows 0 0,6,12,18 schedule |
+| ac_1310_04 | R2 sync works | `rclone ls r2:backup-bucket` shows files |
+| ac_1310_05 | Local retention: files older than 7 days cleaned | Old files removed after cleanup |
+| ac_1310_06 | LINE alert fires on backup failure | Simulate failure, verify LINE message |
+| ac_1310_07 | Backup script uses `set -euo pipefail` | Script inspection |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1310",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["scripts/**", "docker/**", "docs/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1311: Housekeeping
+
+**Owner**: DevOps
+**Risk**: LOW
+**Duration**: ~1 day
+**Closes pain points**: PP-2, PP-3, PP-5, PP-16
+
+### Purpose
+
+ป้องกัน disk full — log rotation, temp file cleanup, disk monitoring. ถ้า disk เต็มจะกระทบ DB writes + backup + all services.
+
+### What exists today
+
+- Docker default logging (no rotation = disk fills up over time)
+- No disk monitoring
+- Temp files from upload processing not cleaned
+
+### What to build
+
+1. **Docker log rotation** (in compose files):
+   - `max-size: 10m`, `max-file: 5` per container
+   - Applied via Docker daemon config or per-container
+2. **Temp file cleanup**:
+   - Clean `/tmp` files older than 24 hours
+   - Clean upload staging directory
+   - Cron: daily at 03:00
+3. **Disk monitoring**:
+   - Script checks disk usage
+   - Alert via LINE at 80% usage
+   - Cron: every 6 hours
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `scripts/infra/housekeeping.sh` | Temp cleanup + disk check |
+| Create | `scripts/infra/setup-housekeeping-cron.sh` | Install cron jobs |
+| Modify | `docker/docker-compose.prod.yml` | Add log rotation config (if not in TASK-1308) |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1311_01 | Docker log rotation configured | `docker inspect` shows log rotation |
+| ac_1311_02 | Temp file cleanup cron runs daily | `crontab -l` shows 03:00 daily entry |
+| ac_1311_03 | Disk monitoring alerts at 80% | Simulate 80%+ usage, verify LINE alert |
+| ac_1311_04 | Old temp files cleaned | Files older than 24h removed from /tmp staging |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1311",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["scripts/**", "docker/**", "docs/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1312: Go-Live Checklist + Smoke Tests + Restore Drill
+
+**Owner**: DevOps / Full-stack
+**Risk**: MEDIUM
+**Duration**: ~3 days
+**Closes pain points**: PP-5, PP-15, PP-16, PP-17
+
+### Purpose
+
+Go-live readiness validation — ทุกอย่างต้องทำงานจริงก่อนเปิด PROD ให้ลูกค้า. Restore drill พิสูจน์ว่า backup ใช้งานได้จริง (ไม่ใช่แค่ "backup runs" แต่ "restore works").
+
+### What exists today
+
+- Playwright installed (used for existing tests)
+- Some smoke test patterns from PoC
+- Backup script from TASK-1310 (not yet tested restore)
+
+### What to build
+
+1. **Pre-go-live checklist**:
+   - Security: SSH hardened, firewall active, SSL valid
+   - Backup: pg_dump running, R2 sync working, restore tested
+   - Monitoring: health check, disk alerts, backup alerts
+   - DNS: all subdomains resolve, SSL valid
+   - CI/CD: deploy workflows tested
+   - App: all features work E2E
+2. **Playwright E2E smoke tests**:
+   - Login → upload document → process → review extracted data → export
+   - Health check endpoints
+   - Error handling (invalid file, oversized file)
+3. **Restore drill**:
+   - Download backup from R2
+   - Restore to separate DB instance
+   - Verify data integrity (row counts, spot checks)
+   - Document restore procedure + time taken
+4. **Performance baseline**:
+   - p95 response times for key endpoints
+   - Document processing throughput (docs/minute)
+   - DB query performance
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `docs/go-live/checklist.md` | Pre-go-live checklist |
+| Create | `tests/e2e/smoke-test.spec.ts` | Playwright E2E smoke tests |
+| Create | `scripts/backup/restore-drill.sh` | Restore drill script |
+| Create | `docs/go-live/performance-baseline.md` | p95 response times + throughput |
+| Create | `docs/go-live/restore-drill-report.md` | Restore drill results |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1312_01 | Pre-go-live checklist complete (all items checked) | Manual review |
+| ac_1312_02 | Playwright smoke tests pass on UAT | `npx playwright test smoke-test.spec.ts` passes |
+| ac_1312_03 | Restore drill succeeds | Data restored, row counts match |
+| ac_1312_04 | Restore time documented | RTO within 6hr target |
+| ac_1312_05 | Performance baseline documented | p95 response times for key endpoints |
+| ac_1312_06 | Login → upload → process → review → export flow works E2E | Playwright test passes |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1312",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["tests/**", "scripts/**", "docs/**", "docker/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+*Created: 2026-06-15*
+*Epic Roadmap: [PHASE-II-EPIC-ROADMAP.md](../PHASE-II-EPIC-ROADMAP.md)*

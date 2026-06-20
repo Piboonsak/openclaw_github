@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LedgerFlow Phase II — Project Timeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: oklch(98% 0.005 250);
+      --surface: oklch(96% 0.006 250);
+      --ink: oklch(20% 0.02 250);
+      --muted: oklch(52% 0.02 250);
+      --line: oklch(88% 0.01 250);
+      --accent: oklch(45% 0.15 220);
+      --accent-soft: oklch(93% 0.04 220);
+      --ok: oklch(50% 0.14 155);
+      --ok-soft: oklch(93% 0.05 155);
+      --warn: oklch(58% 0.16 80);
+      --warn-soft: oklch(93% 0.06 80);
+      --danger: oklch(55% 0.18 25);
+      --danger-soft: oklch(93% 0.05 25);
+      --purple: oklch(52% 0.18 295);
+      --purple-soft: oklch(93% 0.04 295);
+      --teal: oklch(50% 0.14 195);
+      --teal-soft: oklch(93% 0.04 195);
+      --font: "DM Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 0.875rem; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    @media print { body { font-size: 0.78rem; } .no-print { display: none !important; } }
+
+    /* ─── PAGE ─── */
+    .page { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; }
+
+    /* ─── HEADER ─── */
+    .page-head {
+      display: flex; align-items: flex-start; gap: 1.5rem;
+      padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+      background: white; border: 1px solid var(--line); border-radius: 12px;
+      border-left: 5px solid var(--accent);
+    }
+    .head-logo { width: 40px; height: 40px; background: var(--accent); border-radius: 10px; display: grid; place-items: center; color: white; font-weight: 800; font-size: 1rem; flex-shrink: 0; }
+    .head-title { font-size: 1.25rem; font-weight: 700; }
+    .head-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+    .head-meta { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; }
+
+    /* ─── BADGES ─── */
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .badge-ok { background: var(--ok-soft); color: var(--ok); }
+    .badge-warn { background: var(--warn-soft); color: var(--warn); }
+    .badge-accent { background: var(--accent-soft); color: var(--accent); }
+    .badge-muted { background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+    .badge-purple { background: var(--purple-soft); color: var(--purple); }
+    .badge-teal { background: var(--teal-soft); color: var(--teal); }
+    .badge-lg { font-size: 0.82rem; padding: 4px 12px; }
+
+    /* ─── PAYMENT MILESTONE BAR ─── */
+    .payment-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .payment-card {
+      background: white; border: 1px solid var(--line); border-radius: 10px;
+      padding: 1rem 1.1rem; border-top: 4px solid var(--line);
+      position: relative;
+    }
+    .payment-card.kickoff { border-top-color: var(--accent); }
+    .payment-card.uat { border-top-color: var(--warn); }
+    .payment-card.prod { border-top-color: var(--ok); }
+    .payment-card.cr { border-top-color: var(--purple); }
+    .payment-pct { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 0.2rem; }
+    .payment-card.kickoff .payment-pct { color: var(--accent); }
+    .payment-card.uat .payment-pct { color: var(--warn); }
+    .payment-card.prod .payment-pct { color: var(--ok); }
+    .payment-card.cr .payment-pct { color: var(--purple); }
+    .payment-label { font-weight: 700; font-size: 0.88rem; }
+    .payment-date { font-size: 0.78rem; color: var(--muted); margin-top: 0.35rem; font-family: var(--mono); }
+    .payment-trigger { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.5; }
+    .payment-amount { position: absolute; top: 0.85rem; right: 1rem; font-size: 0.72rem; color: var(--muted); font-family: var(--mono); }
+
+    /* ─── GANTT ─── */
+    .gantt-wrap {
+      background: white; border: 1px solid var(--line); border-radius: 12px;
+      overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .gantt-header-row {
+      display: grid; grid-template-columns: 200px repeat(8, 1fr);
+      background: var(--surface); border-bottom: 2px solid var(--line);
+    }
+    .gantt-col-label {
+      padding: 0.6rem 0.75rem; font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+      border-right: 1px solid var(--line);
+      text-align: center;
+    }
+    .gantt-col-label:first-child { text-align: left; }
+    .gantt-week-label { font-size: 0.7rem; font-weight: 700; }
+    .gantt-week-date { font-size: 0.62rem; color: var(--muted); font-family: var(--mono); }
+
+    .gantt-row {
+      display: grid; grid-template-columns: 200px repeat(8, 1fr);
+      border-bottom: 1px solid var(--line); min-height: 52px;
+    }
+    .gantt-row:last-child { border-bottom: none; }
+    .gantt-row:hover { background: var(--bg); }
+    .gantt-row.infra-row { background: oklch(98% 0.003 250); }
+
+    .gantt-epic-label {
+      padding: 0.6rem 0.85rem; display: flex; flex-direction: column;
+      justify-content: center; border-right: 1px solid var(--line);
+    }
+    .gantt-epic-num { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    .gantt-epic-name { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
+
+    .gantt-cell {
+      padding: 0.4rem 0.25rem; border-right: 1px solid var(--line);
+      position: relative; display: flex; align-items: center;
+    }
+    .gantt-cell:last-child { border-right: none; }
+
+    /* Bar spans multiple cells — using colspan via JS */
+    .gantt-bar-row {
+      display: grid; grid-template-columns: 200px repeat(8, 1fr);
+      position: relative; height: 52px;
+    }
+    .gantt-bar-container {
+      grid-column: 2 / 10; /* covers all 8 week columns */
+      position: relative; display: flex; align-items: center;
+    }
+    .gantt-bar {
+      position: absolute; height: 32px; border-radius: 6px;
+      display: flex; align-items: center; padding: 0 0.75rem;
+      font-size: 0.72rem; font-weight: 600; color: white;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .bar-accent { background: var(--accent); }
+    .bar-teal { background: var(--teal); }
+    .bar-ok { background: var(--ok); }
+    .bar-warn { background: var(--warn); }
+    .bar-purple { background: var(--purple); }
+    .bar-infra { background: var(--muted); opacity: 0.5; }
+
+    /* Milestone flags */
+    .milestone-flag {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; align-items: center; z-index: 10;
+    }
+    .milestone-diamond {
+      width: 14px; height: 14px; background: var(--warn);
+      transform: rotate(45deg); border: 2px solid white;
+      box-shadow: 0 0 0 2px var(--warn);
+    }
+    .milestone-label {
+      font-size: 0.6rem; font-weight: 700; white-space: nowrap;
+      margin-top: 2px; color: var(--warn);
+    }
+
+    /* ─── WEEK TABLE ─── */
+    .week-table-wrap {
+      background: white; border: 1px solid var(--line); border-radius: 12px;
+      overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .week-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .week-table th { background: var(--surface); border: 1px solid var(--line); padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.75rem; text-align: left; }
+    .week-table td { border: 1px solid var(--line); padding: 0.6rem 0.85rem; vertical-align: top; }
+    .week-table tr:hover td { background: var(--bg); }
+    .week-num { font-weight: 800; font-size: 1.1rem; color: var(--accent); font-family: var(--mono); }
+    .week-dates { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); }
+    .deliverable-list { display: flex; flex-direction: column; gap: 0.25rem; }
+    .deliverable-item { display: flex; align-items: baseline; gap: 0.4rem; font-size: 0.8rem; }
+    .deliverable-item::before { content: '●'; color: var(--accent); flex-shrink: 0; font-size: 0.55rem; }
+    .milestone-row td { background: oklch(98% 0.01 80) !important; border-color: var(--warn); }
+    .milestone-row .week-num { color: var(--warn); }
+
+    /* ─── DELIVERY TABLE ─── */
+    .delivery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    .delivery-card { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem; }
+    .delivery-card-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem; border-bottom: 1px solid var(--line); padding-bottom: 0.75rem; }
+    .delivery-card-icon { font-size: 1.2rem; }
+    .delivery-card-title { font-weight: 700; font-size: 0.9rem; }
+    .delivery-items { display: flex; flex-direction: column; gap: 0.4rem; }
+    .delivery-item { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8rem; line-height: 1.45; }
+    .di-check { color: var(--ok); font-weight: 700; flex-shrink: 0; margin-top: 0.1rem; }
+    .di-text { color: var(--ink); }
+
+    /* ─── NOTES ─── */
+    .note-box { background: var(--accent-soft); border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; padding: 0.85rem 1.1rem; font-size: 0.82rem; margin-bottom: 1rem; }
+    .note-box.warn { background: var(--warn-soft); border-left-color: var(--warn); }
+
+    /* ─── RISK TABLE ─── */
+    .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+    /* Footer */
+    .page-footer { text-align: center; font-size: 0.72rem; color: var(--muted); padding-top: 1.5rem; border-top: 1px solid var(--line); margin-top: 2rem; }
+
+    /* Print layout */
+    @media print {
+      .gantt-wrap { page-break-inside: avoid; }
+      .week-table-wrap { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ─── HEADER ─── -->
+  <div class="page-head">
+    <div class="head-logo">LF</div>
+    <div>
+      <div class="head-title">LedgerFlow Phase II — Project Timeline</div>
+      <div class="head-sub">AI Pre-Accounting Copilot · Hostinger VPS · 8 สัปดาห์ Go-Live MVP</div>
+    </div>
+    <div class="head-meta">
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
+        <span class="badge badge-accent badge-lg">Phase II/1: 8 สัปดาห์</span>
+        <span class="badge badge-purple badge-lg">Phase II/2: CR-based</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono);text-align:right;margin-top:0.35rem;">
+        Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Generated: 2026-06-20
+      </div>
+      <button class="no-print" onclick="window.print()" style="margin-top:0.4rem;font-size:0.72rem;border:1px solid var(--line);border-radius:6px;padding:3px 10px;background:white;cursor:pointer;color:var(--muted);">🖨 Print</button>
+    </div>
+  </div>
+
+  <!-- ─── PAYMENT MILESTONES ─── -->
+  <div class="section-title">งวดการชำระเงิน — Payment Milestones</div>
+
+  <div class="payment-bar">
+    <div class="payment-card kickoff">
+      <div class="payment-amount">งวดที่ 1</div>
+      <div class="payment-pct">50%</div>
+      <div class="payment-label">Kickoff</div>
+      <div class="payment-date">15 มิ.ย. 2569 (W1)</div>
+      <div class="payment-trigger">
+        ✓ ลงนามสัญญา<br>
+        ✓ ชำระ 50% ก่อนเริ่มงาน<br>
+        → เริ่ม W1 ทันที
+      </div>
+    </div>
+    <div class="payment-card uat">
+      <div class="payment-amount">งวดที่ 2</div>
+      <div class="payment-pct">10%</div>
+      <div class="payment-label">UAT พร้อมใช้</div>
+      <div class="payment-date">~20 ก.ค. 2569 (W6)</div>
+      <div class="payment-trigger">
+        ✓ Deploy บน UAT environment<br>
+        ✓ Core features ทำงานได้<br>
+        ✓ Login, Upload, Review, Export<br>
+        → ลูกค้าทดสอบบน uat.bwc.biz
+      </div>
+    </div>
+    <div class="payment-card prod">
+      <div class="payment-amount">20%</div>
+      <div class="payment-label">Go-Live Production</div>
+      <div class="payment-date">~10 ส.ค. 2569 (W8)</div>
+      <div class="payment-trigger">
+        ✓ Deploy บน Production<br>
+        ✓ DNS: app.bwc.biz ชี้ถูก<br>
+        ✓ User acceptance sign-off<br>
+        ✓ Training เสร็จสิ้น<br>
+        → Go-Live Production
+      </div>
+    </div>
+    <div class="payment-card cr">
+      <div class="payment-amount">20%</div>
+      <div class="payment-label">Phase II/2</div>
+      <div class="payment-date">หลัง Go-Live (CR-based)</div>
+      <div class="payment-trigger">
+        ✓ Scope ขึ้นกับผล TASK-906<br>
+        ✓ Line Item Full (Epic 14)<br>
+        ✓ Sales Tax (Epic 15)<br>
+        ✓ Full Dashboard (Epic 16)<br>
+        → ตกลงราคาหลัง TASK-906
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── GANTT CHART ─── -->
+  <div class="section-title">Gantt Chart — 8 สัปดาห์</div>
+
+  <div class="gantt-wrap">
+    <!-- Week header -->
+    <div class="gantt-header-row">
+      <div class="gantt-col-label" style="text-align:left;">Epic / งาน</div>
+      <div class="gantt-col-label">
+        <div class="gantt-week-label">W1</div>
+        <div class="gantt-week-date">15–21<br>มิ.ย.</div>
+      </div>
+      <div class="gantt-col-label">
+        <div class="gantt-week-label">W2</div>
+        <div class="gantt-week-date">22–28<br>มิ.ย.</div>
+      </div>
+      <div class="gantt-col-label">
+        <div class="gantt-week-label">W3</div>
+        <div class="gantt-week-date">29 มิ.ย.–<br>5 ก.ค.</div>
+      </div>
+      <div class="gantt-col-label">
+        <div class="gantt-week-label">W4</div>
+        <div class="gantt-week-date">6–12<br>ก.ค.</div>
+      </div>
+      <div class="gantt-col-label">
+        <div class="gantt-week-label">W5</div>
+        <div class="gantt-week-date">13–19<br>ก.ค.</div>
+      </div>
+      <div class="gantt-col-label">
+        <div class="gantt-week-label">W6</div>
+        <div class="gantt-week-date">20–26<br>ก.ค.</div>
+      </div>
+      <div class="gantt-col-label">
+        <div class="gantt-week-label">W7</div>
+        <div class="gantt-week-date">27 ก.ค.–<br>2 ส.ค.</div>
+      </div>
+      <div class="gantt-col-label" style="border-right:none;">
+        <div class="gantt-week-label">W8</div>
+        <div class="gantt-week-date">3–9<br>ส.ค.</div>
+      </div>
+    </div>
+
+    <!-- Epic rows with bar grid -->
+    <!-- We'll render bars using a table approach with colspan-like styling -->
+
+    <!-- EPIC 8: W1-2 -->
+    <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);min-height:52px;">
+      <div class="gantt-epic-label">
+        <div class="gantt-epic-num">Epic 8</div>
+        <div class="gantt-epic-name">Platform Foundation</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
+        <!-- W1 -->
+        <div style="position:relative;height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-accent" style="position:static;width:100%;margin-right:0;border-radius:6px 0 0 6px;font-size:0.68rem;">DB+Auth</div>
+        </div>
+        <!-- W2 -->
+        <div style="position:relative;height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-accent" style="position:static;width:100%;border-radius:0 6px 6px 0;font-size:0.68rem;margin-left:1px;">Celery+S3</div>
+        </div>
+        <!-- W3-W8 empty -->
+        <div></div><div></div><div></div><div></div><div></div><div></div>
+      </div>
+    </div>
+
+    <!-- EPIC 9: W1-2 -->
+    <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);min-height:52px;">
+      <div class="gantt-epic-label">
+        <div class="gantt-epic-num">Epic 9</div>
+        <div class="gantt-epic-name">Accuracy + PoC</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
+        <!-- W1: TASK-906 PoC -->
+        <div style="position:relative;height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-teal" style="position:static;width:100%;border-radius:6px 0 0 6px;font-size:0.65rem;background:var(--teal);">TASK-906 PoC</div>
+        </div>
+        <!-- W2: VAT/WHT/OCR -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar" style="position:static;width:100%;border-radius:0 6px 6px 0;font-size:0.65rem;background:var(--teal);margin-left:1px;">VAT·WHT·OCR</div>
+        </div>
+        <div></div><div></div><div></div><div></div><div></div><div></div>
+      </div>
+    </div>
+
+    <!-- EPIC 10: W3-5 (Core) -->
+    <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);min-height:60px;background:oklch(99% 0.006 220);">
+      <div class="gantt-epic-label" style="background:oklch(96% 0.006 220);">
+        <div class="gantt-epic-num">Epic 10 ⭐ Core</div>
+        <div class="gantt-epic-name">Template Engine + UI</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
+        <!-- W1-2 empty -->
+        <div></div><div></div>
+        <!-- W3: Backend -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-accent" style="position:static;width:100%;border-radius:6px 0 0 6px;font-size:0.65rem;">Backend</div>
+        </div>
+        <!-- W4: Configurator UI -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-accent" style="position:static;width:100%;border-radius:0;font-size:0.65rem;margin-left:1px;">Config UI</div>
+        </div>
+        <!-- W5: Clone+Export -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-accent" style="position:static;width:100%;border-radius:0 6px 6px 0;font-size:0.65rem;margin-left:1px;">Clone+Export</div>
+        </div>
+        <div></div><div></div><div></div>
+      </div>
+    </div>
+
+    <!-- EPIC 11: W3 -->
+    <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);min-height:52px;">
+      <div class="gantt-epic-label">
+        <div class="gantt-epic-num">Epic 11</div>
+        <div class="gantt-epic-name">Purchase Tax Report</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
+        <div></div><div></div>
+        <!-- W3 -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-ok" style="position:static;width:100%;border-radius:6px;font-size:0.65rem;">ภ.พ.30</div>
+        </div>
+        <div></div><div></div><div></div><div></div><div></div>
+      </div>
+    </div>
+
+    <!-- EPIC 12: W5-6 -->
+    <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);min-height:52px;">
+      <div class="gantt-epic-label">
+        <div class="gantt-epic-num">Epic 12</div>
+        <div class="gantt-epic-name">Admin UI + Login</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
+        <div></div><div></div><div></div><div></div>
+        <!-- W5 -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-warn" style="position:static;width:100%;border-radius:6px 0 0 6px;font-size:0.65rem;">Login+Dash</div>
+        </div>
+        <!-- W6 -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar bar-warn" style="position:static;width:100%;border-radius:0 6px 6px 0;font-size:0.65rem;margin-left:1px;">Co+Users</div>
+        </div>
+        <div></div><div></div>
+      </div>
+    </div>
+
+    <!-- EPIC 13: W1-8 (Infrastructure, parallel) -->
+    <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);min-height:52px;background:var(--surface);">
+      <div class="gantt-epic-label" style="background:var(--surface-2,oklch(93% 0.008 250));">
+        <div class="gantt-epic-num" style="color:var(--muted);">Epic 13 ∥ Parallel</div>
+        <div class="gantt-epic-name" style="color:var(--muted);">Infrastructure + DevOps</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
+        <!-- W1 -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;border-radius:6px 0 0 6px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">VPS+DNS</div>
+        </div>
+        <!-- W2 -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Docker</div>
+        </div>
+        <!-- W3 -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">CI/CD</div>
+        </div>
+        <!-- W4 -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Firewall</div>
+        </div>
+        <!-- W5 -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Backup</div>
+        </div>
+        <!-- W6: UAT deploy -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--warn);opacity:0.7;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:700;">UAT ▲</div>
+        </div>
+        <!-- W7 -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Smoke</div>
+        </div>
+        <!-- W8: Prod deploy -->
+        <div style="height:24px;display:flex;align-items:center;">
+          <div style="width:100%;height:24px;background:var(--ok);opacity:0.8;margin-left:1px;border-radius:0 6px 6px 0;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:700;">PROD ✓</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Milestone row labels -->
+    <div style="display:grid;grid-template-columns:200px repeat(8,1fr);background:white;padding:0.4rem 0;border-top:1px solid var(--line);">
+      <div style="padding:0 0.85rem;display:flex;align-items:center;font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Milestones</div>
+      <div style="display:flex;justify-content:center;align-items:center;">
+        <span style="background:var(--accent);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;">50%<br>Kickoff</span>
+      </div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div style="display:flex;justify-content:center;align-items:center;">
+        <span style="background:var(--warn);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;text-align:center;">10%<br>UAT</span>
+      </div>
+      <div></div>
+      <div style="display:flex;justify-content:center;align-items:center;">
+        <span style="background:var(--ok);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;text-align:center;">20%<br>Go-Live</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── WEEK-BY-WEEK TABLE ─── -->
+  <div class="section-title">สรุปงานรายสัปดาห์</div>
+
+  <div class="week-table-wrap">
+    <table class="week-table">
+      <thead>
+        <tr>
+          <th style="width:90px;">สัปดาห์</th>
+          <th style="width:120px;">วันที่</th>
+          <th style="width:200px;">Epic / งานหลัก</th>
+          <th>Deliverables ที่ต้องส่ง</th>
+          <th style="width:140px;">Payment / Milestone</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- W1 -->
+        <tr style="background:oklch(98.5% 0.006 220);">
+          <td>
+            <div class="week-num">W1</div>
+            <div class="week-dates">15–21 มิ.ย.</div>
+          </td>
+          <td style="font-size:0.78rem;">15 มิ.ย. 2569<br>— 21 มิ.ย. 2569</td>
+          <td>
+            <div><span class="badge badge-accent">E8</span> Foundation W1</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-teal">E9</span> TASK-906 PoC</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> VPS Procurement</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">Alembic migration รัน + DB 15 tables ขึ้น</div>
+              <div class="deliverable-item">companies.json migrate → DB สำเร็จ</div>
+              <div class="deliverable-item">TASK-906: เตรียม 20-30 docs + เริ่ม test LLM</div>
+              <div class="deliverable-item">VPS UAT (KVM 2) เปิดใช้ + SSH เข้าได้</div>
+              <div class="deliverable-item">VAT disambiguation เริ่ม implement</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-accent" style="font-size:0.8rem;padding:5px 10px;">💰 50% Kickoff</span>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระก่อนเริ่มงาน</div>
+          </td>
+        </tr>
+
+        <!-- W2 -->
+        <tr>
+          <td>
+            <div class="week-num">W2</div>
+            <div class="week-dates">22–28 มิ.ย.</div>
+          </td>
+          <td style="font-size:0.78rem;">22 มิ.ย. 2569<br>— 28 มิ.ย. 2569</td>
+          <td>
+            <div><span class="badge badge-accent">E8</span> Foundation W2</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-teal">E9</span> WHT · OCR Fix</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Docker + Security</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">JWT Auth Login API ทำงาน (POST /api/auth/login)</div>
+              <div class="deliverable-item">MinIO storage: upload/download ได้</div>
+              <div class="deliverable-item">Celery worker: OCR task ทำงาน background</div>
+              <div class="deliverable-item">TASK-906: Feasibility Report พร้อม (Go/No-Go)</div>
+              <div class="deliverable-item">WHT detection + PND3/PND53 badge</div>
+              <div class="deliverable-item">Docker Engine + UFW firewall บน VPS</div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">ไม่มี milestone</span></td>
+        </tr>
+
+        <!-- W3 -->
+        <tr style="background:oklch(98.5% 0.006 220);">
+          <td>
+            <div class="week-num">W3</div>
+            <div class="week-dates">29 มิ.ย.–<br>5 ก.ค.</div>
+          </td>
+          <td style="font-size:0.78rem;">29 มิ.ย. 2569<br>— 5 ก.ค. 2569</td>
+          <td>
+            <div><span class="badge badge-accent">E10</span> Template Backend</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-ok">E11</span> Purchase Tax</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> CI/CD Pipeline</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">template_engine.py: column mapping + transforms</div>
+              <div class="deliverable-item">API CRUD: GET/POST/PUT/DELETE /api/v1/templates</div>
+              <div class="deliverable-item">ภ.พ.30 ย้ายเป็น template-based (ไม่ hardcode)</div>
+              <div class="deliverable-item">GitHub Actions CI/CD: push dev → auto deploy UAT</div>
+              <div class="deliverable-item">TASK-906 Go/No-Go report → กำหนดราคางวด 4</div>
+            </div>
+          </td>
+          <td>
+            <div style="font-size:0.75rem;color:var(--purple);font-weight:600;">ผล TASK-906<br>กำหนดราคา<br>Phase II/2</div>
+          </td>
+        </tr>
+
+        <!-- W4 -->
+        <tr>
+          <td>
+            <div class="week-num">W4</div>
+            <div class="week-dates">6–12 ก.ค.</div>
+          </td>
+          <td style="font-size:0.78rem;">6 ก.ค. 2569<br>— 12 ก.ค. 2569</td>
+          <td>
+            <div><span class="badge badge-accent">E10</span> Configurator UI</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Backup + Offsite R2</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">Configurator UI: drag-drop (SortableJS) ทำงาน</div>
+              <div class="deliverable-item">Field picker: Available → Selected columns</div>
+              <div class="deliverable-item">Master templates seed: Express GL + ภ.พ.30</div>
+              <div class="deliverable-item">pg_dump 4×/วัน + sync ไป Cloudflare R2</div>
+              <div class="deliverable-item">RPO/RTO 6hr/6hr: Restore drill ผ่าน</div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">ไม่มี milestone</span></td>
+        </tr>
+
+        <!-- W5 -->
+        <tr style="background:oklch(98.5% 0.006 220);">
+          <td>
+            <div class="week-num">W5</div>
+            <div class="week-dates">13–19 ก.ค.</div>
+          </td>
+          <td style="font-size:0.78rem;">13 ก.ค. 2569<br>— 19 ก.ค. 2569</td>
+          <td>
+            <div><span class="badge badge-accent">E10</span> Clone + Export</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-warn">E12</span> Login + Dashboard</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Monitoring Setup</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">Clone Master → Company template ทำงาน</div>
+              <div class="deliverable-item">Export CSV/Excel ตาม template (ไม่ hardcode)</div>
+              <div class="deliverable-item">Login screen + JWT session ทำงาน</div>
+              <div class="deliverable-item">MVP Dashboard: KPI + Cost meter</div>
+              <div class="deliverable-item">Sentry error tracking เชื่อมต่อ</div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">ไม่มี milestone</span></td>
+        </tr>
+
+        <!-- W6 — UAT MILESTONE -->
+        <tr style="background:oklch(98.5% 0.08 80);">
+          <td>
+            <div class="week-num" style="color:var(--warn);">W6 ⚑</div>
+            <div class="week-dates">20–26 ก.ค.</div>
+          </td>
+          <td style="font-size:0.78rem;">20 ก.ค. 2569<br>— 26 ก.ค. 2569</td>
+          <td>
+            <div><span class="badge badge-warn">E12</span> Company + Users</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> UAT Deploy ▲</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">Company management + COA import (YAML)</div>
+              <div class="deliverable-item">User management + 2-role RBAC</div>
+              <div class="deliverable-item"><strong>UAT environment deploy สำเร็จ</strong></div>
+              <div class="deliverable-item">uat.bwc.biz ใช้งานได้ + SSL Let's Encrypt</div>
+              <div class="deliverable-item">E2E workflow ทดสอบบน UAT</div>
+              <div class="deliverable-item">ลูกค้าเริ่ม UAT testing</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-warn" style="font-size:0.8rem;padding:5px 10px;">💰 10% UAT</span>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระเมื่อ UAT<br>พร้อมใช้งาน</div>
+          </td>
+        </tr>
+
+        <!-- W7 -->
+        <tr>
+          <td>
+            <div class="week-num">W7</div>
+            <div class="week-dates">27 ก.ค.–<br>2 ส.ค.</div>
+          </td>
+          <td style="font-size:0.78rem;">27 ก.ค. 2569<br>— 2 ส.ค. 2569</td>
+          <td>
+            <div><span class="badge badge-muted">Buffer</span> UAT Bug Fix</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Pre-prod Prep</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">แก้ bug จาก UAT testing</div>
+              <div class="deliverable-item">Performance tuning จากผล UAT</div>
+              <div class="deliverable-item">Production VPS (KVM 4) setup + hardening</div>
+              <div class="deliverable-item">DNS Production: app.bwc.biz เตรียมพร้อม</div>
+              <div class="deliverable-item">User training (Session 1 + 2)</div>
+              <div class="deliverable-item">คู่มือผู้ใช้ (Thai) สรุป</div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">UAT bug fix buffer</span></td>
+        </tr>
+
+        <!-- W8 — PROD GO-LIVE -->
+        <tr style="background:oklch(98.5% 0.06 155);">
+          <td>
+            <div class="week-num" style="color:var(--ok);">W8 ✓</div>
+            <div class="week-dates">3–9 ส.ค.</div>
+          </td>
+          <td style="font-size:0.78rem;">3 ส.ค. 2569<br>— 9 ส.ค. 2569</td>
+          <td>
+            <div><span class="badge badge-ok">E13</span> PROD Go-Live ✓</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">All</span> Final Testing</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item"><strong>Production deploy: app.bwc.biz พร้อมใช้งาน</strong></div>
+              <div class="deliverable-item">DNS bwc.biz ชี้ถูกต้อง + SSL auto-renew</div>
+              <div class="deliverable-item">Smoke test ผ่านทุก step</div>
+              <div class="deliverable-item">Restore drill บน Prod ผ่าน (RPO 6hr)</div>
+              <div class="deliverable-item">User training Session 3 (IT handover)</div>
+              <div class="deliverable-item">Sign-off + Handover checklist ครบ</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-ok" style="font-size:0.8rem;padding:5px 10px;">💰 20% Prod</span>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระเมื่อ Production<br>Go-Live + Sign-off</div>
+          </td>
+        </tr>
+
+        <!-- Post Go-Live -->
+        <tr style="background:var(--purple-soft,oklch(93% 0.04 295));">
+          <td>
+            <div class="week-num" style="color:var(--purple);">Post<br>Go-Live</div>
+            <div class="week-dates">หลัง W8</div>
+          </td>
+          <td style="font-size:0.78rem;">TBD<br>(หลัง go-live)</td>
+          <td>
+            <div><span class="badge badge-purple">E14</span> Line Item Full</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-purple">E15</span> Sales Tax</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-purple">E16</span> Full Dashboard</div>
+          </td>
+          <td>
+            <div class="deliverable-list">
+              <div class="deliverable-item">Full line item extraction (ถ้า TASK-906 Go)</div>
+              <div class="deliverable-item">รายงานภาษีขาย (Sales Tax Report)</div>
+              <div class="deliverable-item">Full KPI Dashboard + Sentry monitoring</div>
+              <div class="deliverable-item">Budget alert notifications (LINE Notify)</div>
+              <div class="deliverable-item">Audit log UI full</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-purple" style="font-size:0.8rem;padding:5px 10px;">💰 20% Phase II/2</span>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระเมื่อ Phase II/2<br>deliverables ครบ</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─── DELIVERABLES SUMMARY ─── -->
+  <div class="section-title">สิ่งที่ลูกค้าได้รับ — Phase II/1 Deliverables</div>
+
+  <div class="delivery-grid">
+    <div class="delivery-card">
+      <div class="delivery-card-head">
+        <div class="delivery-card-icon">🔐</div>
+        <div>
+          <div class="delivery-card-title">ระบบ Authentication & Authorization</div>
+          <div style="font-size:0.72rem;color:var(--muted);">Epic 12 · W5-6</div>
+        </div>
+      </div>
+      <div class="delivery-items">
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Login ด้วย username/password (JWT)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">2 roles: Admin + Staff</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Staff เห็นเฉพาะบริษัทที่ assign</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Session management + refresh token</span></div>
+      </div>
+    </div>
+
+    <div class="delivery-card">
+      <div class="delivery-card-head">
+        <div class="delivery-card-icon">📤</div>
+        <div>
+          <div class="delivery-card-title">Pipeline อัปโหลดถึง Export (E2E)</div>
+          <div style="font-size:0.72rem;color:var(--muted);">Epic 8+9 · W1-2</div>
+        </div>
+      </div>
+      <div class="delivery-items">
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Upload → OCR → Extract → Review → Export ผ่าน DB (ไม่สูญหาย)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Background processing ผ่าน Celery (ไม่ timeout)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">ไฟล์เก็บบน MinIO (VPS) + backup R2</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">VAT, WHT accuracy ดีขึ้น</span></div>
+      </div>
+    </div>
+
+    <div class="delivery-card">
+      <div class="delivery-card-head">
+        <div class="delivery-card-icon">📑</div>
+        <div>
+          <div class="delivery-card-title">Template Engine + Configurator</div>
+          <div style="font-size:0.72rem;color:var(--muted);">Epic 10 · W3-5 · Core Feature</div>
+        </div>
+      </div>
+      <div class="delivery-items">
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Dynamic column mapping (ไม่ hardcode)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Drag-drop column reorder + inline rename</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Master templates: Express GL + ภ.พ.30</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Clone Master → แก้ไขตามบริษัท</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Export CSV + Excel + รองรับ TIS-620</span></div>
+      </div>
+    </div>
+
+    <div class="delivery-card">
+      <div class="delivery-card-head">
+        <div class="delivery-card-icon">🏢</div>
+        <div>
+          <div class="delivery-card-title">Admin Management</div>
+          <div style="font-size:0.72rem;color:var(--muted);">Epic 12 · W5-6</div>
+        </div>
+      </div>
+      <div class="delivery-items">
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Dashboard: KPI + Cost meter + กิจกรรมล่าสุด</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">จัดการบริษัทลูกค้า + COA import (YAML)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">จัดการผู้ใช้ + assign บริษัท</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Cost tracking: usage per company per model</span></div>
+      </div>
+    </div>
+
+    <div class="delivery-card">
+      <div class="delivery-card-head">
+        <div class="delivery-card-icon">🖥️</div>
+        <div>
+          <div class="delivery-card-title">Infrastructure (Hostinger VPS)</div>
+          <div style="font-size:0.72rem;color:var(--muted);">Epic 13 · W1-8 parallel</div>
+        </div>
+      </div>
+      <div class="delivery-items">
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">UAT: uat.bwc.biz (KVM 2, 8GB RAM)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">PROD: app.bwc.biz (KVM 4, 16GB RAM)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">SSL Let's Encrypt auto-renew</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">CI/CD: push code → auto deploy</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Backup: pg_dump 4×/วัน → Cloudflare R2</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">RPO 6 ชั่วโมง / RTO 6 ชั่วโมง</span></div>
+      </div>
+    </div>
+
+    <div class="delivery-card">
+      <div class="delivery-card-head">
+        <div class="delivery-card-icon">📋</div>
+        <div>
+          <div class="delivery-card-title">รายงาน + เอกสาร</div>
+          <div style="font-size:0.72rem;color:var(--muted);">ทุก Epic</div>
+        </div>
+      </div>
+      <div class="delivery-items">
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">รายงานภาษีซื้อ (ภ.พ.30) template-based</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">TASK-906 Feasibility Report (W3)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">คู่มือผู้ใช้ภาษาไทย (อัปเดต)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Admin Manual + IT Handover Checklist</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Training 3 sessions (Accountant, Admin, IT)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── NOTES ─── -->
+  <div class="section-title">หมายเหตุสำคัญ</div>
+
+  <div class="note-box">
+    <strong>TASK-906 Line Item PoC (W1)</strong> — ผลลัพธ์กำหนด scope และราคางวดที่ 4 (Phase II/2):
+    ถ้า Go (≥4/6 metrics) → Phase II/2 includes Epic 14 (Line Item Full) ·
+    ถ้า No-Go → Phase II/2 scope ลดลง ราคางวด 4 ปรับตาม
+  </div>
+
+  <div class="note-box warn">
+    <strong>Client Responsibilities</strong> — สิ่งที่ลูกค้าต้องเตรียม:
+    <ul style="margin-top:0.5rem;padding-left:1.25rem;line-height:2;">
+      <li>ตัวอย่าง Express CSV format จริง ✗ (ต้องได้ก่อน W3 Template Engine)</li>
+      <li>DNS: delegate bwc.biz ไป Hostinger nameservers ✗ (ต้องได้ W1)</li>
+      <li>ชำระงวด 1 (50%) ก่อนวันที่ 15 มิ.ย. 2569</li>
+      <li>ตัวอย่างเอกสาร 20-30 ฉบับ สำหรับ TASK-906</li>
+      <li>ผังบัญชี (COA) ของแต่ละบริษัทในรูปแบบ YAML หรือ CSV</li>
+      <li>ยืนยัน 2 roles (Admin/Staff) เพียงพอ หรือต้องการ 4 roles</li>
+    </ul>
+  </div>
+
+  <div class="page-footer">
+    LedgerFlow Phase II — Project Timeline · Baseline 2026-06-15 · Generated 2026-06-20<br>
+    สอบถามเพิ่มเติม: สมชาย กิตติคุณ · bwc.co.th
+  </div>
+
+</div>
+</body>
+</html>

@@ -2,14 +2,18 @@
 
 > **Status:** Approved for implementation
 > **Approved:** 2026-06-14
-> **Scope:** MVP (12 weeks) + Full (additional 6-8 weeks)
-> **Team:** Solo/small developer
+> **Updated:** 2026-06-15 — Restructured as Phase II/1 (8w go-live) + Phase II/2 (CR-based)
+> **Scope:** Phase II/1 MVP (8 weeks) + Phase II/2 (CR-based, post-go-live)
+> **Team:** Solo developer
+> **Hosting:** Hostinger VPS (Singapore DC) — UAT + PROD
+> **Payment:** 50% Kickoff / 10% UAT / 20% Prod / 20% Phase II/2
+> **Epic Roadmap:** See `PHASE-II-EPIC-ROADMAP.md` for detailed task breakdown + timeline
 
 ---
 
 ## Context
 
-Phase I (PoC) พิสูจน์แล้วว่า Thai OCR + AI extraction ทำงานได้จริง pipeline สมบูรณ์ 4 stages (OCR → Field Extraction → LLM Repair → Journal Routing) พร้อม Excel export และ frontend prototype ที่ทำงานจริงบน VPS
+Phase I (PoC) พิสูจน์แล้วว่า Thai OCR + AI extraction ทำงานได้จริง pipeline สมบูรณ์ 4 stages (OCR → Field Extraction → LLM Repair → Export Mapping) พร้อม Excel export และ frontend prototype ที่ทำงานจริงบน VPS
 
 **ปัญหาที่ Phase II ต้องแก้:** PoC ยัง stateless (ไม่มี DB จริง), ไม่มี auth, ไม่มี multi-tenant isolation, background jobs สูญหายเมื่อ restart, ไม่มี template engine สำหรับ custom export, และ accuracy ยังมีจุดอ่อน (VAT inclusive/exclusive, WHT, gridline OCR)
 
@@ -27,9 +31,12 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 4. **Platform Features** — หน้าจอ Login, Dashboard, Company/User management, Cost control
 5. **Infrastructure** — Monitoring, PDPA compliance, UAT/Prod CI/CD
 
-**แนะนำแบ่งเป็น 2 ก้อนราคา:**
-- MVP (12 สัปดาห์): Foundation + Core Accuracy + Template Engine + Template Configurator UI + Login/Dashboard
-- Full Phase II (เพิ่ม 6-8 สัปดาห์): RBAC 4 roles + Item-level extraction + Broker templates + PDPA + Monitoring
+**แบ่งเป็น 2 phase + 4 งวดจ่าย:**
+- **Phase II/1 (8 สัปดาห์):** Foundation + Core Accuracy + Template Engine + Configurator UI + Login/Dashboard + Hostinger VPS (UAT/Prod) → Go-Live
+- **Phase II/2 (CR-based, post-go-live):** Line Item Full + Sales Tax Report + Full Dashboard + Monitoring
+- **Line Item PoC (TASK-906, W1):** ทดสอบ feasibility + cost ก่อนเริ่มงาน → กำหนด scope + ราคางวด 4
+
+> **Detailed task breakdown:** ดู `PHASE-II-EPIC-ROADMAP.md` (Epic 8-16, 40+ tasks)
 
 ---
 
@@ -111,7 +118,10 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 
 ## 5. Recommended MVP Phase II
 
-**ระยะเวลา: 12 สัปดาห์** (solo developer)
+> **Updated 2026-06-15:** ปรับจาก 12 สัปดาห์เป็น 8 สัปดาห์ (Phase II/1 go-live) + Phase II/2 (CR-based)
+> ดู task breakdown ละเอียด → `PHASE-II-EPIC-ROADMAP.md` (Epic 8-13, 30+ tasks)
+
+**ระยะเวลา: 8 สัปดาห์** (solo developer, Phase II/1 Go-Live)
 
 | # | งาน | สัปดาห์ | Complexity | Req# |
 |---|------|---------|-----------|------|
@@ -545,16 +555,34 @@ data_retention_policies (id, tenant_id, entity_type, retention_days, action, is_
 
 ---
 
-## 21. Pricing: MVP ฿260-350K, Full +฿150-200K, MA ฿9-18K/month
+## 21. Pricing & Payment
+
+> **Updated 2026-06-15:** เปลี่ยนจาก 3 งวด (50/30/20) เป็น 4 งวด (50/10/20/20)
+
+| งวด | % | เงื่อนไข | Milestone |
+|-----|---|---------|-----------|
+| **1 — Kickoff** | 50% | ลงนามสัญญา Phase II | ก่อนเริ่มงาน W1 |
+| **2 — UAT** | 10% | Deploy uat.bwc.biz + client ทดสอบผ่าน | W7 |
+| **3 — Production** | 20% | Deploy app.bwc.biz + Go-live + Warranty 7 วัน | W8 + 7 วัน |
+| **4 — Phase II/2** | 20% | ส่งมอบ Phase II/2 (Line item, Sales tax, Dashboard) | W9+ ตามแผน |
+
+- **Phase II/1 MVP:** ฿260,000-350,000 + VAT (8 สัปดาห์)
+- **Phase II/2 (CR):** scope + ราคาขึ้นกับผล TASK-906 Line Item PoC
+- **MA Monthly:** ฿9,000-18,000/เดือน (ตาม plan)
+- **Hosting:** ≈ ฿900-1,400/เดือน (Hostinger VPS UAT+Prod + Cloudflare R2 backup)
 
 ## 22. Contract Scope: See plan file for In-Scope (13 items) and Out-of-Scope (9 items)
 
 ## 23. Next Actions
 
-1. Get Express CSV sample from client
-2. Confirm MVP vs Full scope
-3. Verify MinIO S3 storage (already in docker-compose)
-4. Start: SQLAlchemy models + Alembic + VAT disambiguation (parallel)
+> **Updated 2026-06-15:** ดู `PHASE-II-EPIC-ROADMAP.md` Section 23 (Recommended Next Actions) สำหรับรายละเอียด
+
+1. Get Express CSV sample from client (critical for template engine)
+2. ~~Confirm MVP vs Full scope~~ → **Confirmed: Phase II/1 (8w) + Phase II/2 (CR)**
+3. TASK-906 Line Item PoC (Week 1) — ทดสอบ feasibility + cost
+4. Hostinger VPS procurement — UAT + PROD (Singapore DC)
+5. DNS delegation request (bwc.biz → subdomains)
+6. Start: DB activation + VAT disambiguation + VPS setup (parallel W1)
 
 ---
 
