@@ -52,6 +52,19 @@ test.describe("PoC User-Trial Smoke", () => {
     expect(contentType).toContain("text/css");
   });
 
+  test("phase II review routes render timeline and prototype", async ({ page }) => {
+    await gotoWithRetry(page, "/phase2");
+    await expect(page).toHaveTitle(/Phase II/);
+    await expect(page.getByRole("link", { name: "Open Timeline" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open Prototype" })).toBeVisible();
+
+    await gotoWithRetry(page, "/phase2/timeline");
+    await expect(page).toHaveTitle(/Project Timeline/);
+
+    await gotoWithRetry(page, "/phase2/prototype");
+    await expect(page).toHaveTitle(/Full Prototype/);
+  });
+
   test("core workflow controls render without console errors", async ({
     page,
   }) => {

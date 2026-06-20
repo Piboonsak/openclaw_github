@@ -213,7 +213,7 @@
     <div class="head-logo">LF</div>
     <div>
       <div class="head-title">LedgerFlow Phase II — Project Timeline</div>
-      <div class="head-sub">AI Pre-Accounting Copilot · Hostinger VPS · 8 สัปดาห์ Go-Live MVP</div>
+      <div class="head-sub">AI Pre-Accounting Copilot · 8 สัปดาห์ Go-Live MVP</div>
     </div>
     <div class="head-meta">
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
@@ -255,7 +255,8 @@
       </div>
     </div>
     <div class="payment-card prod">
-      <div class="payment-amount">20%</div>
+      <div class="payment-amount">งวดที่ 3</div>
+      <div class="payment-pct">20%</div>
       <div class="payment-label">Go-Live Production</div>
       <div class="payment-date">~10 ส.ค. 2569 (W8)</div>
       <div class="payment-trigger">
@@ -267,7 +268,8 @@
       </div>
     </div>
     <div class="payment-card cr">
-      <div class="payment-amount">20%</div>
+      <div class="payment-amount">งวดที่ 4</div>
+      <div class="payment-pct">20%</div>
       <div class="payment-label">Phase II/2</div>
       <div class="payment-date">หลัง Go-Live (CR-based)</div>
       <div class="payment-trigger">
@@ -344,22 +346,24 @@
       </div>
     </div>
 
-    <!-- EPIC 9: W1-2 -->
+    <!-- EPIC 9: W2 (เริ่ม 21 มิ.ย.) -->
     <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);min-height:52px;">
       <div class="gantt-epic-label">
         <div class="gantt-epic-num">Epic 9</div>
-        <div class="gantt-epic-name">Accuracy + PoC</div>
+        <div class="gantt-epic-name">Accuracy + PoC<br><span style="font-size:0.6rem;color:var(--muted);font-weight:400;">เริ่ม 21 มิ.ย.</span></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
-        <!-- W1: TASK-906 PoC -->
-        <div style="position:relative;height:36px;display:flex;align-items:center;">
-          <div class="gantt-bar bar-teal" style="position:static;width:100%;border-radius:6px 0 0 6px;font-size:0.65rem;background:var(--teal);">TASK-906 PoC</div>
+        <!-- W1: empty (เริ่ม 21 มิ.ย. = ปลาย W1 / ต้น W2) -->
+        <div></div>
+        <!-- W2: TASK-906 PoC + VAT/WHT/OCR -->
+        <div style="height:36px;display:flex;align-items:center;">
+          <div class="gantt-bar" style="position:static;width:100%;border-radius:6px 0 0 6px;font-size:0.65rem;background:var(--teal);">TASK-906 PoC</div>
         </div>
-        <!-- W2: VAT/WHT/OCR -->
+        <!-- W3: VAT/WHT/OCR -->
         <div style="height:36px;display:flex;align-items:center;">
           <div class="gantt-bar" style="position:static;width:100%;border-radius:0 6px 6px 0;font-size:0.65rem;background:var(--teal);margin-left:1px;">VAT·WHT·OCR</div>
         </div>
-        <div></div><div></div><div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div><div></div>
       </div>
     </div>
 
@@ -510,14 +514,12 @@
           <td style="font-size:0.78rem;">15 มิ.ย. 2569<br>— 21 มิ.ย. 2569</td>
           <td>
             <div><span class="badge badge-accent">E8</span> Foundation W1</div>
-            <div style="margin-top:0.3rem;"><span class="badge badge-teal">E9</span> TASK-906 PoC</div>
             <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> VPS Procurement</div>
           </td>
           <td>
             <div class="deliverable-list">
               <div class="deliverable-item">Alembic migration รัน + DB 15 tables ขึ้น</div>
               <div class="deliverable-item">companies.json migrate → DB สำเร็จ</div>
-              <div class="deliverable-item">TASK-906: เตรียม 20-30 docs + เริ่ม test LLM</div>
               <div class="deliverable-item">VPS UAT (KVM 2) เปิดใช้ + SSH เข้าได้</div>
               <div class="deliverable-item">VAT disambiguation เริ่ม implement</div>
             </div>
@@ -537,11 +539,13 @@
           <td style="font-size:0.78rem;">22 มิ.ย. 2569<br>— 28 มิ.ย. 2569</td>
           <td>
             <div><span class="badge badge-accent">E8</span> Foundation W2</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-teal">E9</span> TASK-906 PoC <span style="font-size:0.68rem;color:var(--muted);">(เริ่ม 21 มิ.ย.)</span></div>
             <div style="margin-top:0.3rem;"><span class="badge badge-teal">E9</span> WHT · OCR Fix</div>
             <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Docker + Security</div>
           </td>
           <td>
             <div class="deliverable-list">
+              <div class="deliverable-item">TASK-906: เตรียม 20-30 docs + เริ่ม test LLM (จาก 21 มิ.ย.)</div>
               <div class="deliverable-item">JWT Auth Login API ทำงาน (POST /api/auth/login)</div>
               <div class="deliverable-item">MinIO storage: upload/download ได้</div>
               <div class="deliverable-item">Celery worker: OCR task ทำงาน background</div>
@@ -775,7 +779,7 @@
         <div class="delivery-card-icon">📑</div>
         <div>
           <div class="delivery-card-title">Template Engine + Configurator</div>
-          <div style="font-size:0.72rem;color:var(--muted);">Epic 10 · W3-5 · Core Feature</div>
+          <div style="font-size:0.72rem;color:var(--muted);">Epic 10+11 · W3-5 · Core Feature</div>
         </div>
       </div>
       <div class="delivery-items">
@@ -784,6 +788,7 @@
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Master templates: Express GL + ภ.พ.30</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Clone Master → แก้ไขตามบริษัท</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Export CSV + Excel + รองรับ TIS-620</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">รายงานภาษีซื้อ (ภ.พ.30) ย้ายเป็น template-based (Epic 11)</span></div>
       </div>
     </div>
 
@@ -807,7 +812,7 @@
       <div class="delivery-card-head">
         <div class="delivery-card-icon">🖥️</div>
         <div>
-          <div class="delivery-card-title">Infrastructure (Hostinger VPS)</div>
+          <div class="delivery-card-title">Infrastructure</div>
           <div style="font-size:0.72rem;color:var(--muted);">Epic 13 · W1-8 parallel</div>
         </div>
       </div>
@@ -830,11 +835,10 @@
         </div>
       </div>
       <div class="delivery-items">
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">รายงานภาษีซื้อ (ภ.พ.30) template-based</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">TASK-906 Feasibility Report (W3)</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">คู่มือผู้ใช้ภาษาไทย (อัปเดต)</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Admin Manual + IT Handover Checklist</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Training 3 sessions (Accountant, Admin, IT)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Training 2 sessions (Accountant, Admin)</span></div>
       </div>
     </div>
   </div>
@@ -843,7 +847,7 @@
   <div class="section-title">หมายเหตุสำคัญ</div>
 
   <div class="note-box">
-    <strong>TASK-906 Line Item PoC (W1)</strong> — ผลลัพธ์กำหนด scope และราคางวดที่ 4 (Phase II/2):
+    <strong>TASK-906 Line Item PoC (เริ่ม 21 มิ.ย. / W2)</strong> — ผลลัพธ์กำหนด scope และราคางวดที่ 4 (Phase II/2):
     ถ้า Go (≥4/6 metrics) → Phase II/2 includes Epic 14 (Line Item Full) ·
     ถ้า No-Go → Phase II/2 scope ลดลง ราคางวด 4 ปรับตาม
   </div>

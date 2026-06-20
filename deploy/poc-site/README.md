@@ -60,8 +60,16 @@ The workflow automatically runs Playwright smoke tests (`tests/e2e/poc-smoke.spe
 
 1. Health endpoints respond 200
 2. `/prototype` page loads with correct title
-3. Core workflow DOM elements render (6 step items)
-4. CSS served with correct `text/css` MIME type
+3. `/phase2`, `/phase2/timeline`, `/phase2/prototype` review routes load correctly
+4. Core workflow DOM elements render (6 step items)
+5. CSS served with correct `text/css` MIME type
+
+## Reviewer URLs (Phase II)
+
+- `https://poc-aiaccount.yahwan.biz/phase2` — reviewer index page
+- `https://poc-aiaccount.yahwan.biz/phase2/timeline` — project timeline
+- `https://poc-aiaccount.yahwan.biz/phase2/prototype` — full prototype document
+- `https://poc-aiaccount.yahwan.biz/prototype` — interactive PoC flow (existing)
 
 ## HTTPS / SSL Certificate
 
