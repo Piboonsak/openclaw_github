@@ -1,16 +1,10 @@
-name: BWCAcc — Deploy to UAT
+name: BWCAcc Deploy UAT
 
 "on":
+  workflow_dispatch:
   push:
     branches: [uat]
-  workflow_dispatch:
-    inputs:
-      reason:
-        description: 'Reason for manual deploy'
-        required: false
-        default: 'manual trigger'
 
-# Only one UAT deploy at a time; never cancel an in-progress deploy
 concurrency:
   group: bwcacc-deploy-uat
   cancel-in-progress: false
@@ -20,62 +14,8 @@ jobs:
     name: Deploy BWCAcc UAT
     runs-on: ubuntu-latest
     environment: uat
-
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Deploy to UAT VPS
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.BWCACC_UAT_HOST }}
-          username: ${{ secrets.BWCACC_DEPLOY_USER }}
-          key: ${{ secrets.BWCACC_VPS_SSH_KEY }}
-          script_stop: true
-          command_timeout: 10m
-          script: |
-            set -euo pipefail
-            cd /opt/ledgerflow
-
-            echo "=== Git Pull ==="
-            git fetch origin uat
-            git checkout uat
-            git reset --hard origin/uat
-
-            echo "=== Docker Build ==="
-            docker compose -f docker/docker-compose.uat.yml build
-
-            echo "=== Database Migration ==="
-            docker compose -f docker/docker-compose.uat.yml run --rm backend \
-              python -m alembic upgrade head
-
-            echo "=== Docker Compose Up ==="
-            docker compose -f docker/docker-compose.uat.yml up -d
-
-            echo "=== Waiting for services (15s) ==="
-            sleep 15
-
-            echo "=== Health Check ==="
-            bash scripts/deploy/health-check.sh "https://localhost/api/health" 6 5
-
-      - name: Notify LINE — Success
-        if: success()
-        run: |
-          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          MSG="✅ BWCAcc Deploy SUCCESS\nEnvironment: UAT (uat.bwcacc.biz)\nBranch: uat\nCommit: ${COMMIT_SHORT}\nHealth: /api/health → 200 OK\nTime: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-          curl -sf -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.BWCACC_LINE_CHANNEL_ACCESS_TOKEN }}" \
-            -d "{\"to\":\"${{ secrets.BWCACC_LINE_USER_ID }}\",\"messages\":[{\"type\":\"text\",\"text\":\"${MSG}\"}]}" \
-            https://api.line.me/v2/bot/message/push || echo "LINE notify failed (non-fatal)"
-
-      - name: Notify LINE — Failure
-        if: failure()
-        run: |
-          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          MSG="❌ BWCAcc Deploy FAILED\nEnvironment: UAT (uat.bwcacc.biz)\nBranch: uat\nCommit: ${COMMIT_SHORT}\nAction: Check workflow logs\nTime: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-          curl -sf -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.BWCACC_LINE_CHANNEL_ACCESS_TOKEN }}" \
-            -d "{\"to\":\"${{ secrets.BWCACC_LINE_USER_ID }}\",\"messages\":[{\"type\":\"text\",\"text\":\"${MSG}\"}]}" \
-            https://api.line.me/v2/bot/message/push || echo "LINE notify failed (non-fatal)"
+      - name: Test step
+        run: echo "deploy would run here"
