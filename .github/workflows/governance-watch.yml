@@ -1,6 +1,6 @@
 name: governance-watch
 
-on:
+"on":
   workflow_dispatch:
   schedule:
     - cron: "0 * * * *"

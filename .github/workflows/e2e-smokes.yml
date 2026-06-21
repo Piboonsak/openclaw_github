@@ -1,6 +1,6 @@
 name: Playwright Smoke & E2E Tests
 
-on:
+"on":
   push:
     branches:
       - main

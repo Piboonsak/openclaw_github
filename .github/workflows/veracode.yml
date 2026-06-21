@@ -1,6 +1,6 @@
 name: Veracode SAST Gate
 
-on:
+"on":
   push:
     branches:
       - main

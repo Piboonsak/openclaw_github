@@ -1,6 +1,6 @@
 name: BWCAcc — Deploy to UAT
 
-on:
+"on":
   push:
     branches: [uat]
   workflow_dispatch:

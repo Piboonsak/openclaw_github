@@ -1,6 +1,6 @@
 name: Prisma Security Scan
 
-on:
+"on":
   push:
     branches:
       - main

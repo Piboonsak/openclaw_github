@@ -1,6 +1,6 @@
 name: CodeQL Static Scan
 
-on:
+"on":
   push:
     branches:
       - main

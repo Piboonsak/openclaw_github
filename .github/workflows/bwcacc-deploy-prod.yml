@@ -1,6 +1,6 @@
 name: BWCAcc — Deploy to PROD
 
-on:
+"on":
   push:
     branches: [main]
 
