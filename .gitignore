@@ -3,6 +3,8 @@
 .env.local
 .env.*.local
 .env.example
+.env.uat
+.env.prod
 
 # Python
 __pycache__/

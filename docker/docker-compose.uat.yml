@@ -1,0 +1,256 @@
+# Docker Compose — UAT Environment (uat.bwcacc.biz)
+# TASK-1307 | Target: VPS 72.62.74.232 (KVM 2: 2 vCPU, 8 GB)
+#
+# Usage:
+#   docker compose -f docker/docker-compose.uat.yml up -d
+#   docker compose -f docker/docker-compose.uat.yml --profile worker up -d  # include celery
+#
+# Pre-requisites (run on VPS before first deploy):
+#   1. Copy docker/.env.uat.example → docker/.env.uat and fill secrets
+#   2. Remove nginx-gate container:
+#        docker rm -f nginx-gate
+#   3. Update certbot renewal hooks (nginx-gate → ledgerflow-nginx):
+#        sed -i 's/nginx-gate/ledgerflow-nginx/g' /etc/letsencrypt/renewal/uat.bwcacc.biz.conf
+
+version: '3.8'
+
+services:
+  # ── nginx — SSL termination, reverse proxy ──────────────────
+  # Only service with host port binding (80/443)
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ledgerflow-nginx
+    restart: on-failure
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./nginx/nginx-uat.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ledgerflow-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  # ── Backend — FastAPI (uvicorn, 2 workers) ──────────────────
+  backend:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+      target: uat
+    container_name: ledgerflow-backend
+    restart: on-failure
+    command:
+      [
+        "python", "-m", "uvicorn",
+        "src.backend.app.main:app",
+        "--host", "0.0.0.0",
+        "--port", "8000",
+        "--workers", "2"
+      ]
+    env_file:
+      - .env.uat
+    environment:
+      APP_ENV: uat
+      STAGE: UAT
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - ledgerflow-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # ── Celery Worker — background OCR + LLM processing ────────
+  # Activate with: --profile worker
+  # Requires: celery in requirements.txt + src.backend.worker module
+  celery-worker:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+      target: uat
+    container_name: ledgerflow-celery-worker
+    restart: on-failure
+    command:
+      [
+        "python", "-m", "celery",
+        "-A", "src.backend.worker.app",
+        "worker",
+        "--loglevel=info",
+        "--concurrency=2"
+      ]
+    env_file:
+      - .env.uat
+    environment:
+      APP_ENV: uat
+      STAGE: UAT
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - ledgerflow-net
+    profiles:
+      - worker
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1.5G
+        reservations:
+          memory: 512M
+
+  # ── Celery Beat — task scheduler ────────────────────────────
+  # Activate with: --profile worker
+  celery-beat:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+      target: uat
+    container_name: ledgerflow-celery-beat
+    restart: on-failure
+    command:
+      [
+        "python", "-m", "celery",
+        "-A", "src.backend.worker.app",
+        "beat",
+        "--loglevel=info"
+      ]
+    env_file:
+      - .env.uat
+    environment:
+      APP_ENV: uat
+      STAGE: UAT
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ledgerflow-net
+    profiles:
+      - worker
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  # ── PostgreSQL 16 ───────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ledgerflow-postgres
+    restart: on-failure
+    env_file:
+      - .env.uat
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledgerflow -d ledgerflow_uat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerflow-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # ── Redis 7 ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ledgerflow-redis
+    restart: on-failure
+    command:
+      [
+        "redis-server",
+        "--maxmemory", "200mb",
+        "--maxmemory-policy", "allkeys-lru",
+        "--appendonly", "yes"
+      ]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerflow-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # ── MinIO — S3-compatible object storage ────────────────────
+  minio:
+    image: minio/minio:RELEASE.2023-11-20T22-40-07Z
+    container_name: ledgerflow-minio
+    restart: on-failure
+    env_file:
+      - .env.uat
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerflow-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512M
+        reservations:
+          memory: 256M
+
+# ── Networks ──────────────────────────────────────────────────
+networks:
+  ledgerflow-net:
+    driver: bridge
+
+# ── Volumes (Docker-managed, persistent) ──────────────────────
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:

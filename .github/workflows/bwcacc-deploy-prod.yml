@@ -1,0 +1,91 @@
+name: BWCAcc — Deploy to PROD
+
+on:
+  push:
+    branches: [main]
+
+# Only one PROD deploy at a time; never cancel an in-progress deploy
+concurrency:
+  group: bwcacc-deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy BWCAcc PROD
+    runs-on: ubuntu-latest
+    # Requires manual approval — configure in GitHub Settings > Environments > production
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Pre-deploy DB snapshot
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.BWCACC_PROD_HOST }}
+          username: ${{ secrets.BWCACC_DEPLOY_USER }}
+          key: ${{ secrets.BWCACC_VPS_SSH_KEY }}
+          script_stop: true
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /opt/ledgerflow
+            echo "=== Pre-Deploy DB Snapshot ==="
+            bash scripts/deploy/pre-deploy-snapshot.sh \
+              /backup/db ledgerflow ledgerflow_prod ledgerflow-postgres
+
+      - name: Deploy to PROD VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.BWCACC_PROD_HOST }}
+          username: ${{ secrets.BWCACC_DEPLOY_USER }}
+          key: ${{ secrets.BWCACC_VPS_SSH_KEY }}
+          script_stop: true
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            cd /opt/ledgerflow
+
+            echo "=== Git Pull ==="
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+
+            echo "=== Docker Build ==="
+            docker compose -f docker/docker-compose.prod.yml build
+
+            echo "=== Database Migration ==="
+            docker compose -f docker/docker-compose.prod.yml run --rm backend \
+              python -m alembic upgrade head
+
+            echo "=== Docker Compose Up ==="
+            docker compose -f docker/docker-compose.prod.yml up -d
+
+            echo "=== Waiting for services (30s) ==="
+            sleep 30
+
+            echo "=== Health Check ==="
+            bash scripts/deploy/health-check.sh "https://localhost/api/health" 6 10
+
+      - name: Notify LINE — Success
+        if: success()
+        run: |
+          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          MSG="✅ BWCAcc Deploy SUCCESS\nEnvironment: PROD (app.bwcacc.biz)\nBranch: main\nCommit: ${COMMIT_SHORT}\nHealth: /api/health → 200 OK\nTime: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.BWCACC_LINE_CHANNEL_ACCESS_TOKEN }}" \
+            -d "{\"to\":\"${{ secrets.BWCACC_LINE_USER_ID }}\",\"messages\":[{\"type\":\"text\",\"text\":\"${MSG}\"}]}" \
+            https://api.line.me/v2/bot/message/push || echo "LINE notify failed (non-fatal)"
+
+      - name: Notify LINE — Failure
+        if: failure()
+        run: |
+          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          MSG="❌ BWCAcc Deploy FAILED\nEnvironment: PROD (app.bwcacc.biz)\nBranch: main\nCommit: ${COMMIT_SHORT}\nAction: Manual rollback — see docs/cicd/prod-safety-rules.md\nTime: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.BWCACC_LINE_CHANNEL_ACCESS_TOKEN }}" \
+            -d "{\"to\":\"${{ secrets.BWCACC_LINE_USER_ID }}\",\"messages\":[{\"type\":\"text\",\"text\":\"${MSG}\"}]}" \
+            https://api.line.me/v2/bot/message/push || echo "LINE notify failed (non-fatal)"
