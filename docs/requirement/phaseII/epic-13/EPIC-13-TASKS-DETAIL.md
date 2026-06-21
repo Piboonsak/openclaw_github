@@ -879,5 +879,130 @@ Go-live readiness validation — ทุกอย่างต้องทำง�
 
 ---
 
+## TASK-1313: CI/CD Migration — Openclaw as CD Hub
+
+> ⏸️ **STANDBY** — รอ 2026-06-24 ถ้า YAHWAN-SHOP billing ยังไม่ resolve ให้ execute migration plan นี้
+
+**Owner**: DevOps
+**Risk**: MEDIUM
+**Deadline trigger**: 2026-06-24 (3 วันหลังพบปัญหา 2026-06-21)
+**Closes pain points**: CI/CD startup_failure, secrets management
+
+### Background / Problem
+
+YAHWAN-SHOP org มีปัญหา billing ทำให้ GitHub Actions ทุก workflow ใน `ai-accounting-copilot` repo ได้รับ `startup_failure` (0 jobs created) ตั้งแต่ 2026-06-11 พยายามแก้ billing แล้ว 10+ ครั้ง ยังไม่ผ่าน
+
+**Root cause confirmed:** Banner ใน GitHub repo settings แสดง *"We have a problem billing the YAHWAN-SHOP organization"* → Actions ถูก block ทั้ง org
+
+**Current workaround:** Deploy ด้วย SSH manual (ทำ first deploy UAT + PROD สำเร็จแล้ว 2026-06-21)
+
+### Target Architecture
+
+```
+push uat/main branch
+YAHWAN-SHOP/ai-accounting-copilot  ← source code only, no deploy secrets
+        │
+        │  git post-push hook (local, curl)  ← ไม่ต้องใช้ YAHWAN-SHOP Actions เลย
+        ▼
+Piboonsak/Openclaw
+├── deploy-ai-accounting-copilot-uat.yml   ← trigger: repository_dispatch + workflow_dispatch
+└── deploy-ai-accounting-copilot-prod.yml  ← trigger: workflow_dispatch + manual approve
+        │
+        │  checkout YAHWAN-SHOP/ai-accounting-copilot@sha
+        │  SSH → docker compose → alembic upgrade head
+        ▼
+UAT VPS (72.62.74.232) / PROD VPS (72.62.247.9)
+```
+
+**Branch mapping:**
+- push `uat` → auto-deploy UAT (via post-push hook → dispatch)
+- push `main` → manual approve ก่อน deploy PROD
+
+### Migration Steps (เรียงลำดับ execute)
+
+**Step 1 — สร้าง deploy workflows ใน Openclaw**
+
+| Action | File (Piboonsak/Openclaw) | What |
+|--------|--------------------------|------|
+| Create | `.github/workflows/deploy-ai-accounting-copilot-uat.yml` | Clone จาก `deploy-ai-accounting-copilot-poc.yml` ปรับ target branch/VPS |
+| Create | `.github/workflows/deploy-ai-accounting-copilot-prod.yml` | เพิ่ม environment approval + pre-deploy snapshot |
+
+**Step 2 — ย้าย secrets จาก YAHWAN-SHOP → Openclaw**
+
+Secrets ที่ต้องเพิ่มใน `Piboonsak/Openclaw`:
+```
+BWCACC_UAT_HOST       = 72.62.74.232
+BWCACC_PROD_HOST      = 72.62.247.9
+BWCACC_DEPLOY_USER    = deploy
+BWCACC_VPS_SSH_KEY    = (private key ของ ~/.ssh/id_ed25519_hostinger)
+BWCACC_LINE_CHANNEL_ACCESS_TOKEN  = (จาก YAHWAN-SHOP secrets เดิม)
+BWCACC_LINE_USER_ID               = (จาก YAHWAN-SHOP secrets เดิม)
+```
+หมายเหตุ: `OPENROUTER_API_KEY` และ `ANTHROPIC_API_KEY` มีอยู่ใน Openclaw แล้ว
+
+**Step 3 — ตั้ง git post-push hook บน developer machine**
+
+```bash
+# ไฟล์: .git/hooks/post-push  (ไม่ commit เข้า repo)
+#!/bin/bash
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+SHA=$(git rev-parse HEAD)
+PAT="${OPENCLAW_DISPATCH_PAT}"  # ตั้งใน ~/.bashrc หรือ ~/.zshrc
+
+if [[ "$BRANCH" == "uat" ]]; then
+  echo "→ Triggering UAT deploy in Openclaw..."
+  curl -sf -X POST \
+    -H "Authorization: Bearer ${PAT}" \
+    -H "Accept: application/vnd.github+json" \
+    https://api.github.com/repos/Piboonsak/Openclaw/dispatches \
+    -d "{\"event_type\":\"deploy-aiacc-uat\",\"client_payload\":{\"sha\":\"${SHA}\",\"ref\":\"uat\"}}"
+  echo "→ Deploy triggered (Openclaw Actions will notify via LINE)"
+fi
+```
+
+**Step 4 — Cleanup YAHWAN-SHOP workflows**
+
+หลัง Openclaw CD ทำงานแล้ว ให้ remove ออกจาก `ai-accounting-copilot`:
+- ลบ `.github/workflows/bwcacc-deploy-uat.yml`
+- ลบ `.github/workflows/bwcacc-deploy-prod.yml`
+- คง `.github/workflows/ci.yml` (tests/lint) ไว้ — จะ run ได้เองเมื่อ billing ถูกแก้
+
+**Step 5 — Transfer repo (ถ้า YAHWAN-SHOP ยังมีปัญหา billing ต่อ)**
+
+ถ้า billing ไม่ resolve ภายใน 1 สัปดาห์ ให้ transfer repo:
+```
+YAHWAN-SHOP/ai-accounting-copilot → Piboonsak/ai-accounting-copilot
+```
+- Settings → General → Danger Zone → Transfer repository
+- GitHub redirect URL เก่าให้ temporary
+- Update VPS git remote URL หลัง transfer
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1313_01 | push uat → Openclaw deploy workflow triggers ใน 60s | Check Openclaw Actions tab |
+| ac_1313_02 | UAT deploy สำเร็จ (health check 200) | `curl https://uat.bwcacc.biz/api/health` |
+| ac_1313_03 | PROD deploy ต้อง manual approve ก่อนรัน | Workflow ค้างรอ approval |
+| ac_1313_04 | ไม่มี deploy secrets ใน YAHWAN-SHOP repo | `gh secret list -R YAHWAN-SHOP/ai-accounting-copilot` — ไม่มี SSH_KEY, VPS_HOST |
+| ac_1313_05 | LINE notification ส่งเมื่อ deploy success/fail | ตรวจสอบ LINE message |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1313",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": [".github/workflows/**", "scripts/**", "docs/**"],
+  "forbidden_scope": [".env*", "src/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
 *Created: 2026-06-15*
+*Updated: 2026-06-22 — added TASK-1313 CI/CD migration plan*
 *Epic Roadmap: [PHASE-II-EPIC-ROADMAP.md](../PHASE-II-EPIC-ROADMAP.md)*
