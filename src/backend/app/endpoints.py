@@ -23,6 +23,7 @@ from src.backend.services.export_service import (
 )
 from src.backend.services.rule_engine import validate_required_fields
 from src.backend.services.rule_generation_jobs import RULE_GENERATION_JOBS
+from src.backend.storage import materialize_local_cache, store_document_bytes
 
 router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -118,9 +119,21 @@ async def process(
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     if file:
-        target_path = temp_dir / _safe_upload_name(file.filename, "upload.bin")
         content = await file.read()
-        target_path.write_bytes(content)
+        company_scope = company_id or "unassigned-company"
+        stored_file = store_document_bytes(
+            content=content,
+            filename=file.filename,
+            company_id=company_scope,
+            content_type=file.content_type,
+        )
+        # The pipeline still consumes a local path today, so we keep a cache copy
+        # after object-storage upload until TASK-801B/TASK-805 move processing off disk.
+        target_path = materialize_local_cache(
+            content=content,
+            filename=file.filename,
+            sha256=stored_file["sha256"],
+        )
         resolved_path = str(target_path)
     elif file_path:
         resolved_path = file_path
@@ -157,7 +170,7 @@ async def process(
         fields, ["invoice_number", "invoice_date", "total_amount"]
     )
 
-    return {
+    response_payload = {
         "source_file": resolved_path,
         "text": "\n".join(
             [b.get("text", "") for b in ctx.ocr_output.get("blocks", [])]
@@ -179,6 +192,10 @@ async def process(
         "pipeline_status": ctx.status.name,
         "model_used": select_model(ctx),
     }
+    if file:
+        response_payload["storage_key"] = stored_file["storage_key"]
+        response_payload["storage_provider"] = stored_file["provider"]
+    return response_payload
 
 
 @router.get("/preview-first-page")

@@ -1,0 +1,118 @@
+{
+  "title": "LedgerFlow Phase II DNS/Registrar Design Review (Strict Scoring)",
+  "targetAgent": "Claude Code",
+  "language": "th",
+  "role": "You are a principal infrastructure architect and production risk reviewer for accounting systems.",
+  "goal": "Give a decision-ready verdict on whether the current DNS/registrar architecture is acceptable for go-live, with quantified risk scoring and explicit Go/Conditional Go/No-Go outcome.",
+  "projectContext": {
+    "system": "LedgerFlow (AI pre-accounting platform)",
+    "phase": "Phase II/1 (UAT + PROD go-live)",
+    "criticality": "High",
+    "currentDesign": {
+      "registrar": "Squarespace Domains II LLC",
+      "dnsNameservers": ["pixel.dns-parking.com", "byte.dns-parking.com"],
+      "dnsHostSignal": "SOA responsible mailbox = dns.hostinger.com",
+      "vpsHosting": "Hostinger VPS",
+      "ssl": "Let's Encrypt via certbot + nginx",
+      "opsModel": "Internal team executes DNS changes"
+    }
+  },
+  "artifactsToReview": [
+    {
+      "path": "docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-RUNBOOK.md",
+      "purpose": "Current DNS and SSL operating runbook"
+    },
+    {
+      "path": "docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-CHECKLIST.html",
+      "purpose": "Current operational checklist and gate model"
+    },
+    {
+      "path": "deploy/poc-site/README.md",
+      "purpose": "Current deployment and cert workflow pattern"
+    }
+  ],
+  "reviewTasks": [
+    "Assess architecture fitness for production accounting workloads.",
+    "Quantify risk by category and provide weighted total score.",
+    "Decide one of: GO, CONDITIONAL_GO, NO_GO with hard rationale.",
+    "Provide a minimum-safe pre-go-live plan (0-7 days).",
+    "Provide post-go-live hardening plan (30-60 days).",
+    "Provide concrete acceptance criteria tied to risk closure."
+  ],
+  "riskScoringModel": {
+    "scale": "0-5 per category (0=none, 5=critical)",
+    "categories": [
+      {
+        "name": "Availability",
+        "weight": 0.2
+      },
+      {
+        "name": "Security",
+        "weight": 0.2
+      },
+      {
+        "name": "Change Safety",
+        "weight": 0.15
+      },
+      {
+        "name": "Recoverability",
+        "weight": 0.15
+      },
+      {
+        "name": "Operational Complexity",
+        "weight": 0.1
+      },
+      {
+        "name": "Vendor Dependency",
+        "weight": 0.1
+      },
+      {
+        "name": "Certificate Lifecycle",
+        "weight": 0.1
+      }
+    ],
+    "formula": "weighted_score = sum(category_score * weight)",
+    "decisionThresholds": {
+      "GO": "weighted_score <= 1.8 AND no category > 3",
+      "CONDITIONAL_GO": "1.8 < weighted_score <= 3.0 OR any category = 4 with mitigations",
+      "NO_GO": "weighted_score > 3.0 OR any category = 5"
+    }
+  },
+  "constraints": [
+    "No big-bang migration before go-live unless required for critical risk.",
+    "Prefer incremental low-risk changes.",
+    "Assume small team and no dedicated SRE.",
+    "Minimize downtime and customer impact.",
+    "Recommendations must be implementable with current tooling."
+  ],
+  "requiredOutput": {
+    "format": "markdown",
+    "sections": [
+      "1) Executive Verdict",
+      "2) Risk Scorecard (with weights and calculations)",
+      "3) Go/Conditional Go/No-Go Decision",
+      "4) Blocking Risks and Mitigations",
+      "5) Option Comparison (at least 2 options)",
+      "6) Minimum Safe Plan (0-7 days)",
+      "7) Hardening Plan (30-60 days)",
+      "8) Acceptance Criteria and Sign-off Checklist"
+    ],
+    "mustInclude": [
+      "Exact weighted score calculation",
+      "Top 5 risks ranked by severity",
+      "Clear keep/change recommendation",
+      "Owner map (approver vs executor)",
+      "TTL, rollback, and cert lifecycle controls"
+    ]
+  },
+  "outputStyle": {
+    "tone": "direct, decision-oriented",
+    "verbosity": "concise but explicit",
+    "mustBeActionable": true
+  },
+  "successCriteria": [
+    "Decision can be acted on immediately",
+    "Risk scoring is transparent and reproducible",
+    "Plan is realistic for current team capacity"
+  ]
+}

@@ -96,6 +96,16 @@ class Company(Base):
     export_templates: Mapped[list[ExportTemplate]] = relationship(
         back_populates="company"
     )
+    document_batches: Mapped[list[DocumentBatch]] = relationship(
+        back_populates="company"
+    )
+    export_jobs: Mapped[list[ExportJob]] = relationship(back_populates="company")
+    credit_plans: Mapped[list[CompanyCreditPlan]] = relationship(
+        back_populates="company"
+    )
+    page_credit_usage_entries: Mapped[list[PageCreditUsage]] = relationship(
+        back_populates="company"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +161,32 @@ class UserCompanyAssignment(Base):
 # ---------------------------------------------------------------------------
 
 
+class DocumentBatch(Base):
+    __tablename__ = "document_batches"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    batch_label: Mapped[str | None] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(30), default="draft")
+    total_files: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    company: Mapped[Company] = relationship(back_populates="document_batches")
+    documents: Mapped[list[Document]] = relationship(back_populates="batch")
+
+    __table_args__ = (
+        Index("ix_batches_company_status", "company_id", "status"),
+    )
+
+
 class Document(Base):
     __tablename__ = "documents"
 
@@ -188,7 +224,15 @@ class Document(Base):
     taxid_match: Mapped[bool | None] = mapped_column(Boolean)
     overall_confidence: Mapped[float | None] = mapped_column(Numeric(5, 4))
     processing_error: Mapped[str | None] = mapped_column(Text)
-    batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("document_batches.id", ondelete="SET NULL")
+    )
+    scan_status: Mapped[str] = mapped_column(String(20), default="pending")
+    scan_reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    scan_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    processing_progress: Mapped[dict | None] = mapped_column(JSONB)
 
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = mapped_column(
@@ -196,8 +240,19 @@ class Document(Base):
     )
 
     company: Mapped[Company] = relationship(back_populates="documents")
+    batch: Mapped[DocumentBatch | None] = relationship(back_populates="documents")
     extractions: Mapped[list[Extraction]] = relationship(back_populates="document")
     journal_vouchers: Mapped[list[JournalVoucher]] = relationship(
+        back_populates="document"
+    )
+    flags: Mapped[list[DocumentFlag]] = relationship(back_populates="document")
+    field_corrections: Mapped[list[FieldCorrection]] = relationship(
+        back_populates="document"
+    )
+    export_job_documents: Mapped[list[ExportJobDocument]] = relationship(
+        back_populates="document"
+    )
+    page_credit_usage_entries: Mapped[list[PageCreditUsage]] = relationship(
         back_populates="document"
     )
 
@@ -381,6 +436,75 @@ class ExportTemplate(Base):
     company: Mapped[Company | None] = relationship(back_populates="export_templates")
 
 
+class ExportJob(Base):
+    __tablename__ = "export_jobs"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    template_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("export_templates.id", ondelete="SET NULL")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    total_documents: Mapped[int] = mapped_column(Integer, default=0)
+    file_format: Mapped[str] = mapped_column(String(10), default="csv")
+    encoding: Mapped[str] = mapped_column(String(20), default="utf-8")
+    created_at: Mapped[datetime] = _now()
+
+    company: Mapped[Company] = relationship(back_populates="export_jobs")
+    files: Mapped[list[ExportFile]] = relationship(back_populates="export_job")
+    export_documents: Mapped[list[ExportJobDocument]] = relationship(
+        back_populates="export_job"
+    )
+
+    __table_args__ = (
+        Index("ix_export_jobs_company", "company_id"),
+    )
+
+
+class ExportFile(Base):
+    __tablename__ = "export_files"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    export_job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("export_jobs.id", ondelete="CASCADE"), nullable=False
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_key: Mapped[str] = mapped_column(Text, nullable=False)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer)
+    download_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = _now()
+
+    export_job: Mapped[ExportJob] = relationship(back_populates="files")
+
+
+class ExportJobDocument(Base):
+    __tablename__ = "export_job_documents"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    export_job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("export_jobs.id", ondelete="CASCADE"), nullable=False
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+
+    export_job: Mapped[ExportJob] = relationship(back_populates="export_documents")
+    document: Mapped[Document] = relationship(back_populates="export_job_documents")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "export_job_id",
+            "document_id",
+            name="uq_export_job_document",
+        ),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Cost Tracking
 # ---------------------------------------------------------------------------
@@ -436,6 +560,67 @@ class BudgetLimit(Base):
     )
 
 
+class CompanyCreditPlan(Base):
+    __tablename__ = "company_credit_plans"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    plan_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    billing_model: Mapped[str] = mapped_column(String(30), default="page_credit")
+    included_page_credits: Mapped[int] = mapped_column(Integer, default=0)
+    price_original_thb: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    price_effective_thb: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    cycle_start: Mapped[date | None] = mapped_column(Date)
+    cycle_end: Mapped[date | None] = mapped_column(Date)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    company: Mapped[Company] = relationship(back_populates="credit_plans")
+
+    __table_args__ = (
+        Index("ix_credit_plans_company_active", "company_id", "is_active"),
+    )
+
+
+class PageCreditUsage(Base):
+    __tablename__ = "page_credit_usage"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("documents.id", ondelete="SET NULL")
+    )
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("document_batches.id", ondelete="SET NULL")
+    )
+    document_type: Mapped[str | None] = mapped_column(String(50))
+    page_count: Mapped[int] = mapped_column(Integer, default=1)
+    credits_used: Mapped[int] = mapped_column(Integer, default=1)
+    usage_reason: Mapped[str] = mapped_column(String(30), default="scan")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = _now()
+
+    company: Mapped[Company] = relationship(back_populates="page_credit_usage_entries")
+    document: Mapped[Document | None] = relationship(
+        back_populates="page_credit_usage_entries"
+    )
+    batch: Mapped[DocumentBatch | None] = relationship()
+
+    __table_args__ = (
+        Index("ix_page_credit_company_created", "company_id", "created_at"),
+        Index("ix_page_credit_document", "document_id"),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Audit Log
 # ---------------------------------------------------------------------------
@@ -469,6 +654,54 @@ class AuditLog(Base):
     __table_args__ = (
         Index("ix_audit_logs_company_action", "company_id", "action"),
         Index("ix_audit_logs_created", "created_at"),
+    )
+
+
+class DocumentFlag(Base):
+    __tablename__ = "document_flags"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    flagged_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    reason: Mapped[str] = mapped_column(String(50), nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = _now()
+
+    document: Mapped[Document] = relationship(back_populates="flags")
+
+    __table_args__ = (
+        Index("ix_flags_document_status", "document_id", "status"),
+    )
+
+
+class FieldCorrection(Base):
+    __tablename__ = "field_corrections"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    field_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    old_value: Mapped[str | None] = mapped_column(Text)
+    new_value: Mapped[str | None] = mapped_column(Text)
+    corrected_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = _now()
+
+    document: Mapped[Document] = relationship(back_populates="field_corrections")
+
+    __table_args__ = (
+        Index("ix_corrections_document", "document_id"),
     )
 
 

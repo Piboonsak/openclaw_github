@@ -1,0 +1,177 @@
+{
+  "role": "system",
+  "task": "Set up DNS baseline records for bwcacc.biz on Hostinger and verify propagation",
+  "language": "th",
+  "project": "ai-accounting-copilot",
+  "current_state_summary": {
+    "what_is_done": [
+      "จดทะเบียนโดเมน bwcacc.biz ใหม่บน Hostinger โดยตรง (2026-06-20)",
+      "โดเมนจดบน Hostinger เอง — DNS zone อยู่บน Hostinger แล้ว ไม่ต้องแก้อะไรฝั่ง Squarespace",
+      "สร้าง playbook แล้วที่ skills/dns-hosting-new-client/SKILL.md",
+      "ลงทะเบียน skill ใน skills/CATALOG.md",
+      "ยืนยันว่า yahwan.biz ทำงานได้ปกติเป็นตัวอย่าง reference (ห้ามแก้ไข)",
+      "Hostinger MCP server (hostinger-api-mcp@0.2.14) ใช้งานได้"
+    ],
+    "domain_change_note": "เดิมวางแผนใช้ bwcacc.com (Squarespace) แต่เปลี่ยนมาจด bwcacc.biz บน Hostinger โดยตรงแทน — ไม่ต้องจัดการ external domain หรือแก้ไขอะไรบน Squarespace อีก"
+  },
+  "reference_domain": {
+    "domain": "yahwan.biz",
+    "note": "ใช้งานจริงอยู่ — ห้ามแก้ไขหรือลบ record ใดๆ ดูเป็นตัวอย่างได้เท่านั้น",
+    "useful_as": "ดู DNS records เป็น reference pattern ด้วย DNS_getDNSRecordsV1"
+  },
+  "objective": "ตั้งค่า DNS baseline records สำหรับ bwcacc.biz ให้พร้อมใช้งาน UAT/PROD deploy",
+  "execution_steps": [
+    {
+      "step": 1,
+      "action": "ตรวจสอบว่า bwcacc.biz ปรากฏในบัญชี Hostinger",
+      "mcp_tool": "domains_getDomainListV1",
+      "params": {},
+      "expected": "เห็น bwcacc.biz ในรายการโดเมน"
+    },
+    {
+      "step": 2,
+      "action": "ดูรายละเอียดโดเมน bwcacc.biz",
+      "mcp_tool": "domains_getDomainDetailsV1",
+      "params": { "domain": "bwcacc.biz" },
+      "expected": "เห็น nameservers, status, expiry date — NS ควรชี้ Hostinger"
+    },
+    {
+      "step": 3,
+      "action": "ดู DNS records ปัจจุบันของ bwcacc.biz",
+      "mcp_tool": "DNS_getDNSRecordsV1",
+      "params": { "domain": "bwcacc.biz" },
+      "expected": "เห็น default records (parking page หรือ empty zone)"
+    },
+    {
+      "step": 3.5,
+      "action": "(reference) ดู DNS records ของ yahwan.biz เป็นตัวอย่าง",
+      "mcp_tool": "DNS_getDNSRecordsV1",
+      "params": { "domain": "yahwan.biz" },
+      "note": "ดูเฉยๆ เป็น pattern reference — ห้ามแก้ไข yahwan.biz"
+    },
+    {
+      "step": 4,
+      "action": "Validate DNS records ก่อน update จริง",
+      "mcp_tool": "DNS_validateDNSRecordsV1",
+      "params": {
+        "domain": "bwcacc.biz",
+        "overwrite": false,
+        "zone": [
+          {
+            "name": "demo",
+            "type": "A",
+            "ttl": 300,
+            "records": [{ "content": "76.13.210.250" }]
+          },
+          {
+            "name": "uat",
+            "type": "A",
+            "ttl": 300,
+            "records": [{ "content": "76.13.210.250" }]
+          },
+          {
+            "name": "app",
+            "type": "A",
+            "ttl": 300,
+            "records": [{ "content": "76.13.210.250" }]
+          },
+          {
+            "name": "@",
+            "type": "CAA",
+            "ttl": 3600,
+            "records": [{ "content": "0 issue \"letsencrypt.org\"" }]
+          }
+        ]
+      },
+      "expected": "200 Success — validation passed",
+      "note": "IP 76.13.210.250 มาจาก runbook (INFRA-PREREQUISITES-RUNBOOK.md) — ถ้า demo/uat/app ใช้ IP ต่างกันให้ถามผู้ใช้ก่อน"
+    },
+    {
+      "step": 5,
+      "action": "สร้าง DNS records baseline",
+      "mcp_tool": "DNS_updateDNSRecordsV1",
+      "params": {
+        "domain": "bwcacc.biz",
+        "overwrite": false,
+        "zone": [
+          {
+            "name": "demo",
+            "type": "A",
+            "ttl": 300,
+            "records": [{ "content": "76.13.210.250" }]
+          },
+          {
+            "name": "uat",
+            "type": "A",
+            "ttl": 300,
+            "records": [{ "content": "76.13.210.250" }]
+          },
+          {
+            "name": "app",
+            "type": "A",
+            "ttl": 300,
+            "records": [{ "content": "76.13.210.250" }]
+          },
+          {
+            "name": "@",
+            "type": "CAA",
+            "ttl": 3600,
+            "records": [{ "content": "0 issue \"letsencrypt.org\"" }]
+          }
+        ]
+      },
+      "expected": "Request accepted",
+      "rollback": "ใช้ DNS_deleteDNSRecordsV1 ลบ records ที่เพิ่ง create"
+    },
+    {
+      "step": 6,
+      "action": "ยืนยัน records ที่สร้างแล้วถูกต้อง",
+      "mcp_tool": "DNS_getDNSRecordsV1",
+      "params": { "domain": "bwcacc.biz" },
+      "expected": "เห็น A records สำหรับ demo/uat/app ชี้ 76.13.210.250 + CAA record"
+    },
+    {
+      "step": 7,
+      "action": "ตรวจสอบ DNS propagation จาก public resolvers",
+      "method": "shell_commands",
+      "commands_powershell": [
+        "Resolve-DnsName bwcacc.biz -Type NS -Server 8.8.8.8",
+        "Resolve-DnsName bwcacc.biz -Type NS -Server 1.1.1.1",
+        "Resolve-DnsName demo.bwcacc.biz -Type A -Server 8.8.8.8",
+        "Resolve-DnsName uat.bwcacc.biz -Type A -Server 1.1.1.1",
+        "Resolve-DnsName app.bwcacc.biz -Type A -Server 8.8.8.8",
+        "Resolve-DnsName bwcacc.biz -Type CAA -Server 8.8.8.8"
+      ],
+      "expected": "ทุก record resolve ได้ตรงกับ target IP 76.13.210.250",
+      "if_servfail": "โดเมนจดใหม่ NS อาจยัง propagate ไม่เสร็จ — รอ 5-30 นาทีแล้ว retry"
+    }
+  ],
+  "success_criteria": [
+    "bwcacc.biz ปรากฏใน domains_getDomainListV1",
+    "DNS_updateDNSRecordsV1 สำหรับ bwcacc.biz ตอบ Request accepted",
+    "A records (demo/uat/app).bwcacc.biz resolve ได้จาก 8.8.8.8 และ 1.1.1.1 = 76.13.210.250",
+    "CAA record resolve ได้ = 0 issue letsencrypt.org",
+    "ไม่พบ error Domain not found อีก"
+  ],
+  "safety_rules": [
+    "ห้ามแก้ไข DNS records ของ yahwan.biz — ดูเป็นตัวอย่างเท่านั้น",
+    "ใช้ overwrite: false เสมอ เพื่อไม่ลบ default records ที่มีอยู่",
+    "Validate ก่อน update ทุกครั้ง (step 4 ก่อน step 5)",
+    "ถ้า IP ไม่แน่ใจ ให้ถามผู้ใช้ก่อน — อย่าเดา"
+  ],
+  "ip_mapping": {
+    "source": "docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-RUNBOOK.md",
+    "vps_host": "76.13.210.250",
+    "note": "ถ้า demo/uat/app ต้องชี้ IP ต่างกัน ให้ถามผู้ใช้ confirm ก่อนสร้าง records"
+  },
+  "post_dns_steps": {
+    "reference": "docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-RUNBOOK.md",
+    "note": "อัปเดต runbook ให้เปลี่ยน bwcacc.com → bwcacc.biz ทุกจุด",
+    "gates_remaining": [
+      "Gate 4: Nginx host mapping precheck (server_name *.bwcacc.biz)",
+      "Gate 5: SSL certificate issue (certbot + Let's Encrypt)",
+      "Gate 6: Auto-renew and redirect validation",
+      "Gate 7: Final pre-deploy smoke test"
+    ]
+  }
+}

@@ -56,7 +56,11 @@ def load_images_for_vision(
     if not path.exists():
         raise FileNotFoundError(f"Source not found for vision input: {path}")
 
-    pages = max_pages if max_pages is not None else _DEFAULT_MAX_PAGES
+    pages = (
+        max_pages
+        if max_pages is not None
+        else int(os.environ.get("STAGE_C_MAX_PAGES", str(_DEFAULT_MAX_PAGES)))
+    )
     suffix = path.suffix.lower()
 
     if suffix == ".pdf":

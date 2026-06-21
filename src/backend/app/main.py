@@ -1,5 +1,6 @@
 """FastAPI main application entrypoint."""
 
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,12 +10,14 @@ from fastapi.staticfiles import StaticFiles
 from config.settings import settings
 from src.backend.app.endpoints import router as api_router
 from src.backend.services.secrets_loader import load_llm_keys
+from src.backend.storage import bootstrap_storage
 
 app = FastAPI(
     title="AI Pre-Accounting Copilot",
     description="Automated document processing backend for OCR, extraction, and validation.",
     version="1.1.0",
 )
+logger = logging.getLogger(__name__)
 
 # Include API endpoints router
 app.include_router(api_router, prefix="/api")
@@ -25,6 +28,11 @@ def load_runtime_secrets() -> None:
     """Populate runtime API keys before the first request hits the app."""
     load_llm_keys()
     settings.reload()
+    try:
+        provider = bootstrap_storage()
+        logger.info("Storage bootstrap ready via %s", provider)
+    except Exception as exc:
+        logger.warning("Storage bootstrap degraded: %s", exc)
 
 
 @app.get("/health")

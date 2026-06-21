@@ -65,6 +65,55 @@
 | 3/6 metrics pass | **Conditional** | Epic 14 scope reduced (specific formats only) |
 | <= 2/6 metrics pass | **No-Go** | Epic 14 deferred, งวด 4 ลดราคาตาม scope |
 
+### PoC Evidence And Lessons Learned (2026-06-21)
+
+> Use this section as design input when continuing TASK-906 and when scoping Epic 14. These are findings from real folder scans and review calibration, not final locked ground-truth accuracy.
+
+#### Evidence gathered
+
+| Evidence | Result | Design meaning |
+|---|---|---|
+| Comp_1 real folder scan | Line item extraction works on real purchase documents and can be reviewed in HTML | Vision extraction is feasible enough to continue, but human review remains required |
+| Comp_1 v2 calibration | Stock/service/labor confidence bands improved after reviewer feedback | Rule-based confidence must be tunable from review feedback |
+| Comp_3 batch 1 | Random 50-doc sample produced usable line-item rows on another company shape | The approach is not limited to one supplier/folder pattern |
+| Comp_3 batch 2 | Another non-overlapping 50-doc sample produced consistent patterns | TASK-906 should keep using non-overlap samples to avoid overfitting to one set |
+| Comp_3 batch 2 with same-company master simulation | Green/high-confidence matches increased materially when confirmed aliases/product master existed | Company-specific product master and alias history are core to reducing review workload |
+| Backup model smoke test | At least one non-primary vision model path can extract the same sample set | Model selection must stay configurable and routed, not hardcoded into business logic |
+
+#### Lessons learned
+
+1. Line item extraction should run as an optional sub-stage after normal OCR/header extraction. If line item extraction fails, the document should still continue to header review/export instead of blocking the whole workflow.
+2. Vision LLM can read line-item tables, but the hard part is row selection: avoid header rows, address blocks, VAT/WHT/net/gross summaries, deposits, and footer notes.
+3. Line item confidence cannot rely on model self-confidence alone. It should combine extraction quality, keyword signals, unit signals, reconciliation, company master match, and human-confirmed history.
+4. Human confirmation history is useful, but it must have caps. History alone should not force a green decision unless exact alias/SKU, same company, compatible unit, and no labor/service conflict are present.
+5. Same-company product master is valuable. Cross-company product master is risky because different companies sell different item domains; Comp_1 and Comp_3 should not be mixed for stock matching.
+6. Comp_2-style service/labor documents should not seed stock/product master. They are useful as negative examples for labor/service classification.
+7. Unit presence is a strong physical-product signal but not enough by itself. Office supplies, generic materials, or business-non-stock purchases still require review policy.
+8. Thai service/labor keywords such as `ค่า`, `ค่าแรง`, `ค่าบริการ`, `ค่าส่ง`, and `ค่าขนส่ง` are strong non-stock signals. WHT should boost labor/service suspicion at document level, but must not mark every row as labor automatically.
+9. Missing header expectations makes reconciliation inconclusive. Comp_3 samples without expected net/gross should default to review status even if row extraction looks good.
+10. A useful production review loop must let users confirm existing item, create new item candidate, mark non-stock, mark labor/service, reject row, and store the decision for future matching.
+
+#### Carry-forward design decisions for Epic 14
+
+| Area | Decision to carry forward |
+|---|---|
+| Pipeline | Add `line_item_extract` as a separate stage after header extraction; do not make it a hard blocker for normal OCR workflow |
+| Review UI | Show per-row green/amber/red confidence, suggested stock match, and explicit actions: confirm, create, non-stock, labor/service, reject |
+| DB schema | Add `document_line_items`, `company_inventory_items`, `company_inventory_item_aliases`, and optional review/dedup event table only if TASK-906 returns Go/Conditional |
+| Learning loop | Store human confirmations as aliases/history first; run dedup/merge in background batch workflow if synchronous merge is slow |
+| Confidence scoring | Use capped buckets: extraction, keyword, unit, reconciliation, master match, history; exact trusted alias may be green only with same-company/unit/no-conflict checks |
+| Matching boundary | Match only within the same company unless an explicit shared product catalog is designed later |
+| Model routing | Keep primary/backup/escalation models configurable via settings/env and project-specific key; business logic must not depend on a single provider |
+| Reporting | Keep customer-facing reports separate from internal cost/provider diagnostics |
+
+#### Open items before final Go/Conditional/No-Go
+
+1. Lock a ground-truth core set with human-verified line items.
+2. Run final model comparison against the same locked documents.
+3. Measure field-level accuracy, document success, reconciliation, processing time, and manual correction time from timed review.
+4. Decide supported formats if the result is Conditional.
+5. Translate final outcome into Epic 14 scope and schema migration plan.
+
 ### Files to create/modify
 
 | Action | File | What |

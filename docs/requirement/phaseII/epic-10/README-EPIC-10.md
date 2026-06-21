@@ -29,7 +29,7 @@
 
 ## Dependencies
 
-- **Upstream**: Epic 8 (TASK-801 DB integration, TASK-802 data migration, TASK-803 JWT auth)
+- **Upstream**: Epic 8 (`TASK-801A` schema slice, `TASK-801B` DB integration, `TASK-802` data migration, `TASK-803` JWT auth)
 - **Downstream**: Epic 11 (Purchase Tax Report integration uses template engine), Epic 12 (Export screen needs templates)
 
 ## Execution order

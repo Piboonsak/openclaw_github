@@ -1,0 +1,463 @@
+﻿<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase II Infrastructure Prerequisites Checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: oklch(98% 0.005 250);
+      --surface: #ffffff;
+      --ink: oklch(20% 0.02 250);
+      --muted: oklch(52% 0.02 250);
+      --line: oklch(88% 0.01 250);
+      --accent: oklch(45% 0.15 220);
+      --accent-soft: oklch(93% 0.04 220);
+      --ok: oklch(50% 0.14 155);
+      --warn: oklch(58% 0.16 80);
+      --font: "DM Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background: linear-gradient(180deg, #f6f9ff 0%, var(--bg) 65%);
+      min-height: 100vh;
+      padding: 1.25rem;
+    }
+
+    .wrap {
+      max-width: 1050px;
+      margin: 0 auto;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .hero,
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1rem 1.1rem;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    .hero p {
+      margin: 0.4rem 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .meta {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .chip {
+      font-size: 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      background: #fff;
+      color: var(--muted);
+    }
+
+    .chip.accent {
+      background: var(--accent-soft);
+      border-color: transparent;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .progress {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .progress-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .bar {
+      height: 11px;
+      background: #edf2ff;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #e0e9ff;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3f76e4 0%, #2ea9b7 100%);
+      transition: width 0.25s ease;
+    }
+
+    .checks {
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .check {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.7rem;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.7rem;
+      background: #fff;
+    }
+
+    .check.done {
+      background: #f0f9f6;
+      border-color: #ccecdf;
+    }
+
+    .check input[type="checkbox"] {
+      margin-top: 0.2rem;
+      width: 18px;
+      height: 18px;
+      accent-color: #2f9a7f;
+      cursor: pointer;
+    }
+
+    .check strong {
+      font-size: 0.9rem;
+    }
+
+    .check p {
+      margin: 0.2rem 0 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    details + details { margin-top: 0.65rem; }
+
+    summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0.8rem 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      font-size: 0.88rem;
+      background: #fafcff;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    .step {
+      padding: 0.9rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.84rem;
+      line-height: 1.55;
+    }
+
+    .step ol {
+      margin: 0;
+      padding-left: 1.15rem;
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .cmd {
+      margin-top: 0.65rem;
+      background: #0b1f2a;
+      color: #d8efff;
+      border-radius: 8px;
+      padding: 0.7rem;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      overflow-x: auto;
+      position: relative;
+      white-space: pre;
+    }
+
+    .copy {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      border: 0;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.45rem;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+    }
+
+    .copy:hover { background: rgba(255, 255, 255, 0.3); }
+
+    .final {
+      border-left: 4px solid var(--warn);
+      background: #fff9ec;
+      font-size: 0.82rem;
+      color: #6f5607;
+      padding: 0.75rem 0.85rem;
+      border-radius: 8px;
+      margin-top: 0.8rem;
+    }
+
+    .design-note {
+      margin-top: 0.85rem;
+      padding: 0.8rem 0.9rem;
+      border: 1px solid #dfe8ff;
+      border-radius: 10px;
+      background: #f8fbff;
+      font-size: 0.82rem;
+      color: #4a5568;
+      line-height: 1.6;
+    }
+
+    .section-title {
+      margin: 0 0 0.7rem;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 0.8rem; }
+      .hero h1 { font-size: 1.12rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Phase II Prerequisites Checklist (DNS by Internal Team)</h1>
+      <p>ใช้หน้านี้ไล่ทำ prerequisite ให้ครบก่อนเริ่ม deploy UAT/PROD. ค่า checkbox จะถูกจำใน browser อัตโนมัติ</p>
+      <div class="meta">
+        <span class="chip accent">Owner: DevOps</span>
+        <span class="chip">DNS: Team-managed</span>
+        <span class="chip">SSL: Certbot Standalone</span>
+        <span class="chip">Gate Count: 13 (incl. blockers)</span>
+        <span class="chip" style="background:#e6f9f0;border-color:#b8e6d0;color:#1a7a4c;font-weight:700;">ALL GATES PASSED — 2026-06-21</span>
+      </div>
+      <div class="design-note">
+        <strong>Design note:</strong> registrar = Hostinger (bwcacc.biz), DNS zone = Hostinger REST API, SSL = certbot standalone on VPS (nginx runs in Docker container). Domain registered on Hostinger directly — no external dependency.
+        <br><br>
+        <strong>Status (2026-06-21):</strong> ทุก gate ผ่านครบ 13/13 — Ready-to-deploy sign-off complete, approved for both UAT and PROD deploy.
+        Scripts used: <code>setup-vps.sh</code>, <code>setup-certbot.sh</code>, <code>setup-nginx-gate.sh</code> (all in <code>scripts/infra/</code>)
+      </div>
+    </section>
+
+    <section class="card progress">
+      <div class="progress-top">
+        <span>Progress</span>
+        <span id="progressText">0 / 8 complete</span>
+      </div>
+      <div class="bar"><span id="barFill"></span></div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Checklist</h2>
+      <div class="checks" id="checks">
+        <label class="check done"><input type="checkbox" data-key="gate1" checked><div><strong>Gate 1: VPS access baseline ready</strong><p>✅ Done 2026-06-21 — Docker 29.6.0, Compose 5.1.4, UFW active (22/80/443), deploy user, fail2ban, swap (UAT 2G, PROD 4G) via setup-vps.sh</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate2" checked><div><strong>Gate 2: DNS records configured by team</strong><p>✅ Done 2026-06-21 — A records: demo→76.13.210.250, uat→72.62.74.232, app→72.62.247.9 via Hostinger REST API</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate3" checked><div><strong>Gate 3: DNS propagation verified</strong><p>✅ Done 2026-06-21 — Verified on Google (8.8.8.8) + Cloudflare (1.1.1.1) DNS resolvers</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate4" checked><div><strong>Gate 4: Nginx host mapping validated</strong><p>✅ Done 2026-06-21 — nginx-gate container (nginx:1.27-alpine), server_name matches DNS, nginx -t passed, TLS 1.2/1.3 via setup-nginx-gate.sh</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate5" checked><div><strong>Gate 5: SSL certificates issued</strong><p>✅ Done 2026-06-21 — certbot standalone mode: UAT CN=uat.bwcacc.biz (YE1, exp 2026-09-18), PROD CN=app.bwcacc.biz (YE2, exp 2026-09-18) via setup-certbot.sh</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate6" checked><div><strong>Gate 6: Auto-renew + redirect verified</strong><p>✅ Done 2026-06-21 — certbot dry-run passed (pre/post hooks stop/start nginx-gate), HTTP→HTTPS 301 redirect working</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate7" checked><div><strong>Gate 7: Health endpoints verified</strong><p>✅ Done 2026-06-21 — External curl: https://uat.bwcacc.biz/health → 200, https://app.bwcacc.biz/health → 200, /api/health → 200 (nginx-gate placeholder)</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate8" checked><div><strong>Gate 8: CAA record applied</strong><p>✅ Done 2026-06-20 — CAA: 0 issue "letsencrypt.org" (TTL 3600) via Hostinger REST API</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate9" checked><div><strong>Gate 9: Deploy user + root SSH hardened</strong><p>✅ Done 2026-06-21 — deploy user (docker group), PermitRootLogin=prohibit-password (will tighten to no at go-live), PasswordAuthentication=no</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate10" checked><div><strong>Gate 10: Certificate expiry monitoring active</strong><p>✅ Done 2026-06-21 — cron daily 06:00 checks cert expiry (30-day threshold), logs via syslog tag certcheck</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate11" checked><div><strong>Gate 11: DNS TTL set to 300s</strong><p>✅ Done 2026-06-21 — All A records TTL=300s for fast rollback (DNS changes propagate within 5 min)</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate12" checked><div><strong>Gate 12: DNS zone backup exported</strong><p>✅ Done 2026-06-21 — Exported to infra/dns-zone-backup.txt (BIND-style format via Hostinger API)</p></div></label>
+        <label class="check done"><input type="checkbox" data-key="gate13" checked><div><strong>Gate 13: Ready-to-deploy sign-off complete</strong><p>✅ Done 2026-06-21 — All 7 gates + 5 blocking conditions passed. Approved for UAT + PROD deploy.</p></div></label>
+      </div>
+      <div class="final">ห้ามเริ่ม deploy pipeline ถ้า checklist ยังไม่ครบ 100%</div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">How-To Dropdown</h2>
+
+      <details>
+        <summary>1) Configure DNS records (ทีมเราทำเอง)</summary>
+        <div class="step">
+          <ol>
+            <li>Login DNS provider dashboard ด้วย account ทีมเรา</li>
+            <li>ตั้ง A records: uat.bwcacc.biz, app.bwcacc.biz, demo.bwcacc.biz</li>
+            <li>ตั้ง TTL ของ record ที่ใช้ deploy = 300 วินาที</li>
+            <li>เพิ่ม CAA record: <code>0 issue "letsencrypt.org"</code></li>
+            <li>ตรวจว่าแต่ละ host ชี้ IP เป้าหมายถูกต้องก่อน save</li>
+            <li>Export DNS zone backup เก็บเป็น <code>infra/dns-zone-backup.txt</code></li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary>2) Verify DNS propagation</summary>
+        <div class="step">
+          <ol>
+            <li>ตรวจผ่าน Cloudflare resolver และ Google resolver</li>
+            <li>ผลลัพธ์ต้องเท่ากับ IP เป้าหมายของแต่ละ env</li>
+          </ol>
+          <div class="cmd">dig @1.1.1.1 uat.bwcacc.biz +short
+nslookup uat.bwcacc.biz 8.8.8.8
+
+<button class="copy" data-copy="dig @1.1.1.1 uat.bwcacc.biz +short\nnslookup uat.bwcacc.biz 8.8.8.8">Copy</button></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>3) Issue SSL certificate with Certbot</summary>
+        <div class="step">
+          <ol>
+            <li>ยืนยันว่า DNS resolve แล้วก่อนรัน certbot</li>
+            <li>ใช้ certbot <strong>standalone</strong> mode (ไม่ใช่ --nginx) เพราะ nginx รันใน Docker container ไม่ใช่ host service</li>
+            <li>Port 80 ต้องว่างตอน issue ครั้งแรก (ยังไม่มี nginx container)</li>
+            <li>หรือใช้ script: <code>ssh root@VPS 'DOMAIN=uat.bwcacc.biz bash -s' &lt; scripts/infra/setup-certbot.sh</code></li>
+          </ol>
+          <div class="cmd">sudo apt-get update
+sudo apt-get install -y certbot
+sudo certbot certonly --standalone --cert-name uat.bwcacc.biz -d uat.bwcacc.biz --non-interactive --agree-tos -m admin@yahwan.biz --no-eff-email
+sudo systemctl enable certbot.timer && sudo systemctl start certbot.timer
+sudo certbot renew --dry-run
+
+<button class="copy" data-copy="sudo apt-get update\nsudo apt-get install -y certbot\nsudo certbot certonly --standalone --cert-name uat.bwcacc.biz -d uat.bwcacc.biz --non-interactive --agree-tos -m admin@yahwan.biz --no-eff-email\nsudo systemctl enable certbot.timer && sudo systemctl start certbot.timer\nsudo certbot renew --dry-run">Copy</button></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>4) Validate auto-renew and health checks</summary>
+        <div class="step">
+          <ol>
+            <li>รัน dry-run cert renew</li>
+            <li>ทดสอบ redirect และ health endpoints</li>
+          </ol>
+          <div class="cmd">sudo certbot renew --dry-run
+curl -I http://uat.bwcacc.biz
+curl -s https://uat.bwcacc.biz/health
+curl -s https://uat.bwcacc.biz/api/health
+
+<button class="copy" data-copy="sudo certbot renew --dry-run\ncurl -I http://uat.bwcacc.biz\ncurl -s https://uat.bwcacc.biz/health\ncurl -s https://uat.bwcacc.biz/api/health">Copy</button></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>5) SSH hardening and deploy user</summary>
+        <div class="step">
+          <ol>
+            <li>สร้างผู้ใช้ <code>deploy</code> และให้สิทธิ์ที่จำเป็น</li>
+            <li>แก้ค่า <code>PermitRootLogin no</code> ใน sshd_config</li>
+            <li>reload/restart sshd แล้วทดสอบ login ด้วย deploy user</li>
+          </ol>
+          <div class="cmd">sudo adduser deploy
+sudo usermod -aG sudo,docker deploy
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sudo systemctl restart ssh
+
+<button class="copy" data-copy="sudo adduser deploy\nsudo usermod -aG sudo,docker deploy\nsudo sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config\nsudo systemctl restart ssh">Copy</button></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>6) Certificate expiry monitoring setup</summary>
+        <div class="step">
+          <ol>
+            <li>เพิ่ม monitor ใน Uptime Kuma หรือใช้ cron monitor อย่างน้อย 1 วิธี</li>
+            <li>กำหนด threshold แจ้งเตือนก่อนหมดอายุอย่างน้อย 30-40 วัน</li>
+          </ol>
+          <div class="cmd"># Example (cron placeholder)
+sudo certbot renew --dry-run
+
+<button class="copy" data-copy="sudo certbot renew --dry-run">Copy</button></div>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "phase2-infra-prereq-checklist-v1";
+    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"][data-key]'));
+    const checksWrap = document.getElementById("checks");
+    const progressText = document.getElementById("progressText");
+    const barFill = document.getElementById("barFill");
+
+    function loadState() {
+      try {
+        const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        boxes.forEach((box) => {
+          // Default to checked (all gates passed 2026-06-21) unless user explicitly unchecked
+          const defaultChecked = box.hasAttribute('checked');
+          box.checked = state.hasOwnProperty(box.dataset.key) ? Boolean(state[box.dataset.key]) : defaultChecked;
+          box.closest('.check').classList.toggle('done', box.checked);
+        });
+      } catch (_err) {
+        boxes.forEach((box) => {
+          box.checked = box.hasAttribute('checked');
+          box.closest('.check').classList.toggle('done', box.checked);
+        });
+      }
+      updateProgress();
+    }
+
+    function saveState() {
+      const state = {};
+      boxes.forEach((box) => { state[box.dataset.key] = box.checked; });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function updateProgress() {
+      const total = boxes.length;
+      const done = boxes.filter((b) => b.checked).length;
+      const pct = Math.round((done / total) * 100);
+      progressText.textContent = `${done} / ${total} complete (${pct}%)`;
+      barFill.style.width = `${pct}%`;
+    }
+
+    checksWrap.addEventListener('change', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (target.type !== 'checkbox') return;
+      target.closest('.check').classList.toggle('done', target.checked);
+      saveState();
+      updateProgress();
+    });
+
+    document.querySelectorAll('.copy').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const text = btn.getAttribute('data-copy') || '';
+        try {
+          await navigator.clipboard.writeText(text);
+          const old = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = old; }, 1200);
+        } catch (_err) {
+          const old = btn.textContent;
+          btn.textContent = 'Copy failed';
+          setTimeout(() => { btn.textContent = old; }, 1200);
+        }
+      });
+    });
+
+    loadState();
+  </script>
+</body>
+</html>

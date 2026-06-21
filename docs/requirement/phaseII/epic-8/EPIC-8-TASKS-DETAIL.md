@@ -6,7 +6,73 @@
 
 ---
 
-## TASK-801: Pipeline to DB Integration
+## TASK-801A: SQLAlchemy Models + Alembic Schema Slice
+
+**Owner**: Backend Dev
+**Risk**: MEDIUM
+**Duration**: ~1.5-2 days
+**Closes pain points**: PP-2 (requirements in AC), PP-3 (details encoded), PP-5 (evidence required)
+
+### Purpose
+
+Epic 0 froze workflow, export, page-credit billing, and customer/internal workspace boundaries. `TASK-801A` turns that contract into database schema before any live pipeline writes begin.
+
+### What exists today
+
+- Initial ORM models + `001_initial_schema.py`
+- Epic 0 contract documents defining workflow states, new tables, and route constraints
+- Existing `Document.batch_id` is UUID but not FK-constrained
+
+### What to build
+
+1. Add workflow/export models and relationships from Epic 0
+2. Add page-credit billing models for customer dashboard (`company_credit_plans`, `page_credit_usage`)
+3. Add document review/status columns and status enums
+4. Create Alembic migration chain `002` through `008`
+5. Add focused metadata / FK / relationship tests
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `src/backend/db/enums.py` | Frozen status enums from Epic 0 |
+| Modify | `src/backend/db/models.py` | New models + Document changes |
+| Create | `alembic/versions/002_add_document_batches.py` | Batch table |
+| Create | `alembic/versions/003_add_document_review_columns.py` | Document review/status columns |
+| Create | `alembic/versions/004_add_document_flags.py` | Flag table |
+| Create | `alembic/versions/005_add_field_corrections.py` | Field correction table |
+| Create | `alembic/versions/006_add_export_job_tables.py` | Export job/file/join tables |
+| Create | `alembic/versions/007_add_company_credit_plans.py` | Page-credit plan table |
+| Create | `alembic/versions/008_add_page_credit_usage.py` | Page-credit usage ledger |
+| Create | `tests/db/test_models.py` | Metadata/FK/relationship tests |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_801a_1 | Migration chain `001 -> 008` exists and links correctly | static review + Alembic validation |
+| ac_801a_2 | Workflow/export/page-credit models exist with expected FK relationships | `tests/db/test_models.py` |
+| ac_801a_3 | `documents.batch_id` becomes nullable FK to `document_batches.id` | metadata test |
+| ac_801a_4 | Customer dashboard billing tables exist without exposing provider/model/token fields | metadata review |
+| ac_801a_5 | Export schema supports preview-first config fields via `export_templates.columns` JSONB | model review |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-801A",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["src/backend/db/**", "alembic/**", "tests/db/**"],
+  "forbidden_scope": [".env*", "src/frontend/**", "src/backend/pipeline/**", "src/backend/app/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-801B: Pipeline to DB Integration
 
 **Owner**: Backend Dev
 **Risk**: MEDIUM
@@ -49,18 +115,18 @@ PoC pipeline writes extraction/journal results to file cache (JSON on disk). Pha
 
 | ID | Condition | Test |
 |----|-----------|------|
-| ac_801_1 | Extraction results (all fields) saved in `extractions` table with correct `document_id` FK | `test_extraction_saved_to_db` |
-| ac_801_2 | JournalVoucher + JournalLine records saved with correct FK chain | `test_journal_records_saved_to_db` |
-| ac_801_3 | Document status updated to `review_scan` after successful extraction | `test_document_status_progression` |
-| ac_801_4 | File cache still written during transition (dual-mode) | `test_file_cache_still_works` |
-| ac_801_5 | API endpoints return data from DB when available, fallback to file cache | `test_endpoint_reads_from_db` |
-| ac_801_6 | DB transaction rollback on extraction failure (no partial records) | `test_transaction_rollback_on_failure` |
+| ac_801b_1 | Extraction results (all fields) saved in `extractions` table with correct `document_id` FK | `test_extraction_saved_to_db` |
+| ac_801b_2 | JournalVoucher + JournalLine records saved with correct FK chain | `test_journal_records_saved_to_db` |
+| ac_801b_3 | Document status updated to `review_scan` after successful extraction | `test_document_status_progression` |
+| ac_801b_4 | File cache still written during transition (dual-mode) | `test_file_cache_still_works` |
+| ac_801b_5 | API endpoints return data from DB when available, fallback to file cache | `test_endpoint_reads_from_db` |
+| ac_801b_6 | DB transaction rollback on extraction failure (no partial records) | `test_transaction_rollback_on_failure` |
 
 ### Governance fields
 
 ```json
 {
-  "task_id": "TASK-801",
+  "task_id": "TASK-801B",
   "risk_tier": "MEDIUM",
   "model_tier": "tier-2a-copilot",
   "allowed_scope": ["src/backend/pipeline/**", "src/backend/app/**", "src/backend/db/**", "tests/**"],
@@ -95,7 +161,7 @@ PoC ใช้ `companies.json` เป็น flat file. Phase II ต้องย�
 1. **Seed script** (`scripts/seed_data.py`) — อ่าน companies.json -> insert companies + default tenant
 2. **Master templates** — seed Express GL 8-col + Purchase Tax 12-col templates (columns JSONB)
 3. **Admin user** — seed first admin user (password from env var, hashed)
-4. **Alembic data migration** — `002_seed_data.py` ทำ seed ผ่าน Alembic เพื่อ track version
+4. **Alembic data migration** — `009_seed_data.py` ทำ seed ผ่าน Alembic เพื่อ track version after `TASK-801A`
 5. **Idempotent** — run ซ้ำได้ไม่ error (skip existing records)
 
 ### Files to create/modify
@@ -103,7 +169,7 @@ PoC ใช้ `companies.json` เป็น flat file. Phase II ต้องย�
 | Action | File | What |
 |--------|------|------|
 | Create | `scripts/seed_data.py` | Standalone seed script (can run outside Alembic) |
-| Create | `alembic/versions/002_seed_data.py` | Alembic data migration |
+| Create | `alembic/versions/009_seed_data.py` | Alembic data migration |
 | Modify | `src/backend/db/models.py` | เพิ่ม default values ถ้ายังไม่มี |
 | Create | `tests/db/test_seed_data.py` | Test seed script idempotency + data correctness |
 

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
@@ -251,7 +251,7 @@
         ✓ Deploy บน UAT environment<br>
         ✓ Core features ทำงานได้<br>
         ✓ Login, Upload, Review, Export<br>
-        → ลูกค้าทดสอบบน uat.bwc.biz
+        → ลูกค้าทดสอบบน uat.bwcacc.biz
       </div>
     </div>
     <div class="payment-card prod">
@@ -261,7 +261,7 @@
       <div class="payment-date">~10 ส.ค. 2569 (W8)</div>
       <div class="payment-trigger">
         ✓ Deploy บน Production<br>
-        ✓ DNS: app.bwc.biz ชี้ถูก<br>
+        ✓ DNS: app.bwcacc.biz ชี้ถูก<br>
         ✓ User acceptance sign-off<br>
         ✓ Training เสร็จสิ้น<br>
         → Go-Live Production
@@ -435,23 +435,23 @@
         <div class="gantt-epic-name" style="color:var(--muted);">Infrastructure + DevOps</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
-        <!-- W1 -->
+        <!-- W1: VPS+DNS ✅ DONE -->
         <div style="height:24px;display:flex;align-items:center;">
-          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;border-radius:6px 0 0 6px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">VPS+DNS</div>
+          <div style="width:100%;height:24px;background:var(--ok);opacity:0.8;border-radius:6px 0 0 6px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">VPS+DNS ✓</div>
         </div>
-        <!-- W2 -->
+        <!-- W2: SSL+FW ✅ DONE -->
         <div style="height:24px;display:flex;align-items:center;">
-          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Docker</div>
+          <div style="width:100%;height:24px;background:var(--ok);opacity:0.8;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">SSL+FW ✓</div>
         </div>
-        <!-- W3 -->
+        <!-- W3: CI/CD (design done, implementation pending) -->
         <div style="height:24px;display:flex;align-items:center;">
-          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">CI/CD</div>
+          <div style="width:100%;height:24px;background:var(--warn);opacity:0.7;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">CI/CD</div>
         </div>
-        <!-- W4 -->
+        <!-- W4: Docker Compose -->
         <div style="height:24px;display:flex;align-items:center;">
-          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Firewall</div>
+          <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Compose</div>
         </div>
-        <!-- W5 -->
+        <!-- W5: Backup -->
         <div style="height:24px;display:flex;align-items:center;">
           <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Backup</div>
         </div>
@@ -459,7 +459,7 @@
         <div style="height:24px;display:flex;align-items:center;">
           <div style="width:100%;height:24px;background:var(--warn);opacity:0.7;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:700;">UAT ▲</div>
         </div>
-        <!-- W7 -->
+        <!-- W7: Smoke -->
         <div style="height:24px;display:flex;align-items:center;">
           <div style="width:100%;height:24px;background:var(--muted);opacity:0.35;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Smoke</div>
         </div>
@@ -520,7 +520,7 @@
             <div class="deliverable-list">
               <div class="deliverable-item">Alembic migration รัน + DB 15 tables ขึ้น</div>
               <div class="deliverable-item">companies.json migrate → DB สำเร็จ</div>
-              <div class="deliverable-item">VPS UAT (KVM 2) เปิดใช้ + SSH เข้าได้</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> VPS UAT+PROD เปิดใช้ + SSH + Docker + UFW + SSL (done 2026-06-21)</div>
               <div class="deliverable-item">VAT disambiguation เริ่ม implement</div>
             </div>
           </td>
@@ -551,7 +551,7 @@
               <div class="deliverable-item">Celery worker: OCR task ทำงาน background</div>
               <div class="deliverable-item">TASK-906: Feasibility Report พร้อม (Go/No-Go)</div>
               <div class="deliverable-item">WHT detection + PND3/PND53 badge</div>
-              <div class="deliverable-item">Docker Engine + UFW firewall บน VPS</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Docker Engine + UFW + fail2ban + SSL certs (done 2026-06-21)</div>
             </div>
           </td>
           <td><span class="badge badge-muted">ไม่มี milestone</span></td>
@@ -574,7 +574,7 @@
               <div class="deliverable-item">template_engine.py: column mapping + transforms</div>
               <div class="deliverable-item">API CRUD: GET/POST/PUT/DELETE /api/v1/templates</div>
               <div class="deliverable-item">ภ.พ.30 ย้ายเป็น template-based (ไม่ hardcode)</div>
-              <div class="deliverable-item">GitHub Actions CI/CD: push dev → auto deploy UAT</div>
+              <div class="deliverable-item">GitHub Actions CI/CD: design done ✓ / implementation next (TASK-1306)</div>
               <div class="deliverable-item">TASK-906 Go/No-Go report → กำหนดราคางวด 4</div>
             </div>
           </td>
@@ -646,7 +646,7 @@
               <div class="deliverable-item">Company management + COA import (YAML)</div>
               <div class="deliverable-item">User management + 2-role RBAC</div>
               <div class="deliverable-item"><strong>UAT environment deploy สำเร็จ</strong></div>
-              <div class="deliverable-item">uat.bwc.biz ใช้งานได้ + SSL Let's Encrypt</div>
+              <div class="deliverable-item">uat.bwcacc.biz ใช้งานได้ + SSL Let's Encrypt</div>
               <div class="deliverable-item">E2E workflow ทดสอบบน UAT</div>
               <div class="deliverable-item">ลูกค้าเริ่ม UAT testing</div>
             </div>
@@ -672,8 +672,8 @@
             <div class="deliverable-list">
               <div class="deliverable-item">แก้ bug จาก UAT testing</div>
               <div class="deliverable-item">Performance tuning จากผล UAT</div>
-              <div class="deliverable-item">Production VPS (KVM 4) setup + hardening</div>
-              <div class="deliverable-item">DNS Production: app.bwc.biz เตรียมพร้อม</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Production VPS (KVM 4) setup + hardening (done W1, 2026-06-21)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> DNS app.bwcacc.biz + SSL cert active (done W1, 2026-06-21)</div>
               <div class="deliverable-item">User training (Session 1 + 2)</div>
               <div class="deliverable-item">คู่มือผู้ใช้ (Thai) สรุป</div>
             </div>
@@ -694,8 +694,8 @@
           </td>
           <td>
             <div class="deliverable-list">
-              <div class="deliverable-item"><strong>Production deploy: app.bwc.biz พร้อมใช้งาน</strong></div>
-              <div class="deliverable-item">DNS bwc.biz ชี้ถูกต้อง + SSL auto-renew</div>
+              <div class="deliverable-item"><strong>Production deploy: app.bwcacc.biz พร้อมใช้งาน</strong></div>
+              <div class="deliverable-item">DNS bwcacc.biz ชี้ถูกต้อง + SSL auto-renew</div>
               <div class="deliverable-item">Smoke test ผ่านทุก step</div>
               <div class="deliverable-item">Restore drill บน Prod ผ่าน (RPO 6hr)</div>
               <div class="deliverable-item">User training Session 3 (IT handover)</div>
@@ -817,8 +817,8 @@
         </div>
       </div>
       <div class="delivery-items">
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">UAT: uat.bwc.biz (KVM 2, 8GB RAM)</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">PROD: app.bwc.biz (KVM 4, 16GB RAM)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">UAT: uat.bwcacc.biz (KVM 2, 8GB RAM)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">PROD: app.bwcacc.biz (KVM 4, 16GB RAM)</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">SSL Let's Encrypt auto-renew</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">CI/CD: push code → auto deploy</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Backup: pg_dump 4×/วัน → Cloudflare R2</span></div>
@@ -856,7 +856,7 @@
     <strong>Client Responsibilities</strong> — สิ่งที่ลูกค้าต้องเตรียม:
     <ul style="margin-top:0.5rem;padding-left:1.25rem;line-height:2;">
       <li>ตัวอย่าง Express CSV format จริง ✗ (ต้องได้ก่อน W3 Template Engine)</li>
-      <li>DNS: delegate bwc.biz ไป Hostinger nameservers ✗ (ต้องได้ W1)</li>
+      <li><s>DNS: bwcacc.biz จดบน Hostinger โดยตรง — A records + CAA ตั้งเรียบร้อยแล้ว</s> ✓ (2026-06-21)</li>
       <li>ชำระงวด 1 (50%) ก่อนวันที่ 15 มิ.ย. 2569</li>
       <li>ตัวอย่างเอกสาร 20-30 ฉบับ สำหรับ TASK-906</li>
       <li>ผังบัญชี (COA) ของแต่ละบริษัทในรูปแบบ YAML หรือ CSV</li>

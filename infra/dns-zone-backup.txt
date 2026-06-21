@@ -1,0 +1,23 @@
+; DNS Zone Backup — bwcacc.biz
+; Exported: 2026-06-21
+; Source: Hostinger REST API (GET /api/dns/v1/zones/bwcacc.biz)
+; Registrar: Hostinger
+;
+; BIND-style zone file format
+
+$ORIGIN bwcacc.biz.
+$TTL 300
+
+; --- A Records ---
+@           50      IN  A       2.57.91.91          ; Hostinger parking page (default)
+demo        300     IN  A       76.13.210.250       ; PoC/Demo VPS (KVM 4, DC 21)
+uat         300     IN  A       72.62.74.232        ; UAT VPS (KVM 2, DC 21)
+app         300     IN  A       72.62.247.9         ; PROD VPS (KVM 4, DC 21)
+
+; --- CNAME Records ---
+www         300     IN  CNAME   bwcacc.biz.         ; www redirect to apex
+
+; --- CAA Records ---
+@           3600    IN  CAA     0 issue "letsencrypt.org"
+
+; --- End of zone ---

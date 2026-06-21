@@ -28,7 +28,7 @@
 
 ## Dependencies
 
-- **Upstream**: Epic 8 TASK-803 (JWT auth backend -- login API, token verify, refresh), Epic 8 TASK-801 (DB integration for data queries)
+- **Upstream**: Epic 8 TASK-803 (JWT auth backend -- login API, token verify, refresh), Epic 8 `TASK-801A` / `TASK-801B` (schema + DB integration for data queries)
 - **Downstream**: All authenticated features in production (every page requires login)
 
 ## Execution order
@@ -47,7 +47,7 @@ W6 Day 4-5:  TASK-1207 — Vendor & Customer master import (parallel with TASK-1
 2. Token refresh happens automatically before expiry
 3. Protected pages redirect to login if no valid token
 4. Logout clears token and redirects to login
-5. Dashboard shows real document counts, processing status breakdown, recent activity, and cost meter
+5. Dashboard shows real document counts, processing status breakdown, recent activity, and page-credit usage
 6. Company CRUD (add/edit) works with data persisted to DB
 7. COA import accepts YAML and CSV files, creates chart_of_accounts records per company
 8. COA list view shows account_code, account_name, account_type per company
@@ -64,7 +64,7 @@ W6 Day 4-5:  TASK-1207 — Vendor & Customer master import (parallel with TASK-1
 1. **JWT storage**: localStorage vs httpOnly cookie? localStorage is simpler but vulnerable to XSS. For MVP with single-page HTML, localStorage is pragmatic -- upgrade to httpOnly cookie in hardening phase?
 2. **Token expiry duration**: Recommend 1 hour access token + 7 day refresh token. สำนักงานบัญชีอาจเปิดหน้าจอทั้งวัน -- 1 hour สั้นไปไหม?
 3. **COA format**: ลูกค้าใช้ YAML or CSV สำหรับ COA? ถ้าทั้งสองต้อง support ทั้งคู่ -- หรือ CSV พอสำหรับ MVP?
-4. **Dashboard cost meter**: แสดง LLM usage vs budget -- ใช้ข้อมูลจาก `api_usage` table. Unit แสดงเป็น USD หรือ THB? ควรมี conversion rate ที่ configurable?
+4. **Dashboard billing card**: customer dashboard uses page credits (`company_credit_plans` + `page_credit_usage`) rather than `api_usage` provider/model cost
 5. **RBAC expansion**: MVP มี 2 roles (Admin/Staff). Phase II/2 หรือ post-go-live จะขยายเป็น 4 roles (Admin/Manager/Staff/Reviewer) -- ออกแบบ DB schema รองรับ 4 roles ตั้งแต่ตอนนี้ แต่ enforce แค่ 2 roles ใน MVP?
 
 ---

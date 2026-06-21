@@ -197,7 +197,7 @@ From sales templates, ~100+ unique customer codes found, all mapping to "ลู�
 | **Doc number format rule** per book type | P1 | Auto-generate document numbers | TASK-1001 |
 | **Amount type toggle** (ก่อนภาษี vs รวมภาษี) | P1 | Different mapping for purchase vs sales | TASK-1001 |
 | **Vendor/Customer master data import** | P1 | Needed for code→name lookup | **TASK-1207** (Epic 12) |
-| **Account code master import** | P1 | Chart of accounts for รหัสลงบัญชี | New task or TASK-801 |
+| **Account code master import** | P1 | Chart of accounts for รหัสลงบัญชี | New task or TASK-801A |
 | **WHT formula doc computed column** (OE prefix) | P2 | Only for expense+WHT template variant | TASK-1001 |
 
 ### New source fields to add (TASK-1001)

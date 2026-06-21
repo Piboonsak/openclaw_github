@@ -1,4 +1,4 @@
-# Phase II Plan — Cross-LLM Review Brief
+﻿# Phase II Plan — Cross-LLM Review Brief
 
 > **Purpose:** สรุปแผน Phase II ให้ AI อื่น (Gemini / GPT) review และให้ second opinion
 > **Date:** 2026-06-15
@@ -30,7 +30,7 @@
 | **10** | Template Engine + Configurator UI | W3-5 | **Core ของ Phase II** — dynamic column mapping, drag-drop UI, Master/Clone workflow |
 | **11** | Purchase Tax Report Integration | W3 | ย้าย hardcoded report → template-based |
 | **12** | Admin UI + Login | W5-6 | Login (JWT), MVP Dashboard, Company/COA management, 2-role RBAC |
-| **13** | Infrastructure + Deployment | W1-8 parallel | Hostinger VPS (UAT+Prod), DNS bwc.biz, CI/CD, Firewall, Backup automation |
+| **13** | Infrastructure + Deployment | W1-8 parallel | Hostinger VPS (UAT+Prod), DNS bwcacc.com, CI/CD, Firewall, Backup automation |
 
 ### Phase II/2 — Post-Go-Live (CR-based, scope ขึ้นกับผล PoC)
 
@@ -75,7 +75,7 @@
 - **PROD:** KVM 4 (4 vCPU, 16GB RAM) ≈ ฿550-860/เดือน
 - **Backup offsite:** Cloudflare R2 (S3-compatible) ≈ ฿3-8/เดือน
 - **Total:** ≈ ฿900-1,400/เดือน ($25-40 USD)
-- **DNS:** bwc.biz → app.bwc.biz (PROD), uat.bwc.biz (UAT), demo.bwc.biz (PoC)
+- **DNS:** bwcacc.com → app.bwcacc.com (PROD), uat.bwcacc.com (UAT), demo.bwcacc.com (PoC)
 - **SSL:** Let's Encrypt + Certbot auto-renew
 - **CI/CD:** GitHub Actions → SSH → Docker Compose
 
@@ -184,7 +184,7 @@ Pipeline: Upload → MinIO → Celery task → PaddleOCR → Field Extraction
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|-----------|
 | Epic 8 (DB integration) delays → blocks everything | Medium | High | PoC pipeline works, DB is additive |
-| DNS delegation from bwc.biz delays | Medium | Medium | ใช้ temporary domain ถ้าล่าช้า |
+| DNS A records setup (bwcacc.com) | Low | Low | bwcacc.com self-managed (Squarespace + Hostinger) — ทีมตั้งได้เลย ไม่มี external dependency |
 | Solo dev capacity ไม่พอ 8 สัปดาห์ | Medium | High | Phase II/2 เป็น buffer, cut scope ถ้าจำเป็น |
 | Line Item PoC shows high cost | Low | Low | Phase II/2 pricing adjusts, not Phase II/1 |
 | Express CSV format ยังไม่ได้ตัวอย่าง | Low | Medium | Template engine handles any column order |

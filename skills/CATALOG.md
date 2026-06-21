@@ -14,6 +14,7 @@ This catalog is the source index for reusable skill definitions in this reposito
 | DBA Performance Guardrails | `skills/dba-performance-guardrails/SKILL.md` | Safe schema/index optimization with rollback discipline |
 | AIACC Clear Cache | `skills/aiacc-clearcache/SKILL.md` | Reset OCR/extraction/journal/image caches and optionally restart local API |
 | AIACC Eva Report | `skills/aiacc-eva-report/SKILL.md` | Build evaluation reports from expectations with combined and per-company metrics |
+| DNS Hosting New Client | `skills/dns-hosting-new-client/SKILL.md` | Onboard customer domains via external DNS flow, avoid transfer lock pitfalls, and verify DNS/SSL readiness |
 
 ## Quick Validation
 

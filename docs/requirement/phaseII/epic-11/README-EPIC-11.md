@@ -25,7 +25,7 @@
 
 ## Dependencies
 
-- **Upstream**: Epic 10 TASK-1001 (template engine backend must exist), Epic 8 TASK-801 (DB integration for document data)
+- **Upstream**: Epic 10 TASK-1001 (template engine backend must exist), Epic 8 `TASK-801A` / `TASK-801B` (schema + DB integration for document data)
 - **Downstream**: Epic 12 (Export screen uses unified export endpoint)
 
 ## Execution order

@@ -1,0 +1,509 @@
+{
+  "task": "TASK-801A agent handoff: implement Epic 0 DB workflow contract",
+  "handoff_design": {
+    "intent": "This prompt is intentionally ordered as why -> what -> constraints -> validation.",
+    "why": "The agent must understand Epic 0 decisions before touching schema, because TASK-801A is now implementing workflow entities discovered by UX review.",
+    "what": "Deliverables are ordered so the agent creates enums first, then ORM models, then Alembic migrations, then tests.",
+    "guardrails": "Scope limits prevent the agent from touching pipeline, app endpoints, frontend, secrets, or unrelated code.",
+    "self_check": "The validation_checklist must pass or be reported honestly before declaring done."
+  },
+  "agent_role": "You are Codex acting as a careful backend database implementation agent. You are implementing only the DB model and migration slice of Epic 8 TASK-801A, using the frozen Epic 0 UX/workflow and page-credit billing contract as the source of truth.",
+  "context": {
+    "project": "AI Pre-Accounting Copilot (LedgerFlow)",
+    "phase": "Phase II MVP",
+    "epic": "Epic 8 - Platform Foundation",
+    "task_id": "TASK-801A",
+    "task_goal": "Add Epic 0 workflow tables, page-credit billing tables, status enums, relationships, migrations, and focused model tests.",
+    "prerequisite": "Epic 0 - UX Contract & Workflow Freeze completed. Do not reinterpret workflow scope without updating Epic 0 docs first.",
+    "tech_stack": {
+      "python": "3.12",
+      "backend": "FastAPI",
+      "orm": "SQLAlchemy 2.0 with Mapped[] and mapped_column",
+      "database": "PostgreSQL",
+      "migration_tool": "Alembic"
+    },
+    "current_schema_state": {
+      "base": "src/backend/db/base.py",
+      "models": "src/backend/db/models.py",
+      "session": "src/backend/db/session.py",
+      "existing_migration": "alembic/versions/001_initial_schema.py",
+      "note": "Existing Document.batch_id is UUID but not a foreign key. Preserve the column and add an FK constraint safely."
+    },
+    "epic_0_owner_review_decisions": {
+      "customer_dashboard": "Do not show LLM provider/model/token/internal cost to company owners. Show page credit package, remaining credits, and usage by scanned document type.",
+      "page_credit_package_example": "Pro Premium original 45000 THB, effective 25500 THB, included 20000 page credits.",
+      "export_flow": "Download CSV/Excel opens export config/preview first so users can choose columns, date formats, data types, delimiter, encoding, and file type before final download.",
+      "system_admin_boundary": "Cost Control, Audit Log, and Settings are LedgerFlow internal system-admin screens, not customer tenant admin screens.",
+      "company_settings": "Company settings must expose COA defaults and mapping rules using existing COA/mapping-rule structures."
+    }
+  },
+  "read_first_in_order": [
+    {
+      "order": 1,
+      "path": "docs/requirement/phaseII/epic-0/README-EPIC-0.md",
+      "reason": "Understand why Epic 0 exists before implementing DB work."
+    },
+    {
+      "order": 2,
+      "path": "docs/requirement/phaseII/epic-0/UX-CLICK-AUDIT.md",
+      "reason": "Understand which prototype actions are MVP and which ones drive DB state."
+    },
+    {
+      "order": 3,
+      "path": "docs/requirement/phaseII/epic-0/WORKFLOW-STATE-MACHINE.md",
+      "reason": "Use frozen state names and transition intent. Section 9 is the enum source of truth."
+    },
+    {
+      "order": 4,
+      "path": "docs/requirement/phaseII/epic-0/DB-IMPACT-CONTRACT.md",
+      "reason": "Use the approved table/column decisions for TASK-801A."
+    },
+    {
+      "order": 5,
+      "path": "docs/requirement/phaseII/epic-0/EPIC-8-HANDOFF-CHECKLIST.md",
+      "reason": "Use the handoff checklist to confirm exactly what TASK-801A owns."
+    },
+    {
+      "order": 6,
+      "path": "docs/requirement/phaseII/epic-8/EPIC-8-TASKS-DETAIL.md",
+      "reason": "Align with Epic 8 acceptance criteria and governance."
+    },
+    {
+      "order": 7,
+      "path": "src/backend/db/models.py",
+      "reason": "Follow existing ORM style and relationships."
+    },
+    {
+      "order": 8,
+      "path": "src/backend/db/base.py",
+      "reason": "Confirm Base and helper assumptions. Do not modify unless blocked."
+    },
+    {
+      "order": 9,
+      "path": "alembic/versions/001_initial_schema.py",
+      "reason": "Match migration style and revision chain."
+    }
+  ],
+  "deliverables": [
+    {
+      "order": 1,
+      "file": "src/backend/db/enums.py",
+      "action": "CREATE",
+      "description": "Create Python string enums from WORKFLOW-STATE-MACHINE.md Section 9.",
+      "requirements": [
+        "Use class XxxStatus(str, Enum).",
+        "Create DocumentStatus with values: uploaded, processing, extracted, review_scan, scan_approved, scan_flagged, review_mapping, mapping_confirmed, exported, failed.",
+        "Create BatchStatus with values: draft, uploading, processing, review_scan, review_mapping, ready_export, exported, failed, archived.",
+        "Create VoucherStatus with values: draft, review, confirmed, exported.",
+        "Create ExportJobStatus with values: pending, generating, completed, failed, downloaded.",
+        "Create FlagStatus with values: open, resolved, dismissed.",
+        "Do not use SQLAlchemy Enum database type in this task. Status columns remain String for migration flexibility."
+      ]
+    },
+    {
+      "order": 2,
+      "file": "src/backend/db/models.py",
+      "action": "MODIFY",
+      "description": "Add workflow ORM models and relationships while preserving existing models.",
+      "requirements": [
+        "Use existing _uuid_pk() and _now() helpers.",
+        "Use SQLAlchemy 2.0 Mapped[] annotations and mapped_column style.",
+        "Add DocumentBatch model mapped to document_batches.",
+        "Add DocumentFlag model mapped to document_flags.",
+        "Add FieldCorrection model mapped to field_corrections.",
+        "Add ExportJob model mapped to export_jobs.",
+        "Add ExportFile model mapped to export_files.",
+        "Add ExportJobDocument model mapped to export_job_documents.",
+        "Add CompanyCreditPlan model mapped to company_credit_plans.",
+        "Add PageCreditUsage model mapped to page_credit_usage.",
+        "Modify Document only where explicitly listed below.",
+        "Do not rename or remove existing Document columns.",
+        "Do not refactor existing models outside the relationship additions needed for the new models."
+      ],
+      "new_models": {
+        "DocumentBatch": {
+          "table": "document_batches",
+          "columns": [
+            "id UUID primary key",
+            "company_id FK companies.id ondelete CASCADE not null",
+            "uploaded_by FK users.id ondelete SET NULL nullable",
+            "batch_label String(100) nullable",
+            "status String(30) default draft",
+            "total_files Integer default 0",
+            "created_at DateTime server default now",
+            "updated_at DateTime server default now onupdate now"
+          ],
+          "indexes": [
+            "ix_batches_company_status(company_id, status)"
+          ],
+          "relationships": [
+            "company",
+            "documents back_populates batch"
+          ]
+        },
+        "DocumentFlag": {
+          "table": "document_flags",
+          "columns": [
+            "id UUID primary key",
+            "document_id FK documents.id ondelete CASCADE not null",
+            "flagged_by FK users.id ondelete SET NULL nullable",
+            "reason String(50) not null",
+            "comment Text nullable",
+            "status String(20) default open",
+            "resolved_by FK users.id ondelete SET NULL nullable",
+            "resolved_at DateTime nullable",
+            "created_at DateTime server default now"
+          ],
+          "indexes": [
+            "ix_flags_document_status(document_id, status)"
+          ],
+          "relationships": [
+            "document back_populates flags"
+          ]
+        },
+        "FieldCorrection": {
+          "table": "field_corrections",
+          "columns": [
+            "id UUID primary key",
+            "document_id FK documents.id ondelete CASCADE not null",
+            "field_name String(50) not null",
+            "old_value Text nullable",
+            "new_value Text nullable",
+            "corrected_by FK users.id ondelete SET NULL nullable",
+            "created_at DateTime server default now"
+          ],
+          "indexes": [
+            "ix_corrections_document(document_id)"
+          ],
+          "relationships": [
+            "document back_populates corrections"
+          ]
+        },
+        "ExportJob": {
+          "table": "export_jobs",
+          "columns": [
+            "id UUID primary key",
+            "company_id FK companies.id ondelete CASCADE not null",
+            "template_id FK export_templates.id ondelete SET NULL nullable",
+            "created_by FK users.id ondelete SET NULL nullable",
+            "status String(20) default pending",
+            "total_documents Integer default 0",
+            "file_format String(10) default csv",
+            "encoding String(20) default utf-8",
+            "created_at DateTime server default now"
+          ],
+          "indexes": [
+            "ix_export_jobs_company(company_id)"
+          ],
+          "relationships": [
+            "company",
+            "template",
+            "files back_populates export_job",
+            "export_documents back_populates export_job"
+          ]
+        },
+        "ExportFile": {
+          "table": "export_files",
+          "columns": [
+            "id UUID primary key",
+            "export_job_id FK export_jobs.id ondelete CASCADE not null",
+            "filename String(255) not null",
+            "storage_key Text not null",
+            "file_size_bytes Integer nullable",
+            "download_count Integer default 0",
+            "created_at DateTime server default now"
+          ],
+          "relationships": [
+            "export_job back_populates files"
+          ]
+        },
+        "ExportJobDocument": {
+          "table": "export_job_documents",
+          "columns": [
+            "id UUID primary key",
+            "export_job_id FK export_jobs.id ondelete CASCADE not null",
+            "document_id FK documents.id ondelete CASCADE not null"
+          ],
+          "constraints": [
+            "UniqueConstraint(export_job_id, document_id, name='uq_export_job_document')"
+          ],
+          "relationships": [
+            "export_job back_populates export_documents",
+            "document"
+          ]
+        },
+        "CompanyCreditPlan": {
+          "table": "company_credit_plans",
+          "columns": [
+            "id UUID primary key",
+            "company_id FK companies.id ondelete CASCADE not null",
+            "plan_name String(100) not null",
+            "billing_model String(30) default page_credit",
+            "included_page_credits Integer default 0",
+            "price_original_thb Numeric(12,2) nullable",
+            "price_effective_thb Numeric(12,2) nullable",
+            "cycle_start Date nullable",
+            "cycle_end Date nullable",
+            "is_active Boolean default true",
+            "created_at DateTime server default now",
+            "updated_at DateTime server default now onupdate now"
+          ],
+          "indexes": [
+            "ix_credit_plans_company_active(company_id, is_active)"
+          ],
+          "relationships": [
+            "company"
+          ]
+        },
+        "PageCreditUsage": {
+          "table": "page_credit_usage",
+          "columns": [
+            "id UUID primary key",
+            "company_id FK companies.id ondelete CASCADE not null",
+            "document_id FK documents.id ondelete SET NULL nullable",
+            "batch_id FK document_batches.id ondelete SET NULL nullable",
+            "document_type String(50) nullable",
+            "page_count Integer default 1",
+            "credits_used Integer default 1",
+            "usage_reason String(30) default scan",
+            "created_by FK users.id ondelete SET NULL nullable",
+            "created_at DateTime server default now"
+          ],
+          "indexes": [
+            "ix_page_credit_company_created(company_id, created_at)",
+            "ix_page_credit_document(document_id)"
+          ],
+          "relationships": [
+            "company",
+            "document",
+            "batch"
+          ]
+        }
+      },
+      "document_changes": [
+        "Change batch_id from bare UUID column to FK document_batches.id ondelete SET NULL, preserving the same column name.",
+        "Add scan_status String(20) default pending.",
+        "Add scan_reviewed_by FK users.id ondelete SET NULL nullable.",
+        "Add scan_reviewed_at DateTime nullable.",
+        "Add processing_progress JSONB nullable.",
+        "Add batch relationship back_populates documents.",
+        "Add flags relationship back_populates document.",
+        "Add corrections relationship back_populates document."
+      ]
+    },
+    {
+      "order": 3,
+      "file": "alembic/versions/002_add_document_batches.py",
+      "action": "CREATE",
+      "description": "Create document_batches table.",
+      "requirements": [
+        "revision='002'.",
+        "down_revision='001'.",
+        "Create table columns and ix_batches_company_status.",
+        "Do not modify documents table in this migration."
+      ]
+    },
+    {
+      "order": 4,
+      "file": "alembic/versions/003_add_document_review_columns.py",
+      "action": "CREATE",
+      "description": "Add document review columns and foreign key from documents.batch_id to document_batches.id.",
+      "requirements": [
+        "revision='003'.",
+        "down_revision='002'.",
+        "Add scan_status, scan_reviewed_by, scan_reviewed_at, processing_progress columns.",
+        "Add FK constraint for scan_reviewed_by to users.id.",
+        "Preserve existing documents.batch_id column. Do not drop and recreate it unless inspection proves it is unavoidable.",
+        "If existing batch_id values may be orphaned, set them to NULL before creating the FK or document the migration assumption.",
+        "Create FK constraint from documents.batch_id to document_batches.id with ondelete SET NULL.",
+        "Downgrade reverses constraints and added columns."
+      ]
+    },
+    {
+      "order": 5,
+      "file": "alembic/versions/004_add_document_flags.py",
+      "action": "CREATE",
+      "description": "Create document_flags table.",
+      "requirements": [
+        "revision='004'.",
+        "down_revision='003'.",
+        "Create table, foreign keys, and ix_flags_document_status.",
+        "Downgrade drops index/table in safe reverse order."
+      ]
+    },
+    {
+      "order": 6,
+      "file": "alembic/versions/005_add_field_corrections.py",
+      "action": "CREATE",
+      "description": "Create field_corrections table.",
+      "requirements": [
+        "revision='005'.",
+        "down_revision='004'.",
+        "Create table, foreign keys, and ix_corrections_document.",
+        "Downgrade drops index/table in safe reverse order."
+      ]
+    },
+    {
+      "order": 7,
+      "file": "alembic/versions/006_add_export_job_tables.py",
+      "action": "CREATE",
+      "description": "Create export_jobs, export_files, and export_job_documents tables.",
+      "requirements": [
+        "revision='006'.",
+        "down_revision='005'.",
+        "Create export_jobs before export_files and export_job_documents.",
+        "Create uq_export_job_document unique constraint.",
+        "Downgrade drops child tables before export_jobs."
+      ]
+    },
+    {
+      "order": 8,
+      "file": "alembic/versions/007_add_company_credit_plans.py",
+      "action": "CREATE",
+      "description": "Create company_credit_plans table for customer-facing page credit packages.",
+      "requirements": [
+        "revision='007'.",
+        "down_revision='006'.",
+        "Create table, foreign keys, and ix_credit_plans_company_active.",
+        "Downgrade drops index/table in safe reverse order."
+      ]
+    },
+    {
+      "order": 9,
+      "file": "alembic/versions/008_add_page_credit_usage.py",
+      "action": "CREATE",
+      "description": "Create page_credit_usage table for append-only page credit usage ledger.",
+      "requirements": [
+        "revision='008'.",
+        "down_revision='007'.",
+        "Create table, foreign keys, ix_page_credit_company_created, and ix_page_credit_document.",
+        "This table is customer-facing billing usage, not internal api_usage.",
+        "Downgrade drops indexes/table in safe reverse order."
+      ]
+    },
+    {
+      "order": 10,
+      "file": "tests/db/test_models.py",
+      "action": "CREATE",
+      "description": "Add focused tests for enum values, model metadata, FK definitions, and relationships.",
+      "requirements": [
+        "Create tests/db directory if it does not exist.",
+        "Tests should not require a live PostgreSQL database unless the repo already has DB test fixtures.",
+        "Prefer SQLAlchemy metadata/relationship tests for this handoff.",
+        "Verify enum values match WORKFLOW-STATE-MACHINE.md Section 9.",
+        "Verify new tables exist in Base.metadata.",
+        "Verify documents.batch_id has a ForeignKey to document_batches.id.",
+        "Verify Document relationships include batch, flags, corrections.",
+        "Verify export job relationship chain is defined.",
+        "Verify company_credit_plans and page_credit_usage tables exist with expected FK targets."
+      ]
+    }
+  ],
+  "implementation_constraints": {
+    "allowed_scope": [
+      "src/backend/db/**",
+      "alembic/versions/**",
+      "tests/db/**"
+    ],
+    "forbidden_scope": [
+      ".env*",
+      "config/secrets/**",
+      "src/frontend/**",
+      "src/backend/pipeline/**",
+      "src/backend/app/**",
+      "src/backend/ml/**",
+      "src/backend/auth/**",
+      "docs/**"
+    ],
+    "do_not_change": [
+      "Do not modify src/backend/db/base.py unless a direct import blocker requires it.",
+      "Do not modify src/backend/db/session.py.",
+      "Do not modify frontend prototype files.",
+      "Do not implement API endpoints in this task.",
+      "Do not implement pipeline writes in this task.",
+      "Do not change secrets, env files, deployment files, or CI workflows.",
+      "Do not remove existing columns or relationships unless explicitly required above."
+    ],
+    "must_follow": [
+      "Use apply_patch for manual edits.",
+      "Use SQLAlchemy 2.0 Mapped[] style matching existing models.py.",
+      "Use _uuid_pk() for UUID primary keys.",
+      "Use _now() for created_at.",
+      "Keep status fields as String columns, not DB Enum types.",
+      "Every migration must include upgrade() and downgrade().",
+      "Migration revision chain must be 001 -> 002 -> 003 -> 004 -> 005 -> 006 -> 007 -> 008.",
+      "If validation cannot run because DB service is unavailable, report that honestly and run import/metadata tests instead."
+    ]
+  },
+  "acceptance_criteria": [
+    "src/backend/db/enums.py exists and exposes DocumentStatus, BatchStatus, VoucherStatus, ExportJobStatus, FlagStatus.",
+    "DocumentBatch, DocumentFlag, FieldCorrection, ExportJob, ExportFile, ExportJobDocument, CompanyCreditPlan, and PageCreditUsage models exist.",
+    "Document.batch_id is represented as a nullable FK to document_batches.id.",
+    "Document has scan_status, scan_reviewed_by, scan_reviewed_at, and processing_progress.",
+    "CompanyCreditPlan supports page credit package terms without exposing LLM provider/model names.",
+    "PageCreditUsage supports auditable credit usage by company, document, batch, document type, page count, and credits used.",
+    "New relationships are defined without breaking existing relationships.",
+    "Alembic migrations 002 through 008 exist and chain correctly.",
+    "Migrations include downgrade functions.",
+    "tests/db/test_models.py exists and covers enums, metadata, FK definitions, and relationships.",
+    "No forbidden-scope files are changed.",
+    "Existing 15 models remain intact except explicit Document additions."
+  ],
+  "validation_checklist": {
+    "required_static_checks": [
+      "python -c \"from src.backend.db.models import Base; print(sorted(Base.metadata.tables.keys()))\"",
+      "python -c \"from src.backend.db.enums import DocumentStatus, BatchStatus, VoucherStatus, ExportJobStatus, FlagStatus; print(DocumentStatus.UPLOADED.value, BatchStatus.DRAFT.value)\"",
+      "pytest tests/db/test_models.py"
+    ],
+    "migration_file_checks": [
+      "Confirm alembic/versions/002_add_document_batches.py has down_revision='001'.",
+      "Confirm 003 has down_revision='002', 004 has down_revision='003', 005 has down_revision='004', 006 has down_revision='005', 007 has down_revision='006', and 008 has down_revision='007'.",
+      "Confirm each migration has upgrade() and downgrade()."
+    ],
+    "optional_db_backed_checks": [
+      "alembic upgrade head",
+      "alembic downgrade -1",
+      "alembic upgrade head"
+    ],
+    "diff_checks": [
+      "git diff -- src/backend/db/models.py src/backend/db/enums.py alembic/versions tests/db",
+      "Confirm no files outside allowed_scope were modified."
+    ]
+  },
+  "stop_conditions": [
+    "Stop and ask if Epic 0 docs contradict each other on state names or table ownership.",
+    "Stop and ask if the existing Alembic revision chain is not 001_initial_schema.py -> new 002.",
+    "Stop and ask if modifying batch_id safely requires deleting or rewriting production-like data.",
+    "Stop and ask if any customer-facing dashboard/schema requirement tries to show LLM provider, model, token, or internal cost details.",
+    "Stop and ask if Cost Control, Audit Log, or Settings are treated as customer tenant-admin screens instead of internal system-admin screens.",
+    "Stop and ask if tests require a live DB and no local DB service is available."
+  ],
+  "governance": {
+    "task_id": "TASK-801A",
+    "risk_tier": "MEDIUM",
+    "model_tier": "tier-2a-copilot",
+    "max_loops": 5,
+    "escalation_policy": "human",
+    "allowed_scope": [
+      "src/backend/db/**",
+      "alembic/versions/**",
+      "tests/db/**"
+    ],
+    "forbidden_scope": [
+      ".env*",
+      "config/secrets/**",
+      "src/frontend/**",
+      "src/backend/pipeline/**",
+      "src/backend/app/**",
+      "src/backend/ml/**",
+      "src/backend/auth/**"
+    ]
+  },
+  "final_response_requirements": [
+    "List files changed.",
+    "Summarize schema additions in 5 bullets or fewer.",
+    "Report validation commands run and their outcomes.",
+    "Call out any migration assumptions, especially around existing documents.batch_id values.",
+    "Call out anything not done because it belongs to later TASK-801B, TASK-802, or TASK-803."
+  ]
+}

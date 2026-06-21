@@ -398,9 +398,7 @@
             <div class="shell-nav-item admin-only">🏢 Companies</div>
             <div class="shell-nav-item admin-only">📑 Templates</div>
             <div class="shell-nav-item admin-only">👥 Users</div>
-            <div class="shell-nav-item admin-only">💰 Cost</div>
-            <div class="shell-nav-item admin-only">📜 Audit</div>
-            <div class="shell-nav-item admin-only">⚙️ Settings</div>
+            <div class="shell-nav-item admin-only">🧭 Internal Console</div>
           </div>
         </nav>
         <div class="shell-content">
@@ -432,9 +430,10 @@
         <tr><td rowspan="6">Admin</td><td>🏢 Companies</td><td>/admin/companies</td><td><span class="badge badge-ok">Admin</span></td></tr>
         <tr><td>📑 Templates</td><td>/admin/templates</td><td><span class="badge badge-ok">Admin</span></td></tr>
         <tr><td>👥 Users</td><td>/admin/users</td><td><span class="badge badge-purple">Admin only</span></td></tr>
-        <tr><td>💰 Cost Control</td><td>/admin/cost</td><td><span class="badge badge-ok">Admin</span></td></tr>
-        <tr><td>📜 Audit Log</td><td>/admin/audit</td><td><span class="badge badge-ok">Admin</span></td></tr>
-        <tr><td>⚙️ Settings</td><td>/admin/settings</td><td><span class="badge badge-purple">Admin only</span></td></tr>
+        <tr><td>🧭 Internal Console</td><td>/system</td><td><span class="badge badge-purple">Internal only</span></td></tr>
+        <tr><td>💰 Cost Control</td><td>/system/cost</td><td><span class="badge badge-purple">Internal only</span></td></tr>
+        <tr><td>📜 Audit Log</td><td>/system/audit</td><td><span class="badge badge-purple">Internal only</span></td></tr>
+        <tr><td>⚙️ Settings</td><td>/system/settings</td><td><span class="badge badge-purple">Internal only</span></td></tr>
       </tbody>
     </table>
     <div class="note" style="margin-top:0.75rem">
@@ -917,7 +916,7 @@
     <div class="tree-section" onclick="this.classList.toggle('expanded')">
       <div class="tree-section-header">
         <span class="tree-section-icon">💰</span>
-        <span class="tree-section-title">ADMIN — Cost Control</span>
+        <span class="tree-section-title">INTERNAL CONSOLE — Cost Control</span>
         <div class="tree-section-meta">
           <span class="badge badge-ok">Admin</span>
           <span class="badge badge-muted">1 page</span>
@@ -928,7 +927,7 @@
         <div class="tree-page">
           <div>
             <div class="tree-page-name">💰 Cost Control</div>
-            <div class="tree-page-url">/admin/cost</div>
+            <div class="tree-page-url">/system/cost</div>
           </div>
           <div class="tree-page-desc">
             <strong>Summary KPIs:</strong> วันนี้ / เดือนนี้ (total $, tokens) →
@@ -954,7 +953,7 @@
     <div class="tree-section" onclick="this.classList.toggle('expanded')">
       <div class="tree-section-header">
         <span class="tree-section-icon">📜</span>
-        <span class="tree-section-title">ADMIN — Audit Log</span>
+        <span class="tree-section-title">INTERNAL CONSOLE — Audit Log</span>
         <div class="tree-section-meta">
           <span class="badge badge-ok">Admin</span>
           <span class="badge badge-muted">1 page</span>
@@ -965,7 +964,7 @@
         <div class="tree-page">
           <div>
             <div class="tree-page-name">📜 Audit Log</div>
-            <div class="tree-page-url">/admin/audit</div>
+            <div class="tree-page-url">/system/audit</div>
           </div>
           <div class="tree-page-desc">
             Filter bar: User / Action type / Entity / Date range →
@@ -989,7 +988,7 @@
     <div class="tree-section" onclick="this.classList.toggle('expanded')">
       <div class="tree-section-header">
         <span class="tree-section-icon">⚙️</span>
-        <span class="tree-section-title">ADMIN — Settings</span>
+        <span class="tree-section-title">INTERNAL CONSOLE — Settings</span>
         <div class="tree-section-meta">
           <span class="badge badge-purple">Admin only</span>
           <span class="badge badge-muted">1 page · tabs</span>
@@ -1000,7 +999,7 @@
         <div class="tree-page">
           <div>
             <div class="tree-page-name">⚙️ Settings</div>
-            <div class="tree-page-url">/admin/settings</div>
+            <div class="tree-page-url">/system/settings</div>
           </div>
           <div class="tree-page-desc">
             <strong>Tab: Model Router</strong> — Tier routing config (Gemini Flash/Pro/Claude), budget thresholds, fallback order →
@@ -1040,9 +1039,10 @@
       <tr><td>🏢 Companies</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin จัดการ company ทั้งหมด</td></tr>
       <tr><td>📑 Templates</td><td class="role-y">✓</td><td class="role-n">—</td><td>Staff ใช้ template ได้แต่ไม่แก้ไข</td></tr>
       <tr><td>👥 Users</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only</td></tr>
-      <tr><td>💰 Cost Control</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only — Staff ไม่เห็น cost</td></tr>
-      <tr><td>📜 Audit Log</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only</td></tr>
-      <tr><td>⚙️ Settings</td><td class="role-y">✓</td><td class="role-n">—</td><td>Admin only</td></tr>
+      <tr><td>🧭 Internal Console</td><td class="role-n">—</td><td class="role-n">—</td><td>Customer admin ไม่เห็น — ใช้โดย LedgerFlow System Admin</td></tr>
+      <tr><td>💰 Cost Control</td><td class="role-n">—</td><td class="role-n">—</td><td>Internal only — แยกจาก customer workspace</td></tr>
+      <tr><td>📜 Audit Log</td><td class="role-n">—</td><td class="role-n">—</td><td>Internal only</td></tr>
+      <tr><td>⚙️ Settings</td><td class="role-n">—</td><td class="role-n">—</td><td>Internal only</td></tr>
       <tr><td>Force confirm unbalanced voucher</td><td class="role-p">Admin bypass</td><td class="role-n">—</td><td>Staff ต้องแก้ให้ balance ก่อน export</td></tr>
     </tbody>
   </table>
@@ -1360,7 +1360,7 @@
       <span class="screen-icon">💰</span>
       <div>
         <div class="screen-title">Cost Control</div>
-        <div class="screen-url">/admin/cost</div>
+        <div class="screen-url">/system/cost</div>
       </div>
       <span class="badge badge-ok">Admin</span>
     </div>
@@ -1387,7 +1387,7 @@
       <span class="screen-icon">📜</span>
       <div>
         <div class="screen-title">Audit Log</div>
-        <div class="screen-url">/admin/audit</div>
+        <div class="screen-url">/system/audit</div>
       </div>
       <span class="badge badge-ok">Admin</span>
     </div>
@@ -1414,7 +1414,7 @@
       <span class="screen-icon">⚙️</span>
       <div>
         <div class="screen-title">Settings</div>
-        <div class="screen-url">/admin/settings</div>
+        <div class="screen-url">/system/settings</div>
       </div>
       <span class="badge badge-purple">Admin only</span>
     </div>

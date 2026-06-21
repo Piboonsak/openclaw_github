@@ -1,4 +1,4 @@
-# Phase II Master Plan: AI Pre-Accounting Copilot / LedgerFlow
+﻿# Phase II Master Plan: AI Pre-Accounting Copilot / LedgerFlow
 
 > **Status:** Approved for implementation
 > **Approved:** 2026-06-14
@@ -28,7 +28,7 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 1. **Foundation** — เปิดใช้ PostgreSQL + Alembic + Auth/RBAC + MinIO S3 + Celery (dependencies ทั้งหมดติดตั้งใน requirements.txt แล้ว ยังไม่ได้ใช้)
 2. **Core Accuracy** — แก้ปัญหา VAT disambiguation, WHT, gridline OCR จาก user testing
 3. **Template Engine** — dynamic column mapping สำหรับ export หลายรูปแบบ
-4. **Platform Features** — หน้าจอ Login, Dashboard, Company/User management, Cost control
+4. **Platform Features** — หน้าจอ Login, Dashboard, Company/User management, page-credit dashboard, internal system-admin workspace
 5. **Infrastructure** — Monitoring, PDPA compliance, UAT/Prod CI/CD
 
 **แบ่งเป็น 2 phase + 4 งวดจ่าย:**
@@ -55,7 +55,7 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 - Template engine สำหรับ export หลายรูปแบบตามลูกค้า
 - ความแม่นยำสูงขึ้นจาก PoC feedback (VAT, WHT, gridline)
 - เก็บไฟล์บน MinIO S3 storage (self-hosted) แทน disk ของ VPS
-- Cost control และ budget monitoring ที่ track ได้จริง
+- Page credit tracking สำหรับลูกค้า และ internal cost/budget monitoring สำหรับทีมระบบ
 
 ---
 
@@ -136,7 +136,7 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 | 8b | **Template Configurator UI (drag-drop reorder, rename columns, field picker)** | W7-8 | **L** | **5,6,7** |
 | 8c | **Master template cloning → company-specific templates** | W7-8 | **M** | **8,9** |
 | 9 | Login screen + evolved upload/review screens | W9-10 | L | infra |
-| 10 | Dashboard + cost control (budget to DB) | W9-10 | M | infra |
+| 10 | Dashboard + page credits / internal cost split | W9-10 | M | infra |
 | 11 | Company management screen + COA import | W9-10 | M | 7 |
 | 12 | Sentry integration + UAT CI/CD | W11-12 | M | 10 |
 
@@ -167,24 +167,24 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 
 ## 7. Application Menu Structure
 
-```
-┌─────────────────────────────────────────────────────┐
-│ LedgerFlow                    [Company ▼]  [User ▼] │
-├─────────────────────────────────────────────────────┤
-│  Dashboard        ← สรุปภาพรวม, KPI, cost meter     │
-│  Upload           ← Step 1-2: เลือกบริษัท+อัปโหลด   │
-│  Processing       ← Step 3: สถานะ OCR pipeline      │
-│  Review Scan      ← Step 4: ตรวจสอบข้อมูลสแกน       │
-│  Review Mapping   ← Step 5: ตรวจ Dr/Cr mapping      │
-│  Export           ← Step 6: เลือก template + export  │
-│  ─────────────────                                  │
-│  Companies        ← จัดการบริษัทลูกค้า + COA         │
-│  Templates        ← จัดการ export templates          │
-│  Users            ← จัดการผู้ใช้ (Admin only)        │
-│  Cost Control     ← budget + usage dashboard        │
-│  Audit Log        ← ประวัติการใช้งาน                 │
-│  Settings         ← Model router, system config     │
-└─────────────────────────────────────────────────────┘
+```text
+LedgerFlow
+  Dashboard        ← สรุปภาพรวม, KPI, page credits ของลูกค้า
+  Upload           ← Step 1-2: เลือกบริษัท + อัปโหลด
+  Processing       ← Step 3: สถานะ OCR pipeline
+  Review Scan      ← Step 4: ตรวจสอบข้อมูลสแกน
+  Review Mapping   ← Step 5: ตรวจ Dr/Cr mapping
+  Export           ← Step 6: preview/config → generate/download
+
+  Customer Admin
+    Companies      ← จัดการบริษัทลูกค้า + COA + mapping rules
+    Templates      ← จัดการ export templates
+    Users          ← จัดการผู้ใช้ (Admin only)
+
+  Internal Console
+    Cost Control   ← internal cost / budget dashboard
+    Audit Log      ← internal activity / support audit
+    Settings       ← model router, system config
 ```
 
 ---
@@ -196,16 +196,16 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 | จัดการผู้ใช้ | Y | - | - | - |
 | จัดการบริษัท | Y | - | - | - |
 | จัดการ templates | Y | Y | - | - |
-| ตั้ง budget limits | Y | - | - | - |
+| ตั้ง page credit plan | Y | - | - | - |
 | อัปโหลดเอกสาร | Y | Y | Y | - |
 | สั่ง process (OCR) | Y | Y | Y | - |
 | Review scan | Y | Y | Y | Y |
 | Review mapping | Y | Y | Y | Y |
 | Confirm mapping | Y | Y | - | Y |
 | Export | Y | Y | Y | - |
-| ดู Dashboard | Y | Y | - | - |
-| ดู Audit log | Y | Y | - | - |
-| ดู Cost usage | Y | Y | - | - |
+| ดู Dashboard / page credits | Y | Y | - | - |
+| ดู Internal Audit log | Internal only | Internal only | - | - |
+| ดู Internal Cost usage | Internal only | Internal only | - | - |
 | จัดการ rules/COA | Y | Y | - | - |
 
 **Multi-tenant:** ทุก query filter ด้วย `tenant_id` + Staff/Reviewer เห็นเฉพาะบริษัทที่ assign
@@ -446,6 +446,8 @@ POST /api/v1/export { template_id, document_ids[], format }
 
 ## 13. Cost Control Design
 
+> **Epic 0 update (2026-06-20):** Customer dashboard uses page credits only. Internal provider/model/token cost stays in the internal system-admin workspace.
+
 **`api_usage`** — every LLM call logged: company, user, document, provider, model, tokens, cost, tier
 
 **`budget_limits`** — per-company or global: daily/monthly caps, alert threshold
@@ -562,8 +564,8 @@ data_retention_policies (id, tenant_id, entity_type, retention_days, action, is_
 | งวด | % | เงื่อนไข | Milestone |
 |-----|---|---------|-----------|
 | **1 — Kickoff** | 50% | ลงนามสัญญา Phase II | ก่อนเริ่มงาน W1 |
-| **2 — UAT** | 10% | Deploy uat.bwc.biz + client ทดสอบผ่าน | W7 |
-| **3 — Production** | 20% | Deploy app.bwc.biz + Go-live + Warranty 7 วัน | W8 + 7 วัน |
+| **2 — UAT** | 10% | Deploy uat.bwcacc.com + client ทดสอบผ่าน | W7 |
+| **3 — Production** | 20% | Deploy app.bwcacc.com + Go-live + Warranty 7 วัน | W8 + 7 วัน |
 | **4 — Phase II/2** | 20% | ส่งมอบ Phase II/2 (Line item, Sales tax, Dashboard) | W9+ ตามแผน |
 
 - **Phase II/1 MVP:** ฿260,000-350,000 + VAT (8 สัปดาห์)
@@ -581,7 +583,7 @@ data_retention_policies (id, tenant_id, entity_type, retention_days, action, is_
 2. ~~Confirm MVP vs Full scope~~ → **Confirmed: Phase II/1 (8w) + Phase II/2 (CR)**
 3. TASK-906 Line Item PoC (Week 1) — ทดสอบ feasibility + cost
 4. Hostinger VPS procurement — UAT + PROD (Singapore DC)
-5. DNS delegation request (bwc.biz → subdomains)
+5. DNS A records setup (bwcacc.com — self-managed via Squarespace + Hostinger hPanel)
 6. Start: DB activation + VAT disambiguation + VPS setup (parallel W1)
 
 ---

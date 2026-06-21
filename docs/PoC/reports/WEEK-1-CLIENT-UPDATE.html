@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BWC Account - Phase II Week 1 Update</title>
+  <style>
+    :root {
+      --bg: #f5f6f2;
+      --paper: #ffffff;
+      --ink: #1f2722;
+      --muted: #657169;
+      --line: #dce3dc;
+      --green: #24735a;
+      --green-soft: #e7f4ee;
+      --blue: #2f5f78;
+      --blue-soft: #e7f1f5;
+      --amber: #9b6800;
+      --amber-soft: #fff2cf;
+      --red: #a33a32;
+      --red-soft: #fae4e1;
+      --shadow: 0 10px 28px rgba(33, 43, 35, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Aptos", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1.4fr 0.8fr;
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+    .hero, .snapshot, .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .hero {
+      padding: 24px 26px;
+      border-top: 5px solid var(--blue);
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+    p { margin: 0; }
+    .hero p {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .snapshot {
+      padding: 18px;
+      display: grid;
+      align-content: center;
+      gap: 10px;
+    }
+    .snapshot-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+    .snapshot-row:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+    .snapshot-row span { color: var(--muted); }
+    .snapshot-row strong { text-align: right; }
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .metric {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px 14px;
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .metric strong {
+      display: block;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    .panel { margin-top: 14px; overflow: hidden; }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 13px 16px;
+      background: #fbfcfa;
+      border-bottom: 1px solid var(--line);
+    }
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    .body { padding: 16px; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .done { color: var(--green); background: var(--green-soft); }
+    .moving { color: var(--blue); background: var(--blue-soft); }
+    .watch { color: var(--amber); background: var(--amber-soft); }
+    .risk { color: var(--red); background: var(--red-soft); }
+    .timeline {
+      display: grid;
+      grid-template-columns: 120px repeat(4, 1fr);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .cell {
+      min-height: 58px;
+      padding: 10px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      font-size: 13px;
+    }
+    .cell:nth-child(5n) { border-right: 0; }
+    .row-last .cell { border-bottom: 0; }
+    .label {
+      background: #f8faf7;
+      color: #3d4841;
+      font-weight: 800;
+    }
+    .week {
+      background: #f8faf7;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      min-height: 42px;
+    }
+    .bar {
+      display: block;
+      width: 100%;
+      border-radius: 6px;
+      padding: 7px 8px;
+      font-weight: 800;
+    }
+    .bar.done { color: var(--green); background: var(--green-soft); }
+    .bar.moving { color: var(--blue); background: var(--blue-soft); }
+    .bar.watch { color: var(--amber); background: var(--amber-soft); }
+    .bar.blank { color: var(--muted); background: #f1f3ef; font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th {
+      background: #f8faf7;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .note {
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--blue-soft);
+      background: #f7fbfc;
+      color: #284c5d;
+      font-size: 15px;
+    }
+    .foot {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 860px) {
+      main { padding: 16px; }
+      header, .status-strip { grid-template-columns: 1fr; }
+      .timeline { grid-template-columns: 96px repeat(4, minmax(130px, 1fr)); overflow-x: auto; }
+      .timeline-wrap { overflow-x: auto; }
+      h1 { font-size: 25px; }
+    }
+    @media print {
+      body { background: #fff; }
+      main { max-width: none; padding: 12px; }
+      .hero, .snapshot, .panel, .metric { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <section class="hero">
+        <p class="eyebrow">BWC Account · Phase II Week 1 close-out</p>
+        <h1>งานสัปดาห์แรกเดินหน้าเร็วกว่าแผนในส่วนโครงสร้างพื้นฐาน และเริ่มเห็นผล PoC รายการสินค้าแล้ว</h1>
+        <p>อ้างอิงจากแผนเดิมใน <a href="../../requirement/phaseII/PHASE-II-TIMELINE.html">PHASE-II-TIMELINE.html</a> สรุปนี้ตั้งใจให้ BWC Account ดูภาพรวมได้ในหน้าเดียวว่าอะไรขยับแล้ว อะไรยังรอ และอะไรต้องจับตาในสัปดาห์ถัดไป</p>
+      </section>
+      <aside class="snapshot">
+        <div class="snapshot-row"><span>ช่วงที่อัปเดต</span><strong>W1: 15-21 มิ.ย. 2569</strong></div>
+        <div class="snapshot-row"><span>ภาพรวม</span><strong>อยู่ในกรอบแผน</strong></div>
+        <div class="snapshot-row"><span>เด่นสุด</span><strong>Infra พร้อมเร็ว</strong></div>
+        <div class="snapshot-row"><span>ต้องตามต่อ</span><strong>VAT / WHT / OCR</strong></div>
+      </aside>
+    </header>
+
+    <section class="status-strip">
+      <div class="metric">
+        <span>สิ่งที่ขยับแล้ว</span>
+        <strong>Infra + Line Item PoC</strong>
+      </div>
+      <div class="metric">
+        <span>ทันแผน</span>
+        <strong>W1 foundation</strong>
+      </div>
+      <div class="metric">
+        <span>เร็วกว่าแผน</span>
+        <strong>VPS / DNS / SSL</strong>
+      </div>
+      <div class="metric">
+        <span>ยังไม่ปิด</span>
+        <strong>Accuracy fixes</strong>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>ภาพรวมเทียบแผนเดิม</h2>
+        <div class="legend">
+          <span class="pill done">เสร็จ/นำหน้า</span>
+          <span class="pill moving">กำลังขยับ</span>
+          <span class="pill watch">ต้องตามต่อ</span>
+        </div>
+      </div>
+      <div class="body timeline-wrap">
+        <div class="timeline">
+          <div class="cell week">Workstream</div>
+          <div class="cell week">W1</div>
+          <div class="cell week">W2</div>
+          <div class="cell week">W3</div>
+          <div class="cell week">W4+</div>
+
+          <div class="cell label">Foundation</div>
+          <div class="cell"><span class="bar moving">เริ่มตามแผน</span></div>
+          <div class="cell"><span class="bar moving">Auth / storage / worker</span></div>
+          <div class="cell"><span class="bar blank">Template engine</span></div>
+          <div class="cell"><span class="bar blank">UI + export flow</span></div>
+
+          <div class="cell label">Line Item PoC</div>
+          <div class="cell"><span class="bar moving">เริ่มปลาย W1</span></div>
+          <div class="cell"><span class="bar moving">ทดสอบเอกสารจริง</span></div>
+          <div class="cell"><span class="bar watch">สรุป Go / Conditional / No-Go</span></div>
+          <div class="cell"><span class="bar blank">ตัดสิน scope เฟสถัดไป</span></div>
+
+          <div class="cell label">VAT / WHT / OCR</div>
+          <div class="cell"><span class="bar watch">ยังไม่ปิด</span></div>
+          <div class="cell"><span class="bar watch">ทำต่อ</span></div>
+          <div class="cell"><span class="bar moving">วัดผล accuracy</span></div>
+          <div class="cell"><span class="bar blank">รวมเข้าระบบหลัก</span></div>
+
+          <div class="row-last cell label">Infrastructure</div>
+          <div class="row-last cell"><span class="bar done">VPS / DNS พร้อม</span></div>
+          <div class="row-last cell"><span class="bar done">SSL / Firewall พร้อม</span></div>
+          <div class="row-last cell"><span class="bar moving">CI/CD ต่อ</span></div>
+          <div class="row-last cell"><span class="bar blank">UAT / PROD deploy</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>สถานะสำหรับ BWC Account</h2>
+        <span class="pill moving">Short update</span>
+      </div>
+      <div class="body">
+        <table>
+          <thead>
+            <tr>
+              <th>หัวข้อ</th>
+              <th>สถานะ</th>
+              <th>คำอธิบายสั้น ๆ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>โครงสร้างพื้นฐาน</strong></td>
+              <td><span class="pill done">นำหน้าแผน</span></td>
+              <td>VPS, DNS, SSL, firewall และ health check พร้อมกว่าที่ต้องมีใน W1 ทำให้ความเสี่ยงฝั่ง deploy ลดลง</td>
+            </tr>
+            <tr>
+              <td><strong>TASK-906 Line Item PoC</strong></td>
+              <td><span class="pill moving">ขยับแล้ว</span></td>
+              <td>เริ่มทดสอบกับเอกสารจริงแล้ว ระบบอ่านรายการสินค้า/บริการได้ และเริ่มแยกกลุ่มที่ควรเข้าสต็อกกับกลุ่มที่ต้องให้คนตรวจ</td>
+            </tr>
+            <tr>
+              <td><strong>ฐานสินค้าของแต่ละบริษัท</strong></td>
+              <td><span class="pill moving">พบ insight สำคัญ</span></td>
+              <td>ถ้ามีประวัติรายการสินค้าที่ผู้ใช้เคยยืนยัน ระบบจะช่วย match ได้มั่นใจขึ้น จึงควรออกแบบ review loop ให้เก็บ feedback กลับมาใช้ต่อ</td>
+            </tr>
+            <tr>
+              <td><strong>VAT / WHT / OCR</strong></td>
+              <td><span class="pill watch">ตามต่อ W2</span></td>
+              <td>ยังไม่ใช่งานที่ปิดใน W1 และจะถูกไล่ปรับ accuracy ต่อหลังจาก PoC line item เริ่มนิ่งขึ้น</td>
+            </tr>
+            <tr>
+              <td><strong>Feasibility decision</strong></td>
+              <td><span class="pill watch">ยังไม่สรุป final</span></td>
+              <td>ยังต้องสรุปผลเป็น Go / Conditional / No-Go ตามเกณฑ์เดิมก่อนล็อก scope ของงาน line item เต็มรูปแบบ</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="body">
+        <div class="note">
+          สรุปสำหรับ BWC Account: W1 ยังอยู่ในกรอบแผน โดย infrastructure เดินเร็วกว่าแผน และ TASK-906 เริ่มให้หลักฐานเชิงบวกจากเอกสารจริงแล้ว ส่วนงานปรับ accuracy ฝั่ง VAT / WHT / OCR ยังเป็นงานต่อเนื่องของ W2 ตาม timeline เดิม
+        </div>
+        <p class="foot">Prepared for BWC Account update. Internal implementation details are kept in the team workspace.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

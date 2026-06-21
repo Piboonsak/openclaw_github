@@ -1,0 +1,74 @@
+{
+  "title": "LedgerFlow Phase II DNS/Registrar Design Review",
+  "targetAgent": "Claude Code",
+  "language": "th",
+  "role": "You are a senior infrastructure and DNS architect reviewing a production-bound accounting platform.",
+  "goal": "Review whether current DNS/registrar design is suitable for LedgerFlow production and propose the best practical architecture.",
+  "projectContext": {
+    "system": "LedgerFlow (AI pre-accounting platform)",
+    "phase": "Phase II/1 (UAT + PROD go-live)",
+    "criticality": "High (accounting operations, business continuity required)",
+    "currentDesign": {
+      "registrar": "Squarespace Domains II LLC",
+      "dnsNameservers": ["pixel.dns-parking.com", "byte.dns-parking.com"],
+      "dnsHostSignal": "SOA responsible mailbox = dns.hostinger.com",
+      "vpsHosting": "Hostinger VPS",
+      "ssl": "Let's Encrypt via certbot + nginx",
+      "teamPolicy": "Internal team manages DNS changes, not customer"
+    }
+  },
+  "artifactsToReview": [
+    {
+      "path": "docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-RUNBOOK.md",
+      "purpose": "Current prerequisite runbook and operating assumptions"
+    },
+    {
+      "path": "docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-CHECKLIST.html",
+      "purpose": "Operational checklist for DNS/SSL/deploy gates"
+    },
+    {
+      "path": "deploy/poc-site/README.md",
+      "purpose": "Existing deployment and certificate operational pattern"
+    }
+  ],
+  "questions": [
+    "Is the current model (Squarespace registrar + Hostinger DNS operations + Hostinger VPS) production-appropriate for LedgerFlow?",
+    "What are the top architectural risks in this setup (availability, vendor lock-in, DNS change safety, incident recovery, cert lifecycle, access control)?",
+    "Should we keep current design for go-live or change any layer now? If change is needed, what is the minimum safe change before go-live?",
+    "Provide recommended DNS governance model (roles, approval flow, audit trail, rollback, TTL strategy, change windows).",
+    "Provide a 2-track strategy: (A) Minimum production design for immediate go-live, (B) Target design after 30-60 days post go-live.",
+    "Compare at least 2 architecture options with pros/cons and migration risk.",
+    "List concrete acceptance criteria and a go/no-go checklist for DNS readiness."
+  ],
+  "constraints": [
+    "Do not propose risky full migration right before go-live unless absolutely necessary.",
+    "Prefer low-risk, stepwise improvements.",
+    "Keep recommendations practical for a small team.",
+    "Assume no dedicated SRE team.",
+    "Keep customer impact and downtime risk minimal."
+  ],
+  "expectedOutputFormat": {
+    "format": "markdown",
+    "sections": [
+      "Executive Verdict (Good enough now or not)",
+      "Current Design Risk Review (ranked by severity)",
+      "Option Comparison Table",
+      "Recommended Architecture",
+      "Immediate Action Plan (0-7 days)",
+      "Post-Go-Live Hardening Plan (30-60 days)",
+      "Go/No-Go DNS Checklist"
+    ],
+    "mustInclude": [
+      "Clear keep/change decision",
+      "Rollback and incident handling notes",
+      "Owner assignment suggestion (who approves vs who executes)",
+      "TTL and cutover guidance",
+      "Certificate lifecycle controls"
+    ]
+  },
+  "successCriteria": [
+    "Answer is decision-ready for implementation",
+    "Recommendations are low-risk and operationally realistic",
+    "Output can be converted directly into project runbook updates"
+  ]
+}

@@ -1,4 +1,4 @@
-# Phase II Epic Roadmap & Critical Path
+﻿# Phase II Epic Roadmap & Critical Path
 
 **Timeline: 8 สัปดาห์ (Phase II/1 Go-Live) + CR-based (Phase II/2)**
 **Baseline Date: 2026-06-15**
@@ -12,12 +12,13 @@
 
 | Epic | Title | Focus | Key Tasks | Req# | Status | Est. |
 |------|-------|-------|-----------|------|--------|------|
-| **8** | Platform Foundation | DB activation, JWT Auth, MinIO S3, Celery workers | TASK-801~806 | infra,10 | Partial | 2w |
+| **0** | UX Contract & Workflow Freeze | Lock workflow, state machine, API/DB impact before DB work | TASK-001~006 | ux,infra | Done | 2-4d |
+| **8** | Platform Foundation | DB activation, JWT Auth, MinIO S3, Celery workers | TASK-801A~808 | infra,10 | Partial | 2w |
 | **9** | Extraction Accuracy + Line Item PoC | VAT fix, WHT, OCR gridline, Line item feasibility | TASK-901~906 | 1,2,4 | Partial | 1.5w |
 | **10** | Template Engine + Configurator UI | Dynamic export, drag-drop UI, Master/Clone | TASK-1001~1006 | 5,6,7,8,9 | Design | 2.5w |
 | **11** | Purchase Tax Report Integration | ภาษีซื้อ integrate กับ template engine | TASK-1101,1104 | 3 | Partial | 0.5w |
 | **12** | Admin UI + Login | Login, MVP Dashboard, Company/COA, User mgmt | TASK-1201~1204 | 7 | Design | 1.5w |
-| **13** | Infrastructure + Deployment | Hostinger VPS (UAT/Prod), DNS bwc.biz, CI/CD, Firewall, Backup, Offsite R2 | TASK-1301~1312 | 10 | Design | ~2w (parallel) |
+| **13** | Infrastructure + Deployment | Hostinger VPS (UAT/Prod), DNS bwcacc.com, CI/CD, Firewall, Backup, Offsite R2 | TASK-1301~1312 | 10 | Design | ~2w (parallel) |
 
 ### Phase II/2 — Post-Go-Live Enhancement (CR-based)
 
@@ -33,6 +34,7 @@
 
 | Req# | Requirement | Phase | Epic | Tasks | หมายเหตุ |
 |------|------------|-------|------|-------|----------|
+| 0 | UX workflow + state/API contract | II/1 pre-work | 0 | 001~006 | Gate ก่อน DB integration |
 | 1 | อ่านเอกสารบัญชี (OCR) | II/1 | 9 | 903 | PoC working + gridline fix |
 | 2 | ดึงข้อมูลสำคัญ (header) | II/1 | 9 | 901,902,905 | VAT/WHT/branch fix |
 | 2b | ดึง line item (SKU, Qty, Price) | II/1 PoC → II/2 Full | 9→14 | 906→1401~1404 | PoC W1, Full = CR |
@@ -50,17 +52,43 @@
 
 ## Task Breakdown Per Epic
 
+### Epic 0: UX Contract & Workflow Freeze (W0 / before W1)
+
+ล็อก UX workflow, state machine, API contract, และ DB impact ก่อนเริ่มแก้ schema / pipeline integration เพื่อป้องกัน rework ระหว่าง Epic 8, 10, 12
+
+| Task | งาน | Complexity | สถานะ | สัปดาห์ |
+|------|------|-----------|--------|---------|
+| TASK-001 | PoC UX click audit + interaction inventory | S | Done | W0 |
+| TASK-002 | MVP workflow state machine freeze | M | Done | W0 |
+| TASK-003 | DB impact contract for workflow entities | M | Done | W0 |
+| TASK-004 | Prototype interaction patch scope | M | Done | W0 |
+| TASK-005 | API / route contract for Phase II screens | M | Done | W0 |
+| TASK-006 | Epic 8 handoff checklist + sign-off | S | Done | W0 |
+
+**สิ่งที่ต้องล็อกก่อน Epic 8:**
+- Batch lifecycle และ document lifecycle
+- Review Scan / Review Mapping state + role guards
+- Export job/history + selected document behavior
+- Template configurator scope: MVP vs Phase II/2
+- Mobile navigation decision: usable now vs desktop-first
+- DB impact list: table vs JSONB vs deferred
+
+**Dependency:** Blocks Epic 8 DB integration decisions, informs Epic 10/12 UI/API scope
+
+---
+
 ### Epic 8: Platform Foundation (W1-2)
 
 เปิดใช้ infrastructure ที่ติดตั้งไว้แล้วใน requirements.txt / docker-compose แต่ยังไม่ได้ใช้จริง
 
 | Task | งาน | Complexity | สถานะ | สัปดาห์ |
 |------|------|-----------|--------|---------|
-| TASK-801 | Pipeline → DB integration (extraction/journal write ลง DB แทน file cache) | L | New | W1 |
+| TASK-801A | SQLAlchemy models + Alembic schema slice (workflow/export/page credits) | L | New | W1 |
+| TASK-801B | Pipeline → DB dual-write integration (extraction/journal write ลง DB แทน file cache) | L | New | W1 |
 | TASK-802 | Data migration script (companies.json → DB, seed master templates, seed admin user) | M | New | W1 |
+| TASK-804 | MinIO S3 storage integration (upload/download/presigned URL) | M | New | W1 |
+| TASK-805 | Celery + Redis workers (wrap pipeline เป็น background task, export job runtime, status tracking) | M | New | W2 |
 | TASK-803 | JWT Authentication + Login API endpoint + FastAPI middleware | M | New | W2 |
-| TASK-804 | MinIO S3 storage integration (upload/download/presigned URL) | M | New | W2 |
-| TASK-805 | Celery + Redis workers (wrap pipeline เป็น background task, status tracking) | M | New | W2 |
 | TASK-806 | Health check endpoint + DB connection pool + startup validation | S | New | W2 |
 | TASK-807 | PDPA auto-cleanup (Celery Beat cron ลบไฟล์ + DB records เกิน retention period, configurable days) | S | New | W2 |
 | TASK-808 | Edge case handling — file size limit (20MB), unreadable image → `ocr_failed` status, encrypted PDF → reject with message | S | New | W2 |
@@ -72,7 +100,7 @@
 - `config/settings.py` มี DATABASE_URL แล้ว
 - Docker Compose มี PostgreSQL + Redis + MinIO containers
 
-**Dependency:** Blocks Epic 10, 11, 12 (ทุก epic ต้องอ่าน/เขียน DB)
+**Dependency:** `TASK-801A` blocks DB contract rollout, `TASK-801B` blocks live data flow; together they unblock Epic 10, 11, 12
 
 ---
 
@@ -246,7 +274,7 @@
 | TASK-1301 | VPS Architecture Design (services, networking, resource sizing) | M | New | W1 |
 | TASK-1302 | Hostinger VPS Procurement — UAT + PROD instances (Singapore DC) | S | New | W1 |
 | TASK-1303 | Base OS setup + Docker Engine + security hardening | M | New | W1-2 |
-| TASK-1304 | DNS delegation (bwc.biz → subdomains) + Certbot SSL | M | New | W2 |
+| TASK-1304 | DNS delegation (bwcacc.com → subdomains) + Certbot SSL | M | New | W2 |
 | TASK-1305 | CI/CD Pipeline Design (GitHub Actions → VPS deploy flow) | M | New | W2-3 |
 | TASK-1306 | CI/CD Pipeline Implementation (deploy-uat.yml, deploy-prod.yml) | L | New | W3-4 |
 | TASK-1307 | Docker Compose — UAT (docker-compose.uat.yml) | M | New | W4 |
@@ -260,8 +288,8 @@
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    bwc.biz DNS                       │
-│  app.bwc.biz (PROD)  │  uat.bwc.biz  │  demo.bwc.biz│
+│                    bwcacc.com DNS                       │
+│  app.bwcacc.com (PROD)  │  uat.bwcacc.com  │  demo.bwcacc.com│
 └───────┬───────────────┴───────┬───────┴──────┬───────┘
         │                       │              │
    ┌────▼────────────┐    ┌────▼────────┐  (existing PoC)
@@ -289,19 +317,22 @@
    └───────────────────────┘
 ```
 
-#### TASK-1304: DNS Structure (bwc.biz)
+#### TASK-1304: DNS Structure (bwcacc.com)
 
 | Subdomain | Environment | VPS | หมายเหตุ |
 |-----------|------------|-----|----------|
-| `app.bwc.biz` | **PROD** | Hostinger PROD | Production — locked down |
-| `uat.bwc.biz` | UAT | Hostinger UAT | Testing + client review |
-| `demo.bwc.biz` | Demo | Existing PoC VPS | Demo/showcase |
+| `app.bwcacc.com` | **PROD** | Hostinger PROD | Production — locked down |
+| `uat.bwcacc.com` | UAT | Hostinger UAT | Testing + client review |
+| `demo.bwcacc.com` | Demo | Existing PoC VPS | Demo/showcase |
 
 **DNS Setup Steps:**
-1. ขอ DNS delegation จากสำนักงานบัญชี (bwc.biz DNS admin)
-2. สร้าง A records → VPS IP addresses
+
+1. เปิด Squarespace Domains panel → ตั้ง custom nameservers → `pixel.dns-parking.com`, `byte.dns-parking.com`
+2. เปิด Hostinger hPanel DNS Zone → สร้าง A records → VPS IP addresses (TTL=300)
 3. Certbot auto-SSL (Let's Encrypt) สำหรับทุก subdomain
 4. Auto-renew cron job
+
+> bwcacc.com เป็นโดเมนของทีม (Squarespace Domains, team-managed) — ไม่ต้องรอ client
 
 #### TASK-1309: PROD Security — Lockdown Policy
 
@@ -379,7 +410,7 @@ fi
 3. Restore DB: `gunzip -c /backup/latest.sql.gz | docker exec -i postgres psql -U copilot ai_accounting`
 4. Verify: `alembic current` matches expected version
 5. Start services: `docker compose up -d`
-6. Health check: `curl https://app.bwc.biz/api/health`
+6. Health check: `curl https://app.bwcacc.com/api/health`
 
 **TASK-1312 includes Restore Drill:** ทดสอบ restore จริง 1 ครั้งก่อน go-live
 
@@ -405,7 +436,7 @@ GitHub Actions CI
 │         deploy-uat    deploy-prod               │
 │               │            │                    │
 │     Hostinger UAT    Hostinger PROD             │
-│      uat.bwc.biz      app.bwc.biz              │
+│      uat.bwcacc.com      app.bwcacc.com              │
 └────────────────────────────────────────────────┘
 
 Deploy Pipeline (per environment):
@@ -460,6 +491,10 @@ Latency เพิ่ม ~20-50ms เทียบกับ internal GCP → ไ�
 ```
         ┃ Development Stream                ┃ Infrastructure Stream (parallel)    ┃
 ━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋
+ W0     ┃ Epic 0: UX Contract gate          ┃                                    ┃
+        ┃   (001, 002, 003, 004, 005, 006)  ┃                                    ┃
+        ┃ ── Gate: DB-ready workflow ────── ┃                                    ┃
+━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋
  W1     ┃ Epic 8: DB activation (801,802)   ┃ Epic 13: VPS Architecture (1301)   ┃
         ┃ Epic 9: Line Item PoC ★ (906)     ┃ Epic 13: VPS Procurement (1302)    ┃
         ┃ Epic 9: VAT disambig start (901)  ┃ Epic 13: Base OS setup (1303)      ┃
@@ -488,13 +523,13 @@ Latency เพิ่ม ~20-50ms เทียบกับ internal GCP → ไ�
         ┃                                   ┃                                    ┃
         ┃ ── Milestone: All Features ────── ┃ ── Milestone: Infra Complete ──── ┃
 ━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋
- W7     ┃ Integration testing               ┃ Deploy to UAT (uat.bwc.biz)        ┃
+ W7     ┃ Integration testing               ┃ Deploy to UAT (uat.bwcacc.com)        ┃
         ┃ E2E Playwright tests              ┃ Client UAT testing                 ┃
         ┃ Bug fixes                         ┃ Epic 13: Smoke tests (1312)        ┃
         ┃                                   ┃                                    ┃
         ┃ ── Milestone: UAT Sign-off ────── ┃ ── Payment: 10% UAT ────────────  ┃
 ━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋
- W8     ┃ UAT bug fixes                     ┃ Deploy to PROD (app.bwc.biz)       ┃
+ W8     ┃ UAT bug fixes                     ┃ Deploy to PROD (app.bwcacc.com)       ┃
         ┃ Final QA                          ┃ PROD smoke test                    ┃
         ┃ User manual update                ┃ Monitoring verification            ┃
         ┃                                   ┃                                    ┃
@@ -524,9 +559,9 @@ W5: Epic 10 (Clone+Export) + Epic 12 (Login/Company)
         ↓
 W6: Epic 12 (Dashboard/Users) + Epic 13 (Backup/Firewall)
         ↓ All features complete
-W7: Integration test + UAT deploy (uat.bwc.biz) → UAT sign-off
+W7: Integration test + UAT deploy (uat.bwcacc.com) → UAT sign-off
         ↓
-W8: PROD deploy (app.bwc.biz) → Go-Live
+W8: PROD deploy (app.bwcacc.com) → Go-Live
 
 Critical Path: Epic 8 → Epic 10 → Epic 12 → UAT → PROD
 Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
@@ -537,7 +572,7 @@ Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 | Risk | Impact | Mitigation |
 |------|--------|-----------|
 | Epic 8 (DB integration) delays | High — blocks everything | PoC pipeline works, DB is additive not rewrite |
-| DNS delegation from bwc.biz | Medium — blocks UAT/PROD deploy | ขอ DNS delegation W1, ใช้ temporary domain ถ้าล่าช้า |
+| DNS A records (bwcacc.com) | Low — self-managed, team controls Squarespace + Hostinger DNS | ตั้ง A records ได้ทันที ไม่มี external dependency |
 | VPS procurement delay | Medium — blocks deployment | Order W1, fallback to existing PoC VPS temporarily |
 | Express CSV format unknown | Low — template engine is flexible | Template engine handles any column order, adjust later |
 | Line Item PoC shows high cost | Low — scope is CR-based | Results inform Phase II/2 pricing, not Phase II/1 |
@@ -549,8 +584,8 @@ Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 | งวด | % | จำนวน (ฐาน ฿300K) | เงื่อนไข | Milestone |
 |-----|---|-------------------|---------|-----------|
 | **1 — Kickoff** | 50% | ฿150,000 | ลงนามสัญญา Phase II | ก่อนเริ่มงาน W1 |
-| **2 — UAT** | 10% | ฿30,000 | Deploy uat.bwc.biz + client ทดสอบผ่าน | W7 |
-| **3 — Production** | 20% | ฿60,000 | Deploy app.bwc.biz + Go-live + Warranty 7 วัน | W8 + 7 วัน |
+| **2 — UAT** | 10% | ฿30,000 | Deploy uat.bwcacc.com + client ทดสอบผ่าน | W7 |
+| **3 — Production** | 20% | ฿60,000 | Deploy app.bwcacc.com + Go-live + Warranty 7 วัน | W8 + 7 วัน |
 | **4 — Phase II/2** | 20% | ฿60,000 | ส่งมอบ Phase II/2 (Line item, Sales tax, Dashboard) | W9+ ตามแผน |
 
 > **Note:** ฐานราคา ฿300K เป็นตัวอย่าง — ราคาจริงตามที่ตกลงในสัญญา
@@ -607,7 +642,7 @@ Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 | 8 | VAT disambiguation accuracy ดีขึ้นวัดได้ (before/after) | Test corpus |
 | 9 | WHT badge แสดงถูกต้อง | Test corpus |
 | 10 | Company management + COA import ทำงานได้ | UI test |
-| 11 | Deploy on app.bwc.biz + uat.bwc.biz สำเร็จ | Health check + smoke test |
+| 11 | Deploy on app.bwcacc.com + uat.bwcacc.com สำเร็จ | Health check + smoke test |
 | 12 | PROD access locked down ตาม security policy | Pentest + audit |
 | 13 | Backup automated + restore tested | Restore drill |
 
@@ -641,14 +676,15 @@ Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 
 | Week | Active Epics | Checkpoint Gate | Payment |
 |------|-------------|----------------|---------|
-| W1 | 8 + 9 + 13 | DB activated + Line Item PoC report + VPS ordered | **50% Kickoff** |
+| W0 | 0 | UX contract frozen + prototype patched + API contract approved + Epic 8 handoff ready | — |
+| W1 | 8 + 9 + 13 | `801A` schema ready + `802` seed plan + `804` storage path + Line Item PoC report + VPS ordered | **50% Kickoff** |
 | W2 | 8 + 9 + 13 | Auth working + DNS configured + CI/CD designed | — |
 | W3 | 10 + 11 + 13 | Template engine core + Purchase tax integrated | — |
 | W4 | 10 + 13 | Configurator UI working + CI/CD pipeline deployed | — |
 | W5 | 10 + 12 + 13 | Full template flow + Login screen | — |
 | W6 | 12 + 13 | All features complete + Backup configured | — |
-| W7 | QA + 13 | UAT deployed (uat.bwc.biz) + Client testing | **10% UAT** |
-| W8 | Go-Live | PROD deployed (app.bwc.biz) + Warranty start | **20% Prod** (after 7-day warranty) |
+| W7 | QA + 13 | UAT deployed (uat.bwcacc.com) + Client testing | **10% UAT** |
+| W8 | Go-Live | PROD deployed (app.bwcacc.com) + Warranty start | **20% Prod** (after 7-day warranty) |
 
 ---
 
@@ -661,9 +697,9 @@ Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 | 1 | ตัวอย่าง CSV/Excel ที่ import เข้า Express ได้จริง (column order, encoding, delimiter) | ก่อน W3 | Template Engine delay ไม่นับเป็น vendor delay |
 | 2 | ผังบัญชี (COA) ของทุกบริษัทลูกค้า (account code + account name) | ก่อน W5 | Company/COA setup delay |
 | 3 | ตัวอย่างเอกสาร 20-30 ใบ หลาย format (ดู TASK-906 diversity checklist) | ก่อน W1 | Line Item PoC + accuracy test delay |
-| 4 | UAT feedback หลัง deploy uat.bwc.biz | ภายใน 5 วันทำการ | ถือว่า accept, timeline เลื่อนเท่าวันที่ล่าช้า |
+| 4 | UAT feedback หลัง deploy uat.bwcacc.com | ภายใน 5 วันทำการ | ถือว่า accept, timeline เลื่อนเท่าวันที่ล่าช้า |
 | 5 | UAT sign-off หลังแก้ bug รอบสุดท้าย | ภายใน 3 วันทำการ | ถือว่า accept |
-| 6 | ข้อมูล DNS delegation (bwc.biz admin access หรือ A record setup) | ก่อน W2 | ใช้ temporary domain, go-live delay |
+| 6 | DNS A records verified — uat.bwcacc.com, app.bwcacc.com ชี้ถูก VPS | ก่อน W2 | ทีม set A records เองได้เลย (bwcacc.com self-managed) |
 
 ### AI/OCR Accuracy Disclaimer
 
