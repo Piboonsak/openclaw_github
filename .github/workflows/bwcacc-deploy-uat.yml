@@ -3,6 +3,12 @@ name: BWCAcc — Deploy to UAT
 on:
   push:
     branches: [uat]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deploy'
+        required: false
+        default: 'manual trigger'
 
 # Only one UAT deploy at a time; never cancel an in-progress deploy
 concurrency:
