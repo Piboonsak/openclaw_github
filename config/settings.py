@@ -30,8 +30,23 @@ class Settings:
         )
         self.UPLOAD_ROOT = _path_from_env("UPLOAD_ROOT", self.CACHE_ROOT / "uploads")
         self.EXPORT_ROOT = _path_from_env("EXPORT_ROOT", self.CACHE_ROOT / "exports")
+        self.STORAGE_PROVIDER = os.getenv("STORAGE_PROVIDER", "minio")
+        self.MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://localhost:9000")
+        self.MINIO_BUCKET = os.getenv("MINIO_BUCKET", "ai-accounting-sit")
+        self.MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+        self.MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+        self.STORAGE_LOCAL_ROOT = _path_from_env(
+            "STORAGE_LOCAL_ROOT", self.CACHE_ROOT / "object_store"
+        )
+        self.STORAGE_DEFAULT_TENANT_ID = os.getenv(
+            "STORAGE_DEFAULT_TENANT_ID", "default-tenant"
+        )
+        self.STORAGE_PRESIGN_EXPIRE_SECONDS = int(
+            os.getenv("STORAGE_PRESIGN_EXPIRE_SECONDS", "3600")
+        )
         self.ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+        self.BWCACC_OPENROUTER_API_KEY = os.getenv("BWCACC_OPENROUTER_API_KEY", "")
         self.OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
         self.OPENROUTER_BASE_URL = os.getenv(
             "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
@@ -41,6 +56,10 @@ class Settings:
         # the source image alongside OCR text. Override via STAGE_C_DEFAULT_MODEL.
         self.STAGE_C_DEFAULT_MODEL = os.getenv(
             "STAGE_C_DEFAULT_MODEL", "google/gemini-2.5-flash"
+        )
+        self.STAGE_C_BACKUP_MODELS = os.getenv(
+            "STAGE_C_BACKUP_MODELS",
+            "openai/gpt-4.1-nano,google/gemini-3.1-flash-lite",
         )
         self.STAGE_C_ESCALATION_MODEL = os.getenv(
             "STAGE_C_ESCALATION_MODEL", "anthropic/claude-sonnet-4"

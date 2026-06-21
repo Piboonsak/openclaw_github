@@ -8,6 +8,7 @@ from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_ANTHROPIC_KEYS_FILE = Path(r"D:\key\ALL-Openclaw-keys.txt")
+DEFAULT_BWCACC_KEYS_FILE = Path(r"D:\key\bwcacc-keys.txt")
 DEFAULT_OPENAI_KEY_FILE = Path(
     r"D:\key\API Key for OpenClawAA01 access to OpenAI[ChatGPT].txt"
 )
@@ -123,6 +124,16 @@ def _load_env_key(target_name: str, value: str) -> bool:
 
 def load_openrouter_key() -> bool:
     """Load OPENROUTER_API_KEY from local key file if env is empty."""
+    bwcacc_path = _resolve_path("BWCACC_KEYS_FILE", DEFAULT_BWCACC_KEYS_FILE)
+    bwcacc_value = _read_key_value_file(
+        bwcacc_path, "BWCACC_OPENROUTER_API_KEY"
+    ) or _read_key_value_file(bwcacc_path, "OPENROUTER_API_KEY")
+    loaded_bwcacc = _load_env_key("BWCACC_OPENROUTER_API_KEY", bwcacc_value)
+    if loaded_bwcacc and not os.getenv("OPENROUTER_API_KEY", "").strip():
+        os.environ["OPENROUTER_API_KEY"] = os.environ["BWCACC_OPENROUTER_API_KEY"]
+        LOGGER.info("OPENROUTER_API_KEY mapped from BWCACC_OPENROUTER_API_KEY")
+        return True
+
     keys_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)
     openrouter_value = _read_key_value_file(keys_path, "OPENROUTER_API_KEY")
     return _load_env_key("OPENROUTER_API_KEY", openrouter_value)
@@ -140,6 +151,7 @@ def load_anthropic_key() -> bool:
 def load_llm_keys() -> dict[str, bool]:
     """Load Anthropic, OpenAI, and OpenRouter keys from local files."""
     anthropic_path = _resolve_path("LLM_KEYS_FILE", DEFAULT_ANTHROPIC_KEYS_FILE)
+    bwcacc_path = _resolve_path("BWCACC_KEYS_FILE", DEFAULT_BWCACC_KEYS_FILE)
     openai_path = _resolve_path("OPENAI_KEY_FILE", DEFAULT_OPENAI_KEY_FILE)
 
     anthropic_value = _read_key_value_file(
@@ -148,10 +160,24 @@ def load_llm_keys() -> dict[str, bool]:
         preferred_subkey=_ANTHROPIC_PREFERRED_SUBKEY,
     )
     openrouter_value = _read_key_value_file(anthropic_path, "OPENROUTER_API_KEY")
+    bwcacc_openrouter_value = _read_key_value_file(
+        bwcacc_path, "BWCACC_OPENROUTER_API_KEY"
+    ) or _read_key_value_file(bwcacc_path, "OPENROUTER_API_KEY")
     openai_value = _read_openai_key_file(openai_path)
+
+    bwcacc_loaded = _load_env_key(
+        "BWCACC_OPENROUTER_API_KEY", bwcacc_openrouter_value
+    )
+    if bwcacc_loaded and not os.getenv("OPENROUTER_API_KEY", "").strip():
+        os.environ["OPENROUTER_API_KEY"] = os.environ["BWCACC_OPENROUTER_API_KEY"]
+        openrouter_loaded = True
+        LOGGER.info("OPENROUTER_API_KEY mapped from BWCACC_OPENROUTER_API_KEY")
+    else:
+        openrouter_loaded = _load_env_key("OPENROUTER_API_KEY", openrouter_value)
 
     return {
         "ANTHROPIC_API_KEY": _load_env_key("ANTHROPIC_API_KEY", anthropic_value),
         "OPENAI_API_KEY": _load_env_key("OPENAI_API_KEY", openai_value),
-        "OPENROUTER_API_KEY": _load_env_key("OPENROUTER_API_KEY", openrouter_value),
+        "BWCACC_OPENROUTER_API_KEY": bwcacc_loaded,
+        "OPENROUTER_API_KEY": openrouter_loaded,
     }

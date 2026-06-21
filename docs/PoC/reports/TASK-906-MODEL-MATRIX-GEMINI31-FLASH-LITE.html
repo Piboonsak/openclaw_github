@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TASK-906 Line Item Folder Review</title>
+  <style>
+    :root {
+      --bg: #f6f7f3;
+      --paper: #ffffff;
+      --ink: #1f2520;
+      --muted: #697068;
+      --line: #dfe3d9;
+      --ok: #24745a;
+      --warn: #9a6a00;
+      --bad: #b33a2f;
+      --accent: #315f7d;
+      --soft: #edf2ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Aptos", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    header {
+      padding: 28px 32px 18px;
+      background: #17211c;
+      color: #f7fbf6;
+      border-bottom: 4px solid #88a986;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
+    header p { margin: 4px 0; color: #d8e2d6; }
+    main { max-width: 1420px; margin: 0 auto; padding: 22px 24px 40px; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .summary div, .metrics div {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .summary span, .metrics span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .summary strong, .metrics strong { font-size: 20px; }
+    .panel, .doc {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 16px;
+      overflow: hidden;
+    }
+    .panel h2, .doc h2 { margin: 0; font-size: 18px; }
+    .panel-head, .doc-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--soft);
+      border-bottom: 1px solid var(--line);
+    }
+    .doc-head p { margin: 4px 0 0; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 10px; vertical-align: top; }
+    th { text-align: left; color: #465047; font-size: 12px; background: #fafbf8; }
+    .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .net_reconciled, .gross_reconciled { color: var(--ok); background: #e7f3ed; }
+    .needs_review, .no_rows { color: var(--warn); background: #fff4d7; }
+    .error { color: var(--bad); background: #fde8e5; }
+    .conf-green td { background: #f0faf4; }
+    .conf-amber td { background: #fff8e5; }
+    .conf-red td { background: #fff0ee; }
+    .band {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .band.green { color: var(--ok); background: #dff3ea; }
+    .band.amber { color: var(--warn); background: #ffedbd; }
+    .band.red { color: var(--bad); background: #fbd8d4; }
+    .stock-yes { color: var(--ok); font-weight: 800; }
+    .stock-no { color: var(--muted); }
+    .type-chip {
+      display: inline-block;
+      margin: 3px 5px 3px 0;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .score-breakdown {
+      display: block;
+      margin-top: 4px;
+      color: #6d756d;
+      font-size: 11px;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      padding: 12px 16px;
+    }
+    .path, .note, .warn { margin: 0; padding: 0 16px 8px; color: var(--muted); font-size: 13px; }
+    .warn { color: var(--bad); }
+    .line-table { margin-top: 4px; }
+    .empty { color: var(--muted); text-align: center; padding: 18px; }
+    .review-box {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      padding: 12px 16px;
+      background: #f9faf6;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .review-box strong { color: var(--ink); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media print {
+      header { position: static; }
+      main { max-width: none; padding: 12px; }
+      .doc { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TASK-906 Line Item Folder Review</h1>
+    <p>Generated 2026-06-21T10:59:05+00:00 · Model google/gemini-3.1-flash-lite · max pages 4</p>
+    <p>Selection: sample 10 · seed 910 · recursive True · max file MB 25.0 · expectations False</p>
+    <p>D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3</p>
+  </header>
+  <main>
+    <section class="summary">
+      <div><span>Documents</span><strong>10</strong></div>
+      <div><span>Reconciled</span><strong>0 (0.0%)</strong></div>
+      <div><span>Needs review</span><strong>10</strong></div>
+      <div><span>Rows extracted</span><strong>28</strong></div>
+      <div><span>Green rows</span><strong>4</strong></div>
+      <div><span>Amber rows</span><strong>24</strong></div>
+      <div><span>Red rows</span><strong>0</strong></div>
+      <div><span>Stock candidates</span><strong>24</strong></div>
+      <div><span>Total cost THB</span><strong>1.8818</strong></div>
+      <div><span>Avg seconds/doc</span><strong>3.32</strong></div>
+      <div><span>Review</span><strong>10</strong></div>
+    </section>
+    
+    <section class="panel">
+      <div class="panel-head"><h2>Line type distribution</h2></div>
+      <div style="padding: 12px 16px;"><span class="type-chip">labor: 4</span><span class="type-chip">part_or_material: 24</span></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Document queue</h2></div>
+      <table>
+        <thead><tr><th>Doc</th><th>File</th><th>Status</th><th class="num">Rows</th><th class="num">Expected net</th><th class="num">Line sum</th><th class="num">Delta</th><th class="num">Sec</th><th class="num">Cost</th></tr></thead>
+        <tbody><tr><td><a href="#doc-IV-2604_0036">IV-2604_0036</a></td><td>IV-2604_0036.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">2</td><td class="num"></td><td class="num">2,189.22</td><td class="num"></td><td class="num">4.14</td><td class="num">0.1637</td></tr><tr><td><a href="#doc-IV-2604_0074">IV-2604_0074</a></td><td>IV-2604_0074.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">2</td><td class="num"></td><td class="num">428.97</td><td class="num"></td><td class="num">2.87</td><td class="num">0.1729</td></tr><tr><td><a href="#doc-IV-2604_0250">IV-2604_0250</a></td><td>IV-2604_0250.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">5</td><td class="num"></td><td class="num">3,943.96</td><td class="num"></td><td class="num">3.38</td><td class="num">0.2394</td></tr><tr><td><a href="#doc-IV-2604_0295">IV-2604_0295</a></td><td>IV-2604_0295.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">2</td><td class="num"></td><td class="num">686.92</td><td class="num"></td><td class="num">3.23</td><td class="num">0.1748</td></tr><tr><td><a href="#doc-IV1-2604_0111">IV1-2604_0111</a></td><td>IV1-2604_0111.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">1</td><td class="num"></td><td class="num">474.77</td><td class="num"></td><td class="num">3.49</td><td class="num">0.1459</td></tr><tr><td><a href="#doc-SI-2604_0016">SI-2604_0016</a></td><td>SI-2604_0016.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">4</td><td class="num"></td><td class="num">8,758.02</td><td class="num"></td><td class="num">3.74</td><td class="num">0.2234</td></tr><tr><td><a href="#doc-SI-2604_0017">SI-2604_0017</a></td><td>SI-2604_0017.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">4</td><td class="num"></td><td class="num">6,180.59</td><td class="num"></td><td class="num">3.54</td><td class="num">0.2153</td></tr><tr><td><a href="#doc-SI-2604_0028">SI-2604_0028</a></td><td>SI-2604_0028.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">1</td><td class="num"></td><td class="num">5,970.01</td><td class="num"></td><td class="num">2.68</td><td class="num">0.1446</td></tr><tr><td><a href="#doc-SI-2604_0048">SI-2604_0048</a></td><td>SI-2604_0048.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">2</td><td class="num"></td><td class="num">376.76</td><td class="num"></td><td class="num">2.83</td><td class="num">0.1724</td></tr><tr><td><a href="#doc-SI1-2604_0065">SI1-2604_0065</a></td><td>SI1-2604_0065.pdf</td><td><span class="pill needs_review">Review</span></td><td class="num">5</td><td class="num"></td><td class="num">2,099.76</td><td class="num"></td><td class="num">3.32</td><td class="num">0.2294</td></tr></tbody>
+      </table>
+    </section>
+    <section class="doc" id="doc-IV-2604_0036"><div class="doc-head"><div><h2>IV-2604_0036 - IV-2604_0036.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>2,189.22</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\IV-2604_0036.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\001_IV-2604_0036.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>2+3 Pin Socket 16A Matt Black</td><td class="num">10</td><td>PCS.</td><td class="num">210.51</td><td class="num">2105.11</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-green"><td class="num">2</td><td>ค่าขนส่งสินค้า</td><td class="num">1</td><td>JOB</td><td class="num">84.11</td><td class="num">84.11</td><td>labor</td><td class="num"><span class="band green">88.0%</span></td><td class="stock-no">No</td><td>labor/service keyword: ค่าขนส่ง, ขนส่ง</td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-IV-2604_0074"><div class="doc-head"><div><h2>IV-2604_0074 - IV-2604_0074.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>428.97</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\IV-2604_0074.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\002_IV-2604_0074.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>2 Gang 1 Way Switch (No Logo) Black</td><td class="num">1</td><td>PCS.</td><td class="num">372.90</td><td class="num">372.90</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-green"><td class="num">2</td><td>ค่าขนส่งสินค้า</td><td class="num">1</td><td>JOB</td><td class="num">56.07</td><td class="num">56.07</td><td>labor</td><td class="num"><span class="band green">88.0%</span></td><td class="stock-no">No</td><td>labor/service keyword: ค่าขนส่ง, ขนส่ง</td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-IV-2604_0250"><div class="doc-head"><div><h2>IV-2604_0250 - IV-2604_0250.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>3,943.96</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\IV-2604_0250.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\003_IV-2604_0250.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>2 Gang Frame Golden</td><td class="num">10</td><td>PCS.</td><td class="num">207.48</td><td class="num">2074.80</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">2</td><td>1 Way Aluminium Switch Size L Golden</td><td class="num">7</td><td>PCS.</td><td class="num">141.12</td><td class="num">987.84</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">3</td><td>16A 3 PIN American style socket 2/3 Golden</td><td class="num">3</td><td>PCS.</td><td class="num">142.99</td><td class="num">428.97</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">4</td><td>1 Way Aluminium Switch Size S Golden</td><td class="num">3</td><td>PCS.</td><td class="num">119.63</td><td class="num">358.89</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-green"><td class="num">5</td><td>ค่าขนส่งสินค้า</td><td class="num">1</td><td>JOB</td><td class="num">93.46</td><td class="num">93.46</td><td>labor</td><td class="num"><span class="band green">88.0%</span></td><td class="stock-no">No</td><td>labor/service keyword: ค่าขนส่ง, ขนส่ง</td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-IV-2604_0295"><div class="doc-head"><div><h2>IV-2604_0295 - IV-2604_0295.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>686.92</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\IV-2604_0295.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\004_IV-2604_0295.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>A86-P14-W 3X3 White</td><td class="num">15</td><td>PCS.</td><td class="num">36.45</td><td class="num">546.73</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-green"><td class="num">2</td><td>DELIVERY0150 ค่าขนส่งสินค้า</td><td class="num">1</td><td>JOB</td><td class="num">140.19</td><td class="num">140.19</td><td>labor</td><td class="num"><span class="band green">96.0%</span></td><td class="stock-no">No</td><td>labor/service keyword: ค่าขนส่ง, ขนส่ง, delivery</td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-IV1-2604_0111"><div class="doc-head"><div><h2>IV1-2604_0111 - IV1-2604_0111.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>474.77</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\IV1-2604_0111.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\005_IV1-2604_0111.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>A63-C43-W 16A Double Euro &amp; American Socket White</td><td class="num">2</td><td>PCS.</td><td class="num">237.39</td><td class="num">474.77</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-SI-2604_0016"><div class="doc-head"><div><h2>SI-2604_0016 - SI-2604_0016.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>8,758.02</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\SI-2604_0016.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\006_SI-2604_0016.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>2 Gang 3 Pin American socket Gray</td><td class="num">30</td><td>PCS.</td><td class="num">142.29</td><td class="num">4268.74</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">2</td><td>Water Proof Frame Brown</td><td class="num">5</td><td>PCS.</td><td class="num">149.29</td><td class="num">746.45</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">3</td><td>2 Gang 2 Way Switch 10Ax Black</td><td class="num">12</td><td>PCS.</td><td class="num">264.76</td><td class="num">3177.10</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">4</td><td>1 Way Switch Size S Grey</td><td class="num">10</td><td>PCS.</td><td class="num">56.57</td><td class="num">565.73</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-SI-2604_0017"><div class="doc-head"><div><h2>SI-2604_0017 - SI-2604_0017.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>6,180.59</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\SI-2604_0017.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\007_SI-2604_0017.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>1 Gang Frame(New Logo) White</td><td class="num">3</td><td>PCS.</td><td class="num">57.15</td><td class="num">171.45</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">2</td><td>3X3 White</td><td class="num">4</td><td>PCS.</td><td class="num">34.99</td><td class="num">139.97</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">3</td><td>2 Gang Stainless Frame Stainless steel</td><td class="num">20</td><td>PCS.</td><td class="num">151.05</td><td class="num">3020.93</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">4</td><td>2 Gang Frame Golden</td><td class="num">22</td><td>PCS.</td><td class="num">129.47</td><td class="num">2848.24</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-SI-2604_0028"><div class="doc-head"><div><h2>SI-2604_0028 - SI-2604_0028.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>5,970.01</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\SI-2604_0028.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\008_SI-2604_0028.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>A88-P30 Water Proof Frame Grey</td><td class="num">29</td><td>PCS.</td><td class="num">205.86</td><td class="num">5970.01</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-SI-2604_0048"><div class="doc-head"><div><h2>SI-2604_0048 - SI-2604_0048.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>376.76</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\SI-2604_0048.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\009_SI-2604_0048.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>A83-P01 Blank Cover Size S White</td><td class="num">10</td><td>PCS.</td><td class="num">9.92</td><td class="num">99.17</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">2</td><td>A83-SK01B 2 Way Switch Size S White</td><td class="num">4</td><td>PCS.</td><td class="num">69.40</td><td class="num">277.59</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section><section class="doc" id="doc-SI1-2604_0065"><div class="doc-head"><div><h2>SI1-2604_0065 - SI1-2604_0065.pdf</h2><p></p></div><span class="pill needs_review">Review</span></div><div class="metrics"><div><span>Invoice</span><strong></strong></div><div><span>Net</span><strong></strong></div><div><span>VAT</span><strong></strong></div><div><span>Gross</span><strong></strong></div><div><span>Line sum</span><strong>2,099.76</strong></div><div><span>Net delta</span><strong></strong></div></div><p class="path">Source: D:\01_gitrepo\ai-accounting-copilot\private_data\poc\Comp_3\บิลขาย\SI1-2604_0065.pdf</p><p class="path">Raw JSON: private_data\poc\line_item_poc\model_matrix_gemini31_flash_lite_raw\google__gemini-3.1-flash-lite\010_SI1-2604_0065.json</p><table class="line-table"><thead><tr><th>#</th><th>Product / service</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Amount</th><th>Type</th><th>Conf.</th><th>Stock?</th><th>Reason</th></tr></thead><tbody><tr class="conf-amber"><td class="num">1</td><td>1 Way Switch Size L White</td><td class="num">1</td><td>PCS.</td><td class="num">58.60</td><td class="num">58.60</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">2</td><td>100W Dimmer Grey</td><td class="num">3</td><td>PCS.</td><td class="num">595.75</td><td class="num">1787.25</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">3</td><td>1 Way Switch Size M Grey</td><td class="num">2</td><td>PCS.</td><td class="num">53.97</td><td class="num">107.94</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">4</td><td>2 Gang Frame(New Logo) White</td><td class="num">1</td><td>PCS.</td><td class="num">45.23</td><td class="num">45.23</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr><tr class="conf-amber"><td class="num">5</td><td>2 Gang Frame Black</td><td class="num">2</td><td>PCS.</td><td class="num">50.37</td><td class="num">100.74</td><td>part_or_material</td><td class="num"><span class="band amber">53.0%</span></td><td class="stock-yes">Yes</td><td>stock-like unit: pcs, pcs., pc; stock-like unit boosts physical product decision<span class="score-breakdown">extract 18.0% · keyword 10.0% · unit 25.0%</span></td></tr></tbody></table><div class="review-box"><strong>Human review</strong><span>Confirm row boundaries, missing descriptions, zero-price components, and type classification.</span></div></section>
+  </main>
+</body>
+</html>

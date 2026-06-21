@@ -25,6 +25,7 @@ _DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 # Previously "anthropic/claude-3.5-haiku" — text-only, incompatible with image input.
 _OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash"
 _DEFAULT_FREE_MODELS = ["google/gemini-2.5-flash-lite"]
+_DEFAULT_BACKUP_MODELS = ["openai/gpt-4.1-nano", "google/gemini-3.1-flash-lite"]
 _DEFAULT_FREE_CONF_THRESHOLD = 0.70
 # Direct Anthropic API requires fully-dated model IDs. OpenRouter accepts the
 # short aliases, but when we fall back to the native Anthropic provider we must
@@ -188,6 +189,13 @@ def get_routing_diagnostics() -> dict[str, Any]:
         ).split(",")
         if item.strip()
     ]
+    backup_models = [
+        item.strip()
+        for item in os.environ.get(
+            "STAGE_C_BACKUP_MODELS", ",".join(_DEFAULT_BACKUP_MODELS)
+        ).split(",")
+        if item.strip()
+    ]
     return {
         "provider_preference": os.environ.get("STAGE_C_PROVIDER", "openrouter"),
         "default_model": os.environ.get(
@@ -198,6 +206,7 @@ def get_routing_diagnostics() -> dict[str, Any]:
         ),
         "openrouter_base_url": settings.OPENROUTER_BASE_URL,
         "free_models": free_models,
+        "backup_models": backup_models,
         "free_conf_threshold": float(
             os.environ.get(
                 "STAGE_C_FREE_CONF_THRESHOLD", str(_DEFAULT_FREE_CONF_THRESHOLD)
@@ -230,6 +239,12 @@ def _estimate_cost_usd(prompt_tokens: int, completion_tokens: int, model: str) -
     elif "opus" in lowered:
         input_price = 15.0 / 1_000_000
         output_price = 75.0 / 1_000_000
+    elif "gpt-4.1-nano" in lowered:
+        input_price = 0.10 / 1_000_000
+        output_price = 0.40 / 1_000_000
+    elif "gemini-3.1-flash-lite" in lowered:
+        input_price = 0.25 / 1_000_000
+        output_price = 1.50 / 1_000_000
     elif "gemini" in lowered:
         input_price = 0.075 / 1_000_000
         output_price = 0.30 / 1_000_000
@@ -284,12 +299,35 @@ def _provider_order(preferred_provider: str | None = None) -> list[str]:
     return ["openrouter", "anthropic"]
 
 
+def _models_from_env(env_name: str, defaults: list[str]) -> list[str]:
+    raw = os.environ.get(env_name, ",".join(defaults))
+    models = [item.strip() for item in raw.split(",") if item.strip()]
+    return models or list(defaults)
+
+
+def _dedupe_model_plan(plan: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    seen: set[str] = set()
+    deduped: list[tuple[str, str]] = []
+    for model, tier in plan:
+        key = model.strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append((model, tier))
+    return deduped
+
+
 def _build_provider(name: str) -> tuple[LLMProvider, str] | tuple[None, str]:
     settings.reload()
     if name == "openrouter":
-        key = os.environ.get("OPENROUTER_API_KEY", "") or settings.OPENROUTER_API_KEY
+        key = (
+            os.environ.get("BWCACC_OPENROUTER_API_KEY", "")
+            or settings.BWCACC_OPENROUTER_API_KEY
+            or os.environ.get("OPENROUTER_API_KEY", "")
+            or settings.OPENROUTER_API_KEY
+        )
         if not key:
-            return None, "OPENROUTER_API_KEY not set"
+            return None, "BWCACC_OPENROUTER_API_KEY/OPENROUTER_API_KEY not set"
         return OpenRouterProvider(
             api_key=key, base_url=settings.OPENROUTER_BASE_URL
         ), ""
@@ -714,8 +752,12 @@ def cascade_repair(
     # _normalize_model_for_provider), keeping cost ~$0.0006/doc.
     model_plan = [(model, "free") for model in _free_models()]
     model_plan.append((default_paid, "paid"))
+    model_plan.extend(
+        (model, "paid") for model in _models_from_env("STAGE_C_BACKUP_MODELS", _DEFAULT_BACKUP_MODELS)
+    )
     if escalation_paid != default_paid:
         model_plan.append((escalation_paid, "paid"))
+    model_plan = _dedupe_model_plan(model_plan)
 
     for model_name, tier in model_plan:
         if not weak_fields:

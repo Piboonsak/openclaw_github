@@ -8,6 +8,8 @@
 
 ## At a glance
 
+Additional TASK-906 plan: **[TASK-906-LINE-ITEM-POC-PLAN.md](TASK-906-LINE-ITEM-POC-PLAN.md)** — detailed PoC plan for line item extraction, confidence scoring, inventory matching, and Epic 14 schema impact.
+
 | Aspect | Details |
 |--------|---------|
 | Lead | ML / Backend Dev |
