@@ -1,4 +1,4 @@
-# Epic 13 — Infrastructure + Deployment: Tasks Detail
+﻿ิ# Epic 13 — Infrastructure + Deployment: Tasks Detail
 
 > **Phase**: II/1 (parallel W1-W8)
 > **Infrastructure Decision**: Hostinger VPS all-in (compute + DB + storage ทุกอย่างบน VPS)
@@ -6,12 +6,13 @@
 
 ---
 
-## TASK-1301: VPS Architecture Design
+## TASK-1301: VPS Architecture Design — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: LOW
 **Duration**: ~2 days
 **Closes pain points**: PP-2, PP-3, PP-5
+**Output**: `docs/architecture/vps-architecture.md` (consolidated all sections into one document)
 
 ### Purpose
 
@@ -20,7 +21,7 @@
 ### What exists today
 
 - PoC Docker Compose (`docker-compose.yml`) มี backend, postgres, redis, minio — แต่เป็น dev mode
-- PoC runs on Hostinger VPS (single instance, demo.bwc.biz)
+- PoC runs on Hostinger VPS (single instance, demo.bwcacc.biz)
 - Architecture diagram ใน PHASE-II-EPIC-ROADMAP.md (high-level)
 
 ### What to build
@@ -67,12 +68,13 @@
 
 ---
 
-## TASK-1302: VPS Procurement — UAT + PROD
+## TASK-1302: VPS Procurement — UAT + PROD — ✅ DONE (2026-06-20)
 
 **Owner**: DevOps
 **Risk**: LOW
 **Duration**: ~1 day
 **Closes pain points**: PP-2, PP-5
+**Output**: UAT VPS 1772060 (`72.62.74.232`), PROD VPS 1772174 (`72.62.247.9`) — both DC 21 Singapore
 
 ### Purpose
 
@@ -80,7 +82,7 @@
 
 ### What exists today
 
-- PoC VPS on Hostinger (demo.bwc.biz) — ใช้ต่อสำหรับ demo
+- PoC VPS on Hostinger (demo.bwcacc.biz) — ใช้ต่อสำหรับ demo
 - Hostinger account ready
 
 ### What to build
@@ -122,21 +124,29 @@
 
 ---
 
-## TASK-1303: Base OS Setup + Docker Engine + Security Hardening
+## TASK-1303: Base OS Setup + Docker Engine + Security Hardening — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: MEDIUM
 **Duration**: ~3 days
 **Closes pain points**: PP-2, PP-3, PP-5, PP-15
+**Output**: `scripts/infra/setup-vps.sh` (idempotent, ran on both UAT + PROD 2026-06-21)
 
 ### Purpose
 
 ติดตั้ง Docker Engine + hardening ทั้ง UAT และ PROD — เป็น foundation สำหรับทุก service ที่ deploy ผ่าน Docker Compose. Security hardening ป้องกัน brute-force + unauthorized access.
 
-### What exists today
+### What exists today (verified 2026-06-21)
 
-- PoC VPS มี Docker installed แต่ไม่มี hardening
-- No fail2ban, root SSH still enabled on PoC
+- ✅ Docker 29.6.0 + Compose 5.1.4 on both VPS (pre-installed by Hostinger)
+- ✅ fail2ban active (sshd jail), PasswordAuthentication=no, PubkeyAuthentication=yes
+- ✅ PermitRootLogin=prohibit-password (progressive hardening — will tighten to `no` at go-live)
+- ✅ `deploy` user in docker group, can run `docker ps`
+- ✅ UFW active: 22/80/443 open, deny all others
+- ✅ Swap: 2G (UAT), 4G (PROD)
+- ✅ sysctl tuned (vm.swappiness=10, vm.overcommit_memory=1)
+- ✅ /opt/ledgerflow + /backup/db directories created, owned by deploy
+- ✅ htop installed for resource monitoring
 
 ### What to build
 
@@ -187,7 +197,7 @@
 
 ---
 
-## TASK-1304: DNS Delegation + Certbot SSL
+## TASK-1304: DNS Delegation + Certbot SSL — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: MEDIUM
@@ -196,22 +206,24 @@
 
 ### Purpose
 
-ตั้ง DNS subdomains ให้ชี้มาที่ VPS ที่ถูกต้อง + SSL certificates สำหรับ HTTPS. External dependency: ต้องขอ DNS delegation จาก bwc.biz admin.
+ตั้ง DNS subdomains ให้ชี้มาที่ VPS ที่ถูกต้อง + SSL certificates สำหรับ HTTPS. Domain `bwcacc.biz` จดบน Hostinger โดยตรง — ทีมเราจัดการ DNS ผ่าน Hostinger REST API.
 
-### What exists today
+### What exists today (updated 2026-06-21)
 
-- demo.bwc.biz points to PoC VPS (existing)
-- No SSL on PoC (or self-signed)
+- ✅ `demo.bwcacc.biz` → `76.13.210.250` (PoC VPS) — LIVE
+- ✅ `uat.bwcacc.biz` → `72.62.74.232` (UAT VPS) — LIVE
+- ✅ `app.bwcacc.biz` → `72.62.247.9` (PROD VPS) — LIVE
+- ✅ CAA record → `0 issue "letsencrypt.org"` — LIVE
+- ✅ SSL cert for `uat.bwcacc.biz` — issued 2026-06-21, expires 2026-09-18
+- ✅ SSL cert for `app.bwcacc.biz` — issued 2026-06-21, expires 2026-09-18
+- ✅ certbot.timer enabled (auto-renew twice daily)
 
-### What to build
+### What was built
 
-1. **DNS records** (request from bwc.biz admin):
-   - `app.bwc.biz` → A record → PROD VPS IP
-   - `uat.bwc.biz` → A record → UAT VPS IP
-   - `demo.bwc.biz` → A record → PoC VPS IP (verify existing)
-2. **Certbot Let's Encrypt SSL** for all subdomains
-3. **Auto-renew** cron job (certbot renew --quiet)
-4. **nginx SSL config** template for Docker
+1. ~~DNS records~~ — ✅ DONE via Hostinger REST API (2026-06-21)
+2. ~~Certbot Let's Encrypt SSL~~ — ✅ DONE via `scripts/infra/setup-certbot.sh` (standalone mode)
+3. ~~Auto-renew~~ — ✅ DONE via systemd certbot.timer (dry-run passed)
+4. **nginx SSL config** template for Docker — deferred to TASK-1307 (Docker Compose)
 
 ### Files to create/modify
 
@@ -225,12 +237,12 @@
 
 | ID | Condition | Test |
 |----|-----------|------|
-| ac_1304_01 | app.bwc.biz resolves to PROD VPS IP | `dig app.bwc.biz +short` returns PROD IP |
-| ac_1304_02 | uat.bwc.biz resolves to UAT VPS IP | `dig uat.bwc.biz +short` returns UAT IP |
-| ac_1304_03 | SSL certificate valid for app.bwc.biz | `curl -v https://app.bwc.biz` shows valid cert |
-| ac_1304_04 | SSL certificate valid for uat.bwc.biz | `curl -v https://uat.bwc.biz` shows valid cert |
+| ac_1304_01 | app.bwcacc.biz resolves to PROD VPS IP | `dig app.bwcacc.biz +short` returns PROD IP |
+| ac_1304_02 | uat.bwcacc.biz resolves to UAT VPS IP | `dig uat.bwcacc.biz +short` returns UAT IP |
+| ac_1304_03 | SSL certificate valid for app.bwcacc.biz | `curl -v https://app.bwcacc.biz` shows valid cert |
+| ac_1304_04 | SSL certificate valid for uat.bwcacc.biz | `curl -v https://uat.bwcacc.biz` shows valid cert |
 | ac_1304_05 | Auto-renew cron configured | `crontab -l` shows certbot renew entry |
-| ac_1304_06 | HTTP → HTTPS redirect works | `curl -I http://app.bwc.biz` returns 301 to HTTPS |
+| ac_1304_06 | HTTP → HTTPS redirect works | `curl -I http://app.bwcacc.biz` returns 301 to HTTPS |
 
 ### Governance fields
 
@@ -248,12 +260,13 @@
 
 ---
 
-## TASK-1305: CI/CD Pipeline Design
+## TASK-1305: CI/CD Pipeline Design — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: LOW
 **Duration**: ~2 days
 **Closes pain points**: PP-2, PP-3, PP-5, PP-15, PP-16
+**Output**: `docs/cicd/pipeline-design.md` + `docs/cicd/prod-safety-rules.md`
 
 ### Purpose
 
@@ -318,12 +331,13 @@
 
 ---
 
-## TASK-1306: CI/CD Pipeline Implementation
+## TASK-1306: CI/CD Pipeline Implementation — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: HIGH
 **Duration**: ~4 days
 **Closes pain points**: PP-5, PP-8, PP-15, PP-16, PP-17
+**Output**: `.github/workflows/bwcacc-deploy-uat.yml`, `.github/workflows/bwcacc-deploy-prod.yml`, `scripts/deploy/health-check.sh`, `scripts/deploy/pre-deploy-snapshot.sh`, `scripts/deploy/notify-line.sh` — GitHub Secrets set (7 × `BWCACC_*`), Environments `uat` + `production` created
 
 ### Purpose
 
@@ -391,12 +405,13 @@ Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk inf
 
 ---
 
-## TASK-1307: Docker Compose — UAT
+## TASK-1307: Docker Compose — UAT — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: LOW
 **Duration**: ~2 days
 **Closes pain points**: PP-2, PP-3, PP-5, PP-15
+**Output**: `docker/docker-compose.uat.yml`, `docker/nginx/nginx-uat.conf`, `docker/.env.uat.example`, `.env.uat` deployed to UAT VPS
 
 ### Purpose
 
@@ -438,7 +453,7 @@ Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk inf
 | ID | Condition | Test |
 |----|-----------|------|
 | ac_1307_01 | `docker compose -f docker-compose.uat.yml up -d` starts all services | All containers in "running" state |
-| ac_1307_02 | Health check endpoint returns 200 via nginx | `curl https://uat.bwc.biz/api/health` |
+| ac_1307_02 | Health check endpoint returns 200 via nginx | `curl https://uat.bwcacc.biz/api/health` |
 | ac_1307_03 | PostgreSQL accessible from backend container | Backend logs show DB connection |
 | ac_1307_04 | Redis accessible from celery container | Celery logs show Redis broker connected |
 | ac_1307_05 | MinIO accessible from backend container | Upload test file, verify stored |
@@ -460,12 +475,13 @@ Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk inf
 
 ---
 
-## TASK-1308: Docker Compose — PROD
+## TASK-1308: Docker Compose — PROD — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: MEDIUM
 **Duration**: ~2 days
 **Closes pain points**: PP-2, PP-3, PP-5, PP-15
+**Output**: `docker/docker-compose.prod.yml`, `docker/nginx/nginx-prod.conf`, `docker/.env.prod.example`, `.env.prod` deployed to PROD VPS
 
 ### Purpose
 
@@ -511,7 +527,7 @@ PROD Docker Compose ต้อง production-grade — resource limits ป้อ�
 | ac_1308_02 | Resource limits applied | `docker stats` shows limits enforced |
 | ac_1308_03 | Restart policy works | `docker kill backend`, verify auto-restart |
 | ac_1308_04 | Log rotation configured | `docker inspect --format='{{.HostConfig.LogConfig}}'` shows limits |
-| ac_1308_05 | Health check endpoint returns 200 | `curl https://app.bwc.biz/api/health` |
+| ac_1308_05 | Health check endpoint returns 200 | `curl https://app.bwcacc.biz/api/health` |
 | ac_1308_06 | Gunicorn running with 4 workers | `ps aux | grep gunicorn` shows 4 workers |
 
 ### Governance fields
@@ -530,7 +546,7 @@ PROD Docker Compose ต้อง production-grade — resource limits ป้อ�
 
 ---
 
-## TASK-1309: Network + Firewall Setup
+## TASK-1309: Network + Firewall Setup — ✅ DONE (2026-06-21)
 
 **Owner**: DevOps
 **Risk**: HIGH
@@ -603,10 +619,58 @@ Lockdown VPS network — only expose necessary ports, block everything else. DB 
 
 ## TASK-1310: DB Backup Automation
 
+> ⏸️ **DEFERRED** — ทำหลัง first successful PROD deploy. R2 credentials ต้องพร้อมก่อน (ดู setup guide ด้านล่าง)
+
 **Owner**: DevOps
 **Risk**: MEDIUM
 **Duration**: ~2 days
 **Closes pain points**: PP-2, PP-3, PP-5, PP-16, PP-17
+
+### Cloudflare R2 Setup Guide (ทำก่อน implement task นี้)
+
+**เมื่อไหร่:** ก่อน first PROD deploy ที่มี real data
+
+**Step 1 — สร้าง R2 Bucket**
+
+1. เข้า [Cloudflare Dashboard → R2](https://dash.cloudflare.com/?to=/:account/r2)
+2. **Create bucket** → ชื่อ `ledgerflow-backup`
+3. Location: **Asia Pacific (APAC)** — ใกล้ Singapore
+4. Default storage class: Standard
+
+**Step 2 — สร้าง R2 API Token**
+
+1. R2 Overview → **Manage R2 API tokens** → **Create API token**
+2. Token name: `ledgerflow-vps-backup`
+3. Permissions: **Object Read & Write** (scope to bucket `ledgerflow-backup` เท่านั้น)
+4. บันทึก 3 ค่า: `Access Key ID`, `Secret Access Key`, `Account ID`
+
+Ref: [Cloudflare R2 API Tokens](https://developers.cloudflare.com/r2/api/s3/tokens/)
+
+**Step 3 — Install rclone บน PROD VPS**
+
+```bash
+curl https://rclone.org/install.sh | sudo bash
+
+rclone config create r2 s3 \
+  provider Cloudflare \
+  access_key_id YOUR_ACCESS_KEY_ID \
+  secret_access_key YOUR_SECRET_ACCESS_KEY \
+  endpoint https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com \
+  acl private
+
+# Test
+rclone ls r2:ledgerflow-backup
+```
+
+Ref: [rclone + Cloudflare R2](https://rclone.org/s3/#cloudflare-r2)
+
+**Step 4 — เพิ่ม GitHub Secrets**
+
+```bash
+gh secret set BWCACC_R2_ACCESS_KEY_ID    --body "YOUR_ACCESS_KEY_ID"
+gh secret set BWCACC_R2_SECRET_ACCESS_KEY --body "YOUR_SECRET_ACCESS_KEY"
+gh secret set BWCACC_R2_ACCOUNT_ID       --body "YOUR_ACCOUNT_ID"
+```
 
 ### Purpose
 
