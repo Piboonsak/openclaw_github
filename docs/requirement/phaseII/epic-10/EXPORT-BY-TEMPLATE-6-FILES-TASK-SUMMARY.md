@@ -240,3 +240,62 @@
 - Test cases ครอบคลุม schema และ format
 - คู่มือ mapping ระหว่าง OCR fields กับแต่ละ template
 - JSONB seed spec: [EXPORT-TEMPLATE-JSONB-SEED.md](EXPORT-TEMPLATE-JSONB-SEED.md)
+
+---
+
+## 8) สิ่งใหม่ที่เพิ่มเข้ามา (2026-06-24)
+
+### 8.1 Schema Analyzer — Auto-detect Template from Sample File (TASK-1009)
+
+**ที่มา:** user กังวลว่าจะ set template เองไม่เป็น เพราะ Template Configurator ต้องการความเข้าใจ technical concepts (data type, transform, row source) ที่ accountant ทั่วไปไม่คุ้นเคย
+
+**Feature ใหม่:** user อัปโหลดไฟล์ CSV/Excel ที่เคย import Express ได้แล้ว → ระบบวิเคราะห์ schema และ pre-fill Template Configurator อัตโนมัติ
+
+**UX flow ใหม่:**
+
+```text
+Templates page
+  └─ [Auto-detect จาก Sample File]
+       └─ Screen: Schema Analyzer
+            ├─ Step 1: Upload zone (CSV/Excel)
+            ├─ Step 2: Analyzing (encoding → schema → column match → data profile)
+            └─ Step 3: Results
+                 ├─ Column Mapping table (original header → LF field, confidence %)
+                 ├─ Data Profile (unique values, date format, balance check)
+                 ├─ AI Insights (template mode, row source, encoding suggestion)
+                 ├─ Detected Transforms (pad_left, thai_date, etc.)
+                 └─ [Apply to Configurator →] → Template Configurator (pre-filled)
+```
+
+**สิ่ง detect ได้โดยไม่ต้องใช้ LLM (structural analysis):**
+
+- TIS-620 encoding → suggest encoding ปลายทาง
+- `DD/MM/YY` year 60-99 → `thai_date_short` transform
+- `D/M/YYYY` year 2500-2599 → `thai_date_full` transform
+- Zero-padded codes "05100" → `pad_left:5:0` transform
+- Voucher_No ซ้ำหลาย rows → `Flatten Row` mode + `journal_lines` source
+- Debit/Credit alternating zeros → double-entry GL
+- All rows identical value → `static_value` column type
+
+**สิ่งที่ใช้ LLM (claude-haiku-4-5, fallback เท่านั้น):**
+
+- Column header matching เมื่อ fuzzy similarity < 70%
+- เช่น header ที่ไม่อยู่ใน alias table → ส่งให้ LLM ตัดสิน
+- ลด cost: ใช้ LLM เฉพาะ ambiguous columns เท่านั้น
+
+**Prototype:** Screen `s-schema-analyzer` (Screen 11C) ใน `PHASE-II-PROTOTYPE.html`
+**Task:** [TASK-1009](EPIC-10-TASKS-DETAIL.md#task-1009-schema-analyzer--auto-detect-template-from-sample-file)
+**Analysis details:** [CLIENT-TEMPLATE-ANALYSIS.md § 9](CLIENT-TEMPLATE-ANALYSIS.md#9-schema-analyzer-ux--ขอคนพบใหม่-2026-06-24)
+
+### 8.2 Column alias table สำหรับ Thai headers
+
+สร้าง lookup table ใน `schema_analyzer.py` ครอบคลุม headers ที่พบจากไฟล์ลูกค้า Express ทั้ง 6 แบบ รายละเอียดอยู่ใน [CLIENT-TEMPLATE-ANALYSIS.md § 9.6](CLIENT-TEMPLATE-ANALYSIS.md#96-column-alias-table-thai-headers--lf-fields)
+
+### 8.3 Impact ต่อ task ที่มีอยู่
+
+| Task | Impact |
+| ---- | ------ |
+| TASK-1003 (Template Configurator UI) | เพิ่ม entry point "Auto-detect" button บนหน้า Templates |
+| TASK-1001 (Template Engine) | field registry และ transform registry ที่ TASK-1009 จะ reuse |
+| TASK-1004 (Master Templates) | ไม่กระทบ — Schema Analyzer เป็น UX layer เพิ่มเติม |
+| **TASK-1009 (ใหม่)** | Backend API + Frontend screen ใหม่ทั้งหมด |

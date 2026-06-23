@@ -621,6 +621,165 @@ End-to-end clone workflow: user คลิก [Clone to Company] บน master te
 
 ---
 
+## TASK-1009: Schema Analyzer — Auto-detect Template from Sample File
+
+**Owner**: Full-stack Dev
+**Risk**: MEDIUM (AI inference + file parsing)
+**Duration**: ~3 days
+**Closes pain points**: PP-2, PP-3 (UX — reduces template setup cognitive load)
+
+### Purpose
+
+แทนที่จะให้ user สร้าง template จาก scratch (ต้องเข้าใจ data type, transform ต่างๆ), user อัปโหลดไฟล์ CSV/Excel ที่เคย Export ออกมาจากระบบเดิม (Express GL, PEAK, ERP อื่น) แล้วระบบจะ:
+
+1. วิเคราะห์ schema (column headers, data types)
+1. Sample ข้อมูล (detect patterns เช่น pad_left, thai_date, TIS-620 encoding)
+1. Match คอลัมน์ไปยัง LF internal fields พร้อม confidence score
+1. Pre-fill Template Configurator โดยอัตโนมัติ
+
+User เหลือแค่ตรวจสอบและกดบันทึก — ไม่ต้องรู้ว่า `pad_left:5:0` หรือ `thai_date_short` คืออะไร
+
+### What exists today
+
+- Prototype screen `s-schema-analyzer` (Screen 11C) ใน `docs/requirement/phaseII/PHASE-II-PROTOTYPE.html` (added 2026-06-24)
+- Template Configurator screen (Screen 11) — รับ pre-filled columns ผ่าน state/query param
+- Template engine (TASK-1001) — มี transform registry และ field registry
+
+### What to build
+
+**Backend API:**
+
+1. `POST /api/v1/templates/analyze` — รับไฟล์ multipart upload
+   - Input: CSV หรือ Excel file (.csv, .xlsx, .xls)
+   - Output: `AnalysisResult` JSON (ดู schema ด้านล่าง)
+
+2. **File parser module** (`src/backend/services/schema_analyzer.py`):
+   - Detect encoding (chardet สำหรับ TIS-620 vs UTF-8)
+   - Parse headers + sample rows (first 20 rows)
+   - รองรับ CSV (comma / semicolon) และ Excel (sheet 0)
+
+3. **Structural analysis** (ทำใน Python — ไม่ใช้ LLM):
+   - Data type inference จาก sample values:
+     - `^[0-9]{4,6}$` → `string` + suggest `pad_left:N:0`
+     - `^\d{1,2}/\d{1,2}/\d{2}$` → `date` + `thai_date_short`
+     - `^\d{1,2}/\d{1,2}/\d{4}$` → `date` + `thai_date_full`
+     - Numeric with commas → `number`
+     - All-zero or all-empty alternate rows → possible double-entry (suggest Flatten Row mode)
+   - Pattern detection:
+     - pad_left: value length < max_length and left-padded with "0"
+     - thai_date_short: year part 60-99 (พ.ศ. 2560-2599)
+     - static column: all values identical → `static_value`
+
+4. **Semantic column matching** (ใช้ Claude claude-haiku-4-5 หรือ fuzzy match):
+   - Match column header (Thai/English) → LF internal field name
+   - Strategy A (fast): string similarity (rapidfuzz) ระหว่าง header กับ known field aliases
+   - Strategy B (fallback): LLM prompt ถ้า similarity < 70%
+   - Field alias table สำหรับ Thai headers:
+     - "วันที่", "ว/ด/ป" → `voucher_date` / `invoice_date`
+     - "รหัสบัญชี", "Account Code" → `account_code`
+     - "คำอธิบาย", "รายละเอียด" → `description` / `transaction_desc`
+     - "จำนวนเงินก่อนภาษี", "ก่อนภาษี" → `net_amount`
+     - ฯลฯ
+
+5. **Template mode detection**:
+   - นับ unique values ของคอลัมน์แรก (Voucher_No หรือ ลำดับ)
+   - ถ้า unique < total rows → หลาย rows ต่อ document → `Flatten Row`
+   - ถ้า unique = total rows → 1 row ต่อ document → `Flat Document`
+   - ตรวจ debit/credit pattern → double-entry → suggest `journal_lines` row source
+
+**Frontend:**
+
+6. Screen `s-schema-analyzer` (ตาม prototype):
+   - Upload zone (drag & drop หรือ file picker)
+   - Progress animation (Step 1→2→3 ตาม API response)
+   - Results: column mapping table + confidence badges + data profile + AI insights
+   - คอลัมน์ที่ confidence < 80% → highlight เหลือง ให้ user confirm
+   - ปุ่ม "Apply to Configurator →" → navigate to Template Configurator พร้อม pre-filled state
+
+**AnalysisResult JSON schema:**
+
+```json
+{
+  "file_info": {
+    "filename": "Express_GL_May2569.csv",
+    "rows_detected": 1024,
+    "encoding_detected": "tis-620",
+    "file_size_kb": 48
+  },
+  "suggested_template_mode": "flatten_row",
+  "suggested_row_source": "journal_lines",
+  "suggested_encoding": "tis-620",
+  "columns": [
+    {
+      "position": 1,
+      "original_header": "วันที่",
+      "lf_field": "voucher_date",
+      "confidence": 0.95,
+      "data_type": "date",
+      "suggested_transform": "thai_date_short",
+      "match_method": "alias_table",
+      "sample_values": ["04/05/69", "05/05/69", "06/05/69"]
+    }
+  ],
+  "warnings": [
+    {
+      "column": "คำอธิบาย",
+      "message": "Low confidence match — please confirm LF field",
+      "alternatives": ["description", "memo"]
+    }
+  ],
+  "data_profile": {
+    "unique_account_codes": 42,
+    "date_format_detected": "DD/MM/YY",
+    "debit_credit_balanced": true,
+    "null_rate_by_column": {}
+  }
+}
+```
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `src/backend/services/schema_analyzer.py` | File parser + structural analysis + column matching |
+| Create | `src/backend/api/schema_analyze.py` | FastAPI router: POST /api/v1/templates/analyze |
+| Modify | `src/backend/app/endpoints.py` | Mount schema_analyze router |
+| Create | `src/frontend/screens/SchemaAnalyzer.tsx` | Screen component (upload → analyze → results) |
+| Modify | `src/frontend/screens/Templates.tsx` | Add "Auto-detect จาก Sample File" button |
+| Create | `tests/services/test_schema_analyzer.py` | Unit tests for parser, type inference, column matching |
+| Create | `tests/api/test_schema_analyze_api.py` | Integration test: upload real CSV → verify AnalysisResult |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1009_upload | POST /api/v1/templates/analyze accepts CSV and Excel files | test_upload_csv, test_upload_xlsx |
+| ac_1009_encoding | TIS-620 and UTF-8 files both parsed correctly | test_encoding_detection |
+| ac_1009_type_date | Date columns with DD/MM/YY pattern detected as date + thai_date_short | test_date_type_inference |
+| ac_1009_type_padded | Zero-padded codes (e.g., "05100") suggest pad_left:5:0 | test_padleft_detection |
+| ac_1009_thai_header | Thai column headers ("วันที่", "รหัสบัญชี") match to correct LF fields | test_thai_header_matching |
+| ac_1009_confidence | Unmatched columns (<80% confidence) appear in warnings | test_low_confidence_warning |
+| ac_1009_mode | Double-entry data (debit/credit alternating) → Flatten Row mode suggested | test_template_mode_detection |
+| ac_1009_profile | Data profile includes unique account codes, null rates, balance check | test_data_profile |
+| ac_1009_apply | Frontend "Apply to Configurator" pre-fills Template Configurator with analysis result | test_apply_to_configurator (Playwright) |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1009",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2b-analysis",
+  "allowed_scope": ["src/backend/services/schema_analyzer.py", "src/backend/api/**", "src/frontend/**", "tests/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+  "max_loops": 6,
+  "escalation_policy": "human",
+  "notes": "LLM usage (claude-haiku-4-5) only as fallback for column matching when fuzzy match < 70%. All structural analysis (type inference, pattern detection) is deterministic Python."
+}
+```
+
+---
+
 *Created: 2026-06-15*
-*Last updated: 2026-06-22*
+*Last updated: 2026-06-24*
 *Epic Roadmap: [PHASE-II-EPIC-ROADMAP.md](../PHASE-II-EPIC-ROADMAP.md)*

@@ -272,5 +272,77 @@ This is additional scope beyond the original Epic 10 estimate of 2.5 weeks. The 
 
 ---
 
+## 9. Schema Analyzer UX — ข้อค้นพบใหม่ (2026-06-24)
+
+### 9.1 ปัญหาที่นำไปสู่ feature นี้
+
+User (นักบัญชี) กลัวว่าจะ set template ไม่เป็น เพราะ Template Configurator ต้องการความเข้าใจเรื่อง:
+
+- Data type (string / number / date / boolean)
+- Transform (pad_left, thai_date_short, uppercase, strip_dash)
+- Row Source (documents vs journal_lines)
+- Template Mode (Flat Document vs Flatten Row vs Grouped Summary)
+
+สิ่งเหล่านี้เป็น **technical concept** ที่ accountant ทั่วไปไม่คุ้นเคย — ต้องลด cognitive load
+
+### 9.2 แนวทาง: "Learn from Example"
+
+แทนที่ configure from scratch → ให้ user อัปโหลด **ไฟล์ที่เคย export ได้จากระบบเดิมแล้ว** (Express GL, PEAK, ERP) แล้วให้ระบบ infer template จากไฟล์นั้น
+
+ไฟล์ที่เคย import Express ได้แล้ว = ground truth ของ template ที่ถูกต้อง
+
+### 9.3 สิ่งที่ detect ได้จาก structural analysis (ไม่ต้องใช้ LLM)
+
+| สิ่งที่ detect | วิธี detect | ผลลัพธ์ |
+| ------------- | ----------- | ------- |
+| `pad_left:5:0` | ค่า "05100" มี leading zeros, length = 5 สม่ำเสมอ | suggest transform |
+| `thai_date_short` | ค่า "04/05/69" — year part 60-99 (พ.ศ. สองหลัก) | suggest transform + data type |
+| `thai_date_full` | ค่า "2/5/2569" — year part 2500-2599 | suggest transform + data type |
+| TIS-620 encoding | chardet library — detect byte patterns ภาษาไทย | suggest encoding |
+| Template Mode | Voucher_No ซ้ำกันหลาย rows → Flatten Row | suggest mode |
+| Double-entry GL | Debit ≈ 0 สลับกับ Credit ≈ 0 ใน 50% ของ rows | suggest journal_lines source |
+| Static column | ทุก row มีค่าเหมือนกัน (เช่น "OE") | suggest static_value type |
+| Number format | ค่ามี comma เช่น "12,345.80" | suggest number data type |
+
+### 9.4 สิ่งที่ต้องใช้ LLM (fallback เท่านั้น)
+
+- Column header matching เมื่อ fuzzy similarity < 70%
+- เช่น header ที่ไม่อยู่ใน alias table → ส่งให้ claude-haiku-4-5 ตัดสิน
+- ลด cost: ใช้ LLM เฉพาะ ambiguous columns เท่านั้น ไม่ใช้กับทุก column
+
+### 9.5 Prototype screen ที่สร้างแล้ว
+
+- Screen: `s-schema-analyzer` (Screen 11C) ใน `PHASE-II-PROTOTYPE.html`
+- Entry point: ปุ่ม "Auto-detect จาก Sample File" บนหน้า Templates
+- Flow: Upload → Analyzing (progress) → Results (column mapping + data profile + AI insights) → Apply to Configurator
+- Task สำหรับ implement จริง: **TASK-1009** ใน `EPIC-10-TASKS-DETAIL.md`
+
+### 9.6 Column alias table (Thai headers → LF fields)
+
+สร้างเป็น lookup table ใน `schema_analyzer.py` สำหรับ headers ที่พบบ่อยจากไฟล์ลูกค้า:
+
+| Thai Header | English Variants | LF Field | Confidence |
+| ----------- | --------------- | -------- | ---------- |
+| ลำดับ, ลำดับที่ | Sequence, No. | `row_sequence` | 99% |
+| วันที่, ว/ด/ป | Date | `invoice_date` / `voucher_date` | 95% |
+| เลขที่เอกสาร | Document No., Doc No. | `document_number` | 97% |
+| เลขที่ใบกำกับภาษี | Tax Invoice No. | `invoice_number` | 98% |
+| จำนวนเงินก่อนภาษี, ก่อนภาษี | Amount Before Tax | `net_amount` | 99% |
+| จำนวนเงินรวมภาษี, รวมภาษี | Amount Including Tax | `total_amount` | 99% |
+| คำอธิบาย, รายละเอียด | Description | `description` / `transaction_desc` | 72%* |
+| รหัสผู้จำหน่าย | Vendor Code | `vendor_code` | 96% |
+| ชื่อผู้จำหน่าย | Vendor Name | `vendor_name` | 96% |
+| รหัสลูกค้า | Customer Code | `customer_code` | 96% |
+| ชื่อลูกค้า | Customer Name | `customer_name` | 96% |
+| รหัสลงบัญชี, รหัสบัญชี | Account Code | `account_code` / `posting_account_code` | 89%* |
+| เลขที่เอกสาร(สูตร) | Formula Doc No. | `formula_doc_number` | 95% |
+| สมุด | Book Code | `book_code` | 91% |
+| เดบิต, Dr | Debit | `debit` | 96% |
+| เครดิต, Cr | Credit | `credit` | 96% |
+
+\* หมายเหตุ: confidence ต่ำกว่า 80% → ให้ user confirm ใน UI
+
+---
+
 *Created: 2026-06-15*
-*Last updated: 2026-06-15*
+*Last updated: 2026-06-24*
