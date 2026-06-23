@@ -644,6 +644,14 @@ User เหลือแค่ตรวจสอบและกดบันทึ
 - Prototype screen `s-schema-analyzer` (Screen 11C) ใน `docs/requirement/phaseII/PHASE-II-PROTOTYPE.html` (added 2026-06-24)
 - Template Configurator screen (Screen 11) — รับ pre-filled columns ผ่าน state/query param
 - Template engine (TASK-1001) — มี transform registry และ field registry
+- **`src/backend/services/schema_analyzer.py`** (stub created 2026-06-24):
+  - `detect_encoding()` ✓
+  - `match_column_by_alias()` ✓ (alias table + substring fallback)
+  - `infer_type_and_transform()` ✓ (date/number/pad_left detection)
+  - `detect_template_mode()` ✓
+  - `analyze_csv()` ✓ (CSV only)
+  - ❌ Excel (.xlsx/.xls) parser — ยังขาด (ต้องใช้ openpyxl)
+  - ❌ LLM fallback for low-confidence headers — ยังขาด
 
 ### What to build
 
@@ -775,6 +783,287 @@ User เหลือแค่ตรวจสอบและกดบันทึ
   "max_loops": 6,
   "escalation_policy": "human",
   "notes": "LLM usage (claude-haiku-4-5) only as fallback for column matching when fuzzy match < 70%. All structural analysis (type inference, pattern detection) is deterministic Python."
+}
+```
+
+---
+
+## TASK-1010: Book type routing — classify documents to Express book (12/14/15/22/24)
+
+**Owner**: Backend Dev
+**Risk**: MEDIUM
+**Duration**: ~2 days
+**Maps to**: TASK-C in [EXPORT-BY-TEMPLATE-6-FILES-TASK-SUMMARY.md](EXPORT-BY-TEMPLATE-6-FILES-TASK-SUMMARY.md)
+**Closes pain points**: PP-2, PP-3, PP-5
+
+### Purpose
+
+ก่อนจะ render CSV สำหรับ Express Accounting ได้ ต้องรู้ว่าแต่ละเอกสารควรเข้า Book ใดใน 5 กลุ่ม (12 ซื้อสด / 14 ซื้อเชื่อ / 15 ค่าใช้จ่าย / 15+WHT / 22 ขายสด / 24 ขายเชื่อ) เพื่อเลือก template และ document number series ที่ถูกต้อง
+
+### What exists today
+
+- Document classification pipeline (Epic 4) — classify เป็น purchase / sale / expense / etc.
+- `document_type` field จาก OCR extraction
+- ไม่มี Book-specific routing logic สำหรับ Express
+
+### What to build
+
+1. **BookRouter class** (`src/backend/services/book_router.py`):
+
+   ```python
+   # Routing rules (to be confirmed with client before implementation)
+   Book 12 (ซื้อสด)     : document_type = "purchase_cash"
+   Book 14 (ซื้อเชื่อ)   : document_type = "purchase_credit"
+   Book 15 (ค่าใช้จ่าย)  : document_type in ["expense", "service"]
+   Book 15+WHT           : document_type in ["expense", "service"] AND wht_amount > 0
+   Book 22 (ขายสด)       : document_type = "sale_cash"
+   Book 24 (ขายเชื่อ)    : document_type = "sale_credit"
+   ```
+
+2. **Route method**: `BookRouter.route(doc: Document) -> BookAssignment`
+   - Returns: `book_id`, `template_id`, `doc_number_series`
+   - Raises `UnroutedDocumentError` when no rule matches (→ goes to error queue)
+
+3. **WHT detection logic**:
+   - `wht_amount > 0` AND `wht_rate` (3% / 5%) → override to Book 15+WHT
+   - เฉพาะ expense/service documents เท่านั้น (ซื้อสด/เชื่อไม่ใช้ WHT template นี้)
+
+4. **Unrouted document handling**:
+   - Log to `book_routing_errors` table (or error queue)
+   - ไม่ block export job — skip document และแจ้งใน export summary
+   - User สามารถ manual assign ได้จาก Review screen
+
+5. **Config-driven rules** (MVP: hardcode, Phase 3: DB-configurable):
+   - Routing rules stored in YAML config หรือ DB table `book_routing_rules`
+   - ทำให้ customer admin เพิ่ม/แก้ rule ได้โดยไม่ต้อง deploy
+
+### Open questions (ต้องยืนยันกับลูกค้าก่อน implement)
+
+- ลูกค้าแยก "ซื้อสด" vs "ซื้อเชื่อ" จากอะไร? (payment term? vendor type? manual input?)
+- เอกสาร expense ที่ยังไม่รู้ว่ามี WHT หรือไม่ → assign Book 15 ก่อน แล้วให้ user ยืนยัน?
+- มีเอกสาร type อื่นที่ไม่เข้า 5 กลุ่มนี้ไหม? (เช่น DN/CN, stock adjustment)
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `src/backend/services/book_router.py` | BookRouter class + routing rules + BookAssignment dataclass |
+| Create | `src/backend/config/book_routing_rules.yaml` | Routing rules config (document_type → book_id mapping) |
+| Modify | `src/backend/services/export_service.py` | Call BookRouter before fan-out export (TASK-1011) |
+| Create | `tests/services/test_book_router.py` | Unit tests for each routing rule + WHT override + unrouted |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1010_purchase_cash | purchase_cash document → Book 12, YYMM/NNN series | test_route_purchase_cash |
+| ac_1010_purchase_credit | purchase_credit document → Book 14, YYMM/NNN series | test_route_purchase_credit |
+| ac_1010_expense | expense document, wht=0 → Book 15 | test_route_expense_no_wht |
+| ac_1010_expense_wht | expense document, wht>0 → Book 15+WHT | test_route_expense_with_wht |
+| ac_1010_sale_cash | sale_cash document → Book 22, YYMM###### series | test_route_sale_cash |
+| ac_1010_sale_credit | sale_credit document → Book 24, YYMM###### series | test_route_sale_credit |
+| ac_1010_unrouted | Unknown document_type → UnroutedDocumentError, logged | test_unrouted_document |
+| ac_1010_config | Routing rules loadable from YAML config without code change | test_config_driven_rules |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1010",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["src/backend/services/book_router.py", "src/backend/config/**", "src/backend/services/export_service.py", "tests/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+  "max_loops": 5,
+  "escalation_policy": "human",
+  "prerequisite": "Confirm routing rules with client before implementation (see Open questions)"
+}
+```
+
+---
+
+## TASK-1011: Multi-file fan-out export job (6 CSV files → zip)
+
+**Owner**: Backend Dev
+**Risk**: LOW
+**Duration**: ~2 days
+**Maps to**: TASK-E in [EXPORT-BY-TEMPLATE-6-FILES-TASK-SUMMARY.md](EXPORT-BY-TEMPLATE-6-FILES-TASK-SUMMARY.md)
+**Closes pain points**: PP-2, PP-5, PP-11
+
+### Purpose
+
+จาก documents ที่ route แล้ว (TASK-1010) + templates ที่ seeded แล้ว (TASK-1004) → generate CSV ทั้ง 6 ไฟล์พร้อมกันใน export job เดียว และแพ็ค zip พร้อม metadata summary ให้ user download
+
+### What exists today
+
+- Template engine (TASK-1001) — render single template + document list → CSV bytes
+- BookRouter (TASK-1010) — classify documents to book groups
+- Export service (`export_service.py`) — hardcoded GL + Purchase Tax Report
+
+### What to build
+
+1. **Fan-out job**: `ExportJob.run(company_id, document_ids[], month, year)`:
+   - Group documents by book (via BookRouter)
+   - For each book group: fetch matching template → call `TemplateEngine.render()`
+   - 6 template renders run sequentially (MVP) หรือ parallel via asyncio (optimization)
+   - Collect 6 CSV byte strings
+
+2. **File naming**: match client's existing filenames:
+   - `12 ซื้อสด บรรทัดเดียว.csv`
+   - `14 ซื้อเชื่อ บรรทัดเดียว.csv`
+   - `15 ค่าใช้จ่ายอื่นๆ บรรทัดเดียว.csv`
+   - `15 ค่าใช้จ่ายอื่นๆ(มีหัก)3บรรทัดเดียว.csv`
+   - `22 ขายสด บรรทัดเดียว.csv`
+   - `24 ขายเชื่อ บรรทัดเดียว.csv`
+
+3. **ZIP packaging** (`zipfile` stdlib):
+   - All 6 CSV files in root of zip
+   - Add `export_summary.json`:
+     ```json
+     {
+       "export_date": "2026-05-31",
+       "company": "GL เมโทร อีเล็กทริค",
+       "period": "2569-05",
+       "files": [
+         {"filename": "12 ซื้อสด บรรทัดเดียว.csv", "rows": 42, "documents": 42},
+         {"filename": "14 ซื้อเชื่อ บรรทัดเดียว.csv", "rows": 15, "documents": 15}
+       ],
+       "unrouted_documents": [],
+       "total_documents": 57
+     }
+     ```
+
+4. **API endpoint**: `POST /api/v1/export/batch`
+   - Body: `{ company_id, document_ids[], period: "2569-05" }`
+   - Response: file download (application/zip) หรือ job_id ถ้าใช้ async queue
+
+5. **Empty file handling**: ถ้าไม่มีเอกสารเข้า Book ใด ให้สร้างไฟล์ว่างที่มีแค่ header row (ไม่ skip ไฟล์นั้น) — client อาจ expect ครบ 6 ไฟล์เสมอ
+
+6. **Document sequence numbering** (`row_sequence` field):
+   - Reset เป็น 1 ต่อแต่ละไฟล์/template
+   - `document_number` sequence ต้อง stateful ต่อ book + period (เก็บใน DB หรือ compute จาก last export)
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `src/backend/services/export_job.py` | ExportJob class: fan-out, zip packaging, summary JSON |
+| Modify | `src/backend/services/export_service.py` | Replace hardcoded export with ExportJob delegation |
+| Modify | `src/backend/app/endpoints.py` | Add POST /api/v1/export/batch endpoint |
+| Create | `tests/services/test_export_job.py` | Integration tests: full 6-file job, empty books, zip structure |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1011_six_files | Export job produces exactly 6 CSV files in zip (even if some are header-only) | test_six_files_always |
+| ac_1011_filenames | File names match client template names exactly | test_filename_match |
+| ac_1011_encoding | All 6 CSV files encoded TIS-620 | test_all_tis620 |
+| ac_1011_routing | Documents routed correctly (purchase_cash → file 12, sale_cash → file 22, etc.) | test_routing_in_job |
+| ac_1011_sequence | row_sequence resets to 1 per file | test_row_sequence_reset |
+| ac_1011_summary | export_summary.json in zip contains correct row counts per file | test_summary_json |
+| ac_1011_empty | Book with 0 documents → header-only CSV (not skipped) | test_empty_book_file |
+| ac_1011_zip | ZIP file is valid and all files extractable | test_zip_integrity |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1011",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["src/backend/services/export_job.py", "src/backend/services/export_service.py", "src/backend/app/endpoints.py", "tests/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+  "max_loops": 5,
+  "escalation_policy": "human",
+  "prerequisite": "TASK-1001 (template engine), TASK-1004 (master templates), TASK-1010 (book router)"
+}
+```
+
+---
+
+## TASK-1012: Snapshot tests + Express import QA
+
+**Owner**: Backend Dev + QA
+**Risk**: LOW
+**Duration**: ~1 day
+**Maps to**: TASK-F in [EXPORT-BY-TEMPLATE-6-FILES-TASK-SUMMARY.md](EXPORT-BY-TEMPLATE-6-FILES-TASK-SUMMARY.md)
+**Closes pain points**: PP-2 (confidence in export correctness)
+
+### Purpose
+
+ยืนยันว่าไฟล์ที่ LF generate ตรงกับ format ที่ Express Accounting ยอมรับจริง โดยใช้ไฟล์ตัวอย่างลูกค้า (`private_data/poc/Comp_1/template/*.csv`) เป็น ground truth สำหรับ snapshot tests
+
+### What exists today
+
+- Client template files: `private_data/poc/Comp_1/template/` (6 files, TIS-620)
+- pytest infrastructure
+- TemplateEngine (TASK-1001) + ExportJob (TASK-1011)
+
+### What to build
+
+1. **Header snapshot tests**:
+   - สำหรับแต่ละ template: assert header row ตรง 100% กับ client file
+   - รวมลำดับคอลัมน์ (column order matters for Express)
+   - รวม Thai encoding ของ header text
+
+2. **Sample row tests**:
+   - สร้าง sample input document (known values)
+   - render ผ่าน template engine
+   - assert output row ตรงกับ expected values column by column
+
+3. **Encoding validation**:
+   - เปิดไฟล์ output ด้วย TIS-620 decoder
+   - assert ไม่มี replacement character (U+FFFD) ซึ่งบ่งบอก encoding ผิด
+
+4. **Date format tests**:
+   - กลุ่มซื้อ: assert date = `DD/MM/YY` (thai_date_short)
+   - กลุ่มขาย: assert date = `D/M/YYYY` หรือ `D/M/YYYY` (ต้อง confirm รูปแบบจริง)
+   - assert date column เป็น text string ไม่ใช่ date value (ไม่มี Excel auto-format)
+
+5. **Document number format tests**:
+   - Book 12/14/15: assert pattern `YYMM/NNN`
+   - Book 22/24: assert pattern `YYMM######` (10 digits)
+
+6. **Manual import checklist** (ทำครั้งเดียวก่อน ship):
+   - Export 1 batch จาก test data
+   - Import เข้า Express sandbox ของลูกค้า
+   - ยืนยัน import สำเร็จ ไม่มี error
+   - Document ใน note ใน `tests/fixtures/express_import_qa_log.md`
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `tests/services/test_template_snapshots.py` | Header + sample row snapshot tests for all 6 templates |
+| Create | `tests/fixtures/expected_headers/` | 6 files containing expected header rows (copied from client templates) |
+| Create | `tests/fixtures/express_import_qa_log.md` | Manual import test log: date, tester, result, screenshots |
+| Modify | `tests/services/test_export_job.py` | Add encoding + date format + doc number format assertions |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1012_headers | All 6 template header rows match client files exactly (column names + order) | test_header_snapshot_all_templates |
+| ac_1012_encoding | Output CSV opens correctly in TIS-620 — no replacement characters | test_encoding_no_mojibake |
+| ac_1012_date_purchase | Purchase templates (Book 12/14/15): date in `DD/MM/YY` format | test_date_format_purchase |
+| ac_1012_date_sales | Sales templates (Book 22/24): date in correct format (TBD with client) | test_date_format_sales |
+| ac_1012_docno_slash | Book 12/14/15: document_number matches `\d{4}/\d{3}` pattern | test_docno_pattern_slash |
+| ac_1012_docno_digits | Book 22/24: document_number matches `\d{10}` pattern | test_docno_pattern_digits |
+| ac_1012_express_import | Manual: at least 1 batch successfully imported into Express (evidence in qa_log.md) | manual_qa |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1012",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["tests/**", "docs/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "private_data/**"],
+  "max_loops": 3,
+  "escalation_policy": "human",
+  "prerequisite": "TASK-1001, TASK-1004, TASK-1010, TASK-1011 — all complete before QA"
 }
 ```
 
