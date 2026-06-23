@@ -153,6 +153,71 @@ Sales Tax Report export in Express format. Already planned as Epic 15 in Phase I
 
 ---
 
+## BL-007: Composite description field (concat transform)
+
+**Priority**: P1  
+**Source**: Client requirement 2026-06-22 (Customer Q&A session)  
+**Related**: TASK-1001 (Template Engine - Transform Pipeline)  
+**Estimated effort**: ~1d
+
+### Client request (verbatim)
+
+> "ต้องการสร้าง description แบบรวมข้อมูลหลายฟิลด์ เช่น `{seller_name} {expense_type}` เพื่อให้เห็นทั้งชื่อผู้ขายและประเภทค่าใช้จ่ายในคอลัมน์เดียว"
+
+### Scope
+
+- Add new transform type: `concat:field1,field2,...` OR implement `computed_field` with Jinja-like template syntax
+- Support dynamic field concatenation in column definition JSONB (e.g., `"transform": "concat:seller_name,expense_type"` or `"computed_field": "{seller_name} {expense_type}"`)
+- Apply concatenation during CSV export preparation (after data extraction, before format_pattern)
+- Support optional separator configuration (default: space)
+- Examples:
+  - `"transform": "concat:seller_name,expense_type"` → "บริษัท ABC จำกัด ค่าเช่า"
+  - `"computed_field": "{seller_name} | {expense_type}"` → "บริษัท ABC จำกัด | ค่าเช่า"
+
+### Why deferred
+
+- Not blocking MVP go-live — users can work with single `description` field for initial deployment
+- Requires transform pipeline extension (TASK-1001 currently supports only single-field transforms like `uppercase`, `pad_left`, `thai_date`)
+- Design decision needed: concat transform vs. computed_field with template engine (trade-off: simplicity vs. flexibility)
+- Should be delivered early in Phase II/2 based on client feedback priority
+
+---
+
+## BL-008: Row filter by COA code (`template_row_filters`)
+
+**Priority**: P1  
+**Source**: Client requirement 2026-06-22 (Customer Q&A session)  
+**Related**: TASK-1001 (Template Engine - Export Pipeline)  
+**Estimated effort**: ~1-2d
+
+### Client request (verbatim)
+
+> "ต้องการกรองแถวที่ไม่ต้องการออกจาก CSV โดยเฉพาะรายการ VAT ซื้อ (1151) และเจ้าหนี้การค้า (2110) เพราะ Express จัดการเองอัตโนมัติ"
+
+### Scope
+
+- Add `template_row_filters` JSONB column to `export_templates` table
+- Support filter rules:
+  - `exclude_account_codes`: Array of COA codes to exclude (e.g., `["1151", "2110"]`)
+  - Future: `include_account_codes`, `exclude_book_types`, `min_amount`, `max_amount`
+- Apply filters AFTER AI maps Chart of Accounts but BEFORE CSV write
+- Filter logic should respect template-specific rules (different templates may need different filters)
+- Create Alembic migration for schema change with seed data for Express GL template
+
+### Why deferred
+
+- Not blocking MVP go-live — users can manually delete unwanted rows in Excel before import
+- Requires schema migration and export pipeline modification
+- Should be delivered early in Phase II/2 based on client feedback priority
+
+### Open question pending customer confirmation
+
+- **VAT input rows (1151)**: Are these rows still needed for Purchase Tax Report (รายงานภาษีซื้อ Book 12/14) even if removed from GL template?
+- **Impact**: If yes, may need separate template instances or conditional filtering logic
+- **Follow-up required**: Confirm with customer before implementing filter logic
+
+---
+
 ## Summary
 
 | ID | Title | Priority | Est. | Status |
@@ -163,8 +228,10 @@ Sales Tax Report export in Express format. Already planned as Epic 15 in Phase I
 | BL-004 | WHT formula doc computed column | P2 | 0.5d | Backlog (may be covered) |
 | BL-005 | Multi-line journal entry templates | P2 | 2-3d | Backlog |
 | BL-006 | Sales Tax Report (Express format) | P1 | 1w | Scheduled (Epic 15, Phase II/2) |
+| BL-007 | Composite description field (concat transform) | P1 | ~1d | Backlog |
+| BL-008 | Row filter by COA code (`template_row_filters`) | P1 | ~1-2d | Backlog |
 
 ---
 
 *Created: 2026-06-15*
-*Last updated: 2026-06-15*
+*Last updated: 2026-06-22*

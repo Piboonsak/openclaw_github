@@ -468,5 +468,159 @@ End-to-end clone workflow: user คลิก [Clone to Company] บน master te
 
 ---
 
+## TASK-1007: Composite description field (concat transform)
+
+**Owner**: Backend Dev  
+**Risk**: LOW  
+**Duration**: ~1 day  
+**Closes pain points**: PP-2, PP-3 (enhanced column flexibility)
+
+### Purpose
+
+ขยาย transform pipeline ให้รองรับการสร้าง composite field จากหลายฟิลด์ — เช่น concat `{seller_name} {expense_type}` เป็น description เดียว. ช่วยให้ user customize output columns โดยไม่ต้องพึ่ง single source field.
+
+### What exists today
+
+- Transform pipeline ใน `template_engine.py` (TASK-1001) รองรับ single-field transforms: `uppercase`, `pad_left`, `thai_date`, `strip_dash`, `thai_date_short`, `thai_date_full`, `prefix`, `doc_number`
+- Column definition JSONB schema มี `source_field` (single string) และ `transform` (single string)
+- ไม่มีกลไกสำหรับ composite/computed fields ที่ reference หลาย source fields
+
+### What to build
+
+**Option A: `concat` transform** (simpler):
+- New transform syntax: `concat:field1,field2,...` with optional separator config
+- Example: `"transform": "concat:seller_name,expense_type"` → "บริษัท ABC จำกัด ค่าเช่า"
+- Separator: default space, configurable via `concat:field1,field2,|` (last param = separator)
+
+**Option B: `computed_field` with template engine** (more flexible):
+- Add `computed_field` key to column definition (alternative to `source_field`)
+- Template syntax: `"{seller_name} | {expense_type}"` using Jinja2-like placeholders
+- Field resolver replaces `{field_name}` with actual values at render time
+- Example: `"computed_field": "{seller_name} | {expense_type}"` → "บริษัท ABC จำกัด | ค่าเช่า"
+
+**Recommended**: Start with Option A (`concat` transform) for MVP simplicity. Add Option B later if needed.
+
+**Implementation details:**
+1. Extend `apply_transform()` in `template_engine.py` to handle `concat` prefix
+2. Parse `concat:field1,field2` → list of field names + separator
+3. Resolve each field via existing `resolve_field()` method
+4. Join values with separator (default: space)
+5. Apply any subsequent transforms to concatenated result (e.g., `concat:a,b|uppercase`)
+6. Update column definition schema docs to document concat syntax
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Modify | `src/backend/services/template_engine.py` | Add concat transform handler to apply_transform(), extend field resolver |
+| Modify | `tests/services/test_template_engine.py` | Add test_concat_transform with 2-field, 3-field, custom separator cases |
+| Modify | `docs/requirement/phaseII/epic-10/EPIC-10-TASKS-DETAIL.md` | Update TASK-1001 transform list to include concat |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1007_concat_basic | `concat:seller_name,expense_type` produces "SellerValue ExpenseValue" (space separator) | test_concat_basic |
+| ac_1007_concat_custom_sep | `concat:seller_name,expense_type,\|` produces "SellerValue \| ExpenseValue" | test_concat_custom_separator |
+| ac_1007_concat_three | `concat:field1,field2,field3` works with 3+ fields | test_concat_multiple_fields |
+| ac_1007_missing | Missing field in concat list uses empty string (no crash) | test_concat_missing_field |
+| ac_1007_chained | Concat result can be piped to other transforms (e.g., `concat:a,b\|uppercase`) | test_concat_chained_transform |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1007",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["src/backend/services/template_engine.py", "tests/services/**", "docs/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1008: Row filter by COA code (`template_row_filters`)
+
+**Owner**: Backend Dev  
+**Risk**: MEDIUM  
+**Duration**: ~1-2 days  
+**Closes pain points**: PP-2 (flexible export formats)
+
+### Purpose
+
+เพิ่มความสามารถในการกรอง (filter out) rows ที่ไม่ต้องการออกจาก CSV export ตาม Chart of Accounts code หรือเงื่อนไขอื่น. Use case: Express GL template ไม่ต้องการ VAT ซื้อ (1151) และเจ้าหนี้การค้า (2110) เพราะ Express จัดการเองอัตโนมัติ.
+
+### What exists today
+
+- Export pipeline ใน `template_engine.py` (TASK-1001) renders ทุก row ที่มีใน document data
+- ไม่มีกลไกสำหรับ filter rows based on field values
+- DB model `ExportTemplate` มี JSONB columns field แต่ไม่มี filters field
+- AI COA mapping (TASK-401) maps extracted line items → account codes
+
+### What to build
+
+1. **Schema migration:**
+   - Add `template_row_filters` JSONB column to `export_templates` table
+   - Structure: `{ "exclude_account_codes": ["1151", "2110"], "exclude_book_types": [], "min_amount": null, "max_amount": null }`
+   - Migration: `alembic/versions/004_add_template_row_filters.py`
+
+2. **Filter application logic** in template engine:
+   - Apply filters AFTER AI maps COA (account_code is available) but BEFORE CSV write
+   - Filter logic: for each row, check if `account_code` in `exclude_account_codes` list → skip row if match
+   - Support multiple filter types (extensible for future: book_types, amount ranges)
+   - Filter applies per-template (different templates = different filter rules)
+
+3. **UI support** (defer to TASK-1003 follow-up or separate task):
+   - Template Configurator should show filter settings (checkboxes for common COA codes to exclude)
+   - Pre-populate with Express-specific defaults (1151, 2110) for Express GL master template
+
+4. **Seed data update:**
+   - Update Express GL master template (TASK-1004 seed migration) to include default `template_row_filters`
+
+**Open question to resolve before implementation:**
+- **VAT input rows (1151)**: Confirm with customer whether these rows are still needed for Purchase Tax Report (รายงานภาษีซื้อ Book 12/14) even if removed from GL template
+- **Impact**: If yes, may need conditional filtering logic or separate template instances
+- **Decision**: BLOCK implementation until customer confirms (flag as prerequisite)
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `alembic/versions/004_add_template_row_filters.py` | Migration: add template_row_filters JSONB column, set default for Express GL master |
+| Modify | `src/backend/db/models.py` | Add template_row_filters field to ExportTemplate model |
+| Modify | `src/backend/services/template_engine.py` | Add apply_row_filters() method, call before write_csv()/write_excel() |
+| Modify | `tests/services/test_template_engine.py` | Add test_row_filter_exclude_account, test_row_filter_empty (no filters) |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1008_schema | `template_row_filters` JSONB column exists on export_templates table | test_schema_migration |
+| ac_1008_exclude_coa | Rows with account_code in exclude_account_codes list are filtered out | test_filter_exclude_coa |
+| ac_1008_no_filter | When template_row_filters is null or empty, all rows pass through | test_no_filter_applied |
+| ac_1008_multiple | Multiple exclude codes work (exclude 1151 AND 2110) | test_multiple_exclude_codes |
+| ac_1008_seed | Express GL master template has default exclude filter for 1151, 2110 after seed migration | test_master_default_filter |
+| ac_1008_preserve_order | Filtered rows don't affect row sequence numbering of remaining rows | test_filter_preserve_sequence |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1008",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": ["src/backend/services/template_engine.py", "src/backend/db/**", "alembic/**", "tests/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
+}
+```
+
+---
+
 *Created: 2026-06-15*
+*Last updated: 2026-06-22*
 *Epic Roadmap: [PHASE-II-EPIC-ROADMAP.md](../PHASE-II-EPIC-ROADMAP.md)*

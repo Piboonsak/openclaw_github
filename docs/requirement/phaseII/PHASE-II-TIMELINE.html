@@ -218,7 +218,7 @@
     <div class="head-meta">
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
         <span class="badge badge-accent badge-lg">Phase II/1: 8 สัปดาห์</span>
-        <span class="badge badge-purple badge-lg">Phase II/2: CR-based</span>
+        <span class="badge badge-purple badge-lg">E14-E16 รวมในวงเงินตาม PO 500,000 บาท (ระยะเวลาอาจปรับได้)</span>
       </div>
       <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono);text-align:right;margin-top:0.35rem;">
         Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Generated: 2026-06-20
@@ -233,51 +233,49 @@
   <div class="payment-bar">
     <div class="payment-card kickoff">
       <div class="payment-amount">งวดที่ 1</div>
-      <div class="payment-pct">50%</div>
+      <div class="payment-pct">180K</div>
       <div class="payment-label">Kickoff</div>
       <div class="payment-date">15 มิ.ย. 2569 (W1)</div>
       <div class="payment-trigger">
         ✓ ลงนามสัญญา<br>
-        ✓ ชำระ 50% ก่อนเริ่มงาน<br>
-        → เริ่ม W1 ทันที
+        ✓ ชำระ 180,000 บาท ก่อนเริ่มงาน<br>
+        → เงื่อนไขครบถ้วนและเริ่มดำเนินงานในสัปดาห์ที่ 1
       </div>
     </div>
     <div class="payment-card uat">
       <div class="payment-amount">งวดที่ 2</div>
-      <div class="payment-pct">10%</div>
-      <div class="payment-label">UAT พร้อมใช้</div>
-      <div class="payment-date">~20 ก.ค. 2569 (W6)</div>
+      <div class="payment-pct">130K</div>
+      <div class="payment-label">Foundation + Core MVP</div>
+      <div class="payment-date">~19 ก.ค. 2569 (W5)</div>
       <div class="payment-trigger">
-        ✓ Deploy บน UAT environment<br>
-        ✓ Core features ทำงานได้<br>
-        ✓ Login, Upload, Review, Export<br>
-        → ลูกค้าทดสอบบน uat.bwcacc.biz
+        ✓ Foundation baseline ครบ<br>
+        ✓ Core workflow พร้อมทดสอบ<br>
+        ✓ Login, Upload, Review, Export ใช้งานได้<br>
+        → เรียกเก็บเงินงวดที่ 2 จำนวน 130,000 บาท
       </div>
     </div>
     <div class="payment-card prod">
       <div class="payment-amount">งวดที่ 3</div>
-      <div class="payment-pct">20%</div>
-      <div class="payment-label">Go-Live Production</div>
-      <div class="payment-date">~10 ส.ค. 2569 (W8)</div>
+      <div class="payment-pct">120K</div>
+      <div class="payment-label">UAT Ready</div>
+      <div class="payment-date">~20 ก.ค. 2569 (W6)</div>
       <div class="payment-trigger">
-        ✓ Deploy บน Production<br>
-        ✓ DNS: app.bwcacc.biz ชี้ถูก<br>
-        ✓ User acceptance sign-off<br>
-        ✓ Training เสร็จสิ้น<br>
-        → Go-Live Production
+        ✓ Deploy บน UAT environment<br>
+        ✓ Core features ทำงานได้<br>
+        ✓ เปิดให้ผู้ว่าจ้างทดสอบบน UAT<br>
+        → เรียกเก็บเงินงวดที่ 3 จำนวน 120,000 บาท
       </div>
     </div>
     <div class="payment-card cr">
       <div class="payment-amount">งวดที่ 4</div>
-      <div class="payment-pct">20%</div>
-      <div class="payment-label">Phase II/2</div>
-      <div class="payment-date">หลัง Go-Live (CR-based)</div>
+      <div class="payment-pct">70K</div>
+      <div class="payment-label">Go-Live / Final Delivery</div>
+      <div class="payment-date">~10 ส.ค. 2569 (W8)</div>
       <div class="payment-trigger">
-        ✓ Scope ขึ้นกับผล TASK-906<br>
-        ✓ Line Item Full (Epic 14)<br>
-        ✓ Sales Tax (Epic 15)<br>
-        ✓ Full Dashboard (Epic 16)<br>
-        → ตกลงราคาหลัง TASK-906
+        ✓ Deploy บน Production<br>
+        ✓ Go-Live + Handover checklist ครบ<br>
+        ✓ User acceptance sign-off<br>
+        → เรียกเก็บเงินงวดสุดท้ายจำนวน 70,000 บาท
       </div>
     </div>
   </div>
@@ -474,18 +472,21 @@
     <div style="display:grid;grid-template-columns:200px repeat(8,1fr);background:white;padding:0.4rem 0;border-top:1px solid var(--line);">
       <div style="padding:0 0.85rem;display:flex;align-items:center;font-size:0.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Milestones</div>
       <div style="display:flex;justify-content:center;align-items:center;">
-        <span style="background:var(--accent);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;">50%<br>Kickoff</span>
+        <span style="background:var(--accent);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;">180K<br>Kickoff</span>
       </div>
       <div></div>
       <div></div>
       <div></div>
-      <div></div>
       <div style="display:flex;justify-content:center;align-items:center;">
-        <span style="background:var(--warn);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;text-align:center;">10%<br>UAT</span>
+        <span style="background:var(--teal);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;text-align:center;">130K<br>Core MVP</span>
       </div>
       <div></div>
       <div style="display:flex;justify-content:center;align-items:center;">
-        <span style="background:var(--ok);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;text-align:center;">20%<br>Go-Live</span>
+        <span style="background:var(--warn);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;text-align:center;">120K<br>UAT</span>
+      </div>
+      <div></div>
+      <div style="display:flex;justify-content:center;align-items:center;">
+        <span style="background:var(--ok);color:white;border-radius:4px;padding:2px 5px;font-size:0.6rem;font-weight:700;text-align:center;">70K<br>Go-Live</span>
       </div>
     </div>
   </div>
@@ -525,7 +526,7 @@
             </div>
           </td>
           <td>
-            <span class="badge badge-accent" style="font-size:0.8rem;padding:5px 10px;">💰 50% Kickoff</span>
+            <span class="badge badge-accent" style="font-size:0.8rem;padding:5px 10px;">💰 180K Kickoff</span>
             <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระก่อนเริ่มงาน</div>
           </td>
         </tr>
@@ -554,7 +555,10 @@
               <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Docker Engine + UFW + fail2ban + SSL certs (done 2026-06-21)</div>
             </div>
           </td>
-          <td><span class="badge badge-muted">ไม่มี milestone</span></td>
+          <td>
+            <span class="badge badge-teal" style="font-size:0.8rem;padding:5px 10px;">💰 130K Foundation + Core MVP</span>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระเมื่อ Foundation + Core<br>พร้อมทดสอบ</div>
+          </td>
         </tr>
 
         <!-- W3 -->
@@ -575,11 +579,11 @@
               <div class="deliverable-item">API CRUD: GET/POST/PUT/DELETE /api/v1/templates</div>
               <div class="deliverable-item">ภ.พ.30 ย้ายเป็น template-based (ไม่ hardcode)</div>
               <div class="deliverable-item">GitHub Actions CI/CD: design done ✓ / implementation next (TASK-1306)</div>
-              <div class="deliverable-item">TASK-906 Go/No-Go report → กำหนดราคางวด 4</div>
+              <div class="deliverable-item">TASK-906 Go/No-Go report → ใช้เป็นเกณฑ์กำหนดลำดับส่งมอบ E14/E15/E16 และกรอบระยะเวลาดำเนินการ</div>
             </div>
           </td>
           <td>
-            <div style="font-size:0.75rem;color:var(--purple);font-weight:600;">ผล TASK-906<br>กำหนดราคา<br>Phase II/2</div>
+            <div style="font-size:0.75rem;color:var(--purple);font-weight:600;">ผล TASK-906<br>กำหนดแผนส่งมอบ<br>Phase II/2</div>
           </td>
         </tr>
 
@@ -652,7 +656,7 @@
             </div>
           </td>
           <td>
-            <span class="badge badge-warn" style="font-size:0.8rem;padding:5px 10px;">💰 10% UAT</span>
+            <span class="badge badge-warn" style="font-size:0.8rem;padding:5px 10px;">💰 120K UAT Ready</span>
             <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระเมื่อ UAT<br>พร้อมใช้งาน</div>
           </td>
         </tr>
@@ -703,7 +707,7 @@
             </div>
           </td>
           <td>
-            <span class="badge badge-ok" style="font-size:0.8rem;padding:5px 10px;">💰 20% Prod</span>
+            <span class="badge badge-ok" style="font-size:0.8rem;padding:5px 10px;">💰 70K Go-Live</span>
             <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระเมื่อ Production<br>Go-Live + Sign-off</div>
           </td>
         </tr>
@@ -730,8 +734,8 @@
             </div>
           </td>
           <td>
-            <span class="badge badge-purple" style="font-size:0.8rem;padding:5px 10px;">💰 20% Phase II/2</span>
-            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">ชำระเมื่อ Phase II/2<br>deliverables ครบ</div>
+            <span class="badge badge-purple" style="font-size:0.8rem;padding:5px 10px;">รวมใน PO 500K</span>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:0.35rem;">E14/E15/E16 รวมในวงเงินตาม PO แล้ว<br>ระยะเวลาดำเนินการอาจปรับตามความเหมาะสมโดยความเห็นชอบร่วมกัน</div>
           </td>
         </tr>
       </tbody>
@@ -847,9 +851,9 @@
   <div class="section-title">หมายเหตุสำคัญ</div>
 
   <div class="note-box">
-    <strong>TASK-906 Line Item PoC (เริ่ม 21 มิ.ย. / W2)</strong> — ผลลัพธ์กำหนด scope และราคางวดที่ 4 (Phase II/2):
-    ถ้า Go (≥4/6 metrics) → Phase II/2 includes Epic 14 (Line Item Full) ·
-    ถ้า No-Go → Phase II/2 scope ลดลง ราคางวด 4 ปรับตาม
+    <strong>TASK-906 Line Item PoC (เริ่ม 21 มิ.ย. / W2)</strong> — ผลการประเมินใช้เพื่อกำหนดแผนการส่งมอบ Epic 14/15/16 ภายใต้วงเงินตาม PO เดิมจำนวน 500,000 บาท:
+    กรณี Go (≥4/6 metrics) ให้ดำเนินการตามขอบเขตงานเต็มรูปแบบ ·
+    กรณี No-Go ให้ปรับลำดับ/ความลึกของงานและกรอบระยะเวลาให้เหมาะสม โดยไม่เป็นเหตุให้เพิ่มวงเงินตาม PO
   </div>
 
   <div class="note-box warn">
@@ -857,7 +861,7 @@
     <ul style="margin-top:0.5rem;padding-left:1.25rem;line-height:2;">
       <li>ตัวอย่าง Express CSV format จริง ✗ (ต้องได้ก่อน W3 Template Engine)</li>
       <li><s>DNS: bwcacc.biz จดบน Hostinger โดยตรง — A records + CAA ตั้งเรียบร้อยแล้ว</s> ✓ (2026-06-21)</li>
-      <li>ชำระงวด 1 (50%) ก่อนวันที่ 15 มิ.ย. 2569</li>
+      <li>ชำระงวด 1 (180,000 บาท) ก่อนวันที่ 15 มิ.ย. 2569</li>
       <li>ตัวอย่างเอกสาร 20-30 ฉบับ สำหรับ TASK-906</li>
       <li>ผังบัญชี (COA) ของแต่ละบริษัทในรูปแบบ YAML หรือ CSV</li>
       <li>ยืนยัน 2 roles (Admin/Staff) เพียงพอ หรือต้องการ 4 roles</li>

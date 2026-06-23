@@ -33,6 +33,8 @@ ACTION_PATTERNS = [
     re.compile(r"^\.github/workflows/"),
     re.compile(r"^\.git(ignore|attributes)$"),
     re.compile(r"^(alembic\.ini|requirements.*\.txt|pyproject\.toml)$"),
+    # Prototype HTML files are deliverable UI work products (not planning docs)
+    re.compile(r"^docs/.*\.html$", re.IGNORECASE),
 ]
 
 PASSIVE_PATTERNS = [
