@@ -993,6 +993,8 @@
     <span style="color:var(--ok);font-weight:700;">✓ 10 เอกสาร Balance</span>
     <span style="color:var(--muted);">|</span>
     <span style="color:var(--warn);font-weight:600;">⚠ 1 เอกสาร ไม่ Balance (INV-2605-005)</span>
+    <span style="color:var(--muted);">|</span>
+    <span style="color:var(--warn);font-weight:600;">⚠ 1 ผู้จำหน่ายยังไม่มีรหัส ต้องอัปเดตก่อนส่งออก</span>
   </div>
 
   <div class="card" style="padding:0;">
@@ -1041,6 +1043,7 @@
     </div>
     <div class="tab-bar" style="margin-top:1rem;margin-bottom:-1px;">
       <button class="tab active" onclick="switchTab(event,'company-coa','s-company-detail')">ผังบัญชี (COA)</button>
+      <button class="tab" onclick="switchTab(event,'company-vendors','s-company-detail')">ผู้จำหน่าย</button>
       <button class="tab" onclick="switchTab(event,'company-settings','s-company-detail')">ตั้งค่า</button>
     </div>
   </div>
@@ -1073,6 +1076,44 @@
         <button class="btn btn-ghost btn-sm">โหลดเพิ่ม</button>
       </div>
     </div>
+    </div>
+    <div id="company-vendors" style="display:none;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <div>
+          <h3 class="section-title" style="margin:0 0 0.35rem;">Vendor Master</h3>
+          <div style="font-size:0.82rem;color:var(--muted);">รายการผู้จำหน่ายที่ใช้ matching ตอน import และเตรียมสำหรับ export</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="showToast('เปิดฟอร์มเพิ่มผู้จำหน่าย','')">+ เพิ่มผู้จำหน่าย</button>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-vendor')">📁 นำเข้า Vendor CSV/YAML</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+        <strong style="color:var(--warn);">Note:</strong>
+        <span>เพิ่มแถวผู้จำหน่ายได้แม้ยังไม่มีรหัส แล้วค่อยอัปเดตทีหลังด้วยเลขที่บัญชีของบริษัทเดียวกัน</span>
+      </div>
+
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th style="width:130px;">Vendor Code</th><th>ชื่อผู้จำหน่าย</th><th style="width:150px;">เลขภาษี</th><th style="width:160px;">Match Key</th><th style="width:130px;">สถานะรหัส</th><th style="width:90px;text-align:center;">จัดการ</th></tr></thead>
+            <tbody>
+              <tr><td class="mono" style="font-weight:600;">V-0001</td><td>ธนาคารกสิกรไทย จำกัด (มหาชน)</td><td class="mono">0107536000226</td><td><span class="badge badge-ok">Tax ID</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขผู้จำหน่าย: ธนาคารกสิกรไทย','')">แก้ไข</button></td></tr>
+              <tr><td class="mono" style="font-weight:600;">V-0002</td><td>บริษัท ออฟฟิศแมท (ไทย) จำกัด</td><td class="mono">0105561004321</td><td><span class="badge badge-accent">Tax ID + Name</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขผู้จำหน่าย: ออฟฟิศแมท','')">แก้ไข</button></td></tr>
+              <tr style="background:var(--warn-soft);"><td class="mono" style="font-weight:600;color:var(--warn);">—</td><td>บริษัท กรีน ซัพพลาย จำกัด</td><td class="mono">0123456789012</td><td><span class="badge badge-warn">Name fallback</span></td><td><span class="badge badge-warn">Pending code</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไขรหัสผู้จำหน่ายภายหลัง','warn')">กำหนดรหัส</button></td></tr>
+              <tr><td class="mono" style="font-weight:600;">V-0004</td><td>ห้างหุ้นส่วนฯ ซันชายน์</td><td class="mono">0103557009876</td><td><span class="badge badge-ok">Tax ID</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขผู้จำหน่าย: ซันชายน์','')">แก้ไข</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:var(--surface);">
+          <span style="font-size:0.8rem;color:var(--muted);">แสดง 4 จาก 19 ผู้จำหน่าย · 1 รายการยังไม่มีรหัส</span>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm">โหลดเพิ่ม</button>
+            <button class="btn btn-ghost btn-sm" onclick="showToast('ระบบจะไล่ตรวจผู้จำหน่ายที่ยังไม่มีรหัสก่อน export','warn')">ตรวจสอบก่อน export</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="company-settings" style="display:none;">
       <div class="card" style="margin-bottom:1rem;">
@@ -2655,7 +2696,7 @@
 
     // Map of all panel IDs per screen
     var allPanels = {
-      's-company-detail'       : ['company-coa','company-settings'],
+      's-company-detail'       : ['company-coa','company-vendors','company-settings'],
       's-templates'            : ['tmpl-master','tmpl-company'],
       's-settings'             : ['set-model','set-api','set-system','set-pdpa']
     };
@@ -3026,6 +3067,36 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-import-coa')">ยกเลิก</button>
       <button class="btn btn-primary" onclick="closeModal('modal-import-coa');showToast('นำเข้า COA 47 รายการ ✓','ok')">นำเข้า</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Vendor modal -->
+<div class="modal-backdrop" id="modal-import-vendor">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">📁 นำเข้า Vendor Master</h3>
+      <button class="modal-close" onclick="closeModal('modal-import-vendor')">×</button>
+    </div>
+    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="vendorFormat" checked /> CSV</label>
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="vendorFormat" /> YAML</label>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+      <strong style="color:var(--accent);">Matching priority:</strong>
+      <span>เลขภาษีผู้ขายก่อน แล้ว fallback ชื่อผู้ขาย · ถ้ายังไม่มีรหัสให้สร้างแถวไว้ก่อน</span>
+    </div>
+    <div class="dropzone" style="padding:1.5rem;margin-bottom:1rem;">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin:0 auto 0.5rem;display:block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <p style="font-size:0.82rem;color:var(--muted);text-align:center;">ลากไฟล์ CSV/YAML มาวาง หรือคลิกเพื่อเลือก</p>
+    </div>
+    <label style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.85rem;cursor:pointer;margin-bottom:1rem;line-height:1.45;">
+      <input type="checkbox" checked />
+      <span>สร้างแถวผู้จำหน่ายได้แม้ยังไม่มี Vendor Code แล้วค่อยอัปเดตเลขภายหลัง</span>
+    </label>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-import-vendor')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-import-vendor');showToast('นำเข้า Vendor Master 19 รายการ ✓','ok')">นำเข้า</button>
     </div>
   </div>
 </div>
