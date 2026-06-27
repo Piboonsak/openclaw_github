@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>LedgerFlow - เข้าสู่ระบบ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./ux-ui-prototype.css" />
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="loginTitle">
+      <div class="topbar-brand auth-brand">
+        <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <rect width="28" height="28" rx="6" fill="var(--accent)"></rect>
+          <path d="M8 20V8h4l4 6 4-6h4v12h-3v-8l-3.5 5h-3L11 12v8H8z" fill="var(--bg)"></path>
+        </svg>
+        <div>
+          <div class="topbar-title">LedgerFlow</div>
+          <p class="auth-subtitle">AI Pre-Accounting Copilot</p>
+        </div>
+      </div>
+
+      <div class="auth-copy">
+        <h1 id="loginTitle" class="step-heading">เข้าสู่ระบบ</h1>
+        <p class="step-desc">เข้าสู่ระบบเพื่อเริ่มอัปโหลด ตรวจทาน และส่งออกเอกสารบัญชี</p>
+      </div>
+
+      <form id="loginForm" class="auth-form" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="username">ชื่อผู้ใช้</label>
+          <input class="field-input" id="username" name="username" type="text" autocomplete="username" required />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="password">รหัสผ่าน</label>
+          <div class="password-row">
+            <input class="field-input" id="password" name="password" type="password" autocomplete="current-password" required />
+            <button type="button" class="input-action-btn" id="togglePassword" aria-label="แสดงหรือซ่อนรหัสผ่าน">แสดง</button>
+          </div>
+        </div>
+
+        <p class="field-error hidden" id="loginError" role="alert">ข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</p>
+
+        <button class="btn btn-primary btn-block" id="loginSubmit" type="submit">
+          <span class="button-spinner hidden" id="loginSpinner" aria-hidden="true"></span>
+          <span id="loginSubmitLabel">เข้าสู่ระบบ</span>
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script src="./auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      const auth = window.LedgerFlowAuth;
+      const form = document.getElementById("loginForm");
+      const username = document.getElementById("username");
+      const password = document.getElementById("password");
+      const errorEl = document.getElementById("loginError");
+      const submitBtn = document.getElementById("loginSubmit");
+      const spinner = document.getElementById("loginSpinner");
+      const submitLabel = document.getElementById("loginSubmitLabel");
+      const toggleBtn = document.getElementById("togglePassword");
+
+      function setLoading(isLoading) {
+        submitBtn.disabled = isLoading;
+        spinner.classList.toggle("hidden", !isLoading);
+        submitLabel.textContent = isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ";
+      }
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove("hidden");
+      }
+
+      function hideError() {
+        errorEl.classList.add("hidden");
+      }
+
+      toggleBtn.addEventListener("click", function () {
+        const nextType = password.type === "password" ? "text" : "password";
+        password.type = nextType;
+        toggleBtn.textContent = nextType === "password" ? "แสดง" : "ซ่อน";
+      });
+
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        hideError();
+        setLoading(true);
+
+        try {
+          const response = await window.fetch(auth.apiUrl("/api/auth/login"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: username.value.trim(),
+              password: password.value,
+            }),
+          });
+
+          if (!response.ok) {
+            showError("ข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+            return;
+          }
+
+          const payload = await response.json();
+          auth.setToken(payload.access_token || "");
+          window.location.href = "./index.html";
+        } catch {
+          showError("ข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      auth.redirectIfAuthenticated().catch(function () {});
+      username.focus();
+    }());
+  </script>
+</body>
+</html>

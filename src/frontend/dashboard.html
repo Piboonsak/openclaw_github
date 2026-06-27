@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>LedgerFlow - Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./ux-ui-prototype.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <rect width="28" height="28" rx="6" fill="var(--accent)"></rect>
+        <path d="M8 20V8h4l4 6 4-6h4v12h-3v-8l-3.5 5h-3L11 12v8H8z" fill="var(--bg)"></path>
+      </svg>
+      <span class="topbar-title">LedgerFlow</span>
+    </div>
+
+    <nav class="topbar-links" aria-label="Primary navigation">
+      <a class="topbar-link" href="./index.html" data-nav="home">ภาพรวม</a>
+      <a class="topbar-link" href="./ux-ui-prototype.html" data-nav="workflow">Workflow</a>
+      <a class="topbar-link" href="./dashboard.html" data-nav="dashboard" data-admin-only hidden>Dashboard</a>
+    </nav>
+
+    <div class="topbar-actions">
+      <div class="user-chip" aria-live="polite">
+        <span class="avatar" data-user-avatar>LF</span>
+        <div class="user-chip-copy">
+          <span class="user-chip-name" data-user-name>กำลังโหลด...</span>
+          <span class="user-chip-role" data-user-role>Admin</span>
+        </div>
+      </div>
+      <button type="button" class="topbar-text-btn" id="logoutBtn">ออกจากระบบ</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="app-hero-card">
+      <div class="app-hero-copy">
+        <p class="section-eyebrow">Admin Workspace</p>
+        <h1 class="step-heading">Dashboard</h1>
+        <p class="step-desc">โครงหน้าสรุป KPI สำหรับผู้ดูแลระบบ จะต่อ API ภายหลังในรอบถัดไป</p>
+      </div>
+    </section>
+
+    <section class="dashboard-grid" aria-label="KPI cards">
+      <article class="kpi-card">
+        <div class="kpi-card-head">
+          <span class="kpi-label">เอกสารวันนี้</span>
+          <span class="kpi-trend" aria-hidden="true">↗</span>
+        </div>
+        <div class="kpi-value mono">--</div>
+        <p class="kpi-subtext">กำลังรอข้อมูลจริง</p>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-card-head">
+          <span class="kpi-label">ค่าใช้จ่าย AI</span>
+          <span class="kpi-pill">เดือนนี้</span>
+        </div>
+        <div class="kpi-value mono">--</div>
+        <p class="kpi-subtext">THB</p>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-card-head">
+          <span class="kpi-label">ความแม่นยำ</span>
+        </div>
+        <div class="kpi-value mono">--</div>
+        <p class="kpi-subtext">เปอร์เซ็นต์เฉลี่ยของผลลัพธ์ล่าสุด</p>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-card-head">
+          <span class="kpi-label">รออนุมัติ</span>
+          <span class="badge badge-warn">--</span>
+        </div>
+        <div class="kpi-value mono">--</div>
+        <p class="kpi-subtext">เอกสารที่ต้องตัดสินใจก่อน export</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="./auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      const auth = window.LedgerFlowAuth;
+
+      async function init() {
+        auth.installFetchAuth();
+        const user = await auth.requireAuth({ adminOnly: true });
+        if (!user) return;
+        auth.applyUserChrome(user, { currentPage: "dashboard" });
+        auth.bindLogoutButton(document.getElementById("logoutBtn"));
+      }
+
+      init().catch(function () {
+        auth.clearToken();
+        window.location.href = "./login.html";
+      });
+    }());
+  </script>
+</body>
+</html>
