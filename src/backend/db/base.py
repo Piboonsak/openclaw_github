@@ -45,8 +45,9 @@ def get_sync_engine():
     if _sync_engine is None:
         _sync_engine = create_engine(
             _get_database_url(),
-            pool_size=5,
-            max_overflow=10,
+            pool_size=settings.DB_POOL_SIZE,
+            max_overflow=settings.DB_MAX_OVERFLOW,
+            pool_timeout=settings.DB_POOL_TIMEOUT,
             pool_pre_ping=True,
         )
     return _sync_engine
@@ -75,8 +76,9 @@ def get_async_engine():
     if _async_engine is None:
         _async_engine = create_async_engine(
             _get_async_database_url(),
-            pool_size=5,
-            max_overflow=10,
+            pool_size=settings.DB_POOL_SIZE,
+            max_overflow=settings.DB_MAX_OVERFLOW,
+            pool_timeout=settings.DB_POOL_TIMEOUT,
             pool_pre_ping=True,
         )
     return _async_engine

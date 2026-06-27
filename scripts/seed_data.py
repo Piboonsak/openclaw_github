@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,15 +34,17 @@ DEFAULT_COMPANIES_PATH = REPO_ROOT / "data" / "companies.json"
 DEFAULT_TENANT_NAME = "Default Tenant"
 DEFAULT_TENANT_SLUG = "default-tenant"
 DEFAULT_ADMIN_EMAIL = "admin@ledgerflow.local"
-DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_DISPLAY_NAME = "System Admin"
-DEFAULT_ADMIN_PASSWORD = "ChangeMe123!"
 DEFAULT_PLAN_NAME = "Pro Premium"
 DEFAULT_INCLUDED_PAGE_CREDITS = 20_000
 DEFAULT_PRICE_ORIGINAL_THB = 45_000.00
 DEFAULT_PRICE_EFFECTIVE_THB = 25_500.00
 
-_PASSWORD_CONTEXT = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+def get_required_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
 
 
 def normalize_tax_id(value: str | None) -> str:
@@ -50,11 +52,14 @@ def normalize_tax_id(value: str | None) -> str:
 
 
 def hash_password(password: str) -> str:
-    return _PASSWORD_CONTEXT.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return _PASSWORD_CONTEXT.verify(password, password_hash)
+    return bcrypt.checkpw(
+        password.encode("utf-8"),
+        password_hash.encode("utf-8"),
+    )
 
 
 def load_company_seeds(path: Path = DEFAULT_COMPANIES_PATH) -> list[dict[str, Any]]:
@@ -79,7 +84,7 @@ def load_company_seeds(path: Path = DEFAULT_COMPANIES_PATH) -> list[dict[str, An
 def build_master_templates() -> list[dict[str, Any]]:
     return [
         {
-            "template_name": "Express GL (Master)",
+            "template_name": "Express GL",
             "template_type": "express_gl",
             "file_format": "csv",
             "encoding": "utf-8",
@@ -133,7 +138,7 @@ def build_master_templates() -> list[dict[str, Any]]:
             ],
         },
         {
-            "template_name": "Purchase Tax (Master)",
+            "template_name": "Purchase Tax",
             "template_type": "purchase_tax",
             "file_format": "xlsx",
             "encoding": "utf-8",
@@ -388,9 +393,9 @@ def seed_database(
     tenant_name: str = DEFAULT_TENANT_NAME,
     tenant_slug: str = DEFAULT_TENANT_SLUG,
     admin_email: str = DEFAULT_ADMIN_EMAIL,
-    admin_username: str = DEFAULT_ADMIN_USERNAME,
+    admin_username: str,
     admin_display_name: str = DEFAULT_ADMIN_DISPLAY_NAME,
-    admin_password: str = DEFAULT_ADMIN_PASSWORD,
+    admin_password: str,
 ) -> dict[str, int]:
     stats = {
         "tenants_created": 0,
@@ -439,9 +444,9 @@ def seed_database(
 
 def run_seed() -> dict[str, int]:
     session_factory = get_sync_session_factory()
-    admin_password = os.getenv("SEED_ADMIN_PASSWORD", DEFAULT_ADMIN_PASSWORD)
-    admin_email = os.getenv("SEED_ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL)
-    admin_username = os.getenv("SEED_ADMIN_USERNAME", DEFAULT_ADMIN_USERNAME)
+    admin_password = get_required_env("ADMIN_PASSWORD")
+    admin_email = os.getenv("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL).strip() or DEFAULT_ADMIN_EMAIL
+    admin_username = get_required_env("ADMIN_USERNAME")
     companies_path = Path(
         os.getenv("COMPANIES_STORE", str(DEFAULT_COMPANIES_PATH))
     ).expanduser()

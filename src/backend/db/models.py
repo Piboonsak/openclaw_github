@@ -17,10 +17,13 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Enum as SqlEnum,
+    Float,
     ForeignKey,
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -30,6 +33,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.backend.db.base import Base
+from src.backend.db.enums import MatchType
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +108,15 @@ class Company(Base):
         back_populates="company"
     )
     page_credit_usage_entries: Mapped[list[PageCreditUsage]] = relationship(
+        back_populates="company"
+    )
+    vendor_master_entries: Mapped[list[VendorMaster]] = relationship(
+        back_populates="company"
+    )
+    customer_master_entries: Mapped[list[CustomerMaster]] = relationship(
+        back_populates="company"
+    )
+    account_mapping_cache_entries: Mapped[list[AccountMappingCache]] = relationship(
         back_populates="company"
     )
 
@@ -723,3 +736,82 @@ class DataRetentionPolicy(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = _now()
+
+
+# ---------------------------------------------------------------------------
+# BL-001 Vendor / Customer Master Cache
+# ---------------------------------------------------------------------------
+
+
+class VendorMaster(Base):
+    __tablename__ = "vendor_master"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    vendor_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    vendor_name: Mapped[str] = mapped_column(Text, nullable=False)
+    gl_code: Mapped[str | None] = mapped_column(String(10))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = _now()
+
+    company: Mapped[Company] = relationship(back_populates="vendor_master_entries")
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "vendor_code", name="uq_vendor_company_code"),
+    )
+
+
+class CustomerMaster(Base):
+    __tablename__ = "customer_master"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    customer_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    customer_name: Mapped[str] = mapped_column(Text, nullable=False)
+    ar_flag: Mapped[int] = mapped_column(SmallInteger, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = _now()
+
+    company: Mapped[Company] = relationship(back_populates="customer_master_entries")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "customer_code",
+            name="uq_customer_company_code",
+        ),
+    )
+
+
+class AccountMappingCache(Base):
+    __tablename__ = "account_mapping_cache"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    ocr_name: Mapped[str] = mapped_column(Text, nullable=False)
+    matched_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    match_type: Mapped[MatchType] = mapped_column(
+        SqlEnum(
+            MatchType,
+            name="match_type",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+    )
+    confidence: Mapped[float | None] = mapped_column(Float)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = _now()
+
+    company: Mapped[Company] = relationship(
+        back_populates="account_mapping_cache_entries"
+    )
+
+    __table_args__ = (
+        Index("ix_mapping_company_ocr_name", "company_id", "ocr_name"),
+    )

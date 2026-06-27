@@ -11,12 +11,13 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi import APIRouter, Body, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from config.settings import settings
 from src.backend.ml.llm_router import get_routing_diagnostics, read_cost_log_tail
 from src.backend.pipeline.orchestrator import run_pipeline, select_model
+from src.backend.app.health import collect_service_health, get_uptime_seconds
 from src.backend.services.export_service import (
     create_excel_ledger,
     create_purchase_tax_report,
@@ -81,9 +82,39 @@ def _normalize_tax_id(value: str | None) -> str:
 
 
 @router.get("/health")
-def health() -> dict[str, str]:
-    """Check health status of backend."""
-    return {"status": "ok"}
+def health(request: Request) -> JSONResponse:
+    """Check health status of backend dependencies."""
+    services = collect_service_health()
+    payload = {
+        "status": services.overall_status,
+        "version": request.app.version,
+        "uptime_seconds": get_uptime_seconds(),
+        "services": vars(services),
+    }
+    status_code = 200 if services.overall_status == "healthy" else 503
+    return JSONResponse(status_code=status_code, content=payload)
+
+
+@router.get("/health/live")
+def health_live(request: Request) -> dict[str, Any]:
+    return {
+        "status": "alive",
+        "version": request.app.version,
+        "uptime_seconds": get_uptime_seconds(),
+    }
+
+
+@router.get("/health/ready")
+def health_ready(request: Request) -> JSONResponse:
+    services = collect_service_health()
+    ready = all(value == "ok" for value in vars(services).values())
+    payload = {
+        "status": "ready" if ready else "not_ready",
+        "version": request.app.version,
+        "uptime_seconds": get_uptime_seconds(),
+        "services": vars(services),
+    }
+    return JSONResponse(status_code=200 if ready else 503, content=payload)
 
 
 @router.get("/v1/llm/routing")

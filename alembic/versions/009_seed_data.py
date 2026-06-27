@@ -20,6 +20,7 @@ from scripts.seed_data import (
     DEFAULT_COMPANIES_PATH,
     DEFAULT_TENANT_SLUG,
     build_master_templates,
+    get_required_env,
     load_company_seeds,
     seed_database,
 )
@@ -47,9 +48,10 @@ def upgrade() -> None:
             companies_path=Path(
                 os.getenv("COMPANIES_STORE", str(DEFAULT_COMPANIES_PATH))
             ).expanduser(),
-            admin_email=os.getenv("SEED_ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL),
-            admin_username=os.getenv("SEED_ADMIN_USERNAME", "admin"),
-            admin_password=os.getenv("SEED_ADMIN_PASSWORD", "ChangeMe123!"),
+            admin_email=os.getenv("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL).strip()
+            or DEFAULT_ADMIN_EMAIL,
+            admin_username=get_required_env("ADMIN_USERNAME"),
+            admin_password=get_required_env("ADMIN_PASSWORD"),
         )
         session.commit()
     finally:
@@ -65,7 +67,7 @@ def downgrade() -> None:
         ).expanduser()
         tax_ids = [item["tax_id"] for item in load_company_seeds(companies_path)]
         template_names = [item["template_name"] for item in build_master_templates()]
-        admin_email = os.getenv("SEED_ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL)
+        admin_email = os.getenv("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL).strip() or DEFAULT_ADMIN_EMAIL
 
         tenant = session.execute(
             select(Tenant).where(Tenant.slug == DEFAULT_TENANT_SLUG)

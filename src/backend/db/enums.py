@@ -45,6 +45,20 @@ class ExportJobStatus(StrEnum):
     DOWNLOADED = "downloaded"
 
 
+class MatchType(StrEnum):
+    EXACT = "exact"
+    FUZZY = "fuzzy"
+    LLM = "llm"
+    MANUAL = "manual"
+
+
+class ExportStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class FlagStatus(StrEnum):
     OPEN = "open"
     RESOLVED = "resolved"

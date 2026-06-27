@@ -8,6 +8,7 @@ from scripts.seed_data import (
     DEFAULT_PRICE_ORIGINAL_THB,
     build_credit_plan_seed,
     build_master_templates,
+    get_required_env,
     hash_password,
     load_company_seeds,
     verify_password,
@@ -27,10 +28,10 @@ def test_build_master_templates_matches_task_802_contract() -> None:
     by_name = {template["template_name"]: template for template in templates}
 
     assert len(templates) == 2
-    assert len(by_name["Express GL (Master)"]["columns"]) == 8
-    assert len(by_name["Purchase Tax (Master)"]["columns"]) == 12
-    assert by_name["Express GL (Master)"]["file_format"] == "csv"
-    assert by_name["Purchase Tax (Master)"]["file_format"] == "xlsx"
+    assert len(by_name["Express GL"]["columns"]) == 8
+    assert len(by_name["Purchase Tax"]["columns"]) == 12
+    assert by_name["Express GL"]["file_format"] == "csv"
+    assert by_name["Purchase Tax"]["file_format"] == "xlsx"
 
 
 def test_build_credit_plan_seed_matches_page_credit_dashboard_contract() -> None:
@@ -49,3 +50,14 @@ def test_hash_password_is_not_plaintext() -> None:
 
     assert password_hash != password
     assert verify_password(password, password_hash)
+
+
+def test_get_required_env_raises_for_missing_values(monkeypatch) -> None:
+    monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
+
+    try:
+        get_required_env("ADMIN_PASSWORD")
+    except RuntimeError as exc:
+        assert "ADMIN_PASSWORD" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError when env var is missing")

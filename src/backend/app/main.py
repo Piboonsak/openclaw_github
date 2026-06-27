@@ -1,31 +1,27 @@
 """FastAPI main application entrypoint."""
 
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from config.settings import settings
+from src.backend.app.health import collect_service_health
 from src.backend.app.endpoints import router as api_router
+from src.backend.auth.router import router as auth_router
 from src.backend.services.secrets_loader import load_llm_keys
 from src.backend.storage import bootstrap_storage
 
-app = FastAPI(
-    title="AI Pre-Accounting Copilot",
-    description="Automated document processing backend for OCR, extraction, and validation.",
-    version="1.1.0",
-)
 logger = logging.getLogger(__name__)
 
-# Include API endpoints router
-app.include_router(api_router, prefix="/api")
 
-
-@app.on_event("startup")
-def load_runtime_secrets() -> None:
-    """Populate runtime API keys before the first request hits the app."""
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    logger.info("Starting LedgerFlow API")
     load_llm_keys()
     settings.reload()
     try:
@@ -34,11 +30,37 @@ def load_runtime_secrets() -> None:
     except Exception as exc:
         logger.warning("Storage bootstrap degraded: %s", exc)
 
+    services = collect_service_health()
+    for service_name, service_state in vars(services).items():
+        if service_state != "ok":
+            logger.warning("Startup dependency degraded: %s=%s", service_name, service_state)
+    yield
+    logger.info("Shutting down LedgerFlow API")
+
+
+app = FastAPI(
+    title="LedgerFlow API",
+    description="Automated document processing backend for OCR, extraction, and validation.",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# TODO: include future customer workflow routers here as they are implemented.
+app.include_router(api_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+
 
 @app.get("/health")
 def root_health() -> dict[str, str]:
     """Direct root-level health check endpoint."""
-    return {"status": "ok"}
+    return {"status": "ok", "version": app.version}
 
 
 # Mount frontend static files

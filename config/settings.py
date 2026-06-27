@@ -11,6 +11,11 @@ def _path_from_env(name: str, default: Path) -> Path:
     return Path(value).expanduser() if value else default
 
 
+def _csv_from_env(name: str, default: str = "") -> list[str]:
+    raw = os.getenv(name, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 class Settings:
     def __init__(self) -> None:
         self.reload()
@@ -24,6 +29,9 @@ class Settings:
             "DATABASE_URL",
             "postgresql://copilot:dev_password@localhost:5432/ai_accounting_sit",
         )
+        self.DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
+        self.DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+        self.DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
         self.RULES_ROOT = _path_from_env("RULES_ROOT", REPO_ROOT / "rules")
         self.CACHE_ROOT = _path_from_env(
             "CACHE_ROOT", REPO_ROOT / "src" / "backend" / "ml" / "cache"
@@ -35,6 +43,7 @@ class Settings:
         self.MINIO_BUCKET = os.getenv("MINIO_BUCKET", "ai-accounting-sit")
         self.MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
         self.MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+        self.MINIO_TIMEOUT_SECONDS = int(os.getenv("MINIO_TIMEOUT_SECONDS", "5"))
         self.STORAGE_LOCAL_ROOT = _path_from_env(
             "STORAGE_LOCAL_ROOT", self.CACHE_ROOT / "object_store"
         )
@@ -43,6 +52,20 @@ class Settings:
         )
         self.STORAGE_PRESIGN_EXPIRE_SECONDS = int(
             os.getenv("STORAGE_PRESIGN_EXPIRE_SECONDS", "3600")
+        )
+        self.REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.REDIS_TIMEOUT_SECONDS = int(os.getenv("REDIS_TIMEOUT_SECONDS", "5"))
+        self.CORS_ORIGINS = _csv_from_env(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000",
+        )
+        self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret-change-me")
+        self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+        self.JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(
+            os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+        )
+        self.JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(
+            os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7")
         )
         self.ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

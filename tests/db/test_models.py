@@ -6,6 +6,7 @@ from src.backend.db.enums import (
     DocumentStatus,
     ExportJobStatus,
     FlagStatus,
+    MatchType,
     VoucherStatus,
 )
 from src.backend.db import models
@@ -30,6 +31,10 @@ def test_new_tables_are_registered_in_metadata() -> None:
         "export_job_documents",
         "company_credit_plans",
         "page_credit_usage",
+        "data_retention_policies",
+        "vendor_master",
+        "customer_master",
+        "account_mapping_cache",
     }
 
     assert expected_tables.issubset(Base.metadata.tables.keys())
@@ -47,6 +52,7 @@ def test_document_batch_relationship_and_review_columns_exist() -> None:
         fk.target_fullname for fk in document_table.c.batch_id.foreign_keys
     }
     assert batch_foreign_keys == {"document_batches.id"}
+    assert document_table.c.batch_id.nullable is True
 
 
 def test_expected_indexes_and_unique_constraints_exist() -> None:
@@ -78,3 +84,23 @@ def test_model_imports_expose_task_801a_classes() -> None:
     assert models.DocumentBatch.__tablename__ == "document_batches"
     assert models.ExportJob.__tablename__ == "export_jobs"
     assert models.CompanyCreditPlan.__tablename__ == "company_credit_plans"
+    assert models.VendorMaster.__tablename__ == "vendor_master"
+    assert models.CustomerMaster.__tablename__ == "customer_master"
+    assert models.AccountMappingCache.__tablename__ == "account_mapping_cache"
+
+
+def test_vendor_and_customer_codes_are_varchar_columns() -> None:
+    assert str(models.VendorMaster.__table__.c.vendor_code.type) == "VARCHAR(20)"
+    assert str(models.CustomerMaster.__table__.c.customer_code.type) == "VARCHAR(20)"
+
+
+def test_company_credit_plan_hides_internal_provider_fields() -> None:
+    column_names = set(models.CompanyCreditPlan.__table__.c.keys())
+    assert "provider" not in column_names
+    assert "model" not in column_names
+    assert "token" not in column_names
+
+
+def test_account_mapping_cache_uses_match_type_enum() -> None:
+    match_type_column = models.AccountMappingCache.__table__.c.match_type
+    assert sorted(match_type_column.type.enums) == sorted([item.value for item in MatchType])
