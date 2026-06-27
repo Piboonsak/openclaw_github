@@ -221,7 +221,7 @@
         <span class="badge badge-purple badge-lg">E14-E16 รวมในวงเงินตาม PO 500,000 บาท (ระยะเวลาอาจปรับได้)</span>
       </div>
       <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono);text-align:right;margin-top:0.35rem;">
-        Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Generated: 2026-06-20
+        Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Updated: 2026-06-27
       </div>
       <button class="no-print" onclick="window.print()" style="margin-top:0.4rem;font-size:0.72rem;border:1px solid var(--line);border-radius:6px;padding:3px 10px;background:white;cursor:pointer;color:var(--muted);">🖨 Print</button>
     </div>
@@ -333,11 +333,11 @@
       <div style="display:grid;grid-template-columns:repeat(8,1fr);align-items:center;padding:0.4rem 0.25rem;">
         <!-- W1 -->
         <div style="position:relative;height:36px;display:flex;align-items:center;">
-          <div class="gantt-bar bar-accent" style="position:static;width:100%;margin-right:0;border-radius:6px 0 0 6px;font-size:0.68rem;">DB+Auth</div>
+          <div class="gantt-bar bar-ok" style="position:static;width:100%;margin-right:0;border-radius:6px 0 0 6px;font-size:0.68rem;">✓ DB+Auth</div>
         </div>
         <!-- W2 -->
         <div style="position:relative;height:36px;display:flex;align-items:center;">
-          <div class="gantt-bar bar-accent" style="position:static;width:100%;border-radius:0 6px 6px 0;font-size:0.68rem;margin-left:1px;">Celery+S3</div>
+          <div class="gantt-bar bar-ok" style="position:static;width:100%;border-radius:0 6px 6px 0;font-size:0.68rem;margin-left:1px;">✓ Celery+S3</div>
         </div>
         <!-- W3-W8 empty -->
         <div></div><div></div><div></div><div></div><div></div><div></div>
@@ -355,7 +355,7 @@
         <div></div>
         <!-- W2: TASK-906 PoC + VAT/WHT/OCR -->
         <div style="height:36px;display:flex;align-items:center;">
-          <div class="gantt-bar" style="position:static;width:100%;border-radius:6px 0 0 6px;font-size:0.65rem;background:var(--teal);">TASK-906 PoC</div>
+          <div class="gantt-bar" style="position:static;width:100%;border-radius:6px 0 0 6px;font-size:0.65rem;background:var(--ok);">✓ 906 Go</div>
         </div>
         <!-- W3: VAT/WHT/OCR -->
         <div style="height:36px;display:flex;align-items:center;">
@@ -439,7 +439,7 @@
         </div>
         <!-- W2: SSL+FW ✅ DONE -->
         <div style="height:24px;display:flex;align-items:center;">
-          <div style="width:100%;height:24px;background:var(--ok);opacity:0.8;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">SSL+FW ✓</div>
+          <div style="width:100%;height:24px;background:var(--ok);opacity:0.8;margin-left:1px;display:flex;align-items:center;padding:0 0.4rem;font-size:0.6rem;color:white;font-weight:600;">Env+CI ✓</div>
         </div>
         <!-- W3: CI/CD (design done, implementation pending) -->
         <div style="height:24px;display:flex;align-items:center;">
@@ -519,10 +519,10 @@
           </td>
           <td>
             <div class="deliverable-list">
-              <div class="deliverable-item">Alembic migration รัน + DB 15 tables ขึ้น</div>
-              <div class="deliverable-item">companies.json migrate → DB สำเร็จ</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Alembic migration 002–010 + DB schema + BL-001 tables (carryover, done W2 / f01296d)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> companies.json → DB + master templates seed + admin user (carryover, done W2 / f01296d)</div>
               <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> VPS UAT+PROD เปิดใช้ + SSH + Docker + UFW + SSL (done 2026-06-21)</div>
-              <div class="deliverable-item">VAT disambiguation เริ่ม implement</div>
+              <div class="deliverable-item"><span style="color:var(--muted);">⏳</span> VAT disambiguation → defer W3 (TASK-901)</div>
             </div>
           </td>
           <td>
@@ -546,13 +546,19 @@
           </td>
           <td>
             <div class="deliverable-list">
-              <div class="deliverable-item">TASK-906: เตรียม 20-30 docs + เริ่ม test LLM (จาก 21 มิ.ย.)</div>
-              <div class="deliverable-item">JWT Auth Login API ทำงาน (POST /api/auth/login)</div>
-              <div class="deliverable-item">MinIO storage: upload/download ได้</div>
-              <div class="deliverable-item">Celery worker: OCR task ทำงาน background</div>
-              <div class="deliverable-item">TASK-906: Feasibility Report พร้อม (Go/No-Go)</div>
-              <div class="deliverable-item">WHT detection + PND3/PND53 badge</div>
-              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Docker Engine + UFW + fail2ban + SSL certs (done 2026-06-21)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-906 Go decision — ผลทดสอบ positive, Feasibility Report จัดทำ W3</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> JWT Auth API: POST /api/v1/auth/login, /me, /refresh (f01296d)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> MinIO S3: upload/download/presigned URL + local fallback</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Celery worker: process_document task + status tracking + retry</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> BL-001 schema: vendor_master, customer_master, account_mapping_cache + migration 010</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Health: /api/health, /api/health/live, /api/health/ready</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Env templates: .env.prod.example, .env.uat.example, .env.dev (8c01c54)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> INC-2026-06-24-001 resolved: pre-commit python/python3 detection fix</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Housekeeping scripts: disk monitor 80% alert + temp cleanup cron</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1313 prep: SECRETS-CHECKLIST.md + post-push hook template</div>
+              <div class="deliverable-item" style="color:var(--muted);font-size:0.75rem;font-style:italic;">59 tests passed (dev f01296d + 8c01c54)</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> WHT detection + PND badge → W3 (TASK-902)</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> Openclaw UAT deploy trigger → รอ Openclaw workflow ก่อน (TASK-1313 Step 1)</div>
             </div>
           </td>
           <td>
@@ -578,7 +584,7 @@
               <div class="deliverable-item">template_engine.py: column mapping + transforms</div>
               <div class="deliverable-item">API CRUD: GET/POST/PUT/DELETE /api/v1/templates</div>
               <div class="deliverable-item">ภ.พ.30 ย้ายเป็น template-based (ไม่ hardcode)</div>
-              <div class="deliverable-item">GitHub Actions CI/CD: design done ✓ / implementation next (TASK-1306)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> CI/CD scripts + deploy workflows done (TASK-1306) / Openclaw CD dispatch (TASK-1313) in progress</div>
               <div class="deliverable-item">TASK-906 Go/No-Go report → ใช้เป็นเกณฑ์กำหนดลำดับส่งมอบ E14/E15/E16 และกรอบระยะเวลาดำเนินการ</div>
             </div>
           </td>
