@@ -1,0 +1,15 @@
+# Copy to .git/hooks/post-push - do not commit
+#!/bin/bash
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+SHA=$(git rev-parse HEAD)
+PAT="${OPENCLAW_DISPATCH_PAT}"  # set in ~/.bashrc or ~/.zshrc
+
+if [[ "$BRANCH" == "uat" ]]; then
+  echo "-> Triggering UAT deploy in Openclaw..."
+  curl -sf -X POST \
+    -H "Authorization: Bearer ${PAT}" \
+    -H "Accept: application/vnd.github+json" \
+    https://api.github.com/repos/Piboonsak/Openclaw/dispatches \
+    -d "{\"event_type\":\"deploy-aiacc-uat\",\"client_payload\":{\"sha\":\"${SHA}\",\"ref\":\"uat\"}}"
+  echo "-> Deploy triggered (Openclaw Actions will notify via LINE)"
+fi

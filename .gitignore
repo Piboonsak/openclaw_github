@@ -5,6 +5,11 @@
 .env.example
 .env.uat
 .env.prod
+docker/.env.prod
+docker/.env.uat
+!docker/.env.prod.example
+!docker/.env.uat.example
+!docker/.env.dev
 
 # Python
 __pycache__/

@@ -1,5 +1,14 @@
 #!/usr/bin/env sh
 
+PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null)
+if [ -z "$PYTHON" ]; then
+  echo "ERROR: python not found in PATH."
+  echo "Activate virtual environment first:"
+  echo "  PowerShell: .venv\\Scripts\\Activate.ps1"
+  echo "  bash/zsh:   source .venv/bin/activate"
+  exit 1
+fi
+
 echo "Running agent/skill markdown validation..."
 npm run --silent validate:agents-skills
 STATUS=$?
@@ -13,8 +22,7 @@ fi
 
 echo ""
 echo "Running governance Action Lock (min_action_check)..."
-PYTHON_BIN="${PYTHON:-python}"
-"$PYTHON_BIN" scripts/min_action_check.py
+"$PYTHON" scripts/min_action_check.py
 ACTION_STATUS=$?
 
 if [ $ACTION_STATUS -ne 0 ]; then

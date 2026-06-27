@@ -63,6 +63,11 @@ We utilize local git hooks to control runaway agent loops and verify code qualit
 3. **Minimum Action Enforcement**: Blocks commits containing only document plan enhancements (`.md` edits). Updates must contain functional code modifications under code directories.
 4. **Integration Safety**: Restricts staging configuration profiles (`docker-compose.prod.yml`, `nginx-root.conf`) in the execution repository to prevent cross-contamination.
 
+### Local Hook Incident Log
+
+Recurring local pre-commit failures and their fixes are tracked in [Hook incidents](INCIDENTS.md).
+Always check that file before bypassing hooks or using `--no-verify`.
+
 ---
 
 ## 🚦 3. Issue Routing, Risk Levels & QA Gating
