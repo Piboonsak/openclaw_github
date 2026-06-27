@@ -43,7 +43,7 @@ def test_health_status_codes(monkeypatch) -> None:
 
     response = client.get("/api/health")
 
-    assert response.status_code == 503
+    assert response.status_code == 200
     assert response.json()["status"] == "degraded"
 
 

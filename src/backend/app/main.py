@@ -129,6 +129,19 @@ def get_prototype():
         'href="ux-ui-prototype.css?v=20260610b"',
     ):
         html = html.replace(old_href, 'href="/static/ux-ui-prototype.css"')
+    # Ensure script assets resolve from /static instead of relative root paths.
+    for old_src in (
+        'src="./auth.js"',
+        'src="auth.js"',
+        'src="/auth.js"',
+        'src="./main.js"',
+        'src="main.js"',
+        'src="/main.js"',
+    ):
+        if "auth.js" in old_src:
+            html = html.replace(old_src, 'src="/static/auth.js"')
+        if "main.js" in old_src:
+            html = html.replace(old_src, 'src="/static/main.js"')
     return HTMLResponse(
         html,
         headers={
