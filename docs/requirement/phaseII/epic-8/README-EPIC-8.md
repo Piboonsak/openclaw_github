@@ -24,7 +24,7 @@
 | TASK-801B | Pipeline to DB integration | L | New | PP-2, PP-3, PP-4, PP-5 |
 | TASK-802 | Data migration script | M | New | PP-2, PP-3, PP-5 |
 | TASK-804 | MinIO S3 storage integration | M | New | PP-2, PP-3, PP-4, PP-5 |
-| TASK-805 | Celery + Redis workers | M | New | PP-2, PP-3, PP-4, PP-5 |
+| TASK-805 | Celery + Redis workers | M | Done (W2) | PP-2, PP-3, PP-4, PP-5 |
 | TASK-803 | JWT Authentication + Login API | M | New | PP-2, PP-3, PP-5, PP-8 |
 | TASK-806 | Health check endpoint + startup validation | S | New | PP-2, PP-3, PP-5, PP-16 |
 | TASK-807 | PDPA auto-cleanup | S | New | PP-2, PP-3, PP-5, PP-8 |

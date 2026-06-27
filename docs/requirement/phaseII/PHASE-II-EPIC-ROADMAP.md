@@ -87,7 +87,7 @@
 | TASK-801B | Pipeline → DB dual-write integration (extraction/journal write ลง DB แทน file cache) | L | New | W1 |
 | TASK-802 | Data migration script (companies.json → DB, seed master templates, seed admin user) | M | New | W1 |
 | TASK-804 | MinIO S3 storage integration (upload/download/presigned URL) | M | New | W1 |
-| TASK-805 | Celery + Redis workers (wrap pipeline เป็น background task, export job runtime, status tracking) | M | New | W2 |
+| TASK-805 | Celery + Redis workers (wrap pipeline เป็น background task, export job runtime, status tracking) | M | Done (W2) | W2 |
 | TASK-803 | JWT Authentication + Login API endpoint + FastAPI middleware | M | New | W2 |
 | TASK-806 | Health check endpoint + DB connection pool + startup validation | S | New | W2 |
 | TASK-807 | PDPA auto-cleanup (Celery Beat cron ลบไฟล์ + DB records เกิน retention period, configurable days) | S | New | W2 |

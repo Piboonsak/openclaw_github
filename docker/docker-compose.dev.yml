@@ -96,6 +96,48 @@ services:
     depends_on:
       - backend
 
+  # Celery worker for async pipeline jobs
+  celery-worker:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+      target: development
+    container_name: ai-copilot-celery-worker
+    command: celery -A src.backend.workers.celery_app.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres_password@postgres:5432/ai_accounting_sit
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - ../:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Celery beat scheduler (used by TASK-807 retention jobs)
+  celery-beat:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+      target: development
+    container_name: ai-copilot-celery-beat
+    command: celery -A src.backend.workers.celery_app.celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres_password@postgres:5432/ai_accounting_sit
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - ../:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   minio_data:

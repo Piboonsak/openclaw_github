@@ -11,13 +11,26 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, File, Form, HTTPException, Query, Request, UploadFile
+from celery.result import AsyncResult
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from config.settings import settings
+from src.backend.app.health import collect_service_health, get_uptime_seconds
+from src.backend.auth.dependencies import get_current_active_user
+from src.backend.db.models import User
 from src.backend.ml.llm_router import get_routing_diagnostics, read_cost_log_tail
 from src.backend.pipeline.orchestrator import run_pipeline, select_model
-from src.backend.app.health import collect_service_health, get_uptime_seconds
 from src.backend.services.export_service import (
     create_excel_ledger,
     create_purchase_tax_report,
@@ -25,6 +38,8 @@ from src.backend.services.export_service import (
 from src.backend.services.rule_engine import validate_required_fields
 from src.backend.services.rule_generation_jobs import RULE_GENERATION_JOBS
 from src.backend.storage import materialize_local_cache, store_document_bytes
+from src.backend.workers.celery_app import celery_app
+from src.backend.workers.tasks import process_document
 
 router = APIRouter()
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -34,6 +49,15 @@ _DEFAULT_COMPANIES: list[dict[str, Any]] = [
     {"id": "co-1", "name": "บริษัท ยะวัน เทค จำกัด", "taxId": "0105559123456"},
     {"id": "co-2", "name": "บริษัท ยะวัน เทรดดิ้ง จำกัด", "taxId": "0105559654321"},
 ]
+
+_TASK_STATUS_MAP = {
+    "PENDING": "pending",
+    "RECEIVED": "pending",
+    "RETRY": "started",
+    "STARTED": "started",
+    "SUCCESS": "success",
+    "FAILURE": "failure",
+}
 
 
 def _companies_store_path() -> Path:
@@ -69,7 +93,9 @@ def _read_companies() -> list[dict[str, Any]]:
 def _write_companies(companies: list[dict[str, Any]]) -> None:
     path = _companies_store_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(companies, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(
+        json.dumps(companies, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def _safe_upload_name(filename: str | None, fallback: str) -> str:
@@ -126,6 +152,42 @@ def llm_routing_diagnostics(
     return {
         "routing": get_routing_diagnostics(),
         "recent_cost_events": read_cost_log_tail(limit=log_limit),
+    }
+
+
+@router.get("/v1/tasks/{task_id}")
+async def get_task_status(
+    task_id: str,
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Return Celery task execution status and latest result payload."""
+    async_result = AsyncResult(task_id, app=celery_app)
+    normalized_status = _TASK_STATUS_MAP.get(async_result.state, "pending")
+
+    result_payload: Any = None
+    if async_result.successful():
+        result_payload = async_result.result
+    elif async_result.failed():
+        result_payload = str(async_result.result)
+
+    return {
+        "task_id": task_id,
+        "status": normalized_status,
+        "result": result_payload,
+    }
+
+
+@router.post("/v1/tasks/process-document/{document_id}")
+async def enqueue_document_processing(
+    document_id: str,
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, str]:
+    """Queue a document processing task to Celery workers."""
+    task = process_document.delay(document_id)
+    return {
+        "task_id": task.id,
+        "status": "pending",
+        "document_id": document_id,
     }
 
 
@@ -469,6 +531,7 @@ async def save_rule_edits(
 
 # ── Company store ─────────────────────────────────────────────────────────────
 
+
 @router.get("/v1/companies")
 async def get_companies() -> dict[str, Any]:
     """Return the shared company list from server-side storage."""
@@ -489,7 +552,9 @@ async def sync_companies(
         raise HTTPException(status_code=422, detail="'companies' must be a list")
     # Basic structural validation — each item needs id, name, taxId
     for item in companies:
-        if not isinstance(item, dict) or not all(k in item for k in ("id", "name", "taxId")):
+        if not isinstance(item, dict) or not all(
+            k in item for k in ("id", "name", "taxId")
+        ):
             raise HTTPException(
                 status_code=422,
                 detail="Each company must have 'id', 'name', and 'taxId' fields",
