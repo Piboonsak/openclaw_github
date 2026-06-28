@@ -1,9 +1,9 @@
 # UX Freeze — Export Page + Template Configurator
 
-> **Status**: FROZEN 2026-06-28
-> **Scope**: TASK-1001, TASK-1003, TASK-1006, TASK-1009
-> **Effect**: Codex/Copilot must not implement these tasks until all 5 approval items are ✅
-> **Approval required by**: Piboonsak (product owner)
+> **Status**: FROZEN 2026-06-28 — Approval gated on SIT environment
+> **Scope**: TASK-1001 ✅ done, TASK-1009 ✅ done | TASK-1003/TASK-1006 blocked
+> **Effect**: TASK-1003/TASK-1006 blocked until SIT env ready (§10) AND all 5 approval items ✅
+> **Approval required by**: Piboonsak (product owner) — must review on live SIT
 
 ---
 
@@ -694,7 +694,11 @@ Day 7-8:  TASK-1006 — Export full-page 5-step workflow + POST /api/v1/export w
 
 ## 9. Approval Gate
 
-All 5 items must be ✅ before Codex/Copilot begins implementation:
+> ⛔ **PREREQUISITE**: All 5 items below can only be validated and checked against a **live SIT environment**.  
+> SIT environment (Section 10) must be fully operational **before any checkbox here can be reviewed**.  
+> Dependency chain: **SIT ready → §9 review → ✅ → TASK-1003/1006 implementation**
+
+All 5 items must be ✅ before Codex/Copilot begins implementation of TASK-1003/TASK-1006:
 
 - ☐ Export page has two paths: **Quick Export** (all fields, no transforms, xlsx) and **Template Export** (template-driven, full column adjust, csv/xlsx)
 - ☐ Export page Step ① shows mode picker (Quick vs Template) after document selection
