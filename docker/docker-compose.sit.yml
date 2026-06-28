@@ -69,7 +69,7 @@ services:
       redis:
         condition: service_healthy
       minio:
-        condition: service_healthy
+        condition: service_started
     networks:
       - ledgerflow-sit-net
 

@@ -65,7 +65,7 @@ echo "[4/7] Redis connectivity"
 run_compose exec -T redis redis-cli ping | grep -q PONG
 
 echo "[5/7] MinIO health"
-run_compose exec -T minio sh -lc "wget -q -O - http://127.0.0.1:9000/minio/health/live >/dev/null"
+run_compose exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://minio:9000/minio/health/live', timeout=5)"
 
 echo "[6/7] Celery worker ping"
 run_compose exec -T celery-worker python -c "from src.backend.workers.celery_app import celery_app; import sys; resp = celery_app.control.ping(timeout=2); print(resp); sys.exit(0 if resp else 1)"
