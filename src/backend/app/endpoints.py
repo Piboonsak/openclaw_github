@@ -366,11 +366,22 @@ async def export_excel(
         )
 
 
-@router.post("/export-purchase-tax-report")
+@router.post("/export-purchase-tax-report", status_code=307)
+async def export_purchase_tax_report_legacy(request: Request) -> Response:
+    """307 redirect — use POST /v1/export-purchase-tax-report instead."""
+    return Response(
+        status_code=307,
+        headers={"Location": str(request.url).replace(
+            "/export-purchase-tax-report", "/v1/export-purchase-tax-report", 1
+        )},
+    )
+
+
+@router.post("/v1/export-purchase-tax-report")
 async def export_purchase_tax_report(
     payload: dict[str, Any] = Body(...),
 ) -> FileResponse:
-    """Generate Purchase Tax Report (รายงานภาษีซื้อ) in Excel format."""
+    """Generate Purchase Tax Report (รายงานภาษีซื้อ) via template engine (TASK-1101)."""
     try:
         settings.reload()
         temp_dir = settings.EXPORT_ROOT

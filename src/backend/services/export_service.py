@@ -8,6 +8,8 @@ from typing import Any
 
 import xlsxwriter
 
+from src.backend.services.template_engine import ColumnDef, TemplateEngine
+
 
 def create_excel_ledger(vouchers: list[dict[str, Any]], output_path: str | Path) -> Path:
     """Export list of vouchers into a professionally formatted Excel workbook.
@@ -217,6 +219,83 @@ def _reformat_date_to_thai(iso_date: str) -> str:
     return iso_date
 
 
+# ── Purchase Tax Report — template engine plumbing ─────────────────────────
+
+# Fixed column layout for the Thai Purchase Tax Report (รายงานภาษีซื้อ).
+# Columns mirror the 19-column standard format; numeric columns use data_type="number"
+# so tests can distinguish them from text columns.
+_PTR_COLUMNS: list[ColumnDef] = [
+    ColumnDef("row_sequence",  "ลำดับที่",              "string"),
+    ColumnDef("inv_no",        "เลขที่เอกสาร",          "string"),
+    ColumnDef("inv_date",      "วันที่ออก",             "string"),  # pre-formatted by preprocessor
+    ColumnDef("reference",     "อ้างอิง",               "string"),
+    ColumnDef("_empty",        "อ้างอิงจากระบบ",       "string"),
+    ColumnDef("status",        "สถานะ",                "string"),
+    ColumnDef("seller_name",   "ผู้ขาย/ผู้ให้บริการ",  "string"),
+    ColumnDef("seller_tax",    "เลขที่ 13 หลัก",       "string"),
+    ColumnDef("seller_branch", "สาขา",                 "string"),
+    ColumnDef("category",      "ชื่อสินค้า/บริการ",    "string"),
+    ColumnDef("description",   "คำอธิบาย",             "string"),
+    ColumnDef("no_vat",        "ไม่มี VAT",             "number"),
+    ColumnDef("vat_0",         "VAT 0%",               "number"),
+    ColumnDef("vat_7",         "VAT 7%",               "number"),
+    ColumnDef("vat_amt",       "ยอด VAT",              "number"),
+    ColumnDef("total",         "ทั้งหมด",              "number"),
+    ColumnDef("wht_amt",       "หัก ณ ที่จ่าย",        "number"),
+    ColumnDef("net_payable",   "ต้องชำระ",             "number"),
+    ColumnDef("_empty2",       "",                     "string"),
+]
+
+# Columns (0-indexed) that xlsxwriter must write as float + currency_fmt.
+_PTR_CURRENCY_COLS = frozenset(range(11, 18))
+# Columns that use center alignment.
+_PTR_CENTER_COLS = frozenset([0, 2, 8])
+
+
+def _preprocess_purchase_tax_doc(doc: dict[str, Any]) -> dict[str, Any]:
+    """Compute VAT buckets and normalise field names for template engine rendering.
+
+    VAT bucket rules (ac_1101_vat):
+      no_vat — vatRate == 0 AND vatAmt == 0
+      vat_0  — vatRate == 0 AND vatAmt > 0
+      vat_7  — all other cases
+    """
+    net     = float(doc.get("netAmt") or 0)
+    vat_rate = float(doc.get("vatRate") or 0)
+    vat_amt = float(doc.get("vatAmt") or 0)
+    wht_amt = float(doc.get("whtAmt") or 0)
+
+    no_vat = vat_0 = vat_7 = 0.0
+    if vat_rate == 0 and vat_amt == 0:
+        no_vat = net
+    elif vat_rate == 0 and vat_amt > 0:
+        vat_0 = net
+    else:
+        vat_7 = net
+
+    total       = net + vat_amt
+    net_payable = total - wht_amt
+
+    return {
+        "inv_no":        doc.get("invNo", ""),
+        "inv_date":      _reformat_date_to_thai(doc.get("invDate", "")),
+        "reference":     doc.get("reference", ""),
+        "status":        doc.get("status", "ลงบัญชีแล้ว"),
+        "seller_name":   doc.get("sellerName", ""),
+        "seller_tax":    doc.get("sellerTax", ""),
+        "seller_branch": doc.get("sellerBranch", "00000"),
+        "category":      doc.get("category", ""),
+        "description":   doc.get("description", ""),
+        "no_vat":        str(no_vat),
+        "vat_0":         str(vat_0),
+        "vat_7":         str(vat_7),
+        "vat_amt":       str(vat_amt),
+        "total":         str(total),
+        "wht_amt":       str(wht_amt),
+        "net_payable":   str(net_payable),
+    }
+
+
 def create_purchase_tax_report(
     documents: list[dict[str, Any]],
     output_path: str | Path,
@@ -376,50 +455,27 @@ def create_purchase_tax_report(
     for ci, h in enumerate(headers):
         ws.write(header_row, ci, h, header_fmt)
 
-    # ── Data rows (row 12+) ──────────────────────────────────────────
+    # ── Data rows (row 12+) — rendered via template engine ───────────────
+    engine = TemplateEngine(_PTR_COLUMNS)
+    records = [_preprocess_purchase_tax_doc(doc) for doc in documents]
+    _headers_unused, rendered_rows = engine.render(records)
+
     row = 12
-    for seq, doc in enumerate(documents, start=1):
-        net = float(doc.get("netAmt") or 0)
-        vat_rate = float(doc.get("vatRate") or 0)
-        vat_amt = float(doc.get("vatAmt") or 0)
-        wht_amt = float(doc.get("whtAmt") or 0)
-
-        # VAT bucket splitting
-        no_vat = 0.0
-        vat_0 = 0.0
-        vat_7 = 0.0
-        if vat_rate == 0 and vat_amt == 0:
-            no_vat = net
-        elif vat_rate == 0 and vat_amt > 0:
-            vat_0 = net
-        else:
-            vat_7 = net
-
-        total = net + vat_amt
-        net_payable = total - wht_amt
-
+    for row_data in rendered_rows:
         ws.set_row(row, 22)
-        ws.write(row, 0, seq, text_center_fmt)                         # A: ลำดับที่
-        ws.write(row, 1, doc.get("invNo", ""), text_fmt)               # B: เลขที่เอกสาร
-        ws.write(row, 2, _reformat_date_to_thai(
-            doc.get("invDate", "")), text_center_fmt)                  # C: วันที่ออก
-        ws.write(row, 3, doc.get("reference", ""), text_fmt)           # D: อ้างอิง
-        ws.write(row, 4, "", text_fmt)                                 # E: อ้างอิงจากระบบ
-        ws.write(row, 5, doc.get("status", "ลงบัญชีแล้ว"), text_fmt)  # F: สถานะ
-        ws.write(row, 6, doc.get("sellerName", ""), text_fmt)          # G: ผู้ขาย
-        ws.write(row, 7, doc.get("sellerTax", ""), text_fmt)           # H: เลขที่ 13 หลัก
-        ws.write(row, 8, doc.get("sellerBranch", "00000"),
-                 text_center_fmt)                                      # I: สาขา
-        ws.write(row, 9, doc.get("category", ""), text_fmt)            # J: ชื่อสินค้า/บริการ
-        ws.write(row, 10, doc.get("description", ""), text_fmt)        # K: คำอธิบาย
-        ws.write(row, 11, no_vat, currency_fmt)                        # L: ไม่มี VAT
-        ws.write(row, 12, vat_0, currency_fmt)                         # M: VAT 0%
-        ws.write(row, 13, vat_7, currency_fmt)                         # N: VAT 7%
-        ws.write(row, 14, vat_amt, currency_fmt)                       # O: ยอด VAT
-        ws.write(row, 15, total, currency_fmt)                         # P: ทั้งหมด
-        ws.write(row, 16, wht_amt, currency_fmt)                       # Q: หัก ณ ที่จ่าย
-        ws.write(row, 17, net_payable, currency_fmt)                   # R: ต้องชำระ
-        ws.write(row, 18, "", text_fmt)                                # S: ref
+        for ci, cell in enumerate(row_data):
+            if ci in _PTR_CURRENCY_COLS:
+                try:
+                    ws.write_number(row, ci, float(cell), currency_fmt)
+                except ValueError:
+                    ws.write(row, ci, 0.0, currency_fmt)
+            elif ci in _PTR_CENTER_COLS:
+                try:
+                    ws.write_number(row, ci, int(cell), text_center_fmt)
+                except ValueError:
+                    ws.write(row, ci, cell, text_center_fmt)
+            else:
+                ws.write(row, ci, cell, text_fmt)
         row += 1
 
     # ── Summary row ──────────────────────────────────────────────────
