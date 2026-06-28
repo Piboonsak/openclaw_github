@@ -15,8 +15,8 @@
 | **0** | UX Contract & Workflow Freeze | Lock workflow, state machine, API/DB impact before DB work | TASK-001~006 | ux,infra | Done | 2-4d |
 | **8** | Platform Foundation | DB activation, JWT Auth, MinIO S3, Celery workers | TASK-801A~808 | infra,10 | Partial | 2w |
 | **9** | Extraction Accuracy + Line Item PoC | VAT fix, WHT, OCR gridline, Line item feasibility | TASK-901~906 | 1,2,4 | Partial | 1.5w |
-| **10** | Template Engine + Configurator UI | Dynamic export, drag-drop UI, Master/Clone | TASK-1001~1006 | 5,6,7,8,9 | Design | 2.5w |
-| **11** | Purchase Tax Report Integration | ภาษีซื้อ integrate กับ template engine | TASK-1101,1104 | 3 | Partial | 0.5w |
+| **10** | Template Engine + Configurator UI | Dynamic export, drag-drop UI, Master/Clone | TASK-1001~1006 | 5,6,7,8,9 | Partial - backend done, UI gated | 2.5w |
+| **11** | Purchase Tax Report Integration | ภาษีซื้อ integrate กับ template engine | TASK-1101,1104 | 3 | Done (W3 backend) | 0.5w |
 | **12** | Admin UI + Login | Login, MVP Dashboard, Company/COA, User mgmt | TASK-1201~1204 | 7 | Design | 1.5w |
 | **13** | Infrastructure + Deployment | Hostinger VPS (UAT/Prod), DNS bwcacc.com, CI/CD, Firewall, Backup, Offsite R2 | TASK-1301~1312 | 10 | Design | ~2w (parallel) |
 
@@ -190,12 +190,12 @@
 
 | Task | งาน | Complexity | สถานะ | สัปดาห์ |
 |------|------|-----------|--------|---------|
-| TASK-1001 | Template engine backend (column mapping logic, field→column rendering, transforms) | L | New | W3 |
-| TASK-1002 | Template CRUD + Clone API endpoints (REST) | M | New | W3 |
-| TASK-1003 | Template Configurator UI (drag-drop reorder, field picker, inline rename) | L | Demo done | W4 |
+| TASK-1001 | Template engine backend (column mapping logic, field→column rendering, transforms) | L | Done (`a350333`) | W3 |
+| TASK-1002 | Template CRUD + Clone API endpoints (REST) | M | Done (`66c7419`) | W3 |
+| TASK-1003 | Template Configurator UI (drag-drop reorder, field picker, inline rename) | L | Hold - live SIT PO approval gate | W4 |
 | TASK-1004 | Master templates (Express GL 8-col, Purchase Tax 12-col) + seed migration | M | New | W4 |
 | TASK-1005 | Clone workflow (Master → Company, deep-copy columns JSONB, open editor) | M | New | W5 |
-| TASK-1006 | Export screen integration (template selector → preview → download CSV/Excel) | M | New | W5 |
+| TASK-1006 | Export screen integration (template selector → preview → download CSV/Excel) | M | Hold - depends on TASK-1003 + same gate | W5 |
 
 **UI Interactions (Req #5-9 coverage):**
 
@@ -233,8 +233,8 @@
 
 | Task | งาน | Complexity | สถานะ | สัปดาห์ |
 |------|------|-----------|--------|---------|
-| TASK-1101 | Purchase Tax Report → ย้ายจาก hardcode เป็น template-based | M | Partial | W3 |
-| TASK-1104 | Preview + balance validation (Sum Dr = Sum Cr per voucher) before export | S | New | W3 |
+| TASK-1101 | Purchase Tax Report → ย้ายจาก hardcode เป็น template-based | M | Done (`a693d06`) | W3 |
+| TASK-1104 | Preview + balance validation (Sum Dr = Sum Cr per voucher) before export | S | Done (`fd7e11c`) | W3 |
 
 **สิ่งที่ทำเสร็จแล้ว:**
 - `create_purchase_tax_report()` function (240 lines)
@@ -505,9 +505,9 @@ Latency เพิ่ม ~20-50ms เทียบกับ internal GCP → ไ�
         ┃                                   ┃                                    ┃
         ┃ ── Milestone: Foundation Ready ── ┃ ── Milestone: VPS + DNS Ready ──  ┃
 ━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋
- W3     ┃ Epic 10: Template backend (1001)  ┃ Epic 13: CI/CD Implement (1306)    ┃
-        ┃ Epic 10: CRUD + Clone API (1002)  ┃                                    ┃
-        ┃ Epic 11: Purchase Tax (1101,1104) ┃                                    ┃
+W3     ┃ Epic 10: Template backend (1001) ✅┃ Epic 13: CI/CD Implement (1306)    ┃
+       ┃ Epic 10: CRUD + Clone API (1002) ✅┃ Epic 13: SIT Gate (1306A) ✅        ┃
+       ┃ Epic 11: Purchase Tax (1101,1104) ✅┃                                    ┃
         ┃                                   ┃                                    ┃
  W4     ┃ Epic 10: Configurator UI (1003)   ┃ Epic 13: Docker UAT (1307)         ┃
         ┃ Epic 10: Master templates (1004)  ┃                                    ┃
@@ -551,8 +551,8 @@ W1: Epic 8 (DB) + Epic 9 (PoC+VAT) + Epic 13 (VPS) ← parallel start
         ↓
 W2: Epic 8 (Auth/MinIO/Celery) + Epic 9 (WHT/OCR) + Epic 13 (DNS/CI/CD)
         ↓ DB + Auth ready
-W3: Epic 10 (Template backend) + Epic 11 (Purchase Tax)
-        ↓
+W3: Epic 10 backend (1001,1002) + Epic 11 (1101,1104) complete
+        ↓ live SIT review + 5 UX freeze approvals
 W4: Epic 10 (Configurator UI) + Epic 13 (Docker UAT)
         ↓
 W5: Epic 10 (Clone+Export) + Epic 12 (Login/Company)
@@ -563,7 +563,7 @@ W7: Integration test + UAT deploy (uat.bwcacc.com) → UAT sign-off
         ↓
 W8: PROD deploy (app.bwcacc.com) → Go-Live
 
-Critical Path: Epic 8 → Epic 10 → Epic 12 → UAT → PROD
+Critical Path: Epic 8 → Epic 10 backend → PO freeze approval → Epic 10 UI / Epic 12 → UAT → PROD
 Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 ```
 
@@ -679,8 +679,8 @@ Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 | W0 | 0 | UX contract frozen + prototype patched + API contract approved + Epic 8 handoff ready | — |
 | W1 | 8 + 9 + 13 | `801A` schema ready + `802` seed plan + `804` storage path + Line Item PoC report + VPS ordered | **50% Kickoff** |
 | W2 | 8 + 9 + 13 | Auth working + DNS configured + CI/CD designed | — |
-| W3 | 10 + 11 + 13 | Template engine core + Purchase tax integrated | — |
-| W4 | 10 + 13 | Configurator UI working + CI/CD pipeline deployed | — |
+| W3 | 10 + 11 + 13 | Template backend + CRUD + Purchase tax backend done; wait for PO freeze approval on live SIT | — |
+| W4 | 10 + 13 | Configurator UI starts after approval gate + CI/CD pipeline deployed | — |
 | W5 | 10 + 12 + 13 | Full template flow + Login screen | — |
 | W6 | 12 + 13 | All features complete + Backup configured | — |
 | W7 | QA + 13 | UAT deployed (uat.bwcacc.com) + Client testing | **10% UAT** |

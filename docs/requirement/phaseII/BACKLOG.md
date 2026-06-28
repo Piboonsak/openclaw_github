@@ -155,9 +155,9 @@ Sales Tax Report export in Express format. Already planned as Epic 15 in Phase I
 
 ## BL-007: Composite description field (concat transform)
 
-**Priority**: P1  
+**Priority**: P1 → **[MOVED to TASK-1007]** *(2026-06-27)*
 **Source**: Client requirement 2026-06-22 (Customer Q&A session)  
-**Related**: TASK-1001 (Template Engine - Transform Pipeline)  
+**Related**: TASK-1007 (Epic 10 — concat transform task)  
 **Estimated effort**: ~1d
 
 ### Client request (verbatim)
@@ -185,9 +185,9 @@ Sales Tax Report export in Express format. Already planned as Epic 15 in Phase I
 
 ## BL-008: Row filter by COA code (`template_row_filters`)
 
-**Priority**: P1  
+**Priority**: P1 → **[MOVED to TASK-1008]** *(2026-06-27)*
 **Source**: Client requirement 2026-06-22 (Customer Q&A session)  
-**Related**: TASK-1001 (Template Engine - Export Pipeline)  
+**Related**: TASK-1008 (Epic 10 — row filter task)  
 **Estimated effort**: ~1-2d
 
 ### Client request (verbatim)
@@ -218,18 +218,85 @@ Sales Tax Report export in Express format. Already planned as Epic 15 in Phase I
 
 ---
 
+---
+
+## BL-009: Grab merchant portal CSV download
+
+**Priority**: P2
+**Source**: Client request 2026-06-27
+**Related**: Epic 10 (import pipeline)
+**Estimated effort**: ~1-2d (depends on Grab portal API availability)
+
+### Client request
+
+หา download menu ใน Grab merchant portal เพื่อ export รายการ transaction เป็น CSV แล้ว import เข้า LedgerFlow
+
+### Scope
+
+- ทดสอบ Grab merchant portal: ค้นหา "Download" / "Export" menu สำหรับ transaction history
+- Map Grab CSV columns → LF extraction fields (date, amount, merchant_name, transaction_id)
+- สร้าง Grab CSV importer ที่รองรับ format ที่ได้จาก portal
+- หรือถ้า Grab มี API: พิจารณาใช้ OAuth + API แทน manual download
+
+### Why deferred
+
+- ต้องมี Grab merchant account + access portal ก่อนจะรู้ exact format
+- ไม่ blocking MVP — client ยังไม่ได้บอก volume Grab transaction
+
+---
+
+## BL-010: LoveAutoBot — Rust desktop automation program
+
+**Priority**: P3 (Phase III / หลัง Go-Live)
+**Source**: Client idea 2026-06-27
+**Status**: **DEFER** — ลูกค้ามี license LoveAutoBot อยู่แล้ว ไม่ต้องรีบ
+**Related**: TASK-1208 (LF side: data CSV export)
+**Estimated effort**: 2-4 weeks (separate project)
+
+### Background
+
+LoveAutoBot คือ Windows desktop program ที่อ่าน iniComList config CSV (101 columns, UTF-8 BOM)
+แล้ว automate การคลิกผ่าน Express Accounting program โดยไม่ต้องพิมพ์เอง
+
+ไฟล์ที่มีอยู่แล้ว: `private_data/poc/Comp_1/Lovebot/iniComList-*.csv`
+- แต่ละไฟล์ = script สำหรับ book type หนึ่ง (ซื้อสด, ซื้อเชื่อ, ขายสด ฯลฯ)
+- Columns = steps: `{PGDN}`, `%{ฟ}`, `OLEFTCLICK`, field positions (C002เลขที่ใบซื้อสด)
+
+### New Rust program scope (future)
+
+- Read LF data CSV (from TASK-1208) + pre-built iniComList
+- Control Express Accounting via Windows UI automation (SendInput / WinAPI)
+- คล้าย Playwright แต่สำหรับ Windows desktop application
+- Distribution: installer ดาวน์โหลดติดตั้งบนเครื่อง Windows ที่รัน Express
+
+### Why deferred
+
+- ลูกค้ามี LoveAutoBot license อยู่แล้ว — ไม่ urgent
+- เป็น separate software project นอก scope LedgerFlow web app
+- ต้องการ Rust + Windows WinAPI expertise + ทดสอบกับ Express จริง
+- Prerequisite: TASK-1208 ต้องเสร็จก่อน (LF data CSV format confirmed)
+
+---
+
 ## Summary
 
 | ID | Title | Priority | Est. | Status |
 | --- | --- | --- | --- | --- |
-| BL-001 | AI auto-match vendor/customer from OCR | P1 | 3-5d | Backlog |
+| BL-001 | AI auto-match vendor/customer from OCR | P1 | 3-5d | Backlog (schema done W2) |
 | BL-002 | Date format preservation (CSV/Excel) | P0 | - | **MOVED** to TASK-1001 |
 | BL-003 | Express doc number auto-generation | P1 | 1-2d | Backlog |
-| BL-004 | WHT formula doc computed column | P2 | 0.5d | Backlog (may be covered) |
+| BL-004 | WHT formula doc computed column | P2 | 0.5d | Backlog (covered by prefix transform) |
 | BL-005 | Multi-line journal entry templates | P2 | 2-3d | Backlog |
 | BL-006 | Sales Tax Report (Express format) | P1 | 1w | Scheduled (Epic 15, Phase II/2) |
-| BL-007 | Composite description field (concat transform) | P1 | ~1d | Backlog |
-| BL-008 | Row filter by COA code (`template_row_filters`) | P1 | ~1-2d | Backlog |
+| BL-007 | Composite description field (concat transform) | P1 | ~1d | **MOVED** to TASK-1007 |
+| BL-008 | Row filter by COA code | P1 | ~1-2d | **MOVED** to TASK-1008 |
+| BL-009 | Grab merchant portal CSV download | P2 | 1-2d | Backlog |
+| BL-010 | LoveAutoBot Rust desktop program | P3 | 2-4w | Defer (Phase III) |
+
+---
+
+*Created: 2026-06-15*
+*Last updated: 2026-06-27*
 
 ---
 

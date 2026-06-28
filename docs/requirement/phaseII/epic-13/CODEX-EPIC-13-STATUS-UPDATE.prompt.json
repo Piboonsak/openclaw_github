@@ -1,0 +1,57 @@
+{
+  "name": "codex-epic13-status-update",
+  "version": "2026-06-29",
+  "goal": "Update Epic 13 planning/status docs from latest SIT rollout facts.",
+  "repo": "YAHWAN-SHOP/ai-accounting-copilot",
+  "branch": "dev",
+  "summary_short": {
+    "done": [
+      "TASK-1306A (SIT Runtime Gate) completed with green control-plane run: Piboonsak/Openclaw Actions #28332426427.",
+      "SIT deploy + smoke + runtime evidence gates passed (DB/Redis/MinIO + HTTP + network exposure + artifact upload).",
+      "Epic 13 docs were updated with SIT completion, rollout blockers, fixes, and UAT/PROD prevention checklist."
+    ],
+    "not_done": [
+      "TASK-1306 (full CI/CD implementation) still open.",
+      "TASK-1307 (UAT compose rollout) still open.",
+      "TASK-1308 (PROD compose rollout) still open.",
+      "TASK-1310, TASK-1311, TASK-1312 still open."
+    ],
+    "issues_seen": [
+      "Intermittent SSH timeout from GitHub runner to SIT host.",
+      "Readiness 503 due to missing runtime LLM keys and invalid MinIO endpoint format.",
+      "MinIO unhealthy due to image/tool mismatch in healthcheck.",
+      "Evidence step failures: literal Postgres shell expression + missing nmap on runner."
+    ]
+  },
+  "fixes_and_where": {
+    "epic_docs": [
+      "docs/requirement/phaseII/epic-13/README-EPIC-13.md",
+      "docs/requirement/phaseII/epic-13/EPIC-13-TASKS-DETAIL.md",
+      "docs/requirement/phaseII/epic-13/sit-env-setup-plan.md",
+      "docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-RUNBOOK.md",
+      "docs/requirement/phaseII/epic-13/EPIC-13-W2-EXECUTION-UI-FIRST.prompt.md"
+    ],
+    "script_added": ["scripts/infra/sit-gate-preflight.sh"],
+    "control_plane_refs": [
+      "Piboonsak/Openclaw:.github/workflows/deploy-ai-accounting-copilot-sit.yml",
+      "Piboonsak/Openclaw:docs/issues/KI-091-postgres-shell-expansion-mismatch/README.md",
+      "Piboonsak/Openclaw:docs/issues/KI-092-sit-runner-missing-nmap/README.md"
+    ]
+  },
+  "codex_tasks": [
+    "Refresh Epic 13 status fields to keep TASK-1306A as DONE and preserve remaining open tasks.",
+    "Do not regress SIT lessons: keep SSH retry, runtime key injection checks, URL-form storage endpoints, and dependency-light evidence probes in planning assumptions.",
+    "Align UAT/PROD rollout plan with sit-env-setup-plan.md sections 8-10.",
+    "If creating follow-up tasks, split by environment: UAT hardening vs PROD hardening, each with explicit preflight and evidence gates."
+  ],
+  "output_required": {
+    "format": "markdown",
+    "max_sections": 5,
+    "must_include": [
+      "what changed",
+      "remaining risks",
+      "next tasks by priority",
+      "evidence links/paths"
+    ]
+  }
+}

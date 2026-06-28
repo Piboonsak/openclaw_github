@@ -31,8 +31,9 @@
 ### 1.3 DNS Record Map (bwcacc.biz)
 
 | Subdomain | Type | Target | TTL | Environment |
-|-----------|------|--------|-----|-------------|
+| --- | --- | --- | --- | --- |
 | `demo.bwcacc.biz` | A | `76.13.210.250` | 300 | PoC/Demo |
+| `sit.yahwan.biz` | A | `76.13.210.250` | 300 | SIT |
 | `uat.bwcacc.biz` | A | `72.62.74.232` | 300 | UAT |
 | `app.bwcacc.biz` | A | `72.62.247.9` | 300 | Production |
 | `@` | CAA | `0 issue "letsencrypt.org"` | 3600 | All |
@@ -43,7 +44,7 @@
 
 Each VPS runs the same service stack via Docker Compose, differing only in resource limits and configuration.
 
-```
+```text
                          Internet
                             |
                        [Cloudflare]  (future: CDN + WAF)
@@ -186,7 +187,7 @@ ufw enable
 ### 5.1 Configuration Isolation
 
 | Aspect | Demo (PoC) | UAT | PROD |
-|--------|-----------|-----|------|
+| --- | --- | --- | --- |
 | Compose file | `docker-compose.yml` | `docker-compose.uat.yml` | `docker-compose.prod.yml` |
 | Env file | `.env` | `.env.uat` | `.env.prod` |
 | DB name | `ledgerflow_dev` | `ledgerflow_uat` | `ledgerflow_prod` |
@@ -199,17 +200,37 @@ ufw enable
 | Restart policy | no | on-failure | always |
 | Resource limits | None | Soft limits | **Hard limits** |
 
+| Aspect | SIT | UAT | PROD |
+| --- | --- | --- | --- |
+| Compose file | `docker-compose.sit.yml` | `docker-compose.uat.yml` | `docker-compose.prod.yml` |
+| Env file | `.env.sit` | `.env.uat` | `.env.prod` |
+| DB name | `ledgerflow_sit` | `ledgerflow_uat` | `ledgerflow_prod` |
+| Debug mode | ON | ON | **OFF** |
+| App server | uvicorn (2 workers) | uvicorn (2 workers) | gunicorn (4 workers) |
+| Log level | DEBUG | DEBUG | **WARNING** |
+| Domain | `sit.yahwan.biz` | `uat.bwcacc.biz` | `app.bwcacc.biz` |
+| SSL | Let's Encrypt | Let's Encrypt | Let's Encrypt |
+| Edge auth | Basic Auth | Optional | Optional |
+| Backup | Daily (local) | Daily (local) | Every 6h (local + R2 offsite) |
+| Restart policy | on-failure | on-failure | always |
+| Resource limits | Soft limits | Soft limits | **Hard limits** |
+
 ### 5.2 Branch → Environment Mapping
 
-```
-feature/* ──→ dev branch ──→ (local dev only)
-                  │
-                  ▼
-              uat branch ──→ deploy to UAT VPS (72.62.74.232)
-                  │              uat.bwcacc.biz
-                  ▼
-             main branch ──→ deploy to PROD VPS (72.62.247.9)
-                                 app.bwcacc.biz
+```text
+feature/* ──→ local dev
+          │
+          ▼
+        dev branch ──→ SIT VPS (76.13.210.250)
+                   sit.yahwan.biz
+          │
+          ▼
+        uat branch ──→ deploy to UAT VPS (72.62.74.232)
+                   uat.bwcacc.biz
+          │
+          ▼
+       main branch ──→ deploy to PROD VPS (72.62.247.9)
+                 app.bwcacc.biz
 ```
 
 ### 5.3 Domain Strategy

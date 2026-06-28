@@ -12,7 +12,7 @@
 |--------|---------|
 | Lead | Backend Dev |
 | Duration | 0.5 weeks (W3) |
-| Status | Partial |
+| Status | Done for W3 backend scope |
 | Critical path | No — depends on Epic 10 TASK-1001 (template engine), can run parallel in W3 |
 | Week | W3 |
 
@@ -20,8 +20,8 @@
 
 | Task | Title | Complexity | Status | Pain points closed |
 |------|-------|-----------|--------|-------------------|
-| TASK-1101 | Purchase Tax Report -> template-based | M | Partial | PP-2, PP-3, PP-5, PP-11 |
-| TASK-1104 | Preview + balance validation | S | New | PP-2, PP-3, PP-5, PP-9 |
+| TASK-1101 | Purchase Tax Report -> template-based | M | Done (`a693d06`) | PP-2, PP-3, PP-5, PP-11 |
+| TASK-1104 | Preview + balance validation | S | Done (`fd7e11c`) | PP-2, PP-3, PP-5, PP-9 |
 
 ## Dependencies
 
@@ -31,8 +31,8 @@
 ## Execution order
 
 ```text
-W3 Day 3-4:  TASK-1101 — Purchase Tax Report -> template-based (after TASK-1001 template engine is ready)
-W3 Day 5:    TASK-1104 — Preview + balance validation (depends on TASK-1101 for data format)
+W3 Day 3-4:  TASK-1101 — Purchase Tax Report -> template-based (done: a693d06)
+W3 Day 5:    TASK-1104 — Preview + balance validation (done: fd7e11c)
 ```
 
 ## Definition of Done
@@ -53,4 +53,5 @@ W3 Day 5:    TASK-1104 — Preview + balance validation (depends on TASK-1101 fo
 ---
 
 *Created: 2026-06-15*
+*Updated: 2026-06-29 - TASK-1101 and TASK-1104 completed in W3 backend lane*
 *Epic Roadmap: [PHASE-II-EPIC-ROADMAP.md](../PHASE-II-EPIC-ROADMAP.md)*

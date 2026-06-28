@@ -12,7 +12,7 @@
 |--------|---------|
 | Lead | Full-stack Dev |
 | Duration | 2.5 weeks (W3-W5) |
-| Status | Design |
+| Status | Partial - backend W3 path done, UI gate pending |
 | Critical path | **Yes** — Core of Phase II, covers Req #5-9 (template engine is the main deliverable) |
 | Week | W3-W5 |
 
@@ -20,12 +20,12 @@
 
 | Task | Title | Complexity | Status | Pain points closed |
 |------|-------|-----------|--------|-------------------|
-| TASK-1001 | Template engine backend | L | New | PP-2, PP-3, PP-5, PP-8 |
-| TASK-1002 | Template CRUD + Clone API endpoints | M | New | PP-2, PP-3, PP-5, PP-8 |
-| TASK-1003 | Template Configurator UI | L | Demo done | PP-2, PP-3, PP-5, PP-8 |
+| TASK-1001 | Template engine backend | L | Done (`a350333`) | PP-2, PP-3, PP-5, PP-8 |
+| TASK-1002 | Template CRUD + Clone API endpoints | M | Done (`66c7419`) | PP-2, PP-3, PP-5, PP-8 |
+| TASK-1003 | Template Configurator UI | L | Hold - SIT + UX freeze approval | PP-2, PP-3, PP-5, PP-8 |
 | TASK-1004 | Master templates + seed migration | M | New | PP-2, PP-3, PP-5 |
 | TASK-1005 | Clone workflow | M | New | PP-2, PP-3, PP-5, PP-8 |
-| TASK-1006 | Export screen integration | M | New | PP-2, PP-3, PP-5, PP-11 |
+| TASK-1006 | Export screen integration | M | Hold - depends on TASK-1003 + same gate | PP-2, PP-3, PP-5, PP-11 |
 
 ## Dependencies
 
@@ -35,8 +35,8 @@
 ## Execution order
 
 ```text
-W3 Day 1-3:  TASK-1001 — Template engine backend (largest task, foundation for everything)
-W3 Day 3-5:  TASK-1002 — Template CRUD + Clone API (REST endpoints, needs TASK-1001)
+W3 Day 1-3:  TASK-1001 — Template engine backend (done: a350333)
+W3 Day 3-5:  TASK-1002 — Template CRUD + Clone API (done: 66c7419)
 W4 Day 1-3:  TASK-1003 — Template Configurator UI (integrate demo with real API)
 W4 Day 3-5:  TASK-1004 — Master templates + seed migration (seed data for configurator)
 W5 Day 1-2:  TASK-1005 — Clone workflow (Master -> Company, depends on TASK-1002 + 1004)
@@ -73,4 +73,5 @@ W5 Day 3-5:  TASK-1006 — Export screen integration (template selector + previe
 ---
 
 *Created: 2026-06-15*
+*Updated: 2026-06-29 - TASK-1001 and TASK-1002 completed; TASK-1003/TASK-1006 remain gated by live SIT PO approval*
 *Epic Roadmap: [PHASE-II-EPIC-ROADMAP.md](../PHASE-II-EPIC-ROADMAP.md)*

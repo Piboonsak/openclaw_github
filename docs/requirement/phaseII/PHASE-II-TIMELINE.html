@@ -581,11 +581,16 @@
           </td>
           <td>
             <div class="deliverable-list">
-              <div class="deliverable-item">template_engine.py: column mapping + transforms</div>
-              <div class="deliverable-item">API CRUD: GET/POST/PUT/DELETE /api/v1/templates</div>
-              <div class="deliverable-item">ภ.พ.30 ย้ายเป็น template-based (ไม่ hardcode)</div>
-              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> CI/CD scripts + deploy workflows done (TASK-1306) / Openclaw CD dispatch (TASK-1313) in progress</div>
-              <div class="deliverable-item">TASK-906 Go/No-Go report → ใช้เป็นเกณฑ์กำหนดลำดับส่งมอบ E14/E15/E16 และกรอบระยะเวลาดำเนินการ</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1009 Schema Analyzer done (`b3b2757`)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1001 template_engine.py: column mapping + transforms (`a350333`)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1207 vendor/customer import done (`868a1ee`)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1002 template API CRUD done (`66c7419`)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1101 ภ.พ.30 ย้ายเป็น template-based (`a693d06`)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1104 preview + balance validation done (`fd7e11c`)</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> SIT runtime gate green (TASK-1306A)</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> PO review on live SIT + 5 UX freeze checkboxes before TASK-1003/TASK-1006</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> TASK-1313 deploy evidence lane still in progress</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> TASK-906 final wording still needs alignment to current repo state</div>
             </div>
           </td>
           <td>
@@ -794,11 +799,11 @@
       </div>
       <div class="delivery-items">
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Dynamic column mapping (ไม่ hardcode)</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Drag-drop column reorder + inline rename</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Master templates: Express GL + ภ.พ.30</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Clone Master → แก้ไขตามบริษัท</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Export CSV + Excel + รองรับ TIS-620</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">รายงานภาษีซื้อ (ภ.พ.30) ย้ายเป็น template-based (Epic 11)</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Drag-drop column reorder + inline rename (TASK-1003 hold until PO review on SIT)</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Master templates: Express GL + ภ.พ.30 (follow-on after approval lane opens)</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Clone Master → แก้ไขตามบริษัท (W5 follow-on)</span></div>
       </div>
     </div>
 
@@ -862,6 +867,13 @@
     กรณี No-Go ให้ปรับลำดับ/ความลึกของงานและกรอบระยะเวลาให้เหมาะสม โดยไม่เป็นเหตุให้เพิ่มวงเงินตาม PO
   </div>
 
+  <div class="note-box">
+    <strong>W3 continuation reference</strong> — เวลาจะกลับมาทำต่อหลังจากวันนี้ ให้ใช้
+    <code>docs/requirement/phaseII/W3-EXECUTION-PLAN.md</code> เป็นตัวตามลำดับงาน W3 จริง
+    และใช้ <code>docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md</code> เป็นตัวคุม freeze / approval gate
+    ของงาน export + configurator ก่อนอัปเดต timeline หรือเริ่ม TASK-1003 / TASK-1006
+  </div>
+
   <div class="note-box warn">
     <strong>Client Responsibilities</strong> — สิ่งที่ลูกค้าต้องเตรียม:
     <ul style="margin-top:0.5rem;padding-left:1.25rem;line-height:2;">
@@ -876,6 +888,8 @@
 
   <div class="page-footer">
     LedgerFlow Phase II — Project Timeline · Baseline 2026-06-15 · Generated 2026-06-20<br>
+    W3 reference: <code>docs/requirement/phaseII/W3-EXECUTION-PLAN.md</code> ·
+    <code>docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md</code><br>
     สอบถามเพิ่มเติม: สมชาย กิตติคุณ · bwc.co.th
   </div>
 

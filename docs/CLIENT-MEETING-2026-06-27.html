@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LedgerFlow — ประชุมลูกค้า 27 มิ.ย. 2569</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: oklch(98% 0.005 250);
+      --surface: oklch(96% 0.006 250);
+      --ink: oklch(20% 0.02 250);
+      --muted: oklch(52% 0.02 250);
+      --line: oklch(88% 0.01 250);
+      --accent: oklch(45% 0.15 220);
+      --accent-soft: oklch(93% 0.04 220);
+      --ok: oklch(50% 0.14 155);
+      --ok-soft: oklch(93% 0.05 155);
+      --warn: oklch(58% 0.16 80);
+      --warn-soft: oklch(93% 0.06 80);
+      --danger: oklch(55% 0.18 25);
+      --danger-soft: oklch(93% 0.05 25);
+      --purple: oklch(52% 0.18 295);
+      --purple-soft: oklch(93% 0.04 295);
+      --teal: oklch(50% 0.14 195);
+      --teal-soft: oklch(93% 0.04 195);
+      --font: "DM Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 0.9rem; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    @media print {
+      body { font-size: 0.8rem; background: white; }
+      .no-print { display: none !important; }
+      .page { padding: 1rem 1.5rem 2rem; }
+      section { page-break-inside: avoid; }
+    }
+
+    .page { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+
+    /* ─── HEADER ─── */
+    .meeting-head {
+      background: white; border: 1px solid var(--line); border-radius: 14px;
+      border-left: 6px solid var(--accent); padding: 1.5rem 1.75rem;
+      margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start;
+    }
+    .logo-box { width: 48px; height: 48px; background: var(--accent); border-radius: 12px; display: grid; place-items: center; color: white; font-weight: 800; font-size: 1.1rem; flex-shrink: 0; }
+    .head-title { font-size: 1.3rem; font-weight: 800; }
+    .head-sub { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
+    .head-meta { margin-left: auto; text-align: right; font-size: 0.78rem; color: var(--muted); font-family: var(--mono); line-height: 1.9; flex-shrink: 0; }
+
+    /* ─── AGENDA CHIPS ─── */
+    .agenda-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 5px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid var(--line); background: white; cursor: default; }
+    .chip-num { font-family: var(--mono); font-size: 0.7rem; opacity: 0.7; }
+
+    /* ─── SECTION TITLE ─── */
+    .section-title {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); margin: 2rem 0 0.9rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+    /* ─── CARD ─── */
+    .card { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 1.25rem 1.4rem; margin-bottom: 1rem; }
+    .card-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
+    .card-icon { font-size: 1.25rem; }
+    .card-title { font-weight: 700; font-size: 0.95rem; }
+    .card-sub { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+
+    /* ─── GRID ─── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    /* ─── BADGE ─── */
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .badge-ok { background: var(--ok-soft); color: var(--ok); }
+    .badge-warn { background: var(--warn-soft); color: var(--warn); }
+    .badge-accent { background: var(--accent-soft); color: var(--accent); }
+    .badge-muted { background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+    .badge-purple { background: var(--purple-soft); color: var(--purple); }
+    .badge-teal { background: var(--teal-soft); color: var(--teal); }
+    .badge-danger { background: var(--danger-soft); color: var(--danger); }
+
+    /* ─── CHECKLIST ─── */
+    .cl { display: flex; flex-direction: column; gap: 0.45rem; }
+    .cl-item { display: flex; align-items: flex-start; gap: 0.55rem; font-size: 0.85rem; line-height: 1.5; }
+    .cl-icon { flex-shrink: 0; margin-top: 0.15rem; font-size: 0.9rem; }
+    .cl-text { flex: 1; }
+    .cl-note { font-size: 0.75rem; color: var(--muted); font-style: italic; }
+
+    /* ─── PAYMENT CARDS ─── */
+    .pay-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; margin-bottom: 1rem; }
+    @media (max-width: 700px) { .pay-row { grid-template-columns: 1fr 1fr; } }
+    .pay-card { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; position: relative; }
+    .pay-card.done { border-top: 4px solid var(--ok); }
+    .pay-card.current { border-top: 4px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .pay-card.upcoming { border-top: 4px solid var(--warn); }
+    .pay-card.future { border-top: 4px solid var(--line); opacity: 0.7; }
+    .pay-amount { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+    .pay-card.done .pay-amount { color: var(--ok); }
+    .pay-card.current .pay-amount { color: var(--accent); }
+    .pay-card.upcoming .pay-amount { color: var(--warn); }
+    .pay-label { font-weight: 700; font-size: 0.85rem; margin-top: 0.2rem; }
+    .pay-date { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); margin-top: 0.3rem; }
+    .pay-status { position: absolute; top: 0.7rem; right: 0.8rem; }
+
+    /* ─── REQUIREMENT QUOTE ─── */
+    .req-card { background: white; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 0.85rem; }
+    .req-quote { background: oklch(97% 0.01 80); border-left: 4px solid var(--warn); padding: 0.85rem 1.1rem; font-size: 0.82rem; font-style: italic; color: var(--ink); line-height: 1.65; }
+    .req-quote::before { content: '"'; font-size: 1.4rem; color: var(--warn); line-height: 0; vertical-align: -0.3rem; margin-right: 0.2rem; }
+    .req-quote::after { content: '"'; font-size: 1.4rem; color: var(--warn); line-height: 0; vertical-align: -0.3rem; margin-left: 0.2rem; }
+    .req-answer { padding: 0.9rem 1.1rem; }
+    .req-answer-title { font-weight: 700; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
+    .req-answer-body { font-size: 0.83rem; line-height: 1.65; }
+
+    /* ─── TIMELINE PROGRESS ─── */
+    .progress-bar-wrap { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+    .week-track { display: flex; gap: 0; margin-top: 0.75rem; }
+    .week-seg { flex: 1; height: 10px; border-radius: 0; }
+    .week-seg:first-child { border-radius: 6px 0 0 6px; }
+    .week-seg:last-child { border-radius: 0 6px 6px 0; }
+    .week-done { background: var(--ok); }
+    .week-current { background: var(--accent); animation: pulse 2s infinite; }
+    .week-upcoming { background: var(--surface); border: 1px solid var(--line); }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+    .week-labels { display: flex; margin-top: 0.4rem; }
+    .week-label-item { flex: 1; text-align: center; font-size: 0.62rem; font-family: var(--mono); color: var(--muted); }
+    .week-label-item.done { color: var(--ok); font-weight: 700; }
+    .week-label-item.current { color: var(--accent); font-weight: 700; }
+
+    /* ─── NOTE BOX ─── */
+    .note { background: var(--accent-soft); border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.82rem; margin-bottom: 0.75rem; }
+    .note.warn { background: var(--warn-soft); border-left-color: var(--warn); }
+    .note.ok { background: var(--ok-soft); border-left-color: var(--ok); }
+    .note.danger { background: var(--danger-soft); border-left-color: var(--danger); }
+
+    /* ─── ACTION ITEM ─── */
+    .action-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem 1rem; background: white; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 0.5rem; }
+    .action-num { width: 26px; height: 26px; border-radius: 50%; background: var(--danger); color: white; font-weight: 800; font-size: 0.78rem; display: grid; place-items: center; flex-shrink: 0; font-family: var(--mono); }
+    .action-body { flex: 1; }
+    .action-title { font-weight: 700; font-size: 0.87rem; }
+    .action-detail { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .action-deadline { font-size: 0.72rem; color: var(--danger); font-weight: 700; font-family: var(--mono); margin-top: 3px; }
+
+    /* ─── TABLE ─── */
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th { background: var(--surface); padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.74rem; text-align: left; border: 1px solid var(--line); }
+    td { padding: 0.55rem 0.75rem; border: 1px solid var(--line); vertical-align: top; line-height: 1.5; }
+    tr:hover td { background: oklch(98.5% 0.004 250); }
+
+    /* ─── FOOTER ─── */
+    .footer { text-align: center; font-size: 0.72rem; color: var(--muted); margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ─── HEADER ─── -->
+  <div class="meeting-head">
+    <div class="logo-box">LF</div>
+    <div>
+      <div class="head-title">LedgerFlow — ประชุมติดตามงาน W2 + แผน W3</div>
+      <div class="head-sub">AI Pre-Accounting Copilot · Phase II/1 MVP · ผู้ผลิต: BWC Accounting</div>
+    </div>
+    <div class="head-meta">
+      <div>📅 27 มิถุนายน 2569</div>
+      <div>W2 of 8 (22–28 มิ.ย.)</div>
+      <div>dev branch: 9dc2f76</div>
+      <button class="no-print" onclick="window.print()" style="margin-top:0.4rem;font-size:0.72rem;border:1px solid var(--line);border-radius:6px;padding:3px 10px;background:white;cursor:pointer;color:var(--muted);">🖨 Print</button>
+    </div>
+  </div>
+
+  <!-- ─── AGENDA ─── -->
+  <div class="agenda-row">
+    <div class="chip"><span class="chip-num">1</span> สถานะโครงการ + Timeline</div>
+    <div class="chip"><span class="chip-num">2</span> สัญญา + Payment Milestone</div>
+    <div class="chip"><span class="chip-num">3</span> W2 Done — สิ่งที่สร้างเสร็จแล้ว</div>
+    <div class="chip"><span class="chip-num">4</span> W3 แผนงานสัปดาห์หน้า</div>
+    <div class="chip"><span class="chip-num">5</span> เราเข้าใจ Requirement ของคุณ</div>
+    <div class="chip"><span class="chip-num">6</span> UAT Readiness</div>
+    <div class="chip"><span class="chip-num">7</span> Action Items จากลูกค้า</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- 1. PROJECT STATUS -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="section-title">1 · สถานะโครงการ</div>
+
+  <div class="progress-bar-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-weight:700;">Week 2 of 8 — <span style="color:var(--ok);">On Track ✓</span></div>
+      <span class="badge badge-ok">Infrastructure เดินเร็วกว่าแผน</span>
+    </div>
+    <div class="week-track">
+      <div class="week-seg week-done"></div>
+      <div class="week-seg week-current"></div>
+      <div class="week-seg week-upcoming"></div>
+      <div class="week-seg week-upcoming"></div>
+      <div class="week-seg week-upcoming"></div>
+      <div class="week-seg week-upcoming"></div>
+      <div class="week-seg week-upcoming"></div>
+      <div class="week-seg week-upcoming"></div>
+    </div>
+    <div class="week-labels">
+      <div class="week-label-item done">W1 ✓</div>
+      <div class="week-label-item current">W2 ◀ ตอนนี้</div>
+      <div class="week-label-item">W3</div>
+      <div class="week-label-item">W4</div>
+      <div class="week-label-item">W5 💰</div>
+      <div class="week-label-item">W6 💰 UAT</div>
+      <div class="week-label-item">W7</div>
+      <div class="week-label-item">W8 💰 Go-Live</div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card" style="border-top:3px solid var(--ok);">
+      <div style="font-size:2rem;font-weight:800;color:var(--ok);">✓ W1</div>
+      <div style="font-weight:700;margin:0.2rem 0;">Infrastructure Done</div>
+      <div style="font-size:0.78rem;color:var(--muted);">VPS · DNS · SSL · UFW · Docker<br>Procured UAT + PROD VPS</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--accent);">
+      <div style="font-size:2rem;font-weight:800;color:var(--accent);">✓ W2</div>
+      <div style="font-weight:700;margin:0.2rem 0;">Backend Foundation Done</div>
+      <div style="font-size:0.78rem;color:var(--muted);">Auth · Storage · Worker · DB Schema<br>59 tests passed</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--warn);">
+      <div style="font-size:2rem;font-weight:800;color:var(--warn);">→ W3</div>
+      <div style="font-weight:700;margin:0.2rem 0;">Template Engine (Core)</div>
+      <div style="font-size:0.78rem;color:var(--muted);">29 มิ.ย. – 5 ก.ค. 2569<br>Value ที่ลูกค้าจะเห็นครั้งแรก</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- 2. สัญญา + PAYMENT -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="section-title">2 · สัญญา + Payment Milestone</div>
+
+  <div class="pay-row">
+    <div class="pay-card done">
+      <div class="pay-status"><span class="badge badge-ok">✓ ชำระแล้ว</span></div>
+      <div class="pay-amount">180K</div>
+      <div class="pay-label">งวด 1 — Kickoff</div>
+      <div class="pay-date">15 มิ.ย. 2569 (W1)</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;">ลงนามสัญญา + เริ่มงาน</div>
+    </div>
+    <div class="pay-card current">
+      <div class="pay-status"><span class="badge badge-accent">กำลังสร้าง</span></div>
+      <div class="pay-amount">130K</div>
+      <div class="pay-label">งวด 2 — Foundation + Core</div>
+      <div class="pay-date">~19 ก.ค. 2569 (W5)</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;">Login · Upload · Review · Export ใช้งานได้</div>
+    </div>
+    <div class="pay-card upcoming">
+      <div class="pay-status"><span class="badge badge-warn">UAT Ready</span></div>
+      <div class="pay-amount">120K</div>
+      <div class="pay-label">งวด 3 — UAT Ready</div>
+      <div class="pay-date">~26 ก.ค. 2569 (W6)</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;">uat.bwcacc.biz พร้อมทดสอบ</div>
+    </div>
+    <div class="pay-card future">
+      <div class="pay-amount">70K</div>
+      <div class="pay-label">งวด 4 — Go-Live</div>
+      <div class="pay-date">~9 ส.ค. 2569 (W8)</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;">app.bwcacc.biz · Sign-off</div>
+    </div>
+  </div>
+
+  <div class="note ok" style="font-size:0.82rem;">
+    <strong>SOW scope ยังเดิม</strong> — E14/E15/E16 (Line Item Full, Sales Tax, Full Dashboard) รวมในวงเงิน 500,000 บาทตาม PO แล้ว ระยะเวลาดำเนินการหลัง Go-Live W8 ตามผล TASK-906
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- 3. W2 DONE -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="section-title">3 · W2 สิ่งที่สร้างเสร็จแล้ว (22–28 มิ.ย.)</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">🔐</div>
+        <div>
+          <div class="card-title">ระบบ Authentication</div>
+          <div class="card-sub">Epic 8 · TASK-803 · commit f01296d</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">POST /api/v1/auth/login — รับ username/password คืน JWT token</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">GET /api/v1/auth/me — ดูข้อมูล user จาก token</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">POST /api/v1/auth/refresh — ต่ออายุ session</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Password เข้ารหัส bcrypt (ไม่เก็บ plaintext)</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Session: access 30 นาที / refresh 7 วัน</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">📁</div>
+        <div>
+          <div class="card-title">Document Storage + Background Processing</div>
+          <div class="card-sub">Epic 8 · TASK-804 + TASK-805 · commit f01296d</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">MinIO S3: upload/download/presigned URL (ไฟล์ไม่หาย)</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Path: <code style="font-family:var(--mono);font-size:0.75rem;">{company}/{year}/{month}/{sha256}.pdf</code></span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Celery worker: OCR ทำงาน background ไม่ timeout</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Document status tracking: uploaded → processing → review_scan</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Auto retry 3 ครั้งถ้า OCR ล้มเหลว</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">🗄️</div>
+        <div>
+          <div class="card-title">Database Schema + BL-001 Tables</div>
+          <div class="card-sub">Epic 8 · TASK-801A · vendor_master schema</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text"><strong>vendor_master</strong>: vendor_code (VARCHAR), vendor_name, gl_code, company_id</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text"><strong>customer_master</strong>: customer_code (VARCHAR), customer_name, ar_flag</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text"><strong>account_mapping_cache</strong>: เรียนรู้จากการยืนยันของ user</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Migrations 002–010 พร้อม run บน VPS</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Admin user seed (password จาก env var, ไม่ hardcode)</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">🖥️</div>
+        <div>
+          <div class="card-title">Infrastructure + DevOps</div>
+          <div class="card-sub">Epic 13 · commit 8c01c54</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Health check: /api/health · /api/health/live · /api/health/ready</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Environment templates (.env.prod.example, .env.uat.example)</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Housekeeping: disk monitor (alert 80%) + temp cleanup cron</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">CI/CD secrets checklist เตรียมพร้อม</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">59 tests passed (auth, db, storage, health)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- 4. W3 PLAN -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="section-title">4 · W3 แผนงาน (29 มิ.ย. – 5 ก.ค.)</div>
+
+  <div class="note" style="margin-bottom:1rem;">
+    <strong>W3 คือสัปดาห์ที่สำคัญที่สุดสำหรับลูกค้า</strong> — Template Engine คือ value หลักที่ทำให้ Export ออกมาตรงกับ format ที่ Express ต้องการ ไม่ใช่ข้อมูลแบบ hardcode อีกต่อไป
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-icon">⭐</div>
+      <div>
+        <div class="card-title">TASK-1001 — Template Engine Backend (Core Feature W3)</div>
+        <div class="card-sub">Epic 10 · ~3 วัน · ปิด BL-002, BL-007, BL-008 บางส่วน</div>
+      </div>
+      <span class="badge badge-danger" style="margin-left:auto;">สำคัญที่สุด W3</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30%;">สิ่งที่ Engine ทำได้</th>
+            <th>ตัวอย่างจริง</th>
+            <th style="width:22%;">ปิด Requirement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>thai_date_short</strong> transform</td>
+            <td><code style="font-family:var(--mono);font-size:0.78rem;">2026-05-01 → 01/05/69</code> (พ.ศ. 2 หลัก, text ไม่ใช่ date)</td>
+            <td><span class="badge badge-ok">BL-002 ✓</span></td>
+          </tr>
+          <tr>
+            <td><strong>thai_date_full</strong> transform</td>
+            <td><code style="font-family:var(--mono);font-size:0.78rem;">2026-05-01 → 1/5/2569</code></td>
+            <td><span class="badge badge-ok">BL-002 ✓</span></td>
+          </tr>
+          <tr>
+            <td><strong>vendor_code / customer_code</strong> lookup</td>
+            <td>OCR อ่านชื่อ → ค้น vendor_master → ใส่รหัสให้อัตโนมัติ</td>
+            <td><span class="badge badge-accent">BL-001 prep</span></td>
+          </tr>
+          <tr>
+            <td><strong>concat</strong> transform</td>
+            <td><code style="font-family:var(--mono);font-size:0.78rem;">{seller_name} {expense_type}</code> → คอลัมน์เดียว</td>
+            <td><span class="badge badge-warn">BL-007</span></td>
+          </tr>
+          <tr>
+            <td><strong>row filter</strong> by COA code</td>
+            <td>exclude: 1151, 2110 — Express จัดการเอง ไม่ต้องส่งไป</td>
+            <td><span class="badge badge-warn">BL-008</span></td>
+          </tr>
+          <tr>
+            <td><strong>document_number</strong> pattern</td>
+            <td><code style="font-family:var(--mono);font-size:0.78rem;">YYMM/NNN</code> → <code style="font-family:var(--mono);font-size:0.78rem;">6905/001</code> per book type</td>
+            <td><span class="badge badge-muted">BL-003 partial</span></td>
+          </tr>
+          <tr>
+            <td><strong>prefix</strong> transform</td>
+            <td><code style="font-family:var(--mono);font-size:0.78rem;">prefix:OE</code> → <code style="font-family:var(--mono);font-size:0.78rem;">OE6905/100</code> (WHT formula doc)</td>
+            <td><span class="badge badge-muted">BL-004</span></td>
+          </tr>
+          <tr>
+            <td><strong>TIS-620 CSV export</strong></td>
+            <td>ส่งออก CSV ที่ Express รุ่นเก่าเปิดได้ ภาษาไทยไม่เพี้ยน</td>
+            <td><span class="badge badge-ok">BL-002 ✓</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">📊</div>
+        <div>
+          <div class="card-title">Epic 11 — ภ.พ.30 Template-Based</div>
+          <div class="card-sub">Purchase Tax Report ย้ายเป็น dynamic template</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon">→</span><span class="cl-text">ไม่ hardcode column อีกต่อไป — config ได้จาก Template Engine</span></div>
+        <div class="cl-item"><span class="cl-icon">→</span><span class="cl-text">Master template ภ.พ.30 seed ไว้ให้พร้อมใช้</span></div>
+        <div class="cl-item"><span class="cl-icon">→</span><span class="cl-text">Clone + แก้ไขตามบริษัทได้ใน W4</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">🎯</div>
+        <div>
+          <div class="card-title">TASK-901/902 — VAT + WHT Detection</div>
+          <div class="card-sub">Accuracy improvements (deferred จาก W2)</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon">→</span><span class="cl-text">VAT: คำนวณ 4 สูตร → เลือกสูตรที่ตัวเลขบวกกันพอดี</span></div>
+        <div class="cl-item"><span class="cl-icon">→</span><span class="cl-text">WHT: detect PND3 / PND53 badge บน review card</span></div>
+        <div class="cl-item"><span class="cl-icon">→</span><span class="cl-text">TASK-906 Feasibility Report จัดทำ (Go decision แล้ว)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- 5. REQUIREMENT UNDERSTANDING -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="section-title">5 · เราเข้าใจ Requirement ของคุณ — ยืนยันอีกครั้ง</div>
+
+  <!-- BL-001 -->
+  <div class="req-card">
+    <div class="req-quote">ถ้าพี่มี list รายชื่อผู้จำหน่าย, รายชื่อลูกค้า เข้าไปในระบบ, ai สามารถตรวจเช็คและเลือก รหัสผู้จำหน่าย หรือ รหัส ลูกหนี้ ขึ้นมาใส่ให้ได้เองไหมคะ กรณีที่มีเจ้าหนี้ หรือ ลูกหนี้รายใหม่ เพิ่มเข้ามา</div>
+    <div class="req-answer">
+      <div class="req-answer-title">✅ เข้าใจแล้ว — BL-001 (ออกแบบ schema W2, matching W3-W4)</div>
+      <div class="req-answer-body">
+        <strong>ขั้นตอนที่ระบบจะทำ:</strong><br>
+        <span style="font-family:var(--mono);font-size:0.78rem;background:var(--surface);padding:2px 6px;border-radius:4px;display:inline-block;margin:0.4rem 0;">
+          Import CSV → vendor_master DB → OCR อ่านชื่อ → Match 3 ระดับ → แสดง suggestion → User confirm → Cache ไว้ครั้งต่อไป
+        </span><br>
+        3 ระดับ matching: <span class="badge badge-ok" style="font-size:0.7rem;">Exact</span> → <span class="badge badge-accent" style="font-size:0.7rem;">Fuzzy ≥ 85%</span> → <span class="badge badge-purple" style="font-size:0.7rem;">AI ช่วย 70–84%</span><br><br>
+        <strong>vendor_code รองรับทุก format จาก Express:</strong> ตัวเลขล้วน (1–8888), S-0001, 1220-01 (เก็บเป็น VARCHAR)<br>
+        <strong>rหัส GL (2120-01, 2131-09)</strong> ดึงมาพร้อม vendor record โดยตรง — AI ไม่ต้องเดา<br>
+        <strong>ลูกค้าใหม่</strong>ที่ match ไม่ได้: ระบบ flag ให้ user สร้าง record ใหม่ (pre-fill จาก OCR)
+      </div>
+    </div>
+  </div>
+
+  <!-- BL-007 -->
+  <div class="req-card">
+    <div class="req-quote">ต้องการสร้าง description แบบรวมข้อมูลหลายฟิลด์ เช่น {seller_name} {expense_type} เพื่อให้เห็นทั้งชื่อผู้ขายและประเภทค่าใช้จ่ายในคอลัมน์เดียว</div>
+    <div class="req-answer">
+      <div class="req-answer-title">✅ เข้าใจแล้ว — BL-007 · concat transform (ทำใน W3 TASK-1001)</div>
+      <div class="req-answer-body">
+        Template column definition จะรองรับ:<br>
+        <code style="font-family:var(--mono);font-size:0.78rem;background:var(--surface);padding:4px 8px;border-radius:4px;display:inline-block;margin:0.35rem 0;">
+          "transform": "concat:seller_name,expense_type"
+        </code><br>
+        ผลลัพธ์: <strong>"บริษัท ABC จำกัด ค่าเช่า"</strong> ในคอลัมน์ description คอลัมน์เดียว<br>
+        Config ตัว separator ได้ (space, " | ", " - ")
+      </div>
+    </div>
+  </div>
+
+  <!-- BL-008 -->
+  <div class="req-card">
+    <div class="req-quote">ต้องการกรองแถวที่ไม่ต้องการออกจาก CSV โดยเฉพาะรายการ VAT ซื้อ (1151) และเจ้าหนี้การค้า (2110) เพราะ Express จัดการเองอัตโนมัติ</div>
+    <div class="req-answer">
+      <div class="req-answer-title">✅ เข้าใจแล้ว — BL-008 · row filter config (ทำใน W3 TASK-1001)</div>
+      <div class="req-answer-body">
+        แต่ละ template จะมี config ว่า COA codes ไหน <strong>ไม่ต้องส่ง</strong> ไปใน CSV:<br>
+        <code style="font-family:var(--mono);font-size:0.78rem;background:var(--surface);padding:4px 8px;border-radius:4px;display:inline-block;margin:0.35rem 0;">
+          exclude_account_codes: ["1151", "2110"]
+        </code><br>
+        ระบบ filter <em>หลัง</em> AI map COA แต่ <em>ก่อน</em> write CSV — แต่ละ template filter ต่างกันได้<br><br>
+        <span style="color:var(--warn);font-weight:600;">⚠️ ต้องยืนยันกับลูกค้า:</span> แถว 1151 ยังต้องไปอยู่ใน รายงานภาษีซื้อ (ภ.พ.30) ไหม? ถ้าใช่ จะใช้ filter แยกตาม template
+      </div>
+    </div>
+  </div>
+
+  <!-- DATE FORMAT -->
+  <div class="req-card">
+    <div class="req-quote">วันที่ใน CSV ที่เปิดใน Excel แล้วกลายเป็น DD/MM/YYYY ทั้งที่ต้องการแค่ DD/MM/YY (2 หลัก พ.ศ.)</div>
+    <div class="req-answer">
+      <div class="req-answer-title">✅ แก้แล้ว — BL-002 → รวมใน TASK-1001 (W3)</div>
+      <div class="req-answer-body">
+        <strong>Root cause:</strong> Excel auto-convert date string → date value แล้ว reformat<br>
+        <strong>Fix:</strong> เขียน date เป็น plain text string (ไม่ใช่ date cell) ใน CSV และ Excel<br>
+        <code style="font-family:var(--mono);font-size:0.78rem;background:var(--surface);padding:4px 8px;border-radius:4px;display:inline-block;margin:0.35rem 0;">
+          thai_date_short: 2026-05-01 → "01/05/69" (text, ไม่ถูก Excel แปลง)
+        </code>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASK-906 -->
+  <div class="req-card" style="border-color:var(--ok);">
+    <div class="req-quote" style="background:var(--ok-soft);border-left-color:var(--ok);">ระบบอ่านรายการสินค้าแต่ละบรรทัดในใบแจ้งหนี้ได้ไหม? (Line Item Extraction)</div>
+    <div class="req-answer">
+      <div class="req-answer-title" style="color:var(--ok);">✅ TASK-906 Go Decision — ผลทดสอบ positive</div>
+      <div class="req-answer-body">
+        ทดสอบกับเอกสารจริงหลายบริษัท — ระบบอ่าน line items ได้ accuracy อยู่ในเกณฑ์<br>
+        รายงาน Feasibility จัดทำ W3 เพื่อยืนยัน Go/Conditional/No-Go อย่างเป็นทางการ<br>
+        <strong>ผลกระทบต่อ SOW:</strong> Epic 14 (Full Line Item) ดำเนินการได้ใน Phase II/2 ตามวงเงินเดิม
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- 6. UAT READINESS -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="section-title">6 · UAT Readiness</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">🟢</div>
+        <div>
+          <div class="card-title">UAT Infrastructure — พร้อมแล้ว</div>
+          <div class="card-sub">uat.bwcacc.biz · KVM 2 · Singapore DC</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">VPS KVM 2 (2 vCPU, 8GB RAM) online 2026-06-21</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">SSL: uat.bwcacc.biz (Let's Encrypt, auto-renew)</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Docker Compose + nginx + postgres + redis + minio ตั้งค่าแล้ว</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--ok);">✓</span><span class="cl-text">Firewall: เปิดเฉพาะ 80/443/22 — DB ไม่ expose ออกนอก</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-icon">⏳</div>
+        <div>
+          <div class="card-title">ขั้นตอนที่เหลือก่อน First Deploy</div>
+          <div class="card-sub">รอดำเนินการ W3</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-item"><span class="cl-icon" style="color:var(--warn);">→</span><span class="cl-text">ตั้งค่า GitHub Actions secrets (TASK-1313)</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--warn);">→</span><span class="cl-text">Push ไป branch <code style="font-family:var(--mono);">uat</code> → auto deploy via CI/CD</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--warn);">→</span><span class="cl-text">Run alembic migration + seed บน UAT VPS</span></div>
+        <div class="cl-item"><span class="cl-icon" style="color:var(--warn);">→</span><span class="cl-text">Smoke test: login → upload → health check pass</span></div>
+        <div class="cl-item"><span class="cl-icon">📅</span><span class="cl-text">เป้าหมาย: uat.bwcacc.biz online ปลาย W3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- 7. ACTION ITEMS FROM CLIENT -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="section-title">7 · Action Items ที่ต้องการจากลูกค้า</div>
+
+  <div class="note danger">
+    <strong>⚠️ 2 รายการ P0 ต้องได้ก่อนสิ้น W3</strong> — ถ้าไม่มีจะทำ Template Engine ได้ไม่ครบ
+  </div>
+
+  <div class="action-item">
+    <div class="action-num">1</div>
+    <div class="action-body">
+      <div class="action-title">ตัวอย่าง Express CSV format จริง (P0 — ด่วนมาก)</div>
+      <div class="action-detail">ไฟล์ CSV ที่ส่งออกจาก Express จริง ครบทุก book type ที่ใช้ (Book 12, 14, 15 ฯลฯ) เพื่อ map columns ให้ตรง</div>
+      <div class="action-deadline">⏰ ต้องการก่อน 2 ก.ค. 2569 — Template Engine เริ่ม 29 มิ.ย.</div>
+    </div>
+  </div>
+
+  <div class="action-item">
+    <div class="action-num">2</div>
+    <div class="action-body">
+      <div class="action-title">ยืนยัน row filter สำหรับ VAT 1151 (P0)</div>
+      <div class="action-detail">ถ้าแถว 1151 ต้องอยู่ใน ภ.พ.30 แต่ไม่ต้องอยู่ใน GL template → ระบบจะใช้ filter แยกตาม template (ต้องรู้ก่อน implement)</div>
+      <div class="action-deadline">⏰ ยืนยันใน meeting วันนี้</div>
+    </div>
+  </div>
+
+  <div class="action-item">
+    <div class="action-num">3</div>
+    <div class="action-body">
+      <div class="action-title">ไฟล์ vendor/customer CSV จาก Express (P1)</div>
+      <div class="action-detail">ส่งออกจาก Express → ใช้ import เข้า vendor_master, customer_master (encoding TIS-620 ใช้ได้เลย) เพื่อทดสอบ BL-001 matching ใน W4</div>
+      <div class="action-deadline">📅 ก่อน 5 ก.ค. 2569</div>
+    </div>
+  </div>
+
+  <div class="action-item">
+    <div class="action-num">4</div>
+    <div class="action-body">
+      <div class="action-title">ผังบัญชี (COA) แต่ละบริษัทในรูปแบบ YAML หรือ CSV (P1)</div>
+      <div class="action-detail">สำหรับ import เข้าระบบ — ใช้ map account codes เมื่อ OCR สแกนได้ GL code</div>
+      <div class="action-deadline">📅 ก่อน W4 (6 ก.ค.)</div>
+    </div>
+  </div>
+
+  <div class="action-item">
+    <div class="action-num">5</div>
+    <div class="action-body">
+      <div class="action-title">ยืนยัน user roles ที่ต้องการ</div>
+      <div class="action-detail">ปัจจุบันแผน 2 roles: <strong>Admin</strong> (full access) + <strong>Staff</strong> (เห็นเฉพาะบริษัทที่ assign) — เพียงพอ หรือต้องการ Manager / Viewer เพิ่ม?</div>
+      <div class="action-deadline">📅 ยืนยันใน meeting วันนี้</div>
+    </div>
+  </div>
+
+  <div class="action-item">
+    <div class="action-num">6</div>
+    <div class="action-body">
+      <div class="action-title">ตัวอย่างเอกสาร 20–30 ฉบับ (สำหรับ TASK-906 Feasibility Report)</div>
+      <div class="action-detail">ครอบคลุม: สแกนชัด + สแกนมือถือ + PDF ดิจิทัล + มี gridline + หลายหน้า + มี WHT + VAT included/excluded — ยิ่งหลากหลายยิ่งดี</div>
+      <div class="action-deadline">📅 ก่อน W3 สิ้นสุด (5 ก.ค.)</div>
+    </div>
+  </div>
+
+  <!-- ─── SUMMARY TABLE ─── -->
+  <div class="section-title">สรุป Action Items</div>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Action Item</th>
+          <th>Priority</th>
+          <th>Deadline</th>
+          <th>ผู้รับผิดชอบ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1</strong></td>
+          <td>ตัวอย่าง Express CSV format จริง (ทุก book type)</td>
+          <td><span class="badge badge-danger">P0 ด่วน</span></td>
+          <td style="font-family:var(--mono);font-size:0.78rem;">2 ก.ค. 2569</td>
+          <td>ลูกค้า → ทีม Dev</td>
+        </tr>
+        <tr>
+          <td><strong>2</strong></td>
+          <td>ยืนยัน filter VAT 1151 สำหรับ ภ.พ.30</td>
+          <td><span class="badge badge-danger">P0 ด่วน</span></td>
+          <td style="font-family:var(--mono);font-size:0.78rem;">วันนี้</td>
+          <td>ลูกค้ายืนยัน</td>
+        </tr>
+        <tr>
+          <td><strong>3</strong></td>
+          <td>CSV vendor/customer จาก Express (TIS-620)</td>
+          <td><span class="badge badge-warn">P1</span></td>
+          <td style="font-family:var(--mono);font-size:0.78rem;">5 ก.ค. 2569</td>
+          <td>ลูกค้า → ทีม Dev</td>
+        </tr>
+        <tr>
+          <td><strong>4</strong></td>
+          <td>COA YAML/CSV แต่ละบริษัท</td>
+          <td><span class="badge badge-warn">P1</span></td>
+          <td style="font-family:var(--mono);font-size:0.78rem;">6 ก.ค. 2569</td>
+          <td>ลูกค้า → ทีม Dev</td>
+        </tr>
+        <tr>
+          <td><strong>5</strong></td>
+          <td>ยืนยัน user roles (2 หรือ 4 roles)</td>
+          <td><span class="badge badge-accent">P1</span></td>
+          <td style="font-family:var(--mono);font-size:0.78rem;">วันนี้</td>
+          <td>ลูกค้ายืนยัน</td>
+        </tr>
+        <tr>
+          <td><strong>6</strong></td>
+          <td>เอกสาร 20–30 ฉบับ (หลากหลาย format)</td>
+          <td><span class="badge badge-accent">P1</span></td>
+          <td style="font-family:var(--mono);font-size:0.78rem;">5 ก.ค. 2569</td>
+          <td>ลูกค้า → ทีม Dev</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─── FOOTER ─── -->
+  <div class="footer">
+    LedgerFlow Phase II · BWC Accounting · ประชุม 27 มิถุนายน 2569<br>
+    dev branch: 9dc2f76 · 59 tests passed · Go-Live target: 9 สิงหาคม 2569
+  </div>
+
+</div>
+</body>
+</html>

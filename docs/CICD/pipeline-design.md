@@ -26,6 +26,10 @@ feature/*  ──→  dev  ──→  uat  ──→  main
 | `uat` | UAT environment | UAT VPS (`72.62.74.232`) | Require PR from `dev`, SIT gate pass, CI pass |
 | `main` | Production | PROD VPS (`72.62.247.9`) | Require PR from `uat`, CI pass, manual approval |
 
+SIT execution source of truth:
+
+- `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
+
 ### 1.3 Merge Rules
 
 - `feature/* → dev`: Squash merge via PR, CI must pass (lint + test)
@@ -62,38 +66,85 @@ These workflows continue to run as-is:
 SIT is an internal-only runtime parity environment that must pass before UAT deploy is considered safe.
 This is a real test environment for feature testing, not a dry run and not health-only verification.
 
+Primary execution document:
+
+- `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
+
+### 3.0.1 `deploy-sit.yml` Architecture
+
+**Trigger**: `dev` branch gate passed and Openclaw dispatches the SIT workflow.
+
+This repository does not own the canonical deploy trigger. The control plane workflow dispatches the SIT run, and the execution plane applies the runtime stack on the SIT VPS.
+
+```text
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  CI Pass     │────→│  Openclaw    │────→│  SIT VPS     │
+│  (dev branch)│     │  dispatch    │     │  runtime     │
+└──────────────┘     └──────────────┘     └──────┬───────┘
+              │
+          ┌──────────────┐    ┌─────────┴─────────┐
+          │  Migrate +   │←───│  Build + Compose   │
+          │  Seed data    │    │  nginx/backend/... │
+          └──────┬───────┘    └─────────┬─────────┘
+            │                      │
+          ┌──────┴───────┐    ┌─────────┴─────────┐
+          │ Smoke +      │────│ Feature runtime   │
+          │ readiness    │    │ evidence checks   │
+          └──────────────┘    └───────────────────┘
+```
+
+SIT runtime profile:
+
 - SIT URL: `https://sit.yahwan.biz`
 - SIT VPS: `76.13.210.250`
 - Access gate: Nginx Basic Auth + `X-Robots-Tag: noindex`
 - Runtime stack: nginx, frontend, backend, postgres, redis, minio, celery-worker
-- Canonical dispatch path (Control Plane): `Piboonsak/Openclaw/.github/workflows/deploy-openclaw-github-private-secrets.yml`
+- Compose / env surface: `docker/docker-compose.sit.yml`, `docker/.env.sit.example`, `docker/nginx/nginx-sit.conf`
 
-SIT deploy sequence:
+SIT prerequisites before any smoke or feature evidence run:
 
-1. Checkout branch (default `dev`)
-2. Build SIT images
-3. Start dependency services (postgres, redis, minio)
-4. Run Alembic migration (`alembic upgrade head`)
-5. Seed anonymized SIT data (`scripts/seed_sit.py`)
-6. Start app services (frontend, backend, celery-worker, nginx)
-7. Run smoke checks (`scripts/deploy/smoke-sit.sh`)
-8. Run SIT feature flow checks against real services (UI/API actions that write to DB and use Redis/MinIO)
+1. `sit.yahwan.biz` resolves publicly to `76.13.210.250`
+2. TLS certificate for `sit.yahwan.biz` is valid
+3. SIT Basic Auth credentials exist in Openclaw secrets
+4. `.htpasswd` is provisioned at `/opt/ledgerflow/secrets/sit/.htpasswd`
+5. External public ports are restricted to intended edge ports only
 
-SIT smoke contract:
+### 3.0.2 `deploy-sit.yml` Flow
+
+1. Checkout the `dev` branch state that passed CI
+2. Validate required SIT secrets before SSH
+3. SSH to the SIT host and bootstrap `/opt/ledgerflow` if needed
+4. Build SIT images
+5. Start dependency services (postgres, redis, minio)
+6. Run Alembic migration (`alembic upgrade head`)
+7. Seed anonymized SIT data (`scripts/seed_sit.py`)
+8. Start app services (frontend, backend, celery-worker, nginx)
+9. Run smoke checks (`scripts/deploy/smoke-sit.sh`)
+10. Run SIT feature flow checks against real services (UI/API actions that write to DB and use Redis/MinIO)
+
+### 3.0.3 Smoke and Feature Contract
 
 - `GET /api/health` returns 200
 - `GET /api/health/ready` returns 200 and dependency states are ready
 - PostgreSQL, Redis, MinIO connectivity confirmed from runtime containers
 - Celery responds to control ping
 - Export/template route is reachable (200/401/403 accepted)
-
-SIT feature test contract (must pass before UAT promotion):
-
 - At least one core user flow is executed end-to-end on SIT (upload/process/review/export)
 - Test writes are persisted in PostgreSQL and visible via API/UI readback
 - Redis cache activity is observed during request path (cache set/get evidence)
 - MinIO object write/read is verified for uploaded or generated artifacts
 - Evidence is attached to PR: command logs + screenshots/API responses
+
+### 3.0.4 Failure Handling
+
+If `/api/health/ready` returns `503`, SIT must be treated as blocked and diagnostics must capture:
+
+- backend logs
+- readiness response body
+- dependency state for postgres/redis/minio/celery
+- the Openclaw workflow run URL associated with the failure
+
+If the readiness gate fails, do not promote to UAT until the failure is understood and the SIT evidence gate is green.
 
 ### 3.1 deploy-uat.yml
 
@@ -102,7 +153,11 @@ SIT feature test contract (must pass before UAT promotion):
 This repository workflow is kept as an execution-plane mirror for emergency/manual use.
 Primary SIT/UAT gate dispatch must be executed from Openclaw control-plane workflow dispatch.
 
-```
+UAT is not allowed to proceed unless the SIT execution plan gate is green:
+
+- `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
+
+```text
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  CI Pass     │────→│  SSH to UAT  │────→│  Git Pull    │
 │  (reuse ci)  │     │  VPS         │     │  Latest Code │
@@ -137,7 +192,7 @@ Primary SIT/UAT gate dispatch must be executed from Openclaw control-plane workf
 
 **Trigger**: Push to `main` branch (after PR merge from `uat`)
 
-```
+```text
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │  Manual      │────→│  DB Snapshot  │────→│  SSH to PROD │
 │  Approval    │     │  (pg_dump)    │     │  VPS         │
@@ -180,7 +235,8 @@ Primary SIT/UAT gate dispatch must be executed from Openclaw control-plane workf
 ## 4. GitHub Secrets Required
 
 | Secret | Value | Used In |
-|--------|-------|---------|
+| --- | --- | --- |
+| `BWCACC_SIT_HOST` | `76.13.210.250` | SIT gate workflow dispatch / diagnostics |
 | `BWCACC_VPS_SSH_KEY` | SSH private key (ed25519) | bwcacc-deploy-uat, bwcacc-deploy-prod |
 | `BWCACC_UAT_HOST` | `72.62.74.232` | bwcacc-deploy-uat |
 | `BWCACC_PROD_HOST` | `72.62.247.9` | bwcacc-deploy-prod |
@@ -188,15 +244,28 @@ Primary SIT/UAT gate dispatch must be executed from Openclaw control-plane workf
 | `BWCACC_LINE_CHANNEL_ACCESS_TOKEN` | LINE Messaging API token | bwcacc-deploy-uat, bwcacc-deploy-prod |
 | `BWCACC_LINE_CHANNEL_SECRET` | LINE channel secret | (reserved for webhook verification) |
 | `BWCACC_LINE_USER_ID` | LINE user ID (push target) | bwcacc-deploy-uat, bwcacc-deploy-prod |
+| `BWCACC_SIT_BASIC_AUTH_USER` | SIT Basic Auth username | SIT gate workflow / edge auth proof |
+| `BWCACC_SIT_BASIC_AUTH_PASS` | SIT Basic Auth password | SIT gate workflow / edge auth proof |
 
 > **Naming convention**: Prefix `BWCACC_` ใช้สำหรับ multi-client namespace — เมื่อเพิ่ม client ใหม่ ใช้ prefix ของ client นั้น (e.g., `NEWCO_VPS_SSH_KEY`)
 >
 > **LINE notification**: ใช้ LINE Messaging API push (เดียวกับ NongKung bot ใน Openclaw) — ไม่ใช่ LINE Notify (deprecated)
 
+Secret policy:
+
+- Reuse Openclaw control-plane secrets when already present and policy-approved.
+- Create new SIT-specific secrets when a required value is missing or unsafe to share with UAT/PROD.
+- Runtime service credentials remain environment-local and must not be committed.
+
+Reference:
+
+- `docs/CICD/SECRETS-CHECKLIST.md`
+- `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
+
 ### GitHub Environment Setup
 
 | Environment | Protection Rules | Reviewers |
-|-------------|-----------------|-----------|
+| --- | --- | --- |
 | `uat` | None (auto-deploy) | — |
 | `production` | Required reviewers (1), wait timer (0) | Project Owner |
 
@@ -347,6 +416,7 @@ Time: 2026-06-21 14:30:00 UTC
 | `scripts/deploy/notify-line.sh` | Send LINE notification | GitHub Actions |
 | `.github/workflows/bwcacc-deploy-uat.yml` | UAT deploy workflow | Repo |
 | `.github/workflows/bwcacc-deploy-prod.yml` | PROD deploy workflow | Repo |
+| `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md` | SIT execution source of truth | Repo |
 
 ---
 
@@ -354,9 +424,11 @@ Time: 2026-06-21 14:30:00 UTC
 
 Promotion chain is now:
 
-`CI pass -> SIT deploy pass -> SIT smoke pass -> UAT deploy allowed -> PROD approval/deploy`
+`CI pass -> SIT deploy pass -> SIT smoke pass -> SIT feature/runtime evidence pass -> UAT deploy allowed -> PROD approval/deploy`
 
 If SIT fails, UAT deploy must be treated as blocked/unsafe until SIT evidence is green.
+
+If SIT DNS/TLS/Auth prerequisites are incomplete, SIT must be treated as not ready and UAT promotion remains blocked.
 
 ---
 

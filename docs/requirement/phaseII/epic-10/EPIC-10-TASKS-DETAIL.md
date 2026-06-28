@@ -68,6 +68,11 @@
   - `customer_code` / `customer_name` — รหัส/ชื่อลูกค้า (customer master lookup)
   - `posting_account_code` — รหัสลงบัญชี (account code for Express posting)
   - `formula_doc_number` — เลขที่เอกสาร(สูตร) (computed: prefix + document_number, for WHT templates)
+- **Product Master** *(added 2026-06-27, requires TASK-1013 to be done first)*:
+  - `product_code` — รหัสสินค้า (lookup from product_master by OCR product_name)
+  - `product_name` — ชื่อสินค้า (exact match → 100% confidence; fuzzy → ≥0.85)
+  - `product_unit` — หน่วยนับ เช่น PCS., BOX (from product_master)
+  - `product_unit_price` — ราคาต่อหน่วย (from product_master)
 
 ### Files to create/modify
 
@@ -88,6 +93,7 @@
 | ac_1001_excel | Excel output has styled headers and formatted numbers | test_excel_output |
 | ac_1001_missing | Missing source fields use default_value or empty string (no crash) | test_missing_field_graceful |
 | ac_1001_multi | Engine renders multiple documents in correct row order | test_multi_document_render |
+| ac_1001_product | product_code/name/unit/unit_price resolve from product_master (exact→100%, fuzzy≥0.85) — requires TASK-1013 | test_product_field_resolve |
 
 ### Governance fields
 
@@ -1069,6 +1075,150 @@ User เหลือแค่ตรวจสอบและกดบันทึ
 
 ---
 
+## TASK-1013: Product Master Import + Matching
+
+**Owner**: Backend Dev
+**Risk**: LOW
+**Duration**: ~1.5 days
+**Week**: W4 (after TASK-1001 complete)
+**Closes pain points**: PP-2 (interface not defined for product lookup), PP-5 (fewer LLM calls when exact match found)
+**Added**: 2026-06-27 — client meeting feedback, product pricelist from Comp_3 (TMD.csv)
+
+### Purpose
+
+Import รายชื่อสินค้า (Product Master) ต่อบริษัทจาก pricelist CSV (TIS-620 encoding, report format)
+เพื่อให้ template engine (TASK-1001) สามารถ resolve `product_code`/`product_name` ได้โดย:
+- **Exact match** (normalized lowercase) → confidence 1.0 (100%) — ไม่ต้องใช้ LLM
+- **Fuzzy match** (Jaro-Winkler ≥ 0.85) → confidence 0.85–0.99
+- **No match** → `unknown_product` flag, ไม่ crash
+
+> **Note**: Existing vendor/customer matching (TASK-1207) ยังใช้งานได้ดี — TASK-1013 เพิ่ม dimension product เท่านั้น ไม่ใช่ blocking feature.
+
+### Client data profile
+
+| Property | Value |
+|----------|-------|
+| Sample file | `private_data/poc/Comp_1/picelist/TMD.csv` (Comp_3: ธรรมดาแบ็งค็อค) |
+| Encoding | **cp874** (TIS-620) |
+| Size | 162 KB, 1,309 lines |
+| Format | Report printout — header rows first, data rows after |
+| Key columns | col3=รหัสสินค้า, col4=ชื่อสินค้า, col12=จำนวน, col13=หน่วย, col14=ราคาต่อหน่วย, col2=หมวด |
+| Example row | `"","","","118-P15-R","2x4","","","","","","","",39.000,"PCS.",1.6008,"",62.43` |
+| Import rule | Skip rows where col3 is empty (header/footer rows), upsert by product_code+company_id |
+
+### DB Schema (migration 011)
+
+```sql
+CREATE TABLE product_master (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id      UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    product_code    VARCHAR(50) NOT NULL,
+    product_name    TEXT NOT NULL,
+    category        TEXT,
+    unit            VARCHAR(20),
+    unit_price      NUMERIC(12,4),
+    is_active       BOOLEAN DEFAULT TRUE,
+    created_at      TIMESTAMP DEFAULT now(),
+    UNIQUE (company_id, product_code)
+);
+CREATE INDEX idx_product_master_company ON product_master(company_id);
+CREATE INDEX idx_product_master_name ON product_master
+    USING gin(to_tsvector('simple', product_name));
+```
+
+### Import logic (from report-format CSV)
+
+```python
+def import_product_csv(company_id, file_bytes, encoding='cp874'):
+    text = file_bytes.decode(encoding, errors='replace')
+    reader = csv.reader(text.splitlines())
+    for row in reader:
+        if len(row) < 5: continue
+        product_code = row[3].strip()
+        if not product_code or product_code.startswith('รหัส'): continue  # skip header rows
+        product_name = row[4].strip()
+        category     = row[2].strip() or None
+        unit         = row[13].strip() if len(row) > 13 else None
+        unit_price   = parse_decimal(row[14]) if len(row) > 14 else None
+        upsert(company_id, product_code, product_name, category, unit, unit_price)
+```
+
+### API endpoints
+
+| Method | URL | Purpose |
+|--------|-----|---------|
+| POST | `/api/v1/companies/{id}/products/import` | Upload pricelist CSV (cp874) → background import |
+| GET | `/api/v1/companies/{id}/products` | List products (paginated, search by name/code) |
+| DELETE | `/api/v1/companies/{id}/products` | Clear all (re-import flow) |
+
+### Matching service
+
+File: `src/backend/services/product_resolver.py`
+
+```python
+def resolve_product(company_id: UUID, ocr_name: str) -> ProductMatch | None:
+    # 1. Normalize: lowercase, strip spaces
+    # 2. Exact match: SELECT * FROM product_master WHERE company_id=? AND lower(product_name)=?
+    # 3. Fuzzy (Jaro-Winkler ≥ 0.85): in-memory scoring against preloaded list
+    # 4. Cache result in account_mapping_cache (match_type='product')
+    ...
+```
+
+### UI
+
+หน้าแก้ไขเอกสาร — load product list ของบริษัทนั้นแยกต่างหาก (lazy load ไม่ load ทุกบริษัท):
+- Suggestion badge เมื่อ OCR detect line item: `"สินค้า: 2x4 (118-P15-R) ✓ 100%"`
+- User click confirm / แก้ไข / skip
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `alembic/versions/011_add_product_master.py` | Migration: create product_master table + indexes |
+| Create | `src/backend/services/product_resolver.py` | Match service: resolve_product(), load_product_cache() |
+| Create | `src/backend/api/products.py` | FastAPI router: import, list, clear |
+| Modify | `src/backend/db/models.py` | Add ProductMaster model |
+| Modify | `src/backend/services/template_engine.py` | Add product_code/name/unit/unit_price resolver (calls product_resolver) |
+| Modify | `src/backend/app/endpoints.py` | Mount products router |
+| Create | `tests/services/test_product_resolver.py` | Unit tests: exact match, fuzzy, no match, cp874 import |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1013_import | POST /import accepts cp874 CSV, skips header rows, upserts product_master | test_product_import_cp874 |
+| ac_1013_exact | Exact match (normalized) returns confidence=1.0, correct product_code | test_exact_match |
+| ac_1013_fuzzy | Fuzzy match ≥0.85 returns confidence 0.85–0.99 | test_fuzzy_match |
+| ac_1013_no_match | Unmatched product returns None, no crash, template field uses default | test_no_match_graceful |
+| ac_1013_api_list | GET /products returns paginated list, search by name works (Thai text) | test_list_products |
+| ac_1013_template | product_code/name/unit_price resolve correctly in template engine export | test_template_product_fields |
+| ac_1013_lazy_ui | Product list loads per company only (not all companies at once) | test_lazy_load_ui (Playwright) |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1013",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": [
+    "alembic/versions/011_*",
+    "src/backend/services/product_resolver.py",
+    "src/backend/api/products.py",
+    "src/backend/db/models.py",
+    "src/backend/services/template_engine.py",
+    "src/backend/app/endpoints.py",
+    "tests/**"
+  ],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "private_data/**"],
+  "max_loops": 5,
+  "escalation_policy": "human",
+  "prerequisite": "TASK-1001 (template engine must exist), TASK-1207 (follow same import pattern)"
+}
+```
+
+---
+
 *Created: 2026-06-15*
-*Last updated: 2026-06-24*
+*Last updated: 2026-06-27*
 *Epic Roadmap: [PHASE-II-EPIC-ROADMAP.md](../PHASE-II-EPIC-ROADMAP.md)*

@@ -5,8 +5,8 @@ This wrapper keeps TASK-1306A deployment scripts stable while reusing scripts/se
 
 from __future__ import annotations
 
-import os
 import importlib.util
+import os
 import sys
 from pathlib import Path
 

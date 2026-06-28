@@ -213,14 +213,26 @@ Dashboard แสดงภาพรวมการทำงานของระ�
    - Upsert logic: update if account_code exists for company, create if new
 3. **COA list API:**
    - `GET /api/v1/companies/{id}/coa` -- list accounts for company (paginated)
-4. **Company management UI (new tab):**
+4. **COA import from PDF** *(added 2026-06-27 — client has 3 PDF COA files)*:
+   - `POST /api/v1/companies/{id}/coa/import-pdf` — upload PDF → AI extract → preview JSON → save
+   - AI extraction: ใช้ Claude API อ่าน PDF → return structured list `[{account_code, account_name, account_type}]`
+   - Data files on hand: `private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ ผังบัญชี.pdf`, Comp_2, Comp_3
+   - Review step: show extracted rows ให้ human confirm ก่อน upsert (กัน hallucination)
+5. **enable_stock flag** *(added 2026-06-27 — ประหยัดค่า OCR สำหรับบริษัทที่ไม่ต้อง line items)*:
+   - DB: `ALTER TABLE companies ADD COLUMN enable_stock BOOLEAN NOT NULL DEFAULT FALSE`
+   - API: include `enable_stock` in `PUT /api/v1/companies/{id}` request/response
+   - Pipeline: ถ้า `enable_stock=False` → skip line item OCR + skip line item confirm step
+   - UI checkbox: ☐ "สแกน Line Items (สินค้า)" บนหน้า Add/Edit Company — unchecked by default
+   - Tooltip: "ปิดใช้งานเพื่อประหยัดค่า OCR สำหรับบริษัทที่ไม่ต้อง track สินค้า"
+6. **Company management UI (new tab):**
    - Company list with [Add] button
-   - Add/Edit form (name, tax_id, branch_code, address, business_type)
+   - Add/Edit form (name, tax_id, branch_code, address, business_type, `enable_stock` checkbox)
    - Per-company COA section:
-     - [Import COA] button (file upload: .yaml, .yml, .csv)
+     - [Import COA] button (file upload: .yaml, .yml, .csv, .pdf)
+     - PDF: แสดง extracted preview → [Confirm & Save] หรือ [Edit Before Save]
      - COA table: account_code | account_name | account_type
      - Search/filter by account_code or name
-5. **Validation:**
+7. **Validation:**
    - tax_id: 13 digits, unique per tenant
    - account_code: unique per company
    - Reject invalid YAML/CSV format with clear error message
@@ -229,11 +241,14 @@ Dashboard แสดงภาพรวมการทำงานของระ�
 
 | Action | File | What |
 |--------|------|------|
-| Create | `src/backend/api/companies.py` | FastAPI router for company CRUD + COA import |
-| Create | `src/backend/api/schemas/company_schemas.py` | Pydantic models for company + COA |
+| Create | `src/backend/api/companies.py` | FastAPI router for company CRUD + COA import (YAML/CSV/PDF) |
+| Create | `src/backend/api/schemas/company_schemas.py` | Pydantic models for company + COA (include enable_stock) |
+| Create | `alembic/versions/012_add_enable_stock.py` | ALTER TABLE companies ADD COLUMN enable_stock BOOLEAN DEFAULT FALSE |
+| Modify | `src/backend/db/models.py` | Add enable_stock field to Company model |
+| Modify | `src/backend/services/document_pipeline.py` | Skip line_item_ocr + line_item_confirm if enable_stock=False |
 | Modify | `src/backend/app/endpoints.py` | Mount company router |
-| Modify | `src/frontend/ux-ui-prototype.html` | Add Companies tab with CRUD UI + COA import |
-| Create | `tests/api/test_companies.py` | Company CRUD + COA import tests |
+| Modify | `src/frontend/ux-ui-prototype.html` | Companies tab with CRUD UI + COA import + enable_stock checkbox |
+| Create | `tests/api/test_companies.py` | Company CRUD + COA import + enable_stock + pipeline skip tests |
 
 ### Acceptance criteria
 
@@ -247,6 +262,12 @@ Dashboard แสดงภาพรวมการทำงานของระ�
 | ac_1203_coa_csv | COA import from CSV creates chart_of_accounts records | test_coa_import_csv |
 | ac_1203_coa_upsert | Re-importing COA updates existing accounts (by code), creates new ones | test_coa_upsert |
 | ac_1203_coa_list | GET /api/v1/companies/{id}/coa returns accounts for specific company | test_coa_list |
+| ac_1203_coa_pdf | POST /coa/import-pdf extracts account_code + account_name from PDF (≥90% rows correct) | test_coa_pdf_extract |
+| ac_1203_coa_review | PDF import shows extracted preview for human confirm before DB save | test_coa_pdf_review_step |
+| ac_1203_enable_stock_default | New company has enable_stock=False by default | test_enable_stock_default |
+| ac_1203_enable_stock_skip | enable_stock=False → line_item_ocr step NOT called during document processing | test_pipeline_skip_line_items |
+| ac_1203_enable_stock_include | enable_stock=True → line_item_ocr called normally | test_pipeline_include_line_items |
+| ac_1203_enable_stock_ui | Company edit form has enable_stock checkbox, saves and reloads correctly | test_enable_stock_ui (Playwright) |
 
 ### Governance fields
 
@@ -264,16 +285,25 @@ Dashboard แสดงภาพรวมการทำงานของระ�
 
 ---
 
-## TASK-1204: User management + RBAC (2 roles MVP)
+## TASK-1204: User management + RBAC (3 roles MVP)
 
 **Owner**: Full-stack Dev
 **Risk**: HIGH
 **Duration**: ~3 days
 **Closes pain points**: PP-2, PP-3, PP-5, PP-8
+**Updated**: 2026-06-27 — เพิ่ม sys_admin role (ลูกค้ายืนยันใน meeting)
 
 ### Purpose
 
-หน้าจอจัดการ users (Admin only) และ role-based access control สำหรับ MVP -- 2 roles: Admin (เห็นทุกบริษัท, จัดการ users/templates) และ Staff (เห็นเฉพาะบริษัทที่ assign). DB schema รองรับ 4 roles ตั้งแต่ตอนนี้ (Admin/Manager/Staff/Reviewer) แต่ MVP enforce แค่ 2.
+หน้าจอจัดการ users (Admin/SysAdmin only) และ role-based access control สำหรับ MVP — **3 roles**:
+
+| Role | ความสามารถ |
+|------|-----------|
+| `staff` | เห็นเฉพาะบริษัทที่ assign, upload/review/export ได้ ไม่ manage users |
+| `admin` | เห็นทุกบริษัท, manage users (staff/admin), import masters, clone templates |
+| `sys_admin` | ทุกอย่างของ admin + เมนู internal: system logs, billing, สร้าง/ลบ company, deploy config |
+
+> **Note**: DB schema รองรับ 4 roles มาตั้งแต่ต้น ปรับ enforce จาก 2 → 3 roles
 
 ### What exists today
 
@@ -283,31 +313,42 @@ Dashboard แสดงภาพรวมการทำงานของระ�
 
 ### What to build
 
-1. **User management API (Admin only):**
-   - `GET /api/v1/users` -- list users (tenant-scoped, Admin only)
-   - `POST /api/v1/users` -- create user (Admin only)
-   - `GET /api/v1/users/{id}` -- get user detail
-   - `PUT /api/v1/users/{id}` -- update user (email, display_name, role, is_active)
-   - `POST /api/v1/users/{id}/assign-companies` -- assign user to companies
-   - `DELETE /api/v1/users/{id}/assign-companies/{company_id}` -- remove assignment
-2. **RBAC middleware / dependency:**
-   - `require_role("admin")` -- FastAPI dependency that checks current user role
-   - Company scoping: Staff queries auto-filter by `user_company_assignments`
-   - Admin bypasses company filter (sees all within tenant)
-3. **User management UI (Admin only tab):**
-   - User list table: username, display_name, email, role, status, last_login
-   - [Add User] button -> form (username, email, display_name, password, role: Admin/Staff)
-   - [Edit] button -> update form (no password change in v1 -- separate endpoint later)
-   - Company assignments: checklist of available companies per user
-4. **Company scoping enforcement:**
-   - All data endpoints (documents, templates, exports, dashboard) must respect company scoping
+1. **User management API (Admin/SysAdmin only):**
+   - `GET /api/v1/users` — list users (tenant-scoped, Admin+ only)
+   - `POST /api/v1/users` — create user (Admin+ only)
+   - `GET /api/v1/users/{id}` — get user detail
+   - `PUT /api/v1/users/{id}` — update user (email, display_name, role, is_active)
+   - `POST /api/v1/users/{id}/assign-companies` — assign user to companies
+   - `DELETE /api/v1/users/{id}/assign-companies/{company_id}` — remove assignment
+2. **SysAdmin-only internal API:**
+   - `GET /api/admin/logs` — system audit logs (SysAdmin only)
+   - `GET /api/admin/billing` — API cost/usage (SysAdmin only)
+   - `POST /api/v1/companies` — create company (SysAdmin only — Admin can edit, not create)
+   - `DELETE /api/v1/companies/{id}` — delete company (SysAdmin only)
+3. **RBAC middleware / dependency (3-tier):**
+   - `require_role("staff")` — any authenticated user
+   - `require_role("admin")` — Admin or SysAdmin
+   - `require_role("sys_admin")` — SysAdmin only
+   - JWT payload: `role: "staff" | "admin" | "sys_admin"`
+   - Company scoping: Staff auto-filter by `user_company_assignments`; Admin/SysAdmin see all
+4. **User management UI:**
+   - User list table: username, display_name, email, role (badge), status, last_login
+   - Role dropdown: Staff / Admin / SysAdmin (SysAdmin can assign any role; Admin cannot assign SysAdmin)
+   - Company assignments: checklist per user
+5. **SysAdmin-only UI sections (hidden for admin/staff):**
+   - "System" menu item in sidebar
+   - System Logs viewer
+   - Billing/cost dashboard
+   - Company create/delete buttons
+6. **Company scoping enforcement:**
    - Staff: `WHERE company_id IN (SELECT company_id FROM user_company_assignments WHERE user_id = ?)`
-   - Admin: `WHERE tenant_id = ?` (no company restriction)
-5. **Role validation on endpoints:**
-   - User management endpoints: Admin only (403 for Staff)
-   - Template master management: Admin only
-   - Template clone/edit (company templates): Admin + Staff (own companies)
-   - Document operations: Admin + Staff (own companies)
+   - Admin/SysAdmin: no company restriction (see all within tenant)
+7. **Role validation summary:**
+   - Document operations: Staff+ (own companies)
+   - User management: Admin+ (403 for Staff)
+   - Template master management: Admin+ (403 for Staff)
+   - Internal menus: SysAdmin only (403 for Admin/Staff)
+   - Seed admin user: uses `sys_admin` role (was previously admin)
 
 ### Files to create/modify
 
@@ -325,13 +366,17 @@ Dashboard แสดงภาพรวมการทำงานของระ�
 
 | ID | Condition | Test |
 |----|-----------|------|
-| ac_1204_list | GET /api/v1/users returns user list (Admin only, 403 for Staff) | test_list_users_admin_only |
+| ac_1204_list | GET /api/v1/users returns user list (Admin+ only, 403 for Staff) | test_list_users_admin_only |
 | ac_1204_create | POST /api/v1/users creates user with hashed password and role | test_create_user |
 | ac_1204_assign | POST /api/v1/users/{id}/assign-companies creates assignment records | test_assign_companies |
 | ac_1204_staff_scope | Staff user queries return only data from assigned companies | test_staff_company_scope |
-| ac_1204_admin_scope | Admin user queries return all companies within tenant | test_admin_tenant_scope |
+| ac_1204_admin_scope | Admin/SysAdmin queries return all companies within tenant | test_admin_tenant_scope |
 | ac_1204_role_403 | Staff accessing admin-only endpoints receives 403 Forbidden | test_role_enforcement |
-| ac_1204_ui | Users tab visible only to Admin role, hidden for Staff | test_admin_tab_visibility (Playwright) |
+| ac_1204_sysadmin | SysAdmin token can access GET /api/admin/logs (200 OK) | test_sysadmin_logs_access |
+| ac_1204_admin_deny | Admin token receives 403 at GET /api/admin/logs | test_admin_deny_logs |
+| ac_1204_staff_deny | Staff token receives 403 at POST /api/v1/companies (create) | test_staff_deny_company_create |
+| ac_1204_ui | Users tab visible to Admin+ role only, hidden for Staff | test_admin_tab_visibility (Playwright) |
+| ac_1204_system_menu | System menu visible to SysAdmin only, hidden for Admin/Staff | test_sysadmin_menu (Playwright) |
 | ac_1204_assignment_ui | Company assignment checklist works (check/uncheck saves) | test_company_assignment_ui (Playwright) |
 
 ### Governance fields
@@ -479,6 +524,109 @@ This task covers **Sub-requirement A only**. Sub-requirements B and C are AI/ML 
   "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
   "max_loops": 5,
   "escalation_policy": "human"
+}
+```
+
+---
+
+## TASK-1208: LoveBot data CSV export (6 book types)
+
+**Owner**: Backend Dev
+**Risk**: LOW
+**Duration**: ~1 day
+**Week**: W4
+**Closes pain points**: PP-2 (interface contract), PP-8 (integration with external tool)
+**Added**: 2026-06-27 — client meeting, LoveAutoBot integration clarified
+
+### Purpose
+
+LedgerFlow export transaction data เป็น CSV format ที่ LoveAutoBot program อ่านได้โดยตรง
+Format ตรงกับ 6 template files ใน `private_data/poc/Comp_1/template/`
+
+> **Architecture insight**: iniComList files (101 cols, UTF-8 BOM) = robot script ที่ LoveBot อ่านแยก
+> LF ต้องแค่ generate **data CSV** ตาม template 6 ไฟล์ — ไม่ต้อง generate iniComList
+
+```
+LF export API → TemplateEngine (TASK-1001) → data CSV (cp874/TIS-620)
+                                                     ↓
+                                             User downloads & hands to LoveBot
+                                                     ↓
+                                LoveBot reads data CSV + pre-built iniComList
+                                                     ↓
+                                Bot clicks Express Accounting → enters data
+```
+
+### Template column mapping (verified from client files)
+
+| Book | Template name | Columns | Doc# pattern | Amount |
+|------|--------------|---------|-------------|--------|
+| 12 | ซื้อสด บรรทัดเดียว | ลำดับ, วันที่, เลขที่เอกสาร, เลขที่ใบกำกับ, จำนวนเงินก่อนภาษี, รหัสผู้จำหน่าย, ชื่อผู้จำหน่าย, รหัสลงบัญชี | YYMM/NNN from 001 | net_amount |
+| 14 | ซื้อเชื่อ บรรทัดเดียว | same as 12 | YYMM/NNN from 100 | net_amount |
+| 15 | ค่าใช้จ่ายอื่นๆ บรรทัดเดียว | เพิ่ม คำอธิบาย (col5) | YYMM/NNN from 100 | net_amount |
+| 15+WHT | ค่าใช้จ่ายอื่นๆ(มีหัก) | เพิ่ม เลขที่เอกสาร(สูตร) (OE prefix) | YYMM/NNN + OEprefix | net_amount |
+| 22 | ขายสด บรรทัดเดียว | ลำดับ, วันที่, เลขที่เอกสาร, จำนวนเงินรวมภาษี, รหัสลูกค้า, ชื่อลูกค้า, รหัสลงบัญชี | YYMM###### (6 digits) | total_amount |
+| 24 | ขายเชื่อ บรรทัดเดียว | same as 22 | YYMM###### | total_amount |
+
+All templates: **encoding=cp874 (TIS-620)**, date=`thai_date_short` (DD/MM/YY as text)
+
+### What to build
+
+1. **New export endpoint:**
+   - `POST /api/v1/exports/lovebot` — body: `{company_id, book_type, period, transaction_ids[]}`
+   - book_type enum: `"12"`, `"14"`, `"15"`, `"15wht"`, `"22"`, `"24"`
+   - Returns: CSV file download (Content-Disposition: attachment)
+   - Encoding: cp874, BOM-less, comma delimiter
+2. **LoveBot master templates** (DB seed, `is_master=true`):
+   - 6 templates seeded (extends TASK-1004 seed migration, or new migration 013)
+   - Each template has pre-configured column definitions matching verified client files
+3. **Date format**: `thai_date_short` — `DD/MM/YY` as plain text string (no Excel auto-convert)
+4. **Doc# generation**:
+   - Book 12/14/15: `YYMM/NNN` — sequence from 001 or 100 per book type, reset monthly
+   - Book 22/24: `YYMM######` — 6-digit padded sequence
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `src/backend/api/exports.py` | New router: POST /exports/lovebot |
+| Create | `src/backend/api/schemas/export_schemas.py` | LoveBotExportRequest Pydantic model |
+| Modify | `src/backend/services/template_engine.py` | Add LoveBot-specific column resolver if needed |
+| Create | `alembic/versions/013_seed_lovebot_templates.py` | Seed 6 LoveBot master templates |
+| Modify | `src/backend/app/endpoints.py` | Mount exports router |
+| Create | `tests/api/test_lovebot_export.py` | Export tests per book type |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1208_csv12 | Export Book 12: 8 columns in correct order, encoding cp874, no BOM | test_export_book12 |
+| ac_1208_csv14 | Export Book 14: doc_number starts from YYMM/100 | test_export_book14_docno |
+| ac_1208_csv15 | Export Book 15: 9 columns (includes คำอธิบาย) | test_export_book15 |
+| ac_1208_csv15wht | Export Book 15+WHT: 11 columns, formula_doc_number has OE prefix | test_export_book15wht |
+| ac_1208_csv22 | Export Book 22: 7 columns, doc_number format YYMM###### (10 chars) | test_export_book22 |
+| ac_1208_encoding | Downloaded CSV opens in Express (TIS-620) without mojibake | test_cp874_encoding |
+| ac_1208_date | Date columns written as plain text DD/MM/YY (not date cell) | test_date_as_text |
+| ac_1208_multi | Multiple transactions in one export appear as sequential rows | test_multi_transaction |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1208",
+  "risk_tier": "LOW",
+  "model_tier": "tier-2a-copilot",
+  "allowed_scope": [
+    "src/backend/api/exports.py",
+    "src/backend/api/schemas/export_schemas.py",
+    "src/backend/services/template_engine.py",
+    "alembic/versions/013_*",
+    "src/backend/app/endpoints.py",
+    "tests/**"
+  ],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "private_data/**"],
+  "max_loops": 4,
+  "escalation_policy": "human",
+  "prerequisite": "TASK-1001 (template engine), TASK-1004 (master template seed pattern)"
 }
 ```
 
