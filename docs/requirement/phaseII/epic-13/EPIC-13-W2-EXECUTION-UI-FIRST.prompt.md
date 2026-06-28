@@ -6,6 +6,7 @@ This version is designed to prevent unsafe assumptions by requiring operator inp
 ## 1) Required Reading (must be loaded before actions)
 - docs/requirement/phaseII/epic-13/EPIC-13-TASKS-DETAIL.md
 - docs/requirement/phaseII/epic-13/INFRA-PREREQUISITES-RUNBOOK.md
+- docs/requirement/phaseII/epic-13/sit-env-setup-plan.md
 - docs/CICD/design-control-cicd-process.md
 - docs/CICD/INCIDENTS.md
 
@@ -14,6 +15,16 @@ This version is designed to prevent unsafe assumptions by requiring operator inp
 - Never add deploy workflows in this repo. Deploy hub is Piboonsak/Openclaw.
 - Do not modify already completed files listed in Epic 13 W2 scope lock.
 - For Task 4 workflow cleanup: hard-block deletion until Openclaw UAT success evidence is provided.
+- Any UAT/PROD plan refresh must incorporate the completed SIT rollout lessons in `sit-env-setup-plan.md` sections `8-10` before changing deploy assumptions.
+
+## 2.1 Latest SIT rollout snapshot
+
+- SIT runtime gate passed on 2026-06-28 via Openclaw Actions run `28332426427`
+- Planning assumptions must now treat `TASK-1306A` as complete and must preserve the proven fixes:
+  - retryable SSH preflight
+  - control-plane runtime key injection
+  - URL-form MinIO/storage endpoints
+  - dependency-light evidence probes
 
 ## 3) Scope Lock and Conflict Resolution
 

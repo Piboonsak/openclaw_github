@@ -5,7 +5,7 @@
 
 ## Purpose
 
-เอกสารนี้ใช้เป็น runbook สำหรับเตรียม prerequisite ก่อน deploy UAT/PROD ของ Phase II โดยกำหนดชัดเจนว่า
+เอกสารนี้ใช้เป็น runbook สำหรับเตรียม prerequisite ก่อน deploy SIT/UAT/PROD ของ Phase II โดยกำหนดชัดเจนว่า
 
 - ทีมเราเป็นผู้ดำเนินการ DNS ทั้งหมด
 - ลูกค้าไม่ต้องลงมือแก้ DNS เอง
@@ -13,8 +13,12 @@
 
 ## Scope
 
-- Included: DNS, SSL, firewall, access baseline, pre-deploy verification
+- Included: DNS, SSL, firewall, access baseline, pre-deploy verification, SIT baseline parity rules
 - Excluded: deploy code จริง, DB migration จริง, cutover production จริง
+
+For SIT-specific preparation and execution order, use:
+
+- [sit-env-setup-plan.md](sit-env-setup-plan.md)
 
 ## Ownership Matrix
 
@@ -46,6 +50,7 @@ All VPS in **Data Center 21** (Singapore region).
 | `bwcacc.net` | TBD | Reserved | — |
 | `bwcacc.tech` | Hostinger (free) | Reserved — UAT alias | Hostinger |
 | `bwcacc.cloud` | Hostinger (free) | Reserved — PROD alias | Hostinger |
+| `yahwan.biz` | Existing managed domain | SIT subdomain host (`sit.yahwan.biz`) | Existing owner/zone |
 
 ### DNS Record Map (bwcacc.biz) — LIVE
 
@@ -55,6 +60,12 @@ All VPS in **Data Center 21** (Singapore region).
 | `uat.bwcacc.biz` | A | `72.62.74.232` | 300 | UAT | ✅ Verified |
 | `app.bwcacc.biz` | A | `72.62.247.9` | 300 | Production | ✅ Verified |
 | `@` | CAA | `0 issue "letsencrypt.org"` | 3600 | All | ✅ Verified |
+
+### SIT DNS Exception Map
+
+| Subdomain | Type | Target | TTL | Environment | Status |
+| --- | --- | --- | --- | --- | --- |
+| `sit.yahwan.biz` | A | `76.13.210.250` | 300 | SIT | Pending verification in active SIT flow |
 
 ### SSH Access
 
@@ -77,6 +88,7 @@ ssh -i ~/.ssh/id_ed25519_hostinger root@72.62.247.9
 - Architecture design: `docs/architecture/vps-architecture.md`
 - Openclaw connection: `Openclaw/docs/connection.md`
 - Epic 13 tasks: `docs/requirement/phaseII/epic-13/EPIC-13-TASKS-DETAIL.md`
+- SIT execution plan: `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
 - PoC deploy + cert pattern: `deploy/poc-site/README.md`
 
 ## Mandatory Blocking Conditions (from DNS/Registrar Design Review)
@@ -90,6 +102,7 @@ Status baseline: `CONDITIONAL_GO` (must close all items below before go-live)
 | 3 | Add cert expiry monitoring | cron daily check, logs to syslog via `certcheck` tag | DevOps | ✅ Done (2026-06-21) |
 | 4 | Set rollback-friendly TTL | A record TTL = `300` seconds | DevOps | ✅ Done |
 | 5 | Export DNS zone backup | Save as `infra/dns-zone-backup.txt` | DevOps | ✅ Done (2026-06-21) |
+| 6 | SIT DNS/TLS/auth readiness documented and validated | `sit.yahwan.biz` + cert + Basic Auth | DevOps | In progress |
 
 ### Verification snippets for blocking conditions
 
@@ -150,6 +163,33 @@ ssh -i ~/.ssh/id_ed25519_hostinger root@72.62.247.9 "hostname && docker version 
 - ✅ htop installed for resource monitoring
 
 > **Note**: PermitRootLogin = `prohibit-password` (not `no`) — intentional progressive hardening. Root key access needed during setup phase (SSL, Docker Compose). Will tighten to `no` after go-live validation.
+
+---
+
+## Gate S0: SIT Pre-Gate Baseline
+
+> **Applies to**: SIT (`76.13.210.250`, `sit.yahwan.biz`)
+> **Status**: In progress
+
+Primary SIT execution document:
+
+- [sit-env-setup-plan.md](sit-env-setup-plan.md)
+
+### Gate S0 Actions
+
+1. Verify `sit.yahwan.biz` public DNS resolution
+2. Verify certificate validity for `sit.yahwan.biz`
+3. Verify Basic Auth secrets exist in Openclaw
+4. Verify `.htpasswd` provisioning path exists on SIT host
+5. Verify only intended public ports are reachable
+
+### Gate S0 Pass Criteria
+
+- `sit.yahwan.biz` resolves on `8.8.8.8` and `1.1.1.1`
+- HTTPS certificate CN/SAN includes `sit.yahwan.biz`
+- unauthorized request receives `401`
+- runtime internal ports are not publicly exposed
+- SIT execution proceeds through Openclaw control-plane dispatch path
 
 ---
 
@@ -361,6 +401,7 @@ curl -s https://app.bwcacc.biz/api/health
 | Gate 5 SSL issue | [x] | DevOps | 2026-06-21 |
 | Gate 6 Auto-renew/redirect | [x] | DevOps | 2026-06-21 |
 | Gate 7 Final smoke | [x] | DevOps | 2026-06-21 |
+| Gate S0 SIT baseline | [x] | DevOps | 2026-06-28 |
 | CAA record applied | [x] | DevOps | 2026-06-20 |
 | Deploy user + root SSH disabled | [x] | DevOps | 2026-06-21 |
 | Cert expiry monitoring active | [x] | DevOps | 2026-06-21 |
@@ -368,6 +409,7 @@ curl -s https://app.bwcacc.biz/api/health
 
 Decision:
 
+- [x] Approved for SIT gate (2026-06-28 — Openclaw run `28332426427` green with deploy/smoke/runtime evidence)
 - [x] Approved for UAT deploy (2026-06-21 — all gates passed)
 - [x] Approved for PROD deploy (2026-06-21 — all gates passed)
 

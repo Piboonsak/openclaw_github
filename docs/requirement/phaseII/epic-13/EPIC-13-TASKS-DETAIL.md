@@ -206,6 +206,12 @@
 
 ตั้ง DNS subdomains ให้ชี้มาที่ VPS ที่ถูกต้อง + SSL certificates สำหรับ HTTPS. Domain `bwcacc.biz` จดบน Hostinger โดยตรง — ทีมเราจัดการ DNS ผ่าน Hostinger REST API.
 
+SIT note:
+
+- SIT currently uses `sit.yahwan.biz` on the PoC/SIT host `76.13.210.250`
+- SIT DNS/TLS work must be tracked alongside UAT/PROD so `dev -> uat` promotion is not blocked by missing infra parity
+- execution details live in `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
+
 ### What exists today (updated 2026-06-21)
 
 - ✅ `demo.bwcacc.biz` → `76.13.210.250` (PoC VPS) — LIVE
@@ -241,6 +247,7 @@
 | ac_1304_04 | SSL certificate valid for uat.bwcacc.biz | `curl -v https://uat.bwcacc.biz` shows valid cert |
 | ac_1304_05 | Auto-renew cron configured | `crontab -l` shows certbot renew entry |
 | ac_1304_06 | HTTP → HTTPS redirect works | `curl -I http://app.bwcacc.biz` returns 301 to HTTPS |
+| ac_1304_07 | SIT DNS/TLS exception is documented with owner and exit criteria | Manual review |
 
 ### Governance fields
 
@@ -270,6 +277,11 @@
 
 ออกแบบ CI/CD pipeline ก่อน implement — กำหนด branch strategy, deploy steps, safety rules สำหรับ PROD. ป้องกัน "deploy succeeded but unhealthy" (PP-16).
 
+SIT note:
+
+- this design task now includes SIT as the required `dev` promotion gate
+- `docs/cicd/pipeline-design.md` and `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md` must stay aligned
+
 ### What exists today
 
 - Existing GitHub Actions workflows (lint, test, governance gate)
@@ -296,6 +308,10 @@
    - Snapshot DB before migration
    - No force push to main
    - Rollback procedure documented
+4. **SIT gate documentation**:
+   - DNS/TLS/Auth prerequisites documented
+   - smoke/readiness/runtime evidence gates documented
+   - secret reuse vs new-create policy documented
 
 ### Files to create/modify
 
@@ -303,6 +319,7 @@
 |--------|------|------|
 | Create | `docs/cicd/pipeline-design.md` | Workflow diagrams + branch strategy |
 | Create | `docs/cicd/prod-safety-rules.md` | PROD deployment safety rules + rollback |
+| Create | `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md` | SIT setup and execution source of truth |
 
 ### Acceptance criteria
 
@@ -312,6 +329,7 @@
 | ac_1305_02 | Deploy workflow steps documented with sequence diagram | Manual review |
 | ac_1305_03 | PROD safety rules include: UAT gate, DB snapshot, no force push | Manual review |
 | ac_1305_04 | Rollback procedure documented step-by-step | Manual review |
+| ac_1305_05 | SIT gate prerequisites and secret policy documented | Manual review |
 
 ### Governance fields
 
@@ -341,6 +359,10 @@
 
 Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk infra task — deployment automation ต้องทำงานถูกต้อง 100% เพราะผิดพลาดจะกระทบ PROD.
 
+SIT note:
+
+- UAT/PROD implementation remains complete, but active promotion governance now depends on TASK-1306A SIT readiness being green.
+
 ### What exists today
 
 - Existing GitHub Actions: lint, test, governance gate workflows
@@ -361,6 +383,7 @@ Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk inf
    - SSH private key (`VPS_SSH_KEY`)
    - VPS host/user (`UAT_HOST`, `PROD_HOST`, `DEPLOY_USER`)
    - LINE notify token (`LINE_NOTIFY_TOKEN`)
+   - reference SIT-specific Openclaw secrets from TASK-1306A for `dev -> uat` gating
 4. **Health check script** for CI/CD to call
 5. **Playwright smoke test** integration in CI/CD
 
@@ -386,6 +409,7 @@ Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk inf
 | ac_1306_05 | LINE notification sent on failure | Simulate failure, verify LINE message |
 | ac_1306_06 | PROD deploy creates DB snapshot before migration | Snapshot file exists on VPS |
 | ac_1306_07 | Deploy fails gracefully if health check fails | Workflow shows failure + LINE alert |
+| ac_1306_08 | UAT/PROD implementation docs reference SIT gate dependency clearly | Manual review |
 
 ### Governance fields
 
@@ -403,17 +427,21 @@ Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk inf
 
 ---
 
-## TASK-1306A: SIT Environment with Real Runtime Services — New
+## TASK-1306A: SIT Environment with Real Runtime Services — ✅ DONE (2026-06-28)
 
 **Owner**: DevOps
 **Risk**: HIGH
 **Duration**: ~3-4 days
 **Closes pain points**: PP-2, PP-5, PP-8, PP-15, PP-16, PP-17
-**Output**: `docker/docker-compose.sit.yml`, `docker/nginx/nginx-sit.conf`, `docker/.env.sit.example`, `scripts/deploy/deploy-sit.sh`, `scripts/deploy/smoke-sit.sh`, `scripts/seed_sit.py`
+**Output**: `docker/docker-compose.sit.yml`, `docker/nginx/nginx-sit.conf`, `docker/.env.sit.example`, `scripts/deploy/deploy-sit.sh`, `scripts/deploy/smoke-sit.sh`, `scripts/seed_sit.py`, `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
 
 ### Purpose
 
 Create an internal-only SIT environment (`sit.yahwan.biz`) that runs real runtime services before UAT promotion. SIT is the runtime parity gate to catch container/network/service problems that do not appear on laptops.
+
+Primary execution document for this task:
+
+- `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
 
 Branch/environment alignment:
 
@@ -451,6 +479,7 @@ Branch/environment alignment:
 | Create | `scripts/deploy/smoke-sit.sh` | SIT health + dependency smoke checks |
 | Create | `scripts/seed_sit.py` | Anonymized seed wrapper for SIT |
 | Create | `samples/sit/companies.anonymized.json` | Seed data source for SIT |
+| Create | `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md` | Primary SIT setup, secret, blocker, and execution plan |
 
 ### Acceptance criteria
 
@@ -500,6 +529,35 @@ If SIT deploy is unhealthy:
 - Basic Auth challenge proof (401 without credentials)
 - Openclaw control-plane workflow run URL used for SIT/UAT gate dispatch
 
+### Completion evidence (2026-06-28)
+
+- Final green workflow: `Piboonsak/Openclaw` Actions run `28332426427`
+- Deploy flow passed: SSH preflight, SIT stack deploy, smoke, runtime evidence, HTTP gate evidence, network exposure evidence, summary generation, artifact upload
+- Runtime state verified during green run: backend/postgres/redis/minio healthy, Celery running, Basic Auth gate enforced, internal dependency ports not publicly exposed
+
+### Rollout blockers encountered and resolved
+
+1. **SSH timeout during runner preflight**
+   - Why it blocked: control-plane workflow could not reach the SIT host reliably from the GitHub runner
+   - Why it happened: runner-to-host reachability was intermittent; one-shot SSH preflight was too brittle
+   - Fix applied: defaulted SIT deploy user to `root` for this host and added bounded SSH preflight retries in the Openclaw workflow
+   - Prevention for UAT/PROD: keep retryable SSH preflight in shared deploy workflows and validate the real remote user per environment before rollout
+2. **Readiness `503` after deploy**
+   - Why it blocked: `/api/health/ready` stayed red, so SIT could not be promoted
+   - Why it happened: LLM runtime keys were missing in the control-plane path and MinIO endpoint format was invalid for the backend storage client
+   - Fix applied: injected `OPENROUTER_API_KEY`, `BWCACC_OPENROUTER_API_KEY`, and `OPENAI_API_KEY` into the live SIT env; rewrote MinIO/storage endpoint values to `http://minio:9000`
+   - Prevention for UAT/PROD: add a pre-deploy config assertion that required runtime keys are present and endpoint variables use the URL form expected by the application
+3. **MinIO reported unhealthy despite container running**
+   - Why it blocked: Docker health state prevented confidence in the dependency gate
+   - Why it happened: the MinIO image did not include the tools assumed by the original healthcheck
+   - Fix applied: simplified the healthcheck to an image-compatible TCP probe and aligned runtime endpoint config
+   - Prevention for UAT/PROD: verify healthcheck commands against the target image, not against local shell assumptions
+4. **Evidence-stage failures after smoke was green**
+   - Why it blocked: workflow status remained failed even though the app stack was healthy
+   - Why it happened: one step passed a literal shell expression to `psql`, and another assumed `nmap` existed on the runner
+   - Fix applied: fixed shell expansion for Postgres defaults and replaced runner-side `nmap` with a host-side read-only `ss` probe over SSH
+   - Prevention for UAT/PROD: keep evidence steps shell-safe and dependency-light; test them as part of the workflow, not as an afterthought
+
 ### Manual prerequisites
 
 - DNS A record for `sit.yahwan.biz` to SIT host
@@ -522,6 +580,11 @@ If SIT deploy is unhealthy:
 ### Purpose
 
 สร้าง Docker Compose สำหรับ UAT environment — ให้ client + team ทดสอบได้ก่อน deploy PROD. Environment-specific configs แยก UAT จาก PROD.
+
+SIT note:
+
+- UAT compose should be read as the next environment after SIT parity validation, not as the first shared runtime target
+- any UAT-only divergence from SIT should be intentional and documented
 
 ### What exists today
 
@@ -564,6 +627,7 @@ If SIT deploy is unhealthy:
 | ac_1307_04 | Redis accessible from celery container | Celery logs show Redis broker connected |
 | ac_1307_05 | MinIO accessible from backend container | Upload test file, verify stored |
 | ac_1307_06 | Data persists after container restart | Stop + start, verify DB data intact |
+| ac_1307_07 | UAT compose assumptions do not bypass mandatory SIT gate | Manual review |
 
 ### Governance fields
 
@@ -592,6 +656,10 @@ If SIT deploy is unhealthy:
 ### Purpose
 
 PROD Docker Compose ต้อง production-grade — resource limits ป้องกัน OOM, restart policies ให้ service recover อัตโนมัติ, log rotation ไม่ให้ disk เต็ม.
+
+SIT note:
+
+- PROD remains downstream of both SIT and UAT; SIT exists to catch runtime parity issues before they ever reach this task's promotion path
 
 ### What exists today
 
@@ -635,6 +703,7 @@ PROD Docker Compose ต้อง production-grade — resource limits ป้อ�
 | ac_1308_04 | Log rotation configured | `docker inspect --format='{{.HostConfig.LogConfig}}'` shows limits |
 | ac_1308_05 | Health check endpoint returns 200 | `curl https://app.bwcacc.biz/api/health` |
 | ac_1308_06 | Gunicorn running with 4 workers | `ps aux | grep gunicorn` shows 4 workers |
+| ac_1308_07 | PROD docs preserve SIT -> UAT -> PROD promotion dependency | Manual review |
 
 ### Governance fields
 
@@ -663,6 +732,10 @@ PROD Docker Compose ต้อง production-grade — resource limits ป้อ�
 
 Lockdown VPS network — only expose necessary ports, block everything else. DB (5432) and MinIO (9000) must NOT be accessible externally. Security-critical task — misconfiguration can expose data.
 
+SIT note:
+
+- The same public-port restriction logic applies to SIT (`sit.yahwan.biz`) even when the host is shared with PoC/demo responsibilities.
+
 ### What exists today
 
 - VPS has default firewall (likely allow all or minimal rules)
@@ -677,6 +750,7 @@ Lockdown VPS network — only expose necessary ports, block everything else. DB 
    - DB port 5432: internal Docker network only
    - MinIO port 9000/9001: internal Docker network only
    - Redis port 6379: internal Docker network only
+   - SIT host must follow the same external closure rule for 5432/6379/9000/9001
 2. **SSH access logging**:
    - Install auditd for SSH session logging
    - Log: who logged in, when, from where
@@ -706,6 +780,7 @@ Lockdown VPS network — only expose necessary ports, block everything else. DB 
 | ac_1309_05 | Redis not accessible externally | `nc -zv host 6379` fails from external |
 | ac_1309_06 | auditd logging SSH sessions | `ausearch -m LOGIN` shows entries |
 | ac_1309_07 | BAU support document complete | Manual review |
+| ac_1309_08 | SIT host external port policy documented and verified | Manual review + `nmap` proof |
 
 ### Governance fields
 

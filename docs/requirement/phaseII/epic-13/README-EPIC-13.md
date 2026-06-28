@@ -29,6 +29,7 @@
 | TASK-1304 | DNS delegation + Certbot SSL | M | ✅ **Done** | PP-2, PP-3, PP-5, PP-15 |
 | TASK-1305 | CI/CD Pipeline Design | M | ✅ **Done** | PP-2, PP-3, PP-5, PP-15, PP-16 |
 | TASK-1306 | CI/CD Pipeline Implementation | L | New | PP-5, PP-8, PP-15, PP-16, PP-17 |
+| TASK-1306A | SIT Environment with Real Runtime Services | L | ✅ **Done** (2026-06-28) | PP-2, PP-5, PP-8, PP-15, PP-16, PP-17 |
 | TASK-1307 | Docker Compose — UAT | M | New | PP-2, PP-3, PP-5, PP-15 |
 | TASK-1308 | Docker Compose — PROD | M | New | PP-2, PP-3, PP-5, PP-15 |
 | TASK-1309 | Network + Firewall Setup | M | ✅ **Done** | PP-2, PP-3, PP-5, PP-15, PP-16 |
@@ -50,6 +51,7 @@ W1-2:        TASK-1303 — Base OS setup + Docker Engine + hardening (both VPS)
 W2:          TASK-1304 — DNS delegation + Certbot SSL (parallel with OS setup)
 W2-3:        TASK-1305 — CI/CD Pipeline Design (design workflows)
 W3-4:        TASK-1306 — CI/CD Pipeline Implementation (deploy-uat.yml, deploy-prod.yml)
+W4:          TASK-1306A — SIT Runtime Gate (sit.yahwan.biz, smoke + security boundary)
 W4:          TASK-1307 — Docker Compose UAT (deploy UAT environment)
 W5:          TASK-1308 — Docker Compose PROD (deploy PROD environment)
 W5-6:        TASK-1309 — Network + Firewall Setup (lockdown before go-live)
@@ -72,6 +74,27 @@ W7-8:        TASK-1312 — Go-Live Checklist + Smoke Tests + Restore Drill
 10. pg_dump runs every 6 hours, syncs to Cloudflare R2, LINE alert on failure
 11. Log rotation configured, disk monitoring alerts at 80%, temp file cleanup automated
 12. Go-live checklist complete, Playwright E2E smoke tests pass, restore drill succeeds, performance baseline documented
+13. SIT environment (`sit.yahwan.biz`) validated with real runtime services and gate evidence before UAT promotion
+
+## SIT Rollout Update (2026-06-28)
+
+- Final green control-plane run: `Piboonsak/Openclaw` Actions run `28332426427`
+- Final result: deploy, smoke, DB/Redis/MinIO runtime evidence, HTTP gate evidence, network exposure evidence, and artifact upload all passed
+- Task status impact: `TASK-1306A` can now be treated as complete for `dev -> uat` promotion planning
+
+### Lessons learned for next planning pass
+
+1. SSH reachability from GitHub runners to the SIT host was intermittent even when manual SSH from operator machines worked. The workflow must include bounded SSH preflight retries instead of assuming one-shot connectivity.
+2. SIT runtime keys were missing in the control-plane workflow path. Readiness stayed degraded until `OPENROUTER_API_KEY`, `BWCACC_OPENROUTER_API_KEY`, and `OPENAI_API_KEY` were injected into the live SIT env.
+3. MinIO health and readiness depended on valid URL-style endpoints. `minio:9000` was not accepted by the backend storage client; `http://minio:9000` was required.
+4. Evidence steps must avoid runner-only tooling assumptions. `nmap` was not present on the runner, so the public-port proof had to move to a read-only host-side `ss` probe over SSH.
+
+### UAT/PROD prevention rules
+
+1. Reuse the same control-plane env injection pattern for UAT/PROD before the first gated deploy. Do not assume runtime LLM/storage secrets already exist on the target host.
+2. Keep healthchecks image-native. If a container image does not include `wget`/`curl`/`nc`, use a healthcheck that matches binaries guaranteed by the image.
+3. Treat URL-vs-host endpoint shape as a deployment invariant. Storage endpoints must be validated in example env files and rewritten env files before promotion.
+4. Keep evidence probes dependency-light. Prefer `curl`, `ss`, `docker compose exec`, and in-container checks over extra packages that may be absent on runners.
 
 ## DNS/Registrar Design Review (2026-06-20)
 
