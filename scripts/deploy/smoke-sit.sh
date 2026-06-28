@@ -56,7 +56,14 @@ if [[ "$STATUS" != "200" ]]; then
 fi
 
 echo "[2/7] API readiness: ${SIT_URL}/api/health/ready"
-STATUS="$(http_status "${SIT_URL}/api/health/ready")"
+STATUS=""
+for _ in {1..12}; do
+  STATUS="$(http_status "${SIT_URL}/api/health/ready")"
+  if [[ "$STATUS" == "200" ]]; then
+    break
+  fi
+  sleep 5
+done
 if [[ "$STATUS" != "200" ]]; then
   echo "Expected 200, got ${STATUS}"
   cat /tmp/sit-smoke-body.txt || true
