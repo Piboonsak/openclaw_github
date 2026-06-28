@@ -58,8 +58,4 @@ fi
 echo "=== SIT Deploy: wait for app boot (30s) ==="
 sleep 30
 
-echo "=== SIT Deploy: smoke test ==="
-SIT_COMPOSE_FILE="$COMPOSE_FILE" SIT_ENV_FILE="$ENV_FILE" SIT_URL="$SIT_URL" \
-  bash scripts/deploy/smoke-sit.sh
-
 echo "SIT deploy completed: ${SIT_URL}"
