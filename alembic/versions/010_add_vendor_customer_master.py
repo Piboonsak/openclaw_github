@@ -23,6 +23,7 @@ match_type_enum = sa.Enum(
     "llm",
     "manual",
     name="match_type",
+    create_type=False,
 )
 
 
