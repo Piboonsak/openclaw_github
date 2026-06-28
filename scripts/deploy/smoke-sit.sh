@@ -39,7 +39,12 @@ run_compose() {
 
 http_status() {
   local url="$1"
-  curl -sS -k "${AUTH_ARG[@]}" -o /tmp/sit-smoke-body.txt -w "%{http_code}" "$url"
+  if [[ "$SIT_URL" == "http://127.0.0.1:8000" ]]; then
+    local path="${url#http://127.0.0.1:8000}"
+    run_compose exec -T backend python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000${path}', timeout=10).getcode())"
+  else
+    curl -sS -k "${AUTH_ARG[@]}" -o /tmp/sit-smoke-body.txt -w "%{http_code}" "$url"
+  fi
 }
 
 echo "[1/7] API liveness: ${SIT_URL}/api/health"
