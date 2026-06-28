@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ENUM, UUID
 
 revision: str = "010"
 down_revision: Union[str, None] = "009"
@@ -17,7 +17,7 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-match_type_enum = sa.Enum(
+match_type_enum = ENUM(
     "exact",
     "fuzzy",
     "llm",
@@ -28,7 +28,16 @@ match_type_enum = sa.Enum(
 
 
 def upgrade() -> None:
-    match_type_enum.create(op.get_bind(), checkfirst=True)
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            CREATE TYPE match_type AS ENUM ('exact', 'fuzzy', 'llm', 'manual');
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END $$;
+        """
+    )
 
     op.create_table(
         "vendor_master",
