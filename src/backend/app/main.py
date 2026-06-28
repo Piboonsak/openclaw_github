@@ -10,8 +10,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from config.settings import settings
-from src.backend.app.health import collect_service_health
 from src.backend.app.endpoints import router as api_router
+from src.backend.app.health import collect_service_health
 from src.backend.auth.router import router as auth_router
 from src.backend.services.secrets_loader import load_llm_keys
 from src.backend.storage import bootstrap_storage
@@ -33,7 +33,9 @@ async def lifespan(_: FastAPI):
     services = collect_service_health()
     for service_name, service_state in vars(services).items():
         if service_state != "ok":
-            logger.warning("Startup dependency degraded: %s=%s", service_name, service_state)
+            logger.warning(
+                "Startup dependency degraded: %s=%s", service_name, service_state
+            )
     yield
     logger.info("Shutting down LedgerFlow API")
 
