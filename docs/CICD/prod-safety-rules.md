@@ -11,9 +11,30 @@
 
 No code reaches PROD without passing through UAT first.
 
-- Branch flow enforces this: `dev → uat → main`
+- Branch flow enforces this: `feature/* → dev → uat → main`
+- Environment mapping:
+  - `dev` promotion gate: SIT VPS `76.13.210.250` (`sit.yahwan.biz`)
+  - `uat`: UAT VPS `72.62.74.232` (`uat.bwcacc.biz`)
+  - `main`: PROD VPS `72.62.247.9` (`app.bwcacc.biz`)
+- SIT (`sit.yahwan.biz`) must pass deploy + smoke checks before UAT is considered safe
 - PRs to `main` can only come from `uat` branch
 - If a hotfix bypasses UAT, it must be backported to `uat` within 24 hours
+
+### 1.1 SIT Promotion Gate (TASK-1306A)
+
+SIT gate must be green before UAT promotion:
+
+1. SIT runtime deployed with real services (PostgreSQL, Redis, MinIO, Celery, Alembic)
+
+1. SIT smoke checks pass: `/api/health`, `/api/health/ready`, DB, Redis, storage, Celery
+
+1. SIT feature-flow test passes on real runtime (not dry run): execute core UI/API feature actions end-to-end, verify data write/read in PostgreSQL, verify Redis cache hit/update in request path, and verify MinIO object write/read for real artifacts
+
+1. SIT remains internal-only (Basic Auth enabled, noindex header, only 80/443 exposed)
+
+Promotion chain:
+
+`CI pass -> SIT deploy pass -> SIT smoke pass -> SIT feature pass -> UAT deploy allowed -> PROD deploy allowed`
 
 ### 2. DB Snapshot Before Every Migration
 

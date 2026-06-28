@@ -1,0 +1,164 @@
+# Docker Compose — SIT Environment (sit.yahwan.biz)
+# TASK-1306A: Runtime parity gate before UAT promotion.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.sit.yml --env-file docker/.env.sit up -d --build
+#
+# Security boundary:
+# - Only nginx publishes host ports (80/443).
+# - postgres/redis/minio/frontend/backend/celery stay on private Docker network.
+
+name: ledgerflow-sit
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./nginx/nginx-sit.conf:/etc/nginx/conf.d/default.conf:ro
+      - /opt/ledgerflow/secrets/sit/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - ledgerflow-sit-net
+
+  frontend:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ../src/frontend:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerflow-sit-net
+
+  backend:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+      target: sit
+    restart: unless-stopped
+    env_file:
+      - .env.sit
+    environment:
+      APP_ENV: sit
+      STAGE: SIT
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - ledgerflow-sit-net
+
+  celery-worker:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+      target: sit
+    restart: unless-stopped
+    command:
+      [
+        "python", "-m", "celery",
+        "-A", "src.backend.workers.celery_app:celery_app",
+        "worker",
+        "--loglevel=info",
+        "--concurrency=2"
+      ]
+    env_file:
+      - .env.sit
+    environment:
+      APP_ENV: sit
+      STAGE: SIT
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ledgerflow-sit-net
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.sit
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ledgerflow} -d ${POSTGRES_DB:-ledgerflow_sit}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerflow-sit-net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--maxmemory", "200mb",
+        "--maxmemory-policy", "allkeys-lru"
+      ]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerflow-sit-net
+
+  minio:
+    image: minio/minio:RELEASE.2023-11-20T22-40-07Z
+    restart: unless-stopped
+    env_file:
+      - .env.sit
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:9000/minio/health/live >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerflow-sit-net
+
+networks:
+  ledgerflow-sit-net:
+    driver: bridge
+
+volumes:
+  pg_data:
+    name: ledgerflow_sit_pg_data
+  redis_data:
+    name: ledgerflow_sit_redis_data
+  minio_data:
+    name: ledgerflow_sit_minio_data

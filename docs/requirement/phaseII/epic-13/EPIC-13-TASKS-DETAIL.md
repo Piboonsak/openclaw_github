@@ -66,8 +66,6 @@
 }
 ```
 
----
-
 ## TASK-1302: VPS Procurement — UAT + PROD — ✅ DONE (2026-06-20)
 
 **Owner**: DevOps
@@ -402,6 +400,114 @@ Implement the CI/CD pipeline designed in TASK-1305. This is the highest-risk inf
   "escalation_policy": "stop"
 }
 ```
+
+---
+
+## TASK-1306A: SIT Environment with Real Runtime Services — New
+
+**Owner**: DevOps
+**Risk**: HIGH
+**Duration**: ~3-4 days
+**Closes pain points**: PP-2, PP-5, PP-8, PP-15, PP-16, PP-17
+**Output**: `docker/docker-compose.sit.yml`, `docker/nginx/nginx-sit.conf`, `docker/.env.sit.example`, `scripts/deploy/deploy-sit.sh`, `scripts/deploy/smoke-sit.sh`, `scripts/seed_sit.py`
+
+### Purpose
+
+Create an internal-only SIT environment (`sit.yahwan.biz`) that runs real runtime services before UAT promotion. SIT is the runtime parity gate to catch container/network/service problems that do not appear on laptops.
+
+Branch/environment alignment:
+
+- `feature/* -> dev -> uat -> main`
+- `dev` promotion gate runs on SIT VPS `76.13.210.250` (`sit.yahwan.biz`)
+- `uat` deploy target is UAT VPS `72.62.74.232` (`uat.bwcacc.biz`)
+- `main` deploy target is PROD VPS `72.62.247.9` (`app.bwcacc.biz`)
+
+### What to build
+
+1. **SIT compose stack**: frontend, backend, postgres, redis, minio, celery-worker, nginx
+2. **Security boundary**: Basic Auth gate + noindex header, only 80/443 exposed externally
+3. **Deploy flow**: branch sync -> build -> dependency up -> alembic migrate -> seed anonymized data -> app up -> smoke
+4. **Smoke checks**:
+    - `/api/health` returns 200
+    - `/api/health/ready` returns 200
+    - PostgreSQL/Redis/MinIO checks pass
+    - Celery control ping responds
+    - Export/template route responds (availability gate)
+5. **Feature test gate (real runtime, not dry run)**:
+   - execute core feature flow on SIT via UI/API
+   - verify records are persisted in PostgreSQL and readable back in the same run
+   - verify Redis cache participation in request path
+   - verify MinIO object write/read works for upload/export artifact path
+6. **Promotion gate documentation**: `CI pass -> SIT deploy pass -> SIT smoke pass -> SIT feature pass -> UAT allowed`
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Create | `docker/docker-compose.sit.yml` | SIT stack with isolated project/volumes and private service network |
+| Create | `docker/nginx/nginx-sit.conf` | SIT vhost with Basic Auth + noindex |
+| Create | `docker/.env.sit.example` | SIT environment template (no secrets) |
+| Create | `scripts/deploy/deploy-sit.sh` | SIT deploy script (build/migrate/seed/smoke) |
+| Create | `scripts/deploy/smoke-sit.sh` | SIT health + dependency smoke checks |
+| Create | `scripts/seed_sit.py` | Anonymized seed wrapper for SIT |
+| Create | `samples/sit/companies.anonymized.json` | Seed data source for SIT |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_sit_01 | `sit.yahwan.biz` routes to SIT app over HTTPS (or pending SSL documented) | `curl -I https://sit.yahwan.biz` |
+| ac_sit_02 | SIT uses real PostgreSQL + Redis + MinIO runtime services | smoke script + container logs |
+| ac_sit_03 | Alembic migration runs during deploy | deploy output includes `alembic upgrade head` success |
+| ac_sit_04 | Anonymized seed data loaded for SIT login/workflow smoke | seed output + DB rows |
+| ac_sit_05 | `/api/health` and `/api/health/ready` pass | smoke script HTTP checks |
+| ac_sit_06 | Celery worker reachable via control ping | smoke script Celery ping |
+| ac_sit_07 | PostgreSQL/Redis/MinIO not publicly exposed | external nmap/nc proof |
+| ac_sit_08 | SIT is access-protected by Basic Auth (or equivalent) | unauthorized request gets 401 |
+| ac_sit_09 | UAT procedure explicitly references SIT-pass gate | docs review |
+| ac_sit_10 | SIT supports clickable feature testing with real writes | test evidence from UI/API + DB/cache/object proof |
+| ac_sit_11 | No secrets committed | secret scan + manual review |
+
+### Governance fields
+
+```json
+{
+   "task_id": "TASK-1306A",
+   "risk_tier": "HIGH",
+   "model_tier": "tier-2a-copilot",
+   "allowed_scope": ["docker/**", "scripts/**", "docs/**", "samples/**", "config/**"],
+   "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+   "max_loops": 5,
+   "escalation_policy": "stop"
+}
+```
+
+### Rollback notes
+
+If SIT deploy is unhealthy:
+
+1. `docker compose -f docker/docker-compose.sit.yml --env-file docker/.env.sit down`
+2. Checkout previous known-good commit on SIT branch
+3. Re-run `scripts/deploy/deploy-sit.sh`
+4. Re-run `scripts/deploy/smoke-sit.sh` and attach evidence before reopening UAT gate
+
+### Evidence required before UAT
+
+- SIT deploy log with migration + seed success
+- SIT smoke log showing `/api/health` + `/api/health/ready` + dependency checks
+- SIT feature-flow evidence: UI/API run output plus proof of PostgreSQL write/read, Redis cache hit/update, and MinIO object write/read
+- Network exposure check output showing 5432/6379/9000/9001 closed externally
+- Basic Auth challenge proof (401 without credentials)
+- Openclaw control-plane workflow run URL used for SIT/UAT gate dispatch
+
+### Manual prerequisites
+
+- DNS A record for `sit.yahwan.biz` to SIT host
+- TLS certificate for `sit.yahwan.biz` (Let's Encrypt)
+- Basic Auth file provisioned at `/opt/ledgerflow/secrets/sit/.htpasswd`
+- GitHub secret required for SIT gate: `BWCACC_SIT_BASIC_AUTH_USER`
+- GitHub secret required for SIT gate: `BWCACC_SIT_BASIC_AUTH_PASS`
+- Canonical deploy dispatch must be from Openclaw control-plane workflow (`deploy-openclaw-github-private-secrets.yml`)
 
 ---
 

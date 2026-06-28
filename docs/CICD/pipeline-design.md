@@ -11,10 +11,10 @@
 
 ```
 feature/*  ──→  dev  ──→  uat  ──→  main
-                 │         │         │
-             local dev   UAT VPS   PROD VPS
-             (no deploy) 72.62.74.232  72.62.247.9
-                         uat.bwcacc.biz  app.bwcacc.biz
+                │               │                │
+             SIT VPS        UAT VPS         PROD VPS
+           76.13.210.250   72.62.74.232      72.62.247.9
+            sit.yahwan.biz  uat.bwcacc.biz   app.bwcacc.biz
 ```
 
 ### 1.2 Branch Rules
@@ -22,14 +22,14 @@ feature/*  ──→  dev  ──→  uat  ──→  main
 | Branch | Purpose | Deploy Target | Protection |
 |--------|---------|---------------|------------|
 | `feature/*` | Feature development | None (local) | None |
-| `dev` | Integration branch | None (CI only) | Require PR, 1 approval |
-| `uat` | UAT environment | UAT VPS (`72.62.74.232`) | Require PR from `dev`, CI pass |
+| `dev` | Integration + SIT validation gate | SIT VPS (`76.13.210.250`) | Require PR, 1 approval |
+| `uat` | UAT environment | UAT VPS (`72.62.74.232`) | Require PR from `dev`, SIT gate pass, CI pass |
 | `main` | Production | PROD VPS (`72.62.247.9`) | Require PR from `uat`, CI pass, manual approval |
 
 ### 1.3 Merge Rules
 
 - `feature/* → dev`: Squash merge via PR, CI must pass (lint + test)
-- `dev → uat`: Merge commit via PR, triggers UAT deploy
+- `dev → uat`: Merge commit via PR, only allowed after SIT runtime gate is green
 - `uat → main`: Merge commit via PR, requires manual approval, triggers PROD deploy
 - **No force push** on `uat` or `main`
 - **No direct commits** to `uat` or `main`
@@ -52,9 +52,55 @@ These workflows continue to run as-is:
 
 ## 3. New Deploy Workflows
 
+> Control-plane compliance:
+>
+> - Canonical deploy dispatch is owned by `Piboonsak/Openclaw`.
+> - Execution-plane workflows in this repo are mirror/break-glass only and must not be treated as source-of-truth deploy control.
+
+### 3.0 SIT Runtime Validation Gate (TASK-1306A)
+
+SIT is an internal-only runtime parity environment that must pass before UAT deploy is considered safe.
+This is a real test environment for feature testing, not a dry run and not health-only verification.
+
+- SIT URL: `https://sit.yahwan.biz`
+- SIT VPS: `76.13.210.250`
+- Access gate: Nginx Basic Auth + `X-Robots-Tag: noindex`
+- Runtime stack: nginx, frontend, backend, postgres, redis, minio, celery-worker
+- Canonical dispatch path (Control Plane): `Piboonsak/Openclaw/.github/workflows/deploy-openclaw-github-private-secrets.yml`
+
+SIT deploy sequence:
+
+1. Checkout branch (default `dev`)
+2. Build SIT images
+3. Start dependency services (postgres, redis, minio)
+4. Run Alembic migration (`alembic upgrade head`)
+5. Seed anonymized SIT data (`scripts/seed_sit.py`)
+6. Start app services (frontend, backend, celery-worker, nginx)
+7. Run smoke checks (`scripts/deploy/smoke-sit.sh`)
+8. Run SIT feature flow checks against real services (UI/API actions that write to DB and use Redis/MinIO)
+
+SIT smoke contract:
+
+- `GET /api/health` returns 200
+- `GET /api/health/ready` returns 200 and dependency states are ready
+- PostgreSQL, Redis, MinIO connectivity confirmed from runtime containers
+- Celery responds to control ping
+- Export/template route is reachable (200/401/403 accepted)
+
+SIT feature test contract (must pass before UAT promotion):
+
+- At least one core user flow is executed end-to-end on SIT (upload/process/review/export)
+- Test writes are persisted in PostgreSQL and visible via API/UI readback
+- Redis cache activity is observed during request path (cache set/get evidence)
+- MinIO object write/read is verified for uploaded or generated artifacts
+- Evidence is attached to PR: command logs + screenshots/API responses
+
 ### 3.1 deploy-uat.yml
 
 **Trigger**: Push to `uat` branch (after PR merge from `dev`)
+
+This repository workflow is kept as an execution-plane mirror for emergency/manual use.
+Primary SIT/UAT gate dispatch must be executed from Openclaw control-plane workflow dispatch.
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -161,9 +207,11 @@ These workflows continue to run as-is:
 ### 5.1 Pre-Deploy Gates
 
 1. **UAT gate**: Code must have been deployed and tested on UAT first (enforced by branch flow: `dev → uat → main`)
-2. **CI pass**: All CI checks (lint, typecheck, pytest) must pass
-3. **Manual approval**: At least 1 reviewer must approve the `uat → main` PR
-4. **No force push**: Branch protection prevents force push to `main`
+2. **SIT gate**: UAT promotion is blocked/unsafe unless SIT deploy + smoke pass (`dev → sit gate → uat`)
+3. **SIT feature pass**: health/ready + feature-flow tests with real DB/cache/storage must pass
+4. **CI pass**: All CI checks (lint, typecheck, pytest) must pass
+5. **Manual approval**: At least 1 reviewer must approve the `uat → main` PR
+6. **No force push**: Branch protection prevents force push to `main`
 
 ### 5.2 Pre-Deploy DB Snapshot
 
@@ -291,11 +339,24 @@ Time: 2026-06-21 14:30:00 UTC
 
 | Script | Purpose | Location |
 |--------|---------|----------|
+| `scripts/deploy/deploy-sit.sh` | Build + migrate + seed + start SIT stack | VPS |
+| `scripts/deploy/smoke-sit.sh` | SIT dependency smoke checks | VPS |
+| `scripts/seed_sit.py` | Seed SIT with anonymized defaults | VPS |
 | `scripts/deploy/health-check.sh` | `curl` health endpoint, exit 0/1 | VPS |
 | `scripts/deploy/pre-deploy-snapshot.sh` | `pg_dump` before PROD migration | VPS |
 | `scripts/deploy/notify-line.sh` | Send LINE notification | GitHub Actions |
 | `.github/workflows/bwcacc-deploy-uat.yml` | UAT deploy workflow | Repo |
 | `.github/workflows/bwcacc-deploy-prod.yml` | PROD deploy workflow | Repo |
+
+---
+
+## 9. Promotion Gate Summary
+
+Promotion chain is now:
+
+`CI pass -> SIT deploy pass -> SIT smoke pass -> UAT deploy allowed -> PROD approval/deploy`
+
+If SIT fails, UAT deploy must be treated as blocked/unsafe until SIT evidence is green.
 
 ---
 

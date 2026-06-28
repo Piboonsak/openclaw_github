@@ -1,8 +1,11 @@
 name: BWCAcc — Deploy to UAT
 
+# NOTE:
+# - This workflow is an execution-plane mirror/break-glass path only.
+# - Canonical deploy dispatch must be triggered from Openclaw control-plane workflows.
+# - See Openclaw governance docs and docs/cicd/pipeline-design.md in this repo.
+
 "on":
-  push:
-    branches: [uat]
   workflow_dispatch:
 
 # Only one UAT deploy at a time
@@ -12,7 +15,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy BWCAcc UAT
+    name: Deploy BWCAcc UAT (Execution-Plane Mirror)
     runs-on: ubuntu-latest
     environment: uat
 
@@ -20,13 +23,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: SIT gate check (health + ready)
+        env:
+          SIT_URL: https://sit.yahwan.biz
+          SIT_USER: ${{ secrets.BWCACC_SIT_BASIC_AUTH_USER }}
+          SIT_PASS: ${{ secrets.BWCACC_SIT_BASIC_AUTH_PASS }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SIT_USER}" ] || [ -z "${SIT_PASS}" ]; then
+            echo "Missing BWCACC_SIT_BASIC_AUTH_USER/BWCACC_SIT_BASIC_AUTH_PASS secrets"
+            exit 1
+          fi
+
+          HEALTH_CODE=$(curl -sS -k -u "${SIT_USER}:${SIT_PASS}" -o /tmp/sit-health.json -w "%{http_code}" "${SIT_URL}/api/health")
+          READY_CODE=$(curl -sS -k -u "${SIT_USER}:${SIT_PASS}" -o /tmp/sit-ready.json -w "%{http_code}" "${SIT_URL}/api/health/ready")
+
+          echo "SIT /api/health HTTP ${HEALTH_CODE}"
+          echo "SIT /api/health/ready HTTP ${READY_CODE}"
+
+          if [ "${HEALTH_CODE}" != "200" ] || [ "${READY_CODE}" != "200" ]; then
+            echo "SIT gate failed. UAT deploy is blocked until SIT passes."
+            echo "--- /api/health ---"
+            cat /tmp/sit-health.json || true
+            echo "--- /api/health/ready ---"
+            cat /tmp/sit-ready.json || true
+            exit 1
+          fi
+
       - name: Deploy to UAT VPS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.BWCACC_UAT_HOST }}
           username: ${{ secrets.BWCACC_DEPLOY_USER }}
           key: ${{ secrets.BWCACC_VPS_SSH_KEY }}
-          script_stop: true
           command_timeout: 10m
           script: |
             set -euo pipefail

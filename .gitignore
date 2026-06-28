@@ -7,8 +7,10 @@
 .env.prod
 docker/.env.prod
 docker/.env.uat
+docker/.env.sit
 !docker/.env.prod.example
 !docker/.env.uat.example
+!docker/.env.sit.example
 !docker/.env.dev
 
 # Python

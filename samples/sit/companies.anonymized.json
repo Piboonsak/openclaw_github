@@ -1,0 +1,23 @@
+[
+  {
+    "id": "sit-co-001",
+    "name": "Acme Retail Demo Co., Ltd.",
+    "taxId": "0105559123401",
+    "branch": "00000",
+    "address": "99 Demo Road, Bangkok"
+  },
+  {
+    "id": "sit-co-002",
+    "name": "Northwind Supplies Co., Ltd.",
+    "taxId": "0105559123402",
+    "branch": "00001",
+    "address": "12 Example Avenue, Chiang Mai"
+  },
+  {
+    "id": "sit-co-003",
+    "name": "Contoso Services Co., Ltd.",
+    "taxId": "0105559123403",
+    "branch": "00000",
+    "address": "8 Sample Street, Khon Kaen"
+  }
+]
