@@ -17,6 +17,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +43,7 @@ _PREVIEW_MAX_ROWS = 5
 # ---------------------------------------------------------------------------
 # Pure-Python helpers — testable without a DB session
 # ---------------------------------------------------------------------------
+
 
 def cols_from_jsonb(columns_jsonb: list | None) -> list[ColumnDef]:
     """Convert stored JSONB column list → ColumnDef objects for the engine."""
@@ -82,6 +84,7 @@ def _template_to_response(t: ExportTemplate) -> TemplateResponse:
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/v1/templates", response_model=list[TemplateResponse])
 async def list_templates(
@@ -163,20 +166,25 @@ async def update_template(
     return _template_to_response(tmpl)
 
 
-@router.delete("/v1/templates/{template_id}", status_code=204)
+@router.delete("/v1/templates/{template_id}", status_code=204, response_class=Response)
 async def delete_template(
     template_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_active_user),
-) -> None:
+) -> Response:
     tmpl = await db.get(ExportTemplate, template_id)
     if not tmpl or not tmpl.is_active:
         raise HTTPException(status_code=404, detail="Template not found")
     tmpl.is_active = False
     await db.flush()
+    return Response(status_code=204)
 
 
-@router.post("/v1/templates/{template_id}/clone", response_model=TemplateResponse, status_code=201)
+@router.post(
+    "/v1/templates/{template_id}/clone",
+    response_model=TemplateResponse,
+    status_code=201,
+)
 async def clone_template(
     template_id: uuid.UUID,
     body: CloneRequest,
@@ -187,7 +195,9 @@ async def clone_template(
     if not source or not source.is_active:
         raise HTTPException(status_code=404, detail="Template not found")
     if not source.is_master:
-        raise HTTPException(status_code=400, detail="Only master templates can be cloned")
+        raise HTTPException(
+            status_code=400, detail="Only master templates can be cloned"
+        )
 
     cloned_cols = copy.deepcopy(source.columns)
     default_name = body.template_name or f"{source.template_name} (clone)"
