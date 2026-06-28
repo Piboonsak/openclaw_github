@@ -11,6 +11,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from src.backend.api.schema_analyze import router as _schema_analyze_router
+
 from celery.result import AsyncResult
 from fastapi import (
     APIRouter,
@@ -561,3 +563,7 @@ async def sync_companies(
             )
     _write_companies(companies)
     return {"ok": True, "count": len(companies)}
+
+
+# ── TASK-1009: Schema Analyzer ─────────────────────────────────────────────
+router.include_router(_schema_analyze_router)
