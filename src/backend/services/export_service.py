@@ -219,6 +219,37 @@ def _reformat_date_to_thai(iso_date: str) -> str:
     return iso_date
 
 
+# ── Balance validation (TASK-1104) ──────────────────────────────────────────
+
+_BALANCE_TOLERANCE = 0.01  # THB rounding tolerance
+
+
+def validate_balance(
+    vouchers: list[dict[str, Any]],
+    tolerance: float = _BALANCE_TOLERANCE,
+) -> dict[str, Any]:
+    """Check Sum(debit) == Sum(credit) per voucher within rounding tolerance.
+
+    Each voucher dict: { voucher_no: str, lines: [{ debit: float, credit: float }] }
+    Returns: { valid: bool, unbalanced_vouchers: list[...] }
+    """
+    unbalanced = []
+    for v in vouchers:
+        voucher_no = v.get("voucher_no", "?")
+        lines = v.get("lines", [])
+        total_dr = sum(float(line.get("debit") or 0) for line in lines)
+        total_cr = sum(float(line.get("credit") or 0) for line in lines)
+        diff = abs(total_dr - total_cr)
+        if diff > tolerance:
+            unbalanced.append({
+                "voucher_no": voucher_no,
+                "total_debit":  round(total_dr, 2),
+                "total_credit": round(total_cr, 2),
+                "difference":   round(diff, 2),
+            })
+    return {"valid": not unbalanced, "unbalanced_vouchers": unbalanced}
+
+
 # ── Purchase Tax Report — template engine plumbing ─────────────────────────
 
 # Fixed column layout for the Thai Purchase Tax Report (รายงานภาษีซื้อ).

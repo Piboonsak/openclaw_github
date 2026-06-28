@@ -13,6 +13,7 @@ from typing import Any
 
 from src.backend.api.master_import import router as _master_import_router
 from src.backend.api.schema_analyze import router as _schema_analyze_router
+from src.backend.api.export_preview import router as _export_preview_router
 from src.backend.api.templates import router as _templates_router
 
 from celery.result import AsyncResult
@@ -586,3 +587,6 @@ router.include_router(_master_import_router)
 
 # ── TASK-1002: Template CRUD + Preview ─────────────────────────────────────
 router.include_router(_templates_router)
+
+# ── TASK-1104: Export Preview + Balance Validation ──────────────────────────
+router.include_router(_export_preview_router)
