@@ -12,6 +12,7 @@ SIT_URL="${SIT_URL:-https://sit.yahwan.biz}"
 COMPOSE_FILE="docker/docker-compose.sit.yml"
 ENV_FILE="docker/.env.sit"
 HTPASSWD_FILE="/opt/ledgerflow/secrets/sit/.htpasswd"
+SIT_ENABLE_NGINX="${SIT_ENABLE_NGINX:-false}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing ${ENV_FILE}. Copy docker/.env.sit.example and fill required values."
@@ -45,7 +46,14 @@ echo "=== SIT Deploy: seed anonymized SIT data ==="
 run_compose run --rm backend python scripts/seed_sit.py
 
 echo "=== SIT Deploy: start app services ==="
-run_compose up -d backend frontend celery-worker nginx
+run_compose up -d backend frontend celery-worker
+
+if [[ "$SIT_ENABLE_NGINX" == "true" ]]; then
+  echo "=== SIT Deploy: start nginx edge service ==="
+  run_compose up -d nginx
+else
+  echo "=== SIT Deploy: skip nginx edge service (SIT_ENABLE_NGINX=false) ==="
+fi
 
 echo "=== SIT Deploy: wait for app boot (30s) ==="
 sleep 30
