@@ -71,7 +71,8 @@ FRONTEND_DIR = REPO_ROOT / "src" / "frontend"
 MANUAL_PATH = REPO_ROOT / "docs" / "PoC" / "plan" / "epic-5" / "USER-MANUAL-TH.html"
 PHASE_II_DIR = REPO_ROOT / "docs" / "requirement" / "phaseII"
 PHASE_II_TIMELINE_PATH = PHASE_II_DIR / "PHASE-II-TIMELINE.html"
-PHASE_II_PROTOTYPE_PATH = PHASE_II_DIR / "PHASE-II-PROTOTYPE.html"
+MAIN_UX_UI_FRONTEND_PATH = FRONTEND_DIR / "main-ux-ui.html"
+LEGACY_WORKFLOW_PROTOTYPE_PATH = FRONTEND_DIR / "ux-ui-prototype.html"
 
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
@@ -96,8 +97,8 @@ def serve_html_file(file_path: Path, not_found_title: str) -> HTMLResponse:
 
 @app.get("/")
 def read_root():
-    """Redirect root path to interactive prototype view."""
-    return RedirectResponse(url="/prototype")
+    """Redirect root path to the production-facing prototype review surface."""
+    return RedirectResponse(url="/phase2/prototype")
 
 
 @app.get("/manual", response_class=HTMLResponse)
@@ -116,14 +117,19 @@ def get_manual():
 
 @app.get("/prototype", response_class=HTMLResponse)
 def get_prototype():
-    """Serve the static interactive HTML pre-accounting prototype page."""
-    prototype_path = FRONTEND_DIR / "ux-ui-prototype.html"
-    if not prototype_path.exists():
+    """Keep the legacy prototype URL pointing at the production-facing review page."""
+    return RedirectResponse(url="/phase2/prototype")
+
+
+@app.get("/workflow-demo", response_class=HTMLResponse)
+def get_workflow_demo():
+    """Serve the legacy interactive workflow demo for internal validation only."""
+    if not LEGACY_WORKFLOW_PROTOTYPE_PATH.exists():
         return HTMLResponse(
-            "<html><body><h1>Prototype file not found!</h1></body></html>",
+            "<html><body><h1>Workflow demo file not found!</h1></body></html>",
             status_code=404,
         )
-    html = prototype_path.read_text(encoding="utf-8")
+    html = LEGACY_WORKFLOW_PROTOTYPE_PATH.read_text(encoding="utf-8")
     # Keep legacy relative hrefs working by normalizing stylesheet path to /static.
     for old_href in (
         'href="./ux-ui-prototype.css"',
@@ -286,12 +292,12 @@ def get_phase2_review_index():
                 <p>Phase II full prototype document for UX flow and UI scope review.</p>
                 <div class="actions">
                     <a class="btn primary" href="/phase2/prototype">Open Prototype</a>
-                    <a class="btn" href="/prototype">Open Interactive PoC</a>
+                    <a class="btn" href="/workflow-demo">Open Legacy Workflow Demo</a>
                 </div>
             </article>
         </section>
 
-        <p class="note">For implementation validation, interactive flow remains available at /prototype. These Phase II pages are review documents.</p>
+        <p class="note">The production-facing prototype now lives at /phase2/prototype. The older workflow demo remains available at /workflow-demo for internal reference only.</p>
     </main>
 </body>
 </html>
@@ -312,5 +318,8 @@ def get_phase2_timeline():
 
 @app.get("/phase2/prototype", response_class=HTMLResponse)
 def get_phase2_prototype():
-    """Serve the Phase II full prototype review document."""
-    return serve_html_file(PHASE_II_PROTOTYPE_PATH, "Phase II prototype")
+    """Serve the Phase II full prototype from the main UX/UI frontend path."""
+    return serve_html_file(
+        MAIN_UX_UI_FRONTEND_PATH,
+        "Phase II prototype",
+    )
