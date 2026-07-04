@@ -30,6 +30,7 @@ ACTION_PATTERNS = [
     re.compile(r"^scripts/"),
     re.compile(r"^config/"),
     re.compile(r"^docker/"),
+    re.compile(r"^deploy/"),
     re.compile(r"^\.github/workflows/"),
     re.compile(r"^\.git(ignore|attributes)$"),
     re.compile(r"^(alembic\.ini|requirements.*\.txt|pyproject\.toml)$"),
