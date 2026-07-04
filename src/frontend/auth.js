@@ -11,9 +11,13 @@
 
   function apiUrl(path) {
     const normalized = path.startsWith("/") ? path : `/${path}`;
-    return window.location.protocol === "file:"
-      ? `${FILE_API_ORIGIN}${normalized}`
-      : normalized;
+    if (window.location.protocol === "file:") {
+      return `${FILE_API_ORIGIN}${normalized}`;
+    }
+
+    const current = new URL(window.location.href);
+    const origin = `${current.protocol}//${current.host}`;
+    return `${origin}${normalized}`;
   }
 
   function getToken() {
