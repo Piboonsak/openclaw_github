@@ -119,7 +119,7 @@
 
     installFetchAuth();
     try {
-      const response = await window.fetch(apiUrl("/api/auth/me"));
+      const response = await window.fetch(apiUrl("/api/v1/auth/me"));
       if (!response.ok) {
         if (response.status === 401) clearToken();
         return null;
