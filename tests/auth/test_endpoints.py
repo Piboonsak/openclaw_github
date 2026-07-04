@@ -27,6 +27,7 @@ def _build_user() -> SimpleNamespace:
         display_name="Admin User",
         role="admin",
         is_active=True,
+        must_change_password=False,
         last_login=None,
     )
 

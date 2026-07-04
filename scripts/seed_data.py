@@ -347,6 +347,7 @@ def _get_or_create_admin_user(
             display_name=display_name,
             role="admin",
             is_active=True,
+            must_change_password=True,
         )
         session.add(user)
         session.flush()
@@ -356,7 +357,12 @@ def _get_or_create_admin_user(
         user.display_name = display_name
         user.role = "admin"
         user.is_active = True
-        if not verify_password(password, user.password_hash):
+        # Only reset the password back to the seed default when the user is still
+        # on the default (must_change_password=True). Preserve any password the
+        # user has finalized via the first-login flow.
+        if user.must_change_password and not verify_password(
+            password, user.password_hash
+        ):
             user.password_hash = hash_password(password)
     return user, created
 

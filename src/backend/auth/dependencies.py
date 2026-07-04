@@ -51,6 +51,27 @@ async def get_current_active_user(
     return current_user
 
 
+async def require_password_finalized(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """Guard: block protected endpoints until the user has changed the default password.
+
+    Attach this to any router (or as a global dependency) that must be inaccessible
+    while the user is still on a seeded/default password. `/auth/me`, `/auth/change-password`,
+    `/auth/logout`, and `/auth/refresh` should NOT use this guard so the first-login
+    flow can complete.
+    """
+    if current_user.must_change_password:
+        raise HTTPException(
+            status_code=status.HTTP_428_PRECONDITION_REQUIRED,
+            detail={
+                "code": "MUST_CHANGE_PASSWORD",
+                "message": "กรุณาเปลี่ยนรหัสผ่านก่อนใช้งานระบบ",
+            },
+        )
+    return current_user
+
+
 async def require_admin(
     current_user: User = Depends(get_current_active_user),
 ) -> User:

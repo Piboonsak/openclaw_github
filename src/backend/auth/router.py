@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -15,6 +16,7 @@ from src.backend.auth.auth import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
     verify_password,
 )
 from src.backend.auth.dependencies import get_current_active_user, get_user_company_ids
@@ -22,6 +24,10 @@ from src.backend.db.models import User
 from src.backend.db.session import get_db
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
+
+MIN_PASSWORD_LENGTH = 8
+_PASSWORD_LETTER_RE = re.compile(r"[A-Za-z]")
+_PASSWORD_DIGIT_RE = re.compile(r"\d")
 
 
 class LoginRequest(BaseModel):
@@ -33,11 +39,38 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-def _build_user_payload(user: User) -> dict[str, str]:
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+def _validate_new_password(new_password: str, *, old_password: str) -> None:
+    """Enforce SIT/MVP password policy. Raises HTTPException(400) on failure."""
+    if new_password == old_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม",
+        )
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"รหัสผ่านใหม่ต้องมีอย่างน้อย {MIN_PASSWORD_LENGTH} ตัวอักษร",
+        )
+    if not _PASSWORD_LETTER_RE.search(new_password) or not _PASSWORD_DIGIT_RE.search(
+        new_password
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="รหัสผ่านใหม่ต้องประกอบด้วยตัวอักษรและตัวเลขอย่างน้อยอย่างละหนึ่งตัว",
+        )
+
+
+def _build_user_payload(user: User) -> dict[str, object]:
     return {
         "id": str(user.id),
         "display_name": user.display_name or user.username,
         "role": user.role,
+        "must_change_password": bool(user.must_change_password),
     }
 
 
@@ -92,7 +125,31 @@ async def me(
         "email": current_user.email,
         "display_name": current_user.display_name or current_user.username,
         "role": current_user.role,
+        "must_change_password": bool(current_user.must_change_password),
         "company_ids": await get_user_company_ids(db, current_user.id),
+    }
+
+
+@router.post("/change-password")
+async def change_password(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    if not verify_password(payload.old_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="รหัสผ่านปัจจุบันไม่ถูกต้อง",
+        )
+    _validate_new_password(payload.new_password, old_password=payload.old_password)
+
+    current_user.password_hash = hash_password(payload.new_password)
+    current_user.must_change_password = False
+    await db.flush()
+
+    return {
+        "status": "ok",
+        "user": _build_user_payload(current_user),
     }
 
 

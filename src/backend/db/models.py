@@ -139,6 +139,9 @@ class User(Base):
     display_name: Mapped[str | None] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(50), default="staff")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     last_login: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = _now()
 
