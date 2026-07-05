@@ -121,7 +121,7 @@ def _scalars_target(_stmt):
     return "any"
 
 
-def _build_app_with_overrides(session, *, admin=True):
+def _build_app_with_overrides(session, *, admin=True, requester_role="admin"):
     from src.backend.api import users_admin as module
 
     app = FastAPI()
@@ -133,7 +133,7 @@ def _build_app_with_overrides(session, *, admin=True):
     app.dependency_overrides[get_db] = fake_get_db
     if admin:
         app.dependency_overrides[require_admin] = lambda: SimpleNamespace(
-            id=uuid.uuid4(), tenant_id=uuid.uuid4(), username="admin", role="admin"
+            id=uuid.uuid4(), tenant_id=uuid.uuid4(), username="admin", role=requester_role
         )
     return app
 
@@ -169,6 +169,34 @@ class TestCreateUser(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 409)
+
+    def test_admin_cannot_assign_sys_admin_role(self):
+        """EPIC-12 TASK-1204 role table: only a sys_admin can grant sys_admin —
+        rejected explicitly (403), not silently downgraded to staff.
+        """
+        session = FakeAsyncSession(users=[], company_ids=set())
+        app = _build_app_with_overrides(session, requester_role="admin")
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/admin/users",
+            json={"email": "new@bwc.co.th", "username": "newsysadmin", "role": "sys_admin"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_sys_admin_can_assign_sys_admin_role(self):
+        session = FakeAsyncSession(users=[], company_ids=set())
+        app = _build_app_with_overrides(session, requester_role="sys_admin")
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/admin/users",
+            json={"email": "new@bwc.co.th", "username": "newsysadmin", "role": "sys_admin"},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["role"], "sys_admin")
 
     def test_unknown_company_id_returns_404(self):
         session = FakeAsyncSession(users=[], company_ids=set())
@@ -215,6 +243,20 @@ class TestUpdateUser(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+    def test_admin_cannot_escalate_existing_user_to_sys_admin(self):
+        existing = FakeUser(email="a@b.co", username="a", role="staff")
+        session = FakeAsyncSession(users=[existing])
+        app = _build_app_with_overrides(session, requester_role="admin")
+        client = TestClient(app)
+
+        response = client.put(
+            f"/v1/admin/users/{existing.id}",
+            json={"role": "sys_admin"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(existing.role, "staff")
 
 
 class TestResetPassword(unittest.TestCase):

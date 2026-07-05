@@ -191,6 +191,50 @@ def test_change_password_rejects_weak_new_password(monkeypatch) -> None:
     assert user.must_change_password is True
 
 
+def test_real_admin_router_enforces_password_finalized() -> None:
+    """Confirms the wiring in `src/backend/app/endpoints.py` — not just the
+    dependency function in isolation. Previously `require_password_finalized`
+    was written but never attached to any real route, so a first-login user
+    with a temp password had full, permanent app access.
+    """
+    from src.backend.app import endpoints as endpoints_module
+    from src.backend.db.session import get_db as real_get_db
+
+    app = FastAPI()
+    app.include_router(endpoints_module.router, prefix="/api")
+
+    class FakeResult:
+        def scalars(self):
+            return self
+
+        def all(self):
+            return []
+
+    class FakeSession:
+        async def execute(self, _stmt):
+            return FakeResult()
+
+    async def fake_get_db():
+        yield FakeSession()
+
+    user = _build_first_login_user()
+
+    async def fake_current_user():
+        return user
+
+    app.dependency_overrides[real_get_db] = fake_get_db
+    app.dependency_overrides[get_current_active_user] = fake_current_user
+    client = TestClient(app)
+
+    blocked = client.get("/api/v1/admin/companies")
+    assert blocked.status_code == 428
+    assert blocked.json()["detail"]["code"] == "MUST_CHANGE_PASSWORD"
+
+    user.must_change_password = False
+    allowed = client.get("/api/v1/admin/companies")
+    assert allowed.status_code == 200
+
+
 def test_protected_endpoint_allowed_after_change_password(monkeypatch) -> None:
     app = _create_app()
     client = TestClient(app)

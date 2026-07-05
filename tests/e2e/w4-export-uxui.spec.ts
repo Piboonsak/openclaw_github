@@ -89,16 +89,16 @@ test.describe("W4 Export + Configurator UX corrections", () => {
     await expect(page.locator("#modal-import-customer")).toHaveCount(1);
   });
 
-  test("Templates screen reflects the low-ambiguity Express master template families", async ({ page }) => {
+  test("Templates screen renders Master Templates from real backend data, not a static fixture", async ({ page }) => {
+    // W4 SIT closure (Pack C) replaced the 8 hardcoded Express template fixture
+    // cards with a company-scoped, API-backed Master/Company template list.
+    // Without a logged-in session this container stays empty/loading — real
+    // data coverage lives in w4-templates-real-uxui.spec.ts. Here we only
+    // assert the dynamic scaffold exists and no fixture content leaked back in.
     await gotoWithRetry(page, "/prototype");
-    const cards = page.locator("#tmpl-master .two-col-grid > .card");
-    await expect(cards).toHaveCount(8);
-    await expect(page.locator("#tmpl-master")).toContainText("Express ซื้อสด (Book 12)");
-    await expect(page.locator("#tmpl-master")).toContainText("Express ซื้อเชื่อ (Book 14)");
-    await expect(page.locator("#tmpl-master")).toContainText("Express ค่าใช้จ่ายอื่นๆ (Book 15)");
-    await expect(page.locator("#tmpl-master")).toContainText("WHT 3%");
-    await expect(page.locator("#tmpl-master")).toContainText("Express ขายสด (Book 22)");
-    await expect(page.locator("#tmpl-master")).toContainText("Express ขายเชื่อ (Book 24)");
+    await expect(page.locator("#tmplMasterCardsBody")).toHaveCount(1);
+    await expect(page.locator("#tmplMasterCount")).toHaveCount(1);
+    await expect(page.locator("#tmpl-master")).not.toContainText("Express ซื้อสด (Book 12)");
   });
 
   test("Template Configurator is structured as a 3-tab persistent setup surface", async ({ page }) => {
@@ -186,58 +186,14 @@ test.describe("W4 Export + Configurator interaction wiring", () => {
   });
 });
 
-// Regression guard for W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02 (Codex Review 01
-// found Review Scan / Review Mapping / Processing fixture controls still
+// Former regression guard for W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02 (Codex Review
+// 01 found Review Scan / Review Mapping / Processing fixture controls still
 // claiming success via showToast(..., 'ok') with no backend behind them).
-// These are static, no-login-required fixture screens, so a real click is
-// enough to prove the toast type/wording without mocking any API.
-test.describe("W4 SIT E2E — residual fake-success controls stay honestly deferred", () => {
-  test("Review Scan Approve and Approve All show a deferred warning, not a fake success", async ({ page }) => {
-    await bypassLogin(page);
-    await page.click("[data-screen='s-review-scan']");
-
-    await page.click("button:has-text('✓ Approve')");
-    let toast = page.locator(".toast").last();
-    await expect(toast).toHaveClass(/warn/);
-    await expect(toast).not.toHaveClass(/\bok\b/);
-    await expect(toast).toContainText("deferred");
-
-    await page.click("button:has-text('✓ Approve All ที่เหลือ')");
-    toast = page.locator(".toast").last();
-    await expect(toast).toHaveClass(/warn/);
-    await expect(toast).toContainText("deferred");
-  });
-
-  test("Review Scan Flag modal shows a deferred warning, not a fake success", async ({ page }) => {
-    await bypassLogin(page);
-    await page.click("[data-screen='s-review-scan']");
-    await page.click("button:has-text('🚩 Flag')");
-    await page.click("#modal-flag button:has-text('บันทึก Flag')");
-
-    const toast = page.locator(".toast").last();
-    await expect(toast).toHaveClass(/warn/);
-    await expect(toast).toContainText("deferred");
-  });
-
-  test("Review Mapping Confirm shows a deferred warning, not a fake success", async ({ page }) => {
-    await bypassLogin(page);
-    await page.click("[data-screen='s-review-mapping']");
-    await page.click("button:has-text('✓ Confirm Mapping')");
-
-    const toast = page.locator(".toast").last();
-    await expect(toast).toHaveClass(/warn/);
-    await expect(toast).not.toHaveClass(/\bok\b/);
-    await expect(toast).toContainText("deferred");
-  });
-
-  test("Processing error-retry modal shows a deferred warning, not a fake success", async ({ page }) => {
-    await bypassLogin(page);
-    await page.click("[data-screen='s-processing']");
-    await page.click("a:has-text('ดู Error')");
-    await page.click("#modal-proc-error button:has-text('ลองใหม่')");
-
-    const toast = page.locator(".toast").last();
-    await expect(toast).toHaveClass(/warn/);
-    await expect(toast).toContainText("deferred");
-  });
-});
+// W4 SIT closure Pack B (TASK-W4-SIT-E2E-CLAUDE-IMPLEMENT-ROUTINE-OPS-05)
+// replaced those honest-defer fixture controls with real API-backed behavior,
+// so the "stays deferred" assertions this block used to make are no longer
+// true by design — real coverage for Approve/Approve All/Flag/Confirm Mapping
+// now lives in tests/e2e/w4-routine-ops-uxui.spec.ts. The Processing screen's
+// per-row error-retry modal (`#modal-proc-error`) was fixture-only dead
+// markup with no real per-stage progress backing it and has been removed
+// along with its trigger.

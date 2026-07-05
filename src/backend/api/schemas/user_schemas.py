@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-_ALLOWED_ROLES = {"staff", "admin"}
+_ALLOWED_ROLES = {"staff", "admin", "sys_admin"}
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -15,7 +15,7 @@ class UserCreate(BaseModel):
     email: str = Field(..., min_length=3, max_length=255)
     username: str = Field(..., min_length=1, max_length=100)
     display_name: Optional[str] = Field(None, max_length=255)
-    role: str = Field("staff", description="staff or admin")
+    role: str = Field("staff", description="staff, admin, or sys_admin")
     company_ids: list[str] = Field(default_factory=list)
 
     @field_validator("email")

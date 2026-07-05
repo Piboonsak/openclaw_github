@@ -17,6 +17,10 @@ from src.backend.api.export_preview import router as _export_preview_router
 from src.backend.api.templates import router as _templates_router
 from src.backend.api.companies_admin import router as _companies_admin_router
 from src.backend.api.users_admin import router as _users_admin_router
+from src.backend.api.coa import router as _coa_router
+from src.backend.api.documents import router as _documents_router
+from src.backend.api.mapping_rules import router as _mapping_rules_router
+from src.backend.api.product_master import router as _product_master_router
 
 from celery.result import AsyncResult
 from fastapi import (
@@ -34,7 +38,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 from config.settings import settings
 from src.backend.app.health import collect_service_health, get_uptime_seconds
-from src.backend.auth.dependencies import get_current_active_user
+from src.backend.auth.dependencies import get_current_active_user, require_password_finalized
 from src.backend.db.models import User
 from src.backend.ml.llm_router import get_routing_diagnostics, read_cost_log_tail
 from src.backend.pipeline.orchestrator import run_pipeline, select_model
@@ -581,18 +585,40 @@ async def sync_companies(
     return {"ok": True, "count": len(companies)}
 
 
+# First-login / reset-password enforcement (TASK-1204 ac_1204 first-login
+# intent — TC-RWG02-03): `must_change_password` was already set correctly on
+# create/reset, but nothing enforced it, so a user could keep using a one-time
+# temp password indefinitely. `require_password_finalized` already existed in
+# auth/dependencies.py but was never attached to a real route. Wiring it here
+# (rather than per-endpoint) covers every admin/company/master-data/template/
+# export surface in one place; `/v1/auth/*` intentionally stays exempt so the
+# forced first-login change-password flow itself remains reachable.
+_PASSWORD_FINALIZED = [Depends(require_password_finalized)]
+
 # ── TASK-1009: Schema Analyzer ─────────────────────────────────────────────
-router.include_router(_schema_analyze_router)
+router.include_router(_schema_analyze_router, dependencies=_PASSWORD_FINALIZED)
 
 # ── TASK-1207: Vendor & Customer Master Import ──────────────────────────────
-router.include_router(_master_import_router)
+router.include_router(_master_import_router, dependencies=_PASSWORD_FINALIZED)
 
 # ── TASK-1002: Template CRUD + Preview ─────────────────────────────────────
-router.include_router(_templates_router)
+router.include_router(_templates_router, dependencies=_PASSWORD_FINALIZED)
 
 # ── TASK-1104: Export Preview + Balance Validation ──────────────────────────
-router.include_router(_export_preview_router)
+router.include_router(_export_preview_router, dependencies=_PASSWORD_FINALIZED)
 
 # ── W4 SIT closure: real Company/User CRUD (TASK-1203/TASK-1204 minimal slice) ─
-router.include_router(_companies_admin_router)
-router.include_router(_users_admin_router)
+router.include_router(_companies_admin_router, dependencies=_PASSWORD_FINALIZED)
+router.include_router(_users_admin_router, dependencies=_PASSWORD_FINALIZED)
+
+# ── TASK-1203: Chart of Accounts import (YAML/CSV/PDF) ─────────────────────
+router.include_router(_coa_router, dependencies=_PASSWORD_FINALIZED)
+
+# ── TASK-1203: Mapping Rules document-ingestion workflow ───────────────────
+router.include_router(_mapping_rules_router, dependencies=_PASSWORD_FINALIZED)
+
+# ── Pack C: Product/price-list master (separate from enable_stock) ────────
+router.include_router(_product_master_router, dependencies=_PASSWORD_FINALIZED)
+
+# ── Pack B: real Upload -> Process -> Review Scan -> Review Mapping workflow ─
+router.include_router(_documents_router, dependencies=_PASSWORD_FINALIZED)

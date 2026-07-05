@@ -34,6 +34,21 @@ from src.backend.api.schemas.user_schemas import (
 from src.backend.auth.auth import hash_password
 from src.backend.auth.dependencies import require_admin
 from src.backend.db.models import Company, User, UserCompanyAssignment
+
+_ASSIGNABLE_ROLES = {"staff", "admin", "sys_admin"}
+
+
+def _reject_sys_admin_escalation(requested_role: str | None, requester: User) -> None:
+    """Admin cannot assign sys_admin (EPIC-12 TASK-1204 role table) — only a
+    sys_admin can grant sys_admin. Rejected explicitly (403), not silently
+    downgraded, since a deliberate escalation attempt should not look like a
+    quiet no-op success.
+    """
+    if requested_role == "sys_admin" and requester.role != "sys_admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only a sys_admin can assign the sys_admin role",
+        )
 from src.backend.db.session import get_db
 
 router = APIRouter(prefix="/v1/admin/users", tags=["users-admin"])
@@ -103,6 +118,8 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> UserCreateResponse:
+    normalized_role = body.normalized_role()
+    _reject_sys_admin_escalation(normalized_role, current_user)
     company_uuids = await _validate_company_ids(db, body.company_ids)
     temp_password = _generate_temp_password()
     user = User(
@@ -111,7 +128,7 @@ async def create_user(
         username=body.username,
         password_hash=hash_password(temp_password),
         display_name=body.display_name,
-        role=body.normalized_role(),
+        role=normalized_role,
         is_active=True,
         must_change_password=True,
     )
@@ -138,7 +155,7 @@ async def update_user(
     user_id: uuid.UUID,
     body: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ) -> UserResponse:
     user = await db.get(User, user_id)
     if not user:
@@ -147,7 +164,8 @@ async def update_user(
     if body.display_name is not None:
         user.display_name = body.display_name
     if body.role is not None:
-        user.role = body.role if body.role in {"staff", "admin"} else user.role
+        _reject_sys_admin_escalation(body.role, current_user)
+        user.role = body.role if body.role in _ASSIGNABLE_ROLES else user.role
     if body.is_active is not None:
         user.is_active = body.is_active
 

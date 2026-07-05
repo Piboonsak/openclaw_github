@@ -312,6 +312,127 @@ COA source text:
 """.strip()
 
 
+def extract_chart_of_accounts(
+    *,
+    company_name: str,
+    business_type: str,
+    coa_text: str,
+    provider: str = "auto",
+    model: str = "",
+) -> list[dict[str, Any]]:
+    """Run just the Stage-3 COA extraction (no mapping-rule generation).
+
+    Reused by the focused COA-PDF-import endpoint (TASK-1203 `ac_1203_coa_pdf`)
+    so a plain "upload one PDF, review, save" flow doesn't need to go through
+    the full 4-stage `run_rule_generation_job` (which requires a mapping DOCX
+    too and writes YAML rule files, neither of which apply here).
+    """
+    load_llm_keys()
+    settings.reload()
+    prompt = _build_stage3_prompt(company_name, business_type, coa_text)
+    raw = _call_llm(provider, prompt, "Return only valid YAML.", model)
+    payload = yaml.safe_load(_strip_code_fence(raw)) or {}
+    accounts = payload.get("chart_of_accounts", []) or []
+    if not isinstance(accounts, list) or not accounts:
+        raise RuntimeError("LLM extraction returned no chart_of_accounts rows.")
+    confidence_map = {
+        str(item.get("code", "")).strip(): int(float(item.get("confidence", 85)))
+        for item in (payload.get("account_confidence", []) or [])
+        if str(item.get("code", "")).strip()
+    }
+    seen: set[str] = set()
+    normalized: list[dict[str, Any]] = []
+    for account in accounts:
+        code = str(account.get("code", "")).strip()
+        name = str(account.get("name", "")).strip()
+        account_type = str(account.get("type", "expense")).strip().lower()
+        if not code or not name or code in seen:
+            continue
+        seen.add(code)
+        normalized.append(
+            {
+                "code": code,
+                "name": name,
+                "type": account_type,
+                "confidence": confidence_map.get(code, 85),
+            }
+        )
+    if not normalized:
+        raise RuntimeError("LLM extraction could not normalize any account rows.")
+    return normalized
+
+
+def extract_mapping_rules(
+    *,
+    company_name: str,
+    business_type: str,
+    mapping_text: str,
+    chart_of_accounts: list[dict[str, Any]],
+    provider: str = "auto",
+    model: str = "",
+) -> list[dict[str, Any]]:
+    """Extract vendor/keyword -> document-type -> debit-account mapping rules
+    from a company's Mapping Rules document (company settings document-
+    ingestion workflow). Produces rows shaped for the `AccountMappingRule`
+    table (vendor_name, document_type, recommended_debit_code,
+    recommended_account_name) — a simpler, more directly UI-usable shape than
+    the `journal_entry_rules`/`entries[]` schema `_build_stage4_prompt`
+    produces for full Express GL export rule generation.
+    """
+    load_llm_keys()
+    settings.reload()
+    account_lines = "\n".join(
+        f"{a['code']}: {a['name']}" for a in chart_of_accounts[:200]
+    )
+    prompt = f"""
+You are a senior Thai accounting analyst. The document below is this company's
+internal policy for how to record vendor invoices/receipts into the ledger.
+Extract a list of mapping rules: which vendor or keyword maps to which debit
+account, for which document type.
+
+Return YAML only with key `rules`, a list of:
+  vendor_name: string   # vendor name or a recognizable keyword from the document
+  document_type: string # e.g. Invoice, Receipt, Tax Invoice
+  recommended_debit_code: string   # must be one of the account codes below
+  recommended_account_name: string # the matching account name for that code
+
+Company: {company_name} ({business_type})
+
+Chart of accounts (code: name):
+{account_lines}
+
+Mapping policy document text:
+{mapping_text[:40000]}
+""".strip()
+    raw = _call_llm(provider, prompt, "Return only valid YAML.", model)
+    payload = yaml.safe_load(_strip_code_fence(raw)) or {}
+    rules = payload.get("rules", []) or []
+    if not isinstance(rules, list):
+        rules = []
+    seen: set[tuple[str, str]] = set()
+    normalized: list[dict[str, Any]] = []
+    for rule in rules:
+        vendor_name = str(rule.get("vendor_name", "")).strip()
+        document_type = str(rule.get("document_type", "")).strip()
+        debit_code = str(rule.get("recommended_debit_code", "")).strip()
+        account_name = str(rule.get("recommended_account_name", "")).strip()
+        if not vendor_name:
+            continue
+        key = (vendor_name, document_type)
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(
+            {
+                "vendor_name": vendor_name,
+                "document_type": document_type or None,
+                "recommended_debit_code": debit_code or None,
+                "recommended_account_name": account_name or None,
+            }
+        )
+    return normalized
+
+
 def _build_stage4_prompt(
     company_name: str,
     business_type: str,

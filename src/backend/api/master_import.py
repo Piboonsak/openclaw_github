@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.backend.auth.dependencies import get_current_active_user
+from src.backend.auth.dependencies import ensure_company_access, get_current_active_user
 from src.backend.db.models import User
 from src.backend.db.session import get_db
 from src.backend.services.master_data_import import (
@@ -46,8 +46,9 @@ async def import_vendor_master(
     company_id: uuid.UUID,
     file: UploadFile = File(..., description="Vendor master CSV"),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> JSONResponse:
+    await ensure_company_access(db, current_user, company_id)
     content = await _read_upload_bytes(file)
     repo = SqlAlchemyMasterRepository(db)
     try:
@@ -64,8 +65,9 @@ async def import_customer_master(
     company_id: uuid.UUID,
     file: UploadFile = File(..., description="Customer master CSV"),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> JSONResponse:
+    await ensure_company_access(db, current_user, company_id)
     content = await _read_upload_bytes(file)
     repo = SqlAlchemyMasterRepository(db)
     try:
@@ -84,8 +86,9 @@ async def get_vendor_master_entries(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> JSONResponse:
+    await ensure_company_access(db, current_user, company_id)
     repo = SqlAlchemyMasterRepository(db)
     try:
         result = await list_master_entries(repo, company_id, "vendor", q, page, page_size)
@@ -101,8 +104,9 @@ async def get_customer_master_entries(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> JSONResponse:
+    await ensure_company_access(db, current_user, company_id)
     repo = SqlAlchemyMasterRepository(db)
     try:
         result = await list_master_entries(

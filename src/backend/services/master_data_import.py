@@ -201,8 +201,52 @@ def _decode_csv_bytes(content: bytes) -> tuple[str, str]:
     return content.decode(codec, errors="replace"), detected
 
 
-def _parse_csv_rows(content: bytes) -> tuple[list[dict[str, str]], str]:
+# Express Accounting's raw vendor/customer report export (as produced by this
+# customer's actual bookkeeping software) is not a header-row CSV at all: it's
+# a printed-report dump — a "ต้องการ Format" placeholder line, a company-name
+# + page-number banner line, then master rows mixed with per-transaction detail
+# lines. Confirmed against the real AP-CCSS.csv / AR-CCSS.csv sample files:
+# every row has a fixed 10-column shape, and the row's first column is a bare,
+# unique, non-negative sequence number (Express's own vendor/customer code) on
+# master rows only — detail lines never match that shape. The vendor GL control
+# account (AP) always sits in the last column; the AR "ar_flag" always sits in
+# the second-to-last column with no trailing GL code.
+_EXPRESS_EXPORT_MARKER = "ต้องการ format"
+
+
+def _is_express_export(rows: list[list[str]]) -> bool:
+    return bool(rows) and bool(rows[0]) and rows[0][0].strip().lower() == _EXPRESS_EXPORT_MARKER
+
+
+def _parse_express_export_rows(
+    rows: list[list[str]], entity: MasterEntity
+) -> list[dict[str, str]]:
+    parsed: list[dict[str, str]] = []
+    for row in rows:
+        if not row or not row[0].strip().isdigit():
+            continue  # banner/company-name/blank/transaction-detail lines
+        code = row[0].strip()
+        name = row[1].strip() if len(row) > 1 else ""
+        if entity == "vendor":
+            gl_code = row[9].strip() if len(row) > 9 else ""
+            parsed.append({"vendor_code": code, "vendor_name": name, "gl_code": gl_code})
+        else:
+            ar_flag = row[8].strip() if len(row) > 8 else ""
+            parsed.append({"customer_code": code, "customer_name": name, "ar_flag": ar_flag})
+    return parsed
+
+
+def _parse_csv_rows(
+    content: bytes, entity: MasterEntity
+) -> tuple[list[dict[str, str]], str]:
     decoded, detected = _decode_csv_bytes(content)
+    raw_rows = list(csv.reader(io.StringIO(decoded)))
+    if not raw_rows:
+        raise ValueError("CSV header row is required")
+
+    if _is_express_export(raw_rows):
+        return _parse_express_export_rows(raw_rows, entity), detected
+
     reader = csv.DictReader(io.StringIO(decoded))
     if not reader.fieldnames:
         raise ValueError("CSV header row is required")
@@ -223,7 +267,7 @@ async def import_master_csv(
     if not await repo.company_exists(company_id):
         raise LookupError("Company not found")
 
-    rows, detected = _parse_csv_rows(content)
+    rows, detected = _parse_csv_rows(content, entity)
     summary = ImportSummary(imported=0, updated=0, encoding_detected=detected)
 
     for index, row in enumerate(rows, start=2):

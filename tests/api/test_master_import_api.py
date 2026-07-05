@@ -189,5 +189,72 @@ class TestMasterImportApi(unittest.TestCase):
         self.assertEqual(body["items"][0]["code"], "V001")
 
 
+class FakeScopingSession:
+    """Minimal async session stub exposing only `.scalars()`, used to exercise
+    `ensure_company_access`'s staff-scoping branch (TASK-1204 ac_1204_staff_scope,
+    RWG-02 real-workflow finding: a staff user could previously read/import
+    another company's vendor/customer master by passing its company_id directly).
+    """
+
+    def __init__(self, assigned_company_ids: list[uuid.UUID]):
+        self._assigned = assigned_company_ids
+
+    async def scalars(self, _stmt):
+        return list(self._assigned)
+
+
+class TestMasterImportScoping(unittest.TestCase):
+    def setUp(self) -> None:
+        self.app = _build_app()
+        self.client = TestClient(self.app)
+        self.company_id = uuid.uuid4()
+        self.other_company_id = uuid.uuid4()
+        self.repo = InMemoryMasterRepository([self.company_id, self.other_company_id])
+        self.repo_patch = patch.object(
+            master_import_module,
+            "SqlAlchemyMasterRepository",
+            new=lambda db: self.repo,
+        )
+        self.repo_patch.start()
+
+    def tearDown(self) -> None:
+        self.repo_patch.stop()
+
+    def _as_staff(self, assigned_company_ids: list[uuid.UUID]) -> None:
+        async def fake_get_db():
+            yield FakeScopingSession(assigned_company_ids)
+
+        async def fake_current_user():
+            return SimpleNamespace(id=uuid.uuid4(), username="staff1", role="staff")
+
+        self.app.dependency_overrides[get_db] = fake_get_db
+        self.app.dependency_overrides[get_current_active_user] = fake_current_user
+
+    def test_staff_blocked_from_unassigned_company_vendor_master(self) -> None:
+        self._as_staff(assigned_company_ids=[self.other_company_id])
+
+        resp = self.client.get(f"/v1/companies/{self.company_id}/vendor-master")
+
+        self.assertEqual(resp.status_code, 403)
+
+    def test_staff_allowed_for_assigned_company_vendor_master(self) -> None:
+        self._as_staff(assigned_company_ids=[self.company_id])
+
+        resp = self.client.get(f"/v1/companies/{self.company_id}/vendor-master")
+
+        self.assertEqual(resp.status_code, 200)
+
+    def test_staff_blocked_from_unassigned_company_customer_master_import(self) -> None:
+        self._as_staff(assigned_company_ids=[self.other_company_id])
+        content = _csv_bytes(["customer_code", "customer_name"], [["C001", "Test"]])
+
+        resp = self.client.post(
+            f"/v1/companies/{self.company_id}/customer-master/import",
+            files={"file": ("customers.csv", content, "text/csv")},
+        )
+
+        self.assertEqual(resp.status_code, 403)
+
+
 if __name__ == "__main__":
     unittest.main()

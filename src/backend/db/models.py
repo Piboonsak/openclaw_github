@@ -118,6 +118,9 @@ class Company(Base):
     account_mapping_cache_entries: Mapped[list[AccountMappingCache]] = relationship(
         back_populates="company"
     )
+    product_master_entries: Mapped[list[ProductMaster]] = relationship(
+        back_populates="company"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -775,6 +778,38 @@ class CustomerMaster(Base):
             "company_id",
             "customer_code",
             name="uq_customer_company_code",
+        ),
+    )
+
+
+class ProductMaster(Base):
+    """Company-level product/price-list master (Pack C product-master
+    foundation) — deliberately separate from `enable_stock` (a company-level
+    line-item-OCR toggle) and from `ChartOfAccount`; this feeds future
+    line-item/product matching quality, not the GL itself.
+    """
+
+    __tablename__ = "product_master"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    product_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    product_name: Mapped[str] = mapped_column(Text, nullable=False)
+    unit: Mapped[str | None] = mapped_column(String(20))
+    unit_cost: Mapped[float | None] = mapped_column(Float)
+    category: Mapped[str | None] = mapped_column(String(100))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = _now()
+
+    company: Mapped[Company] = relationship(back_populates="product_master_entries")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "product_code",
+            name="uq_product_company_code",
         ),
     )
 

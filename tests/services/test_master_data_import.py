@@ -180,5 +180,100 @@ class TestMasterDataImport(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.items[0].code, "V003")
 
 
+def _express_export_bytes(entity_rows: list[list[str]], encoding: str = "cp874") -> bytes:
+    """Build a synthetic file matching the real Express Accounting raw report
+    export shape (confirmed against the customer's actual AP-CCSS.csv /
+    AR-CCSS.csv: fixed 10 columns, a 'ต้องการ Format' placeholder line, a
+    company-name+page-number banner line, then master rows mixed with
+    per-transaction detail lines that don't start with a bare sequence number).
+    """
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["ต้องการ Format", "", "", "", "", "", "", "", "", ""])
+    writer.writerow(["0000'", "บริษัท ทดสอบ จำกัด                    หน้า   :        1", "", "", "", "", "", "", "", ""])
+    writer.writerow(["", "", "", "", "", "", "", "", "", ""])  # blank separator (AP-style)
+    for row in entity_rows:
+        writer.writerow(row)
+    return buf.getvalue().encode(encoding, errors="replace")
+
+
+class TestExpressExportAdapter(unittest.IsolatedAsyncioTestCase):
+    """TC-RWG01-09/10 (real-workflow gap register RWG-01): the customer's actual
+    AP-CCSS.csv / AR-CCSS.csv files are not header-row CSVs — they are Express
+    Accounting's raw report export. Every row previously failed
+    'vendor_code and vendor_name are required' (0 imported / 0 updated), while
+    the UI showed a fake success toast. This adapter makes the real files
+    actually import.
+    """
+
+    async def test_vendor_express_export_parses_by_position(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryMasterRepository([company_id])
+        content = _express_export_bytes(
+            [
+                ["1", "บริษัท มานา เคมิคอล (ประเทศไทย) จำกัด", "", "", "", "", "0", "", "0", "2120-01"],
+                ["2", "หจก. โรเทก", "", "", "", "", "0", "", "0", "2120-01"],
+                # a transaction-detail line that must NOT be mistaken for a vendor row
+                ["", "invoice detail, not a vendor", "", "", "", "", "", "", "", ""],
+            ]
+        )
+
+        result = await import_master_csv(repo, company_id, "vendor", content)
+
+        self.assertEqual(result.imported, 2)
+        self.assertEqual(result.updated, 0)
+        self.assertEqual(len(result.errors), 0)
+        self.assertEqual(
+            repo.vendors[(company_id, "1")].vendor_name, "บริษัท มานา เคมิคอล (ประเทศไทย) จำกัด"
+        )
+        self.assertEqual(repo.vendors[(company_id, "1")].gl_code, "2120-01")
+
+    async def test_customer_express_export_parses_ar_flag_by_position(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryMasterRepository([company_id])
+        content = _express_export_bytes(
+            [
+                ["0", "บิล เงินสด (ลูกค้าไม่ให้ชื่อที่อยู่)", "", "", "", "", "", "", "0", ""],
+                ["1", "บริษัท ฮาร์โมนี่ อินเตอร์ จำกัด", "", "", "", "", "", "", "1", ""],
+            ]
+        )
+
+        result = await import_master_csv(repo, company_id, "customer", content)
+
+        self.assertEqual(result.imported, 2)
+        self.assertEqual(len(result.errors), 0)
+        self.assertEqual(repo.customers[(company_id, "0")].ar_flag, 0)
+        self.assertEqual(repo.customers[(company_id, "1")].ar_flag, 1)
+
+    async def test_express_export_reimport_upserts_not_duplicates(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryMasterRepository([company_id])
+        content = _express_export_bytes(
+            [["1", "Vendor One", "", "", "", "", "0", "", "0", "2120-01"]]
+        )
+
+        first = await import_master_csv(repo, company_id, "vendor", content)
+        second = await import_master_csv(repo, company_id, "vendor", content)
+
+        self.assertEqual(first.imported, 1)
+        self.assertEqual(second.imported, 0)
+        self.assertEqual(second.updated, 1)
+        self.assertEqual(len(repo.vendors), 1)
+
+    async def test_normal_header_csv_is_unaffected_by_express_detection(self) -> None:
+        """A well-formed header CSV (not Express export) must still parse the old way."""
+        company_id = uuid.uuid4()
+        repo = InMemoryMasterRepository([company_id])
+        content = _csv_bytes(
+            ["vendor_code", "vendor_name", "gl_code"],
+            [["V001", "Regular Vendor Co", "5100"]],
+        )
+
+        result = await import_master_csv(repo, company_id, "vendor", content)
+
+        self.assertEqual(result.imported, 1)
+        self.assertEqual(repo.vendors[(company_id, "V001")].vendor_name, "Regular Vendor Co")
+
+
 if __name__ == "__main__":
     unittest.main()

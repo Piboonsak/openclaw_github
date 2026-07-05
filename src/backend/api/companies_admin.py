@@ -7,16 +7,17 @@ single-tenant PoC/MVP deployment model used by `scripts/seed_data.py` — the
 first `Tenant` row is used as the owner for any company created here.
 
 Routes:
-  GET  /v1/admin/companies       — list active companies
-  POST /v1/admin/companies       — create a company (admin only)
-  PUT  /v1/admin/companies/{id}  — update a company (admin only)
+  GET    /v1/admin/companies       — list companies (admin/sys_admin: all; staff: assigned only)
+  POST   /v1/admin/companies       — create a company (sys_admin only — TASK-1204 ac_1204_sysadmin)
+  PUT    /v1/admin/companies/{id}  — update a company (admin or sys_admin)
+  DELETE /v1/admin/companies/{id}  — soft-delete a company (sys_admin only)
 """
 
 from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +27,13 @@ from src.backend.api.schemas.company_schemas import (
     CompanyResponse,
     CompanyUpdate,
 )
-from src.backend.auth.dependencies import get_current_active_user, require_admin
+from src.backend.auth.dependencies import (
+    ADMIN_ROLES,
+    get_current_active_user,
+    get_user_company_ids,
+    require_admin,
+    require_sys_admin,
+)
 from src.backend.db.models import Company, Tenant, User
 from src.backend.db.session import get_db
 
@@ -58,11 +65,19 @@ async def _get_default_tenant(db: AsyncSession) -> Tenant:
 @router.get("", response_model=list[CompanyResponse])
 async def list_companies(
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> list[CompanyResponse]:
-    result = await db.execute(
-        select(Company).where(Company.is_active == True).order_by(Company.name)  # noqa: E712
-    )
+    """Company scoping (ac_1204_staff_scope / ac_1204_admin_scope): admin sees
+    every active company; staff only sees companies they are assigned to via
+    `user_company_assignments`.
+    """
+    stmt = select(Company).where(Company.is_active == True).order_by(Company.name)  # noqa: E712
+    if current_user.role not in ADMIN_ROLES:
+        allowed_ids = await get_user_company_ids(db, current_user.id)
+        if not allowed_ids:
+            return []
+        stmt = stmt.where(Company.id.in_([uuid.UUID(cid) for cid in allowed_ids]))
+    result = await db.execute(stmt)
     return [_company_to_response(c) for c in result.scalars().all()]
 
 
@@ -70,7 +85,7 @@ async def list_companies(
 async def create_company(
     body: CompanyCreate,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    _sys_admin: User = Depends(require_sys_admin),
 ) -> CompanyResponse:
     tenant = await _get_default_tenant(db)
     company = Company(
@@ -125,3 +140,17 @@ async def update_company(
         ) from exc
     await db.refresh(company)
     return _company_to_response(company)
+
+
+@router.delete("/{company_id}", status_code=204, response_class=Response)
+async def delete_company(
+    company_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _sys_admin: User = Depends(require_sys_admin),
+) -> Response:
+    company = await db.get(Company, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    company.is_active = False
+    await db.flush()
+    return Response(status_code=204)

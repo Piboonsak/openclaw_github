@@ -30,7 +30,7 @@ from src.backend.api.schemas.template_schemas import (
     TemplateResponse,
     TemplateUpdate,
 )
-from src.backend.auth.dependencies import get_current_active_user
+from src.backend.auth.dependencies import ensure_company_access, get_current_active_user
 from src.backend.db.models import ExportTemplate, User
 from src.backend.db.session import get_db
 from src.backend.services.template_engine import ColumnDef, TemplateEngine
@@ -90,12 +90,13 @@ def _template_to_response(t: ExportTemplate) -> TemplateResponse:
 async def list_templates(
     company_id: Optional[str] = Query(None, description="Filter by company UUID"),
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> list[TemplateResponse]:
     """Return templates for a company (includes master templates with company_id=NULL)."""
     stmt = select(ExportTemplate).where(ExportTemplate.is_active == True)  # noqa: E712
     if company_id:
         cid = uuid.UUID(company_id)
+        await ensure_company_access(db, current_user, cid)
         stmt = stmt.where(
             (ExportTemplate.company_id == cid) | (ExportTemplate.is_master == True)  # noqa: E712
         )
@@ -198,6 +199,7 @@ async def clone_template(
         raise HTTPException(
             status_code=400, detail="Only master templates can be cloned"
         )
+    await ensure_company_access(db, current_user, body.company_id)
 
     cloned_cols = copy.deepcopy(source.columns)
     default_name = body.template_name or f"{source.template_name} (clone)"

@@ -139,11 +139,26 @@ async function mockAdminApis(page: Page, options?: { companies?: unknown[] }) {
   );
 }
 
-async function loginWithMocks(page: Page) {
+async function loginWithMocks(page: Page, options?: { role?: string }) {
   await page.addInitScript(() => {
     window.localStorage.setItem("lf_token", "fake-test-token");
   });
-  await mockAdminApis(page);
+  if (options?.role && options.role !== FAKE_USER.role) {
+    // Company create is sys_admin-only (EPIC-12 TASK-1204) — override /auth/me
+    // for the tests that need to exercise that button, registered AFTER
+    // mockAdminApis so it takes priority (Playwright tries the most recently
+    // registered matching route first).
+    await mockAdminApis(page);
+    await page.route("**/api/v1/auth/me", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...FAKE_USER, role: options.role }),
+      })
+    );
+  } else {
+    await mockAdminApis(page);
+  }
   await gotoWithRetry(page, "/prototype");
   await page.waitForFunction(() => {
     const el = document.getElementById("companiesStatus");
@@ -161,7 +176,7 @@ test.describe("W4 SIT closure — Company/User admin CRUD real-click flows", () 
   });
 
   test("Creating a company via the drawer calls the real API and refreshes the table", async ({ page }) => {
-    await loginWithMocks(page);
+    await loginWithMocks(page, { role: "sys_admin" });
     await page.click("[data-screen='s-companies']");
     await page.click("text=+ เพิ่มบริษัท");
     await expect(page.locator("#drawer-company")).toHaveClass(/open/);
@@ -175,7 +190,7 @@ test.describe("W4 SIT closure — Company/User admin CRUD real-click flows", () 
   });
 
   test("Saving a company with no name shows a real inline error, not a fake-success toast", async ({ page }) => {
-    await loginWithMocks(page);
+    await loginWithMocks(page, { role: "sys_admin" });
     await page.click("[data-screen='s-companies']");
     await page.click("text=+ เพิ่มบริษัท");
     await page.click("#companyDrawerSaveBtn");

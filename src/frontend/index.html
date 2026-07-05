@@ -236,7 +236,7 @@
     /* ═══════════════════════════════════════
        LOGIN SCREEN (fullpage)
        ═══════════════════════════════════════ */
-    #login-screen {
+    #login-screen, #force-change-password-screen {
       position: fixed; inset: 0; z-index: 1000;
       background: var(--bg);
       display: flex; align-items: center; justify-content: center;
@@ -489,6 +489,43 @@
   </div>
 </div>
 
+<!-- Forced first-login / reset password change (TASK-1204 ac_1204 first-login
+     intent). No close/dismiss control on purpose — every admin/company/master-
+     data/template/export API now 428s until this is completed (see
+     require_password_finalized wiring in app/endpoints.py), so this screen is
+     the only way through, not just a UI-level nag. -->
+<div id="force-change-password-screen" style="display:none;">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-sq">LF</div>
+      <span class="login-logo-name">LedgerFlow</span>
+    </div>
+    <h2 class="login-heading">ต้องเปลี่ยนรหัสผ่าน</h2>
+    <p class="login-sub">บัญชีนี้ใช้รหัสผ่านชั่วคราว กรุณาตั้งรหัสผ่านใหม่ก่อนใช้งานระบบ</p>
+
+    <div class="login-error show" id="forceChangePasswordError" style="display:none;"></div>
+
+    <form id="forceChangePasswordForm" onsubmit="event.preventDefault();submitForceChangePassword();">
+      <div class="field-group">
+        <label class="field-label" for="forceChangeOldPw">รหัสผ่านปัจจุบัน (ชั่วคราว)</label>
+        <input class="field-input" type="password" id="forceChangeOldPw" autocomplete="current-password" />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="forceChangeNewPw">รหัสผ่านใหม่</label>
+        <input class="field-input" type="password" id="forceChangeNewPw" autocomplete="new-password" />
+        <div class="field-hint">อย่างน้อย 8 ตัวอักษร มีทั้งตัวอักษรและตัวเลข</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="forceChangeConfirmPw">ยืนยันรหัสผ่านใหม่</label>
+        <input class="field-input" type="password" id="forceChangeConfirmPw" autocomplete="new-password" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:0.65rem;font-size:0.95rem;">
+        เปลี่ยนรหัสผ่านและเข้าใช้งาน
+      </button>
+    </form>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════
      APP SHELL
      ═══════════════════════════════════════════════════════════ -->
@@ -509,7 +546,7 @@
       <span class="topbar-company-caret">▾</span>
     </button>
 
-    <button class="btn btn-ghost btn-sm" style="margin-left:0.5rem;" onclick="navigate('s-system-home')">Internal Console</button>
+    <button class="btn btn-ghost btn-sm" id="internalConsoleTopbarBtn" style="margin-left:0.5rem;display:none;" onclick="navigate('s-system-home')">Internal Console</button>
 
     <div class="topbar-divider"></div>
 
@@ -527,17 +564,17 @@
         <button class="nav-item active" data-screen="s-dashboard" onclick="navigate('s-dashboard')">
           <span class="nav-icon">📊</span> Dashboard
         </button>
-        <button class="nav-item" data-screen="s-upload" onclick="navigate('s-upload')">
+        <button class="nav-item" data-screen="s-upload" onclick="goToUpload()">
           <span class="nav-icon">📤</span> Upload
         </button>
-        <button class="nav-item" data-screen="s-processing" onclick="navigate('s-processing')">
+        <button class="nav-item" data-screen="s-processing" onclick="goToProcessing()">
           <span class="nav-icon">⚙️</span> Processing
         </button>
-        <button class="nav-item" data-screen="s-review-scan" onclick="navigate('s-review-scan')">
+        <button class="nav-item" data-screen="s-review-scan" onclick="goToReviewScan()">
           <span class="nav-icon">🔍</span> Review Scan
           <span class="nav-badge">23</span>
         </button>
-        <button class="nav-item" data-screen="s-review-mapping" onclick="navigate('s-review-mapping')">
+        <button class="nav-item" data-screen="s-review-mapping" onclick="goToReviewMapping()">
           <span class="nav-icon">📋</span> Review Mapping
         </button>
         <button class="nav-item" data-screen="s-export" onclick="navigate('s-export')">
@@ -555,10 +592,10 @@
         <button class="nav-item" data-screen="s-templates" onclick="navigate('s-templates')">
           <span class="nav-icon">📑</span> Templates
         </button>
-        <button class="nav-item" data-screen="s-users" onclick="navigate('s-users')">
+        <button class="nav-item" id="usersNavItem" data-screen="s-users" onclick="navigate('s-users')" style="display:none;">
           <span class="nav-icon">👥</span> Users
         </button>
-        <div style="margin-top:0.5rem;padding:0.75rem;border:1px dashed var(--line);border-radius:10px;background:var(--surface);font-size:0.78rem;color:var(--muted);line-height:1.5;">
+        <div id="internalConsoleNavNote" style="display:none;margin-top:0.5rem;padding:0.75rem;border:1px dashed var(--line);border-radius:10px;background:var(--surface);font-size:0.78rem;color:var(--muted);line-height:1.5;">
           Internal tools moved to <strong style="color:var(--text);">Internal Console</strong> for LedgerFlow system admin.
         </div>
       </div>
@@ -644,8 +681,8 @@
 
   <div class="toolbar" style="padding:1rem;background:white;border:1px solid var(--line);border-radius:10px;">
     <span style="font-size:0.85rem;font-weight:600;color:var(--muted);">Quick Actions:</span>
-    <button class="btn btn-primary" onclick="navigate('s-upload')">📤 อัปโหลดใหม่</button>
-    <button class="btn btn-ghost" onclick="navigate('s-review-scan')">
+    <button class="btn btn-primary" onclick="goToUpload()">📤 อัปโหลดใหม่</button>
+    <button class="btn btn-ghost" onclick="goToReviewScan()">
       🔍 ไปที่ Review <span class="badge badge-warn" style="margin-left:4px;">23</span>
     </button>
   </div>
@@ -656,10 +693,6 @@
   <div class="page-header">
     <h1>Upload</h1>
     <p class="subtitle">อัปโหลดเอกสาร</p>
-  </div>
-  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
-    <strong style="color:var(--accent);">Demo data:</strong>
-    <span>รายการไฟล์และ dropzone ด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่ upload จริงไปยัง backend ในหน้านี้</span>
   </div>
 
   <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.25rem;">
@@ -677,61 +710,25 @@
   <div class="card">
     <div class="field-group" style="margin-bottom:1.25rem;max-width:480px;">
       <label class="field-label">บริษัท <span style="color:var(--danger);">*</span></label>
-      <select class="field-select">
-        <option value="" disabled selected>— เลือกบริษัท —</option>
-        <option>บริษัท เมโทร อีเล็กทริค จำกัด (0105560123456)</option>
-        <option>ห้างหุ้นส่วนจำกัด ซันชายน์ เทรดดิ้ง (0103550098765)</option>
-        <option>บริษัท กรีน ซัพพลาย จำกัด (0107561234567)</option>
+      <select class="field-select" id="uploadCompanySelect" onchange="onUploadCompanyChange()">
+        <option value="">— เลือกบริษัท —</option>
       </select>
     </div>
 
-    <div class="dropzone" style="margin-bottom:1.25rem;">
+    <div class="dropzone" style="margin-bottom:1.25rem;cursor:pointer;" onclick="getEl('uploadFileInput').click()">
+      <input type="file" id="uploadFileInput" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="handleUploadFilesSelected(event)" />
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-mid)" stroke-width="1.5" style="margin:0 auto 0.75rem;display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <p style="font-weight:600;color:var(--ink);margin-bottom:0.3rem;">ลาก PDF, JPG, PNG มาวางที่นี่ หรือคลิกเพื่อเลือก</p>
-      <p style="font-size:0.8rem;color:var(--muted);">รองรับ folder upload · ขนาดไฟล์สูงสุด 20 MB ต่อไฟล์</p>
+      <p style="font-size:0.8rem;color:var(--muted);">ขนาดไฟล์สูงสุด 20 MB ต่อไฟล์</p>
     </div>
 
-    <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.04em;">ไฟล์ที่เลือก (5)</div>
-    <div style="display:flex;flex-direction:column;gap:0.45rem;margin-bottom:1.5rem;">
-      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.85rem;background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;">
-        <span class="mono" style="font-size:0.82rem;flex:1;">INV-2605-001.pdf</span>
-        <span style="color:var(--muted);font-size:0.78rem;">1.2 MB</span>
-        <span class="mono" style="font-size:0.75rem;color:var(--muted);">0105560123456</span>
-        <span class="badge badge-ok">✓ ตรงกัน</span>
-        <button style="background:none;border:none;cursor:pointer;color:var(--muted);">✕</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.85rem;background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;">
-        <span class="mono" style="font-size:0.82rem;flex:1;">INV-2605-002.pdf</span>
-        <span style="color:var(--muted);font-size:0.78rem;">0.8 MB</span>
-        <span class="mono" style="font-size:0.75rem;color:var(--muted);">0105560123456</span>
-        <span class="badge badge-ok">✓ ตรงกัน</span>
-        <button style="background:none;border:none;cursor:pointer;color:var(--muted);">✕</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.85rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;">
-        <span class="mono" style="font-size:0.82rem;flex:1;">INV-2605-003.pdf</span>
-        <span style="color:var(--muted);font-size:0.78rem;">2.1 MB</span>
-        <span class="mono" style="font-size:0.75rem;color:var(--warn);">0999990000000</span>
-        <span class="badge badge-warn">⚠ ไม่ตรงกัน</span>
-        <button style="background:none;border:none;cursor:pointer;color:var(--muted);">✕</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.85rem;background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;">
-        <span class="mono" style="font-size:0.82rem;flex:1;">INV-2605-004.jpg</span>
-        <span style="color:var(--muted);font-size:0.78rem;">0.5 MB</span>
-        <span class="mono" style="font-size:0.75rem;color:var(--muted);">0105560123456</span>
-        <span class="badge badge-ok">✓ ตรงกัน</span>
-        <button style="background:none;border:none;cursor:pointer;color:var(--muted);">✕</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.85rem;background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;">
-        <span class="mono" style="font-size:0.82rem;flex:1;">INV-2605-005.pdf</span>
-        <span style="color:var(--muted);font-size:0.78rem;">1.8 MB</span>
-        <span class="mono" style="font-size:0.75rem;color:var(--muted);">0105560123456</span>
-        <span class="badge badge-ok">✓ ตรงกัน</span>
-        <button style="background:none;border:none;cursor:pointer;color:var(--muted);">✕</button>
-      </div>
-      <p style="font-size:0.78rem;color:var(--warn);margin-top:0.25rem;">⚠ 1 ไฟล์มีเลขผู้เสียภาษีไม่ตรงกัน — ตรวจสอบก่อนดำเนินการต่อ</p>
+    <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.04em;">ไฟล์ที่เลือก (<span id="uploadFileCount">0</span>)</div>
+    <div id="uploadFileListBody" style="display:flex;flex-direction:column;gap:0.45rem;margin-bottom:1.5rem;">
+      <p style="color:#6b7280;font-size:.85rem;">ยังไม่ได้เลือกไฟล์</p>
     </div>
+    <div id="uploadStatus" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem;"></div>
     <div style="display:flex;justify-content:flex-end;">
-      <button class="btn btn-primary" onclick="navigate('s-processing')">ต่อไป →</button>
+      <button class="btn btn-primary" id="uploadSubmitBtn" onclick="submitUpload()">อัปโหลด →</button>
     </div>
   </div>
 </section>
@@ -740,64 +737,42 @@
 <section id="s-processing" class="screen">
   <div class="page-header">
     <h1>Processing</h1>
-    <p class="subtitle">กำลังประมวลผล — Batch #2605-001</p>
+    <p class="subtitle">รัน OCR → สกัดข้อมูล → จัดสมุดบัญชี ต่อเอกสาร (จริง — เรียก pipeline เดียวกับที่ backend ใช้ประมวลผลเอกสารจริง)</p>
   </div>
   <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
-    <strong style="color:var(--accent);">Demo data:</strong>
-    <span>สถานะ batch ด้านล่างเป็นข้อมูลตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ Celery job จริงในหน้านี้</span>
+    <strong style="color:var(--accent);">หมายเหตุ:</strong>
+    <span>ประมวลผลแบบ synchronous ต่อเอกสาร (ไม่ผ่าน Celery background queue ในหน้านี้) — สถานะที่แสดงคือสถานะจริงจาก backend ไม่ใช่ข้อมูลตัวอย่าง</span>
   </div>
 
   <div class="card" style="margin-bottom:1rem;">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.6rem;">
-      <span style="font-weight:600;">กำลังดำเนินการ 8 / 12 เอกสาร</span>
-      <span class="mono" style="font-size:0.85rem;color:var(--muted);">67%</span>
+      <span style="font-weight:600;" id="processingSummaryText">ยังไม่มีเอกสารที่ต้องประมวลผล</span>
+      <span class="mono" style="font-size:0.85rem;color:var(--muted);" id="processingPercentText">0%</span>
     </div>
     <div class="progress-wrap" style="height:12px;margin-bottom:0.75rem;">
-      <div class="progress-fill" style="width:67%;background:linear-gradient(90deg,var(--accent),var(--accent-mid));"></div>
+      <div class="progress-fill" id="processingProgressFill" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-mid));"></div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem;">
-      <span class="badge badge-ok">✓ OCR</span>
-      <span class="badge badge-ok">✓ จำแนก</span>
-      <span class="badge badge-ok">✓ สกัดข้อมูล</span>
-      <span class="badge badge-accent"><span class="spin" style="display:inline-block;margin-right:0.35rem;">⟳</span>Map COA</span>
-      <span class="badge badge-muted">● Review ต่ออัตโนมัติเมื่อจบ</span>
-    </div>
-    <div style="display:flex;gap:1.25rem;font-size:0.8rem;color:var(--muted);">
-      <span><span style="color:var(--ok);font-weight:600;">●</span> เสร็จแล้ว: 5</span>
-      <span><span style="color:var(--accent);font-weight:600;">●</span> กำลังประมวลผลจริง: 1</span>
-      <span><span style="color:var(--muted);font-weight:600;">●</span> รอ stage ถัดไป: 2</span>
-      <span><span style="color:var(--danger);font-weight:600;">●</span> ผิดพลาด: 1</span>
-      <span><span style="color:var(--line);font-weight:600;">●</span> รอคิว: 3</span>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn btn-primary btn-sm" id="processingStartBtn" onclick="startProcessingAll()">▶ เริ่มประมวลผลเอกสารที่รออยู่</button>
     </div>
   </div>
 
   <div class="card" style="padding:0;overflow:hidden;">
     <div class="table-wrap">
-      <table class="data-table" style="min-width:640px;">
+      <table class="data-table" style="min-width:520px;">
         <thead>
-          <tr><th>ไฟล์</th><th style="text-align:center;width:70px;">OCR</th><th style="text-align:center;width:80px;">จำแนก</th><th style="text-align:center;width:100px;">สกัดข้อมูล</th><th style="text-align:center;width:80px;">Map COA</th><th>สถานะ</th></tr>
+          <tr><th>ไฟล์</th><th>สถานะ</th><th style="width:120px;"></th></tr>
         </thead>
-        <tbody>
-          <tr><td class="mono" style="font-size:0.82rem;">INV-2605-001.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td><span class="badge badge-ok">เสร็จแล้ว</span></td></tr>
-          <tr><td class="mono" style="font-size:0.82rem;">INV-2605-002.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td><span class="badge badge-ok">เสร็จแล้ว</span></td></tr>
-          <tr><td class="mono" style="font-size:0.82rem;">INV-2605-004.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td><span class="badge badge-ok">เสร็จแล้ว</span></td></tr>
-          <tr><td class="mono" style="font-size:0.82rem;">INV-2605-005.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td><span class="badge badge-ok">เสร็จแล้ว</span></td></tr>
-          <tr><td class="mono" style="font-size:0.82rem;">INV-2605-006.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td><span class="badge badge-ok">เสร็จแล้ว</span></td></tr>
-          <tr style="background:var(--accent-soft);"><td class="mono" style="font-size:0.82rem;">INV-2605-003.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--accent);font-size:1.2rem;" class="spin">⟳</td><td><span class="badge badge-accent">กำลังดำเนินการ</span></td></tr>
-          <tr style="background:var(--accent-soft);"><td class="mono" style="font-size:0.82rem;">INV-2605-008.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--muted);font-weight:700;">●</td><td style="text-align:center;color:var(--line);">○</td><td><span class="badge badge-muted">รอเข้า Map COA</span></td></tr>
-          <tr style="background:var(--accent-soft);"><td class="mono" style="font-size:0.82rem;">INV-2605-009.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--muted);font-weight:700;">●</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td><span class="badge badge-muted">รอจำแนกคิวถัดไป</span></td></tr>
-          <tr style="background:var(--danger-soft);"><td class="mono" style="font-size:0.82rem;">INV-2605-007.pdf</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--ok);font-weight:700;">✓</td><td style="text-align:center;color:var(--danger);font-weight:700;">✗</td><td style="text-align:center;color:var(--muted);">—</td><td><span class="badge badge-danger">ผิดพลาด</span> <a href="#" onclick="openModal('modal-proc-error');return false;" style="font-size:0.75rem;color:var(--danger);">ดู Error</a></td></tr>
-          <tr style="opacity:0.55;"><td class="mono" style="font-size:0.82rem;">INV-2605-010.pdf</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td><span class="badge badge-muted">รอคิว</span></td></tr>
-          <tr style="opacity:0.55;"><td class="mono" style="font-size:0.82rem;">INV-2605-011.pdf</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td><span class="badge badge-muted">รอคิว</span></td></tr>
-          <tr style="opacity:0.55;"><td class="mono" style="font-size:0.82rem;">INV-2605-012.pdf</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td style="text-align:center;color:var(--line);">○</td><td><span class="badge badge-muted">รอคิว</span></td></tr>
+        <tbody id="processingTableBody">
+          <tr><td colspan="3" style="color:#6b7280;font-size:.85rem;">ยังไม่มีเอกสาร — ไปที่ Upload ก่อน</td></tr>
         </tbody>
       </table>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;font-size:0.82rem;color:var(--accent);">
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;font-size:0.82rem;color:var(--accent);margin-top:1rem;">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     จะนำทางไปที่ Review Scan โดยอัตโนมัติเมื่อประมวลผลเสร็จ
-    <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="navigate('s-review-scan')">ข้ามไปที่ Review →</button>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="goToReviewScan()">ข้ามไปที่ Review →</button>
   </div>
 </section>
 
@@ -805,96 +780,62 @@
 <section id="s-review-scan" class="screen">
   <div class="page-header">
     <h1>Review Scan</h1>
-    <p class="subtitle">ตรวจสอบข้อมูลที่สกัดจากเอกสาร</p>
-  </div>
-  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
-    <strong style="color:var(--accent);">Demo data:</strong>
-    <span>เอกสารและผลสกัดด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ OCR/extraction pipeline จริงในหน้านี้</span>
+    <p class="subtitle">ตรวจสอบข้อมูลที่สกัดจากเอกสารจริง</p>
   </div>
 
   <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
-    <span style="font-size:0.85rem;font-weight:600;">อนุมัติแล้ว 5 / 11 เอกสาร</span>
-    <div class="progress-wrap" style="flex:1;height:8px;"><div class="progress-fill" style="width:45%;background:var(--ok);"></div></div>
-    <span class="mono" style="font-size:0.8rem;color:var(--muted);">45%</span>
+    <span style="font-size:0.85rem;font-weight:600;" id="reviewScanSummaryText">โหลด...</span>
   </div>
 
   <div style="display:grid;grid-template-columns:260px 1fr;gap:1rem;align-items:start;">
     <!-- Doc list -->
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:0.7rem 1rem;border-bottom:1px solid var(--line);font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">เอกสาร (11)</div>
-      <ul style="margin:0;">
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;">INV-2605-001</span><span class="badge badge-ok">✓</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">96%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;">INV-2605-002</span><span class="badge badge-ok">✓</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">94%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;">INV-2605-003</span><span class="badge badge-warn">🚩</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">71%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;background:var(--accent-soft);border-left:3px solid var(--accent);">
-          <div style="flex:1;min-width:0;"><div class="mono" style="font-size:0.8rem;font-weight:600;color:var(--accent);">INV-2605-004</div><div style="font-size:0.72rem;color:var(--muted);">รอตรวจสอบ</div></div>
-          <span class="badge badge-accent">●</span><span class="mono" style="font-size:0.72rem;color:var(--accent);">88%</span>
-        </li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;color:var(--muted);">INV-2605-005</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">83%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;color:var(--muted);">INV-2605-006</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">79%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;color:var(--muted);">INV-2605-008</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">91%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;color:var(--muted);">INV-2605-009</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">85%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;color:var(--muted);">INV-2605-010</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">77%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;color:var(--muted);">INV-2605-011</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">82%</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;cursor:pointer;"><span class="mono" style="font-size:0.8rem;flex:1;color:var(--muted);">INV-2605-012</span><span class="mono" style="font-size:0.72rem;color:var(--muted);">89%</span></li>
+      <div style="padding:0.7rem 1rem;border-bottom:1px solid var(--line);font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">เอกสาร (<span id="reviewScanCount">0</span>)</div>
+      <ul style="margin:0;" id="reviewScanListBody">
+        <li style="padding:0.75rem 1rem;color:#6b7280;font-size:.82rem;">ไม่มีเอกสารที่รอตรวจสอบ</li>
       </ul>
     </div>
 
-    <!-- Right: PDF + Form -->
+    <!-- Right: real file preview/download + real editable extraction form -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-      <!-- PDF preview -->
+      <!-- Real file preview: fetched as a blob via apiFetch (so the auth header attaches) and
+           rendered inline for PDF/image, with a real download link for everything else. -->
       <div class="card" style="padding:0;overflow:hidden;">
         <div style="background:var(--surface);border-bottom:1px solid var(--line);padding:0.6rem 0.85rem;display:flex;align-items:center;justify-content:space-between;">
-          <span class="mono" style="font-size:0.8rem;font-weight:600;">INV-2605-004.pdf</span>
-          <span style="font-size:0.75rem;color:var(--muted);">1 / 1</span>
+          <span class="mono" style="font-size:0.8rem;font-weight:600;" id="reviewScanDocFilename">—</span>
+          <a href="#" id="reviewScanDownloadLink" download style="font-size:0.75rem;color:var(--accent);display:none;">⬇ ดาวน์โหลด</a>
         </div>
-        <div style="height:320px;background:var(--surface-2,oklch(93% 0.008 250));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.75rem;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
-          <span style="font-size:0.8rem;color:var(--muted);">ตัวอย่าง PDF</span>
-        </div>
-        <div style="padding:0.6rem;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:0.5rem;">
-          <button class="btn btn-ghost btn-sm">−</button>
-          <span style="font-size:0.8rem;color:var(--muted);min-width:36px;text-align:center;">100%</span>
-          <button class="btn btn-ghost btn-sm">+</button>
+        <div id="reviewScanPreviewBody" style="height:320px;background:var(--surface-2,oklch(93% 0.008 250));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.75rem;">
+          <span style="font-size:0.8rem;color:var(--muted);">เลือกเอกสารทางซ้ายเพื่อดูไฟล์</span>
         </div>
       </div>
 
-      <!-- Field form -->
+      <!-- Field form: real extraction fields, editable and persisted via PUT /v1/documents/{id}/fields -->
       <div class="card">
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.85rem;">
-          <span class="badge badge-accent" style="padding:3px 10px;">ใบแจ้งหนี้</span>
-          <span class="badge badge-ok">88% ความมั่นใจ</span>
-          <span class="badge badge-purple">WHT 3% ✓</span>
-          <span class="badge badge-muted">VAT Inclusive</span>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:0.65rem;margin-bottom:1rem;">
-          <div class="field-group" style="margin:0;"><label class="field-label">วันที่ในเอกสาร</label><input class="field-input" type="text" value="2026-05-04" /></div>
-          <div class="field-group" style="margin:0;"><label class="field-label">เลขที่ใบแจ้งหนี้</label><input class="field-input mono" type="text" value="INV-2605-004" /></div>
-          <div class="field-group" style="margin:0;"><label class="field-label">เลขผู้เสียภาษีผู้ขาย</label><input class="field-input mono" type="text" value="0107561234567" /></div>
-          <div class="field-group" style="margin:0;"><label class="field-label">ชื่อผู้ขาย</label><input class="field-input" type="text" value="บริษัท ออฟฟิศแมท จำกัด" /></div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.85rem;" id="reviewScanBadges"></div>
+        <div style="display:flex;flex-direction:column;gap:0.65rem;margin-bottom:1rem;" id="reviewScanFields">
+          <p style="color:#6b7280;font-size:.85rem;">เลือกเอกสารทางซ้ายเพื่อดูรายละเอียด</p>
         </div>
         <div style="background:var(--surface);border-radius:8px;padding:0.85rem;margin-bottom:1rem;">
-          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.6rem;">จำนวนเงิน</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
-            <div><div style="font-size:0.72rem;color:var(--muted);">ยอดก่อนภาษี</div><div class="mono" style="font-weight:600;">฿12,345.80</div></div>
-            <div><div style="font-size:0.72rem;color:var(--muted);">VAT 7%</div><div class="mono" style="font-weight:600;">฿864.21</div></div>
-            <div><div style="font-size:0.72rem;color:var(--muted);">WHT 3%</div><div class="mono" style="font-weight:600;color:var(--danger);">฿370.37</div></div>
-            <div><div style="font-size:0.72rem;color:var(--muted);">ยอดสุทธิ</div><div class="mono" style="font-weight:700;font-size:1rem;">฿12,839.64</div></div>
-          </div>
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.6rem;">จำนวนเงิน (แก้ไขได้)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;" id="reviewScanAmounts"></div>
         </div>
         <div style="display:flex;gap:0.5rem;">
-          <button class="btn btn-primary" style="flex:1;" onclick="showToast('Approve ยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">✓ Approve</button>
-          <button class="btn btn-ghost" onclick="openModal('modal-flag')">🚩 Flag</button>
+          <button class="btn btn-ghost" style="flex:1;" id="reviewScanSaveBtn" onclick="saveReviewScanFieldEdits()" disabled>💾 บันทึกการแก้ไข</button>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+          <button class="btn btn-primary" style="flex:1;" id="reviewScanApproveBtn" onclick="approveReviewScanDocument()" disabled>✓ Approve</button>
+          <button class="btn btn-ghost" id="reviewScanFlagBtn" onclick="openModal('modal-flag')" disabled>🚩 Flag</button>
         </div>
       </div>
     </div>
   </div>
 
   <div class="toolbar" style="margin-top:1rem;padding:0.85rem 1rem;background:white;border:1px solid var(--line);border-radius:10px;justify-content:space-between;">
-    <button class="btn btn-ghost">← ก่อนหน้า</button>
+    <span></span>
     <div style="display:flex;gap:0.5rem;">
-      <button class="btn btn-ghost" onclick="showToast('Approve ทั้งหมดยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">✓ Approve All ที่เหลือ</button>
-      <button class="btn btn-primary" onclick="navigate('s-review-mapping')">ไปที่ Review Mapping →</button>
+      <button class="btn btn-ghost" onclick="approveAllReviewScan()">✓ Approve All ที่เหลือ</button>
+      <button class="btn btn-primary" onclick="goToReviewMapping()">ไปที่ Review Mapping →</button>
     </div>
   </div>
 </section>
@@ -902,74 +843,25 @@
 <!-- ═══ SCREEN 5: REVIEW MAPPING ═══ -->
 <section id="s-review-mapping" class="screen">
   <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
-    <div><h1>Review Mapping</h1><p class="subtitle">ตรวจสอบ Dr/Cr และ Account Code</p></div>
+    <div><h1>Review Mapping</h1><p class="subtitle">ตรวจสอบ Dr/Cr และ Account Code (ข้อมูลจริงจาก journal voucher)</p></div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
-      <span class="badge badge-accent">Confirm แล้ว 4/11 เอกสาร</span>
+      <span class="badge badge-accent" id="reviewMappingSummaryBadge">โหลด...</span>
       <button class="btn btn-ghost btn-sm" onclick="navigate('s-export')">ไปที่ Export →</button>
     </div>
-  </div>
-  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
-    <strong style="color:var(--accent);">Demo data:</strong>
-    <span>รายการ Dr/Cr ด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ journal mapping จริงในหน้านี้</span>
   </div>
 
   <div style="display:grid;grid-template-columns:260px 1fr;gap:1rem;align-items:start;">
     <!-- Left: doc list -->
     <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:0.7rem 1rem;border-bottom:1px solid var(--line);font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted);">เอกสาร (11)</div>
-      <ul style="margin:0;">
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.78rem;flex:1;">INV-2605-001</span><span class="badge badge-ok">✓</span><span class="badge badge-ok" style="font-size:0.65rem;">Confirmed</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.78rem;flex:1;">INV-2605-002</span><span class="badge badge-ok">✓</span><span class="badge badge-ok" style="font-size:0.65rem;">Confirmed</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.78rem;flex:1;">INV-2605-003</span><span class="badge badge-ok">✓</span><span class="badge badge-ok" style="font-size:0.65rem;">Confirmed</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;background:var(--accent-soft);border-left:3px solid var(--accent);">
-          <div style="flex:1;"><div class="mono" style="font-size:0.78rem;font-weight:600;color:var(--accent);">INV-2605-004</div></div>
-          <span class="badge badge-ok">✓</span><span class="badge badge-accent" style="font-size:0.65rem;">รอ Confirm</span>
-        </li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.78rem;flex:1;">INV-2605-005</span><span class="badge badge-danger">✗</span><span class="badge badge-danger" style="font-size:0.65rem;">Unbalanced</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.78rem;flex:1;color:var(--muted);">INV-2605-006</span><span class="badge badge-muted" style="font-size:0.65rem;">รอ</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;"><span class="mono" style="font-size:0.78rem;flex:1;color:var(--muted);">INV-2605-008</span><span class="badge badge-muted" style="font-size:0.65rem;">รอ</span></li>
-        <li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;cursor:pointer;"><span class="mono" style="font-size:0.78rem;flex:1;color:var(--muted);">INV-2605-011</span><span class="badge badge-muted" style="font-size:0.65rem;">รอ</span></li>
+      <div style="padding:0.7rem 1rem;border-bottom:1px solid var(--line);font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted);">เอกสาร (<span id="reviewMappingCount">0</span>)</div>
+      <ul style="margin:0;" id="reviewMappingListBody">
+        <li style="padding:0.75rem 1rem;color:#6b7280;font-size:.82rem;">ไม่มีเอกสารที่รอ mapping</li>
       </ul>
     </div>
 
     <!-- Right: detail -->
-    <div>
-      <div class="card" style="margin-bottom:0.75rem;padding:1rem;">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;">INV-2605-004 — บริษัท ออฟฟิศแมท จำกัด</h3>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;">
-          <div class="field-group" style="margin:0;"><label class="field-label">Voucher No</label><input class="field-input mono" style="background:var(--surface);" value="PV-260504-001" readonly /></div>
-          <div class="field-group" style="margin:0;"><label class="field-label">Date</label><input class="field-input mono" style="background:var(--surface);" value="2026-05-04" readonly /></div>
-          <div class="field-group" style="margin:0;"><label class="field-label">Book</label><input class="field-input mono" style="background:var(--surface);" value="PV" readonly /></div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:0.75rem;padding:0.85rem 1rem;background:var(--ok-soft);border:1px solid var(--ok);">
-        <div style="display:flex;align-items:center;gap:1rem;font-size:0.85rem;">
-          <span style="color:var(--ok);font-weight:700;font-size:1rem;">✓ Balance</span>
-          <span>Sum Dr <strong class="mono">฿12,839.64</strong> = Sum Cr <strong class="mono">฿12,839.64</strong></span>
-          <span style="color:var(--ok);font-weight:600;font-size:0.78rem;">ยอดสมดุล</span>
-        </div>
-      </div>
-
-      <div class="card" style="padding:0;">
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th style="width:40px;">#</th><th style="width:140px;">Account Code</th><th>Account Name</th><th style="text-align:right;width:130px;">Dr (฿)</th><th style="text-align:right;width:130px;">Cr (฿)</th></tr></thead>
-            <tbody>
-              <tr><td style="color:var(--muted);">1</td><td><input class="field-input mono" style="padding:3px 6px;font-size:0.82rem;" value="5100" /></td><td>ค่าวัสดุสำนักงาน</td><td class="mono" style="text-align:right;">12,345.80</td><td style="text-align:right;color:var(--muted);">—</td></tr>
-              <tr><td style="color:var(--muted);">2</td><td><input class="field-input mono" style="padding:3px 6px;font-size:0.82rem;" value="1501" /></td><td>ภาษีซื้อ</td><td class="mono" style="text-align:right;">864.21</td><td style="text-align:right;color:var(--muted);">—</td></tr>
-              <tr><td style="color:var(--muted);">3</td><td><input class="field-input mono" style="padding:3px 6px;font-size:0.82rem;" value="2301" /></td><td>ภาษีหัก ณ ที่จ่าย</td><td style="text-align:right;color:var(--muted);">—</td><td class="mono" style="text-align:right;">370.37</td></tr>
-              <tr><td style="color:var(--muted);">4</td><td><input class="field-input mono" style="padding:3px 6px;font-size:0.82rem;" value="2100" /></td><td>เจ้าหนี้การค้า</td><td style="text-align:right;color:var(--muted);">—</td><td class="mono" style="text-align:right;">12,839.64</td></tr>
-              <tr style="background:var(--surface);font-weight:700;border-top:2px solid var(--line);"><td colspan="2"></td><td style="font-size:0.8rem;">รวม</td><td class="mono" style="text-align:right;">13,210.01</td><td class="mono" style="text-align:right;">13,210.01</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:0.5rem;margin-top:0.75rem;justify-content:flex-end;">
-        <button class="btn btn-ghost">← แก้ไข Scan</button>
-        <button class="btn btn-primary" onclick="showToast('Confirm Mapping ยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">✓ Confirm Mapping</button>
-      </div>
+    <div id="reviewMappingDetail">
+      <p style="color:#6b7280;font-size:.85rem;">เลือกเอกสารทางซ้ายเพื่อดูรายละเอียด</p>
     </div>
   </div>
 </section>
@@ -1120,7 +1012,7 @@
   <div class="page-header"><h1>Companies</h1><p class="subtitle">จัดการบริษัทลูกค้า</p></div>
   <div class="toolbar" style="margin-bottom:1.25rem;">
     <input class="search-input" type="search" placeholder="ค้นหาบริษัท..." />
-    <button class="btn btn-primary btn-sm" onclick="openCompanyDrawerForCreate()">+ เพิ่มบริษัท</button>
+    <button class="btn btn-primary btn-sm" id="createCompanyBtn" onclick="openCompanyDrawerForCreate()" style="display:none;">+ เพิ่มบริษัท</button>
   </div>
   <div id="companiesStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลดรายชื่อบริษัท...</div>
   <div class="card" style="padding:0;">
@@ -1146,40 +1038,26 @@
       <button class="tab active" onclick="switchTab(event,'company-coa','s-company-detail')">ผังบัญชี (COA)</button>
       <button class="tab" onclick="switchTab(event,'company-vendors','s-company-detail')">AP · ผู้จำหน่าย</button>
       <button class="tab" onclick="switchTab(event,'company-ar','s-company-detail')">AR · ลูกค้า</button>
+      <button class="tab" onclick="switchTab(event,'company-products','s-company-detail')">สินค้า/ราคา</button>
       <button class="tab" onclick="switchTab(event,'company-settings','s-company-detail')">ตั้งค่า</button>
     </div>
   </div>
   <div style="padding:1.5rem;max-width:1000px;">
     <div id="company-coa">
-    <div style="display:flex;align-items:center;gap:0.6rem;padding:0.65rem 0.9rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
-      <strong style="color:var(--warn);">Deferred:</strong>
-      <span>COA CRUD/import ยังไม่มี backend API — ตารางนี้เป็นตัวอย่างข้อมูล (fixture) ดู Epic 10 follow-up</span>
-    </div>
     <div class="toolbar" style="margin-bottom:1rem;">
-      <input class="search-input" type="search" placeholder="ค้นหา account code..." />
-      <button class="btn btn-primary btn-sm" onclick="showToast('ฟีเจอร์เพิ่ม COA รายการยังไม่เชื่อมต่อ backend (deferred)','warn')">+ เพิ่มรายการ</button>
-      <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-coa')">📁 นำเข้า YAML/CSV</button>
+      <input class="search-input" type="search" id="coaSearchInput" placeholder="ค้นหา account code..." oninput="renderCoaTable()" />
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-import-coa')">📁 นำเข้า YAML/CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="openCoaPdfModal()">📄 นำเข้าจาก PDF (AI)</button>
     </div>
+    <div id="coaStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลด...</div>
     <div class="card" style="padding:0;">
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th style="width:130px;">Account Code</th><th>ชื่อบัญชี</th><th style="width:120px;">ประเภท</th><th style="text-align:center;width:100px;">สถานะ</th><th style="width:80px;text-align:center;">จัดการ</th></tr></thead>
-          <tbody>
-            <tr><td class="mono" style="font-weight:600;">1100</td><td>เงินสด</td><td><span class="badge badge-accent">Asset</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 1100','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">1200</td><td>ลูกหนี้การค้า</td><td><span class="badge badge-accent">Asset</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 1200','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">1501</td><td>ภาษีซื้อ</td><td><span class="badge badge-accent">Asset</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 1501','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">2100</td><td>เจ้าหนี้การค้า</td><td><span class="badge badge-warn">Liability</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 2100','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">2301</td><td>ภาษีหัก ณ ที่จ่าย จ่าย</td><td><span class="badge badge-warn">Liability</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 2301','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">2201</td><td>ภาษีมูลค่าเพิ่มค้างจ่าย</td><td><span class="badge badge-warn">Liability</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 2201','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">4100</td><td>รายได้จากการขาย</td><td><span class="badge badge-ok">Revenue</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 4100','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">5100</td><td>ค่าวัสดุสำนักงาน</td><td><span class="badge badge-muted">Expense</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 5100','')">แก้ไข</button></td></tr>
-            <tr><td class="mono" style="font-weight:600;">5200</td><td>ค่าใช้จ่ายในการขาย</td><td><span class="badge badge-muted">Expense</span></td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไข COA: 5200','')">แก้ไข</button></td></tr>
+          <thead><tr><th style="width:130px;">Account Code</th><th>ชื่อบัญชี</th><th style="width:120px;">ประเภท</th><th style="text-align:center;width:100px;">สถานะ</th></tr></thead>
+          <tbody id="coaTableBody">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
           </tbody>
         </table>
-      </div>
-      <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--surface);">
-        <span style="font-size:0.8rem;color:var(--muted);">แสดง 9 จาก 47 รายการ</span>
-        <button class="btn btn-ghost btn-sm">โหลดเพิ่ม</button>
       </div>
     </div>
     </div>
@@ -1241,6 +1119,32 @@
         </div>
       </div>
     </div>
+    <div id="company-products" style="display:none;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <div>
+          <h3 class="section-title" style="margin:0 0 0.35rem;">สินค้า / ราคา (Product Master)</h3>
+          <div style="font-size:0.82rem;color:var(--muted);">รายการสินค้าและราคาต่อหน่วย ใช้เป็นฐานสำหรับ line-item matching คุณภาพสูงขึ้น — แยกจาก "สแกน Line Items" ในตั้งค่าบริษัท</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-product')">📁 นำเข้า Product/Price List CSV</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.6rem;padding:0.65rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+        <span>รองรับทั้งไฟล์ CSV ปกติ (product_code,product_name,unit,unit_cost,category) และไฟล์ export รายงานสินค้าคงเหลือจาก Express โดยตรง</span>
+      </div>
+      <input class="search-input" type="search" id="productSearchInput" placeholder="ค้นหารหัส/ชื่อสินค้า..." oninput="searchProductMaster()" style="margin-bottom:0.85rem;" />
+      <div id="productMasterStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลด...</div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th style="width:130px;">Product Code</th><th>ชื่อสินค้า</th><th style="width:100px;">หน่วย</th><th style="width:120px;text-align:right;">ราคาต่อหน่วย</th><th style="width:120px;">หมวด</th></tr></thead>
+            <tbody id="productMasterTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
     <div id="company-settings" style="display:none;">
       <div class="card" style="margin-bottom:1rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
@@ -1263,15 +1167,17 @@
             <h3 class="section-title" style="margin:0 0 0.25rem;">Mapping Rules</h3>
             <div style="font-size:0.82rem;color:var(--muted);">ตั้งค่า rule ที่ใช้ตอน Map COA และ Review Mapping</div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="showToast('เปิดฟอร์มสร้าง mapping rule ใหม่','')">+ เพิ่ม Rule</button>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-mapping-docx')">📁 นำเข้าจาก DOCX (AI)</button>
+            <button class="btn btn-primary btn-sm" onclick="openMappingRuleModal('create')">+ เพิ่ม Rule</button>
+          </div>
         </div>
+        <div id="mappingRulesStatus" style="font-size:0.82rem;color:var(--muted);padding:0.6rem 1.25rem 0;">กำลังโหลด...</div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Vendor / Keyword</th><th>Document Type</th><th>Debit Account</th><th>Confidence</th><th style="width:120px;text-align:center;">จัดการ</th></tr></thead>
-            <tbody>
-              <tr><td>OfficeMate</td><td>Invoice</td><td class="mono">5100</td><td><span class="badge badge-ok">Auto 12 ครั้ง</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" onclick="showToast('เปิดแก้ไข mapping rule: OfficeMate','')">แก้ไข</button></td></tr>
-              <tr><td>PEA / ค่าไฟ</td><td>Invoice</td><td class="mono">5200</td><td><span class="badge badge-accent">Needs review</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" onclick="showToast('เปิดแก้ไข mapping rule: PEA','')">แก้ไข</button></td></tr>
-              <tr><td>WHT 3%</td><td>Receipt</td><td class="mono">2301</td><td><span class="badge badge-ok">Stable</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" onclick="showToast('เปิดแก้ไข mapping rule: WHT 3%','')">แก้ไข</button></td></tr>
+            <thead><tr><th>Vendor / Keyword</th><th>Document Type</th><th>Debit Account</th><th>Confirmed</th><th style="width:150px;text-align:center;">จัดการ</th></tr></thead>
+            <tbody id="mappingRulesTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1279,6 +1185,66 @@
     </div>
   </div>
 </section>
+
+<!-- Add/Edit Mapping Rule modal -->
+<div class="modal-backdrop" id="modal-mapping-rule">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="mappingRuleModalTitle">เพิ่ม Mapping Rule</h3>
+      <button class="modal-close" onclick="closeModal('modal-mapping-rule')">×</button>
+    </div>
+    <div id="mappingRuleModalError" class="field-hint" style="display:none;color:var(--danger);margin-bottom:0.75rem;"></div>
+    <div class="field-group"><label class="field-label">Vendor / Keyword *</label><input class="field-input" type="text" id="mappingRuleVendorInput" placeholder="OfficeMate" /></div>
+    <div class="field-group"><label class="field-label">Document Type</label><input class="field-input" type="text" id="mappingRuleDocTypeInput" placeholder="Invoice" /></div>
+    <div class="field-group"><label class="field-label">Debit Account Code</label><input class="field-input mono" type="text" id="mappingRuleDebitCodeInput" placeholder="5100" /></div>
+    <div class="field-group"><label class="field-label">Account Name</label><input class="field-input" type="text" id="mappingRuleAccountNameInput" placeholder="ค่าวัสดุสำนักงาน" /></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-mapping-rule')">ยกเลิก</button>
+      <button class="btn btn-primary" id="mappingRuleSaveBtn" onclick="saveMappingRuleModal()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Mapping Rules from DOCX (AI extract, review-before-save) -->
+<div class="modal-backdrop" id="modal-import-mapping-docx">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📁 นำเข้า Mapping Rules จาก DOCX (AI)</h3>
+      <button class="modal-close" onclick="closeModal('modal-import-mapping-docx')">×</button>
+    </div>
+    <div id="mappingDocxUploadStep">
+      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+        <strong style="color:var(--accent);">AI Extract:</strong>
+        <span>ระบบจะอ่านไฟล์ DOCX นโยบายการบันทึกบัญชี แล้วแนะนำ mapping rule ตามผังบัญชีที่มีอยู่ ให้ตรวจสอบก่อนบันทึกจริง</span>
+      </div>
+      <div class="field-group">
+        <label class="field-label">ไฟล์ DOCX *</label>
+        <input class="field-input" type="file" id="mappingDocxFileInput" accept=".docx" />
+      </div>
+      <div id="mappingDocxExtractResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-import-mapping-docx')">ยกเลิก</button>
+        <button class="btn btn-primary" id="mappingDocxExtractBtn" onclick="extractMappingRulesDocx()">วิเคราะห์ด้วย AI</button>
+      </div>
+    </div>
+    <div id="mappingDocxReviewStep" style="display:none;">
+      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+        <strong>ตรวจสอบก่อนบันทึก:</strong>
+        <span>แก้ไขได้ก่อนกด "ยืนยันและบันทึก" — ยังไม่มีการบันทึกจนกว่าจะกดยืนยัน</span>
+      </div>
+      <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
+        <table class="data-table">
+          <thead><tr><th>Vendor / Keyword</th><th style="width:130px;">Document Type</th><th style="width:110px;">Debit Code</th><th>Account Name</th></tr></thead>
+          <tbody id="mappingDocxPreviewBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-import-mapping-docx')">ยกเลิก</button>
+        <button class="btn btn-primary" id="mappingDocxConfirmBtn" onclick="confirmMappingRulesDocxImport()">ยืนยันและบันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ SCREEN 9: USERS ═══ -->
 <section id="s-users" class="screen">
@@ -1308,11 +1274,17 @@
       <h1 style="margin:0 0 .25rem;">Templates</h1>
       <span style="color:#6b7280;font-size:.9rem;">จัดการ Export Templates</span>
     </div>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:end;">
+      <div class="field-group" style="margin:0;">
+        <label class="field-label">บริษัท (สำหรับ Templates บริษัท / Clone target)</label>
+        <select class="field-select" id="templatesCompanySelect" onchange="onTemplatesCompanyChange()">
+          <option value="">— เลือกบริษัท —</option>
+        </select>
+      </div>
       <button class="btn btn-ghost" onclick="navigate('s-schema-analyzer')" style="display:flex;align-items:center;gap:.4rem;">
         <span>🔍</span> Auto-detect จาก Sample File
       </button>
-      <button class="btn btn-primary" onclick="openTemplateConfigurator('new','Template ใหม่')">+ สร้าง Template ใหม่</button>
+      <button class="btn btn-primary" onclick="createBlankTemplateFlow()">+ สร้าง Template ใหม่</button>
     </div>
   </div>
 
@@ -1346,219 +1318,23 @@
   </div>
 
   <div class="tab-bar" style="margin-bottom:1rem;">
-    <button class="tab active" onclick="switchTab(event,'tmpl-master','s-templates')">Master Templates <span class="badge badge-muted" style="margin-left:.35rem;">8</span></button>
-    <button class="tab" onclick="switchTab(event,'tmpl-company','s-templates')">Templates บริษัท <span class="badge badge-muted" style="margin-left:.35rem;">3</span></button>
+    <button class="tab active" onclick="switchTab(event,'tmpl-master','s-templates')">Master Templates <span class="badge badge-muted" style="margin-left:.35rem;" id="tmplMasterCount">0</span></button>
+    <button class="tab" onclick="switchTab(event,'tmpl-company','s-templates')">Templates บริษัท <span class="badge badge-muted" style="margin-left:.35rem;" id="tmplCompanyCount">0</span></button>
   </div>
+
+  <div id="templatesStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;">กำลังโหลด...</div>
 
   <!-- Master Templates tab -->
   <div id="tmpl-master">
-    <div class="two-col-grid">
-
-      <!-- Card 1: Express GL -->
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">Express GL</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: GL Ledger</span>
-          <span class="badge badge-muted">Format: CSV / Excel</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>8 columns:</strong> Voucher_No, Date, Book_Code, Account_Code, Debit, Credit, Description, TaxID
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อัปเดตล่าสุด: 2026-06-01</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','Express GL (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-      <!-- Card 2: ภ.พ.30 -->
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">ภ.พ.30 ภาษีซื้อ</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: Purchase Tax</span>
-          <span class="badge badge-muted">Format: Excel</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>12 columns:</strong> ลำดับ, วันที่, เลขที่ใบกำกับ, ชื่อผู้ขาย, เลขประจำตัวผู้เสียภาษี, มูลค่าสินค้า, ภาษีซื้อ&hellip;
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อัปเดตล่าสุด: 2026-06-01</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','ภ.พ.30 ภาษีซื้อ (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-      <!-- Cards 3-8: Express transaction master templates (TASK-1004, low-ambiguity — already promoted into Epic 10 planning) -->
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">Express ซื้อสด (Book 12)</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: Cash Purchase</span>
-          <span class="badge badge-muted">Format: CSV · TIS-620</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>8 columns:</strong> row_sequence, document_number, tax_invoice_number, amount_before_tax, vendor_code, vendor_name, posting_account_code&hellip;
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อ้างอิง: CLIENT-TEMPLATE-ANALYSIS.md · TASK-1004</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','Express ซื้อสด Book 12 (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">Express ซื้อเชื่อ (Book 14)</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: Credit Purchase</span>
-          <span class="badge badge-muted">Format: CSV · TIS-620</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>8 columns:</strong> เหมือน Book 12 · doc series แยกตาม book_code 14
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อ้างอิง: CLIENT-TEMPLATE-ANALYSIS.md · TASK-1004</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','Express ซื้อเชื่อ Book 14 (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">Express ค่าใช้จ่ายอื่นๆ (Book 15)</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: Other Expenses</span>
-          <span class="badge badge-muted">Format: CSV · TIS-620</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>9 columns:</strong> เพิ่ม transaction_desc จาก baseline 8 คอลัมน์
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อ้างอิง: CLIENT-TEMPLATE-ANALYSIS.md · TASK-1004</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','Express ค่าใช้จ่ายอื่นๆ Book 15 (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">Express ค่าใช้จ่าย+WHT 3% (Book 15+WHT)</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: Expense + WHT</span>
-          <span class="badge badge-muted">Format: CSV · TIS-620</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>11 columns:</strong> เพิ่ม formula_doc_number (OE prefix) สำหรับ WHT 3%
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อ้างอิง: CLIENT-TEMPLATE-ANALYSIS.md · TASK-1004</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','Express ค่าใช้จ่าย+WHT Book 15 (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">Express ขายสด (Book 22)</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: Cash Sales</span>
-          <span class="badge badge-muted">Format: CSV · TIS-620</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>7 columns:</strong> amount_including_tax, customer_code, customer_name&hellip;
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อ้างอิง: CLIENT-TEMPLATE-ANALYSIS.md · TASK-1004</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','Express ขายสด Book 22 (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
-          <span style="font-size:1.3rem;">📋</span>
-          <strong style="font-size:1.05rem;">Express ขายเชื่อ (Book 24)</strong>
-          <span class="badge badge-accent" style="margin-left:auto;">Master</span>
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">
-          <span class="badge badge-muted">Type: Credit Sales</span>
-          <span class="badge badge-muted">Format: CSV · TIS-620</span>
-        </div>
-        <p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;">
-          <strong>7 columns:</strong> เหมือน Book 22 · doc series แยกตาม book_code 24
-        </p>
-        <p style="margin:.5rem 0;font-size:.8rem;color:#6b7280;">อ้างอิง: CLIENT-TEMPLATE-ANALYSIS.md · TASK-1004</p>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem;">
-          <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','Express ขายเชื่อ Book 24 (Master)')">👁 ดู</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-clone-template')">📋 Clone to Company</button>
-        </div>
-      </div>
-
-    </div><!-- /.two-col-grid -->
+    <div class="two-col-grid" id="tmplMasterCardsBody">
+      <p style="color:#6b7280;font-size:.9rem;">กำลังโหลด...</p>
+    </div>
   </div><!-- /#tmpl-master -->
 
   <!-- Company Templates tab (hidden) -->
   <div id="tmpl-company" style="display:none;">
-    <p style="color:#6b7280;font-size:.9rem;padding:.5rem 0;">Templates ที่สร้างจาก Clone สำหรับแต่ละบริษัท (3 รายการ)</p>
-    <div class="card" style="display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <strong>GL เมโทร อีเล็กทริค</strong>
-        <span class="badge badge-purple" style="margin-left:.5rem;">Clone</span>
-        <p style="margin:.25rem 0;font-size:.8rem;color:#6b7280;">Clone of Express GL · 8 columns · CSV</p>
-      </div>
-      <div style="display:flex;gap:.5rem;">
-        <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','GL เมโทร อีเล็กทริค')">👁 ดู</button>
-        <button class="btn btn-primary btn-sm" onclick="openTemplateConfigurator('edit','GL เมโทร อีเล็กทริค')">✏️ แก้ไข</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmTemplateDelete('GL เมโทร อีเล็กทริค')">🗑</button>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <strong>ภ.พ.30 ซันชายน์</strong>
-        <span class="badge badge-purple" style="margin-left:.5rem;">Clone</span>
-        <p style="margin:.25rem 0;font-size:.8rem;color:#6b7280;">Clone of ภ.พ.30 ภาษีซื้อ · 12 columns · Excel</p>
-      </div>
-      <div style="display:flex;gap:.5rem;">
-        <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','ภ.พ.30 ซันชายน์')">👁 ดู</button>
-        <button class="btn btn-primary btn-sm" onclick="openTemplateConfigurator('edit','ภ.พ.30 ซันชายน์')">✏️ แก้ไข</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmTemplateDelete('ภ.พ.30 ซันชายน์')">🗑</button>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <strong>GL กรีน ซัพพลาย</strong>
-        <span class="badge badge-purple" style="margin-left:.5rem;">Clone</span>
-        <p style="margin:.25rem 0;font-size:.8rem;color:#6b7280;">Clone of Express GL · 8 columns · CSV</p>
-      </div>
-      <div style="display:flex;gap:.5rem;">
-        <button class="btn btn-ghost btn-sm" onclick="openTemplateConfigurator('view','GL กรีน ซัพพลาย')">👁 ดู</button>
-        <button class="btn btn-primary btn-sm" onclick="openTemplateConfigurator('edit','GL กรีน ซัพพลาย')">✏️ แก้ไข</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmTemplateDelete('GL กรีน ซัพพลาย')">🗑</button>
-      </div>
-    </div>
+    <p style="color:#6b7280;font-size:.9rem;padding:.5rem 0;" id="tmplCompanyHint">เลือกบริษัทด้านบนเพื่อดู Templates ของบริษัทนั้น</p>
+    <div id="tmplCompanyCardsBody"></div>
   </div><!-- /#tmpl-company -->
 </div><!-- /#s-templates -->
 
@@ -2717,7 +2493,7 @@
 
     // Map of all panel IDs per screen
     var allPanels = {
-      's-company-detail'       : ['company-coa','company-vendors','company-ar','company-settings'],
+      's-company-detail'       : ['company-coa','company-vendors','company-ar','company-products','company-settings'],
       's-templates'            : ['tmpl-master','tmpl-company'],
       's-settings'             : ['set-model','set-api','set-system','set-pdpa']
     };
@@ -2769,25 +2545,6 @@
 </div>
 
 <!-- Processing error modal -->
-<div class="modal-backdrop" id="modal-proc-error">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 class="modal-title">⚠️ Error Detail — INV-2605-007.pdf</h3>
-      <button class="modal-close" onclick="closeModal('modal-proc-error')">×</button>
-    </div>
-    <div style="background:var(--danger-soft);border:1px solid var(--danger);border-radius:var(--r-sm);padding:1rem;font-size:0.82rem;font-family:var(--mono);margin-bottom:1rem;color:var(--danger);">
-      ExtractionError: Could not parse amounts from page 1<br>
-      Stage: field_extraction<br>
-      Confidence: 12%<br>
-      Reason: Thai numeric format unrecognized in table cell (เซลล์ผสม)
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-proc-error')">ข้าม</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-proc-error');showToast('Retry ยังไม่เชื่อมต่อ backend job queue จริง (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">ลองใหม่</button>
-    </div>
-  </div>
-</div>
-
 <!-- Flag document modal -->
 <div class="modal-backdrop" id="modal-flag">
   <div class="modal">
@@ -2797,21 +2554,22 @@
     </div>
     <div class="field-group">
       <label class="field-label">เหตุผล</label>
-      <select class="field-select">
-        <option>ข้อมูลอ่านได้ไม่ครบ</option>
-        <option>เลขภาษีไม่ตรง</option>
-        <option>จำนวนเงินผิดพลาด</option>
-        <option>เอกสารไม่ชัดเจน</option>
-        <option>อื่นๆ</option>
+      <select class="field-select" id="flagReasonSelect">
+        <option value="ข้อมูลอ่านได้ไม่ครบ">ข้อมูลอ่านได้ไม่ครบ</option>
+        <option value="เลขภาษีไม่ตรง">เลขภาษีไม่ตรง</option>
+        <option value="จำนวนเงินผิดพลาด">จำนวนเงินผิดพลาด</option>
+        <option value="เอกสารไม่ชัดเจน">เอกสารไม่ชัดเจน</option>
+        <option value="อื่นๆ">อื่นๆ</option>
       </select>
     </div>
     <div class="field-group">
       <label class="field-label">หมายเหตุ (optional)</label>
-      <textarea class="field-input" rows="3" placeholder="รายละเอียดเพิ่มเติม..." style="resize:vertical;"></textarea>
+      <textarea class="field-input" rows="3" placeholder="รายละเอียดเพิ่มเติม..." style="resize:vertical;" id="flagCommentInput"></textarea>
     </div>
+    <div id="flagError" style="display:none;color:var(--danger);font-size:.82rem;margin-bottom:.5rem;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-flag')">ยกเลิก</button>
-      <button class="btn btn-warn" style="background:var(--warn);color:white;border-color:var(--warn);display:inline-flex;align-items:center;gap:0.35rem;padding:0.45rem 0.9rem;border-radius:var(--r-sm);font-weight:500;font-size:0.85rem;" onclick="closeModal('modal-flag');showToast('Flag ยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">บันทึก Flag</button>
+      <button class="btn btn-warn" style="background:var(--warn);color:white;border-color:var(--warn);display:inline-flex;align-items:center;gap:0.35rem;padding:0.45rem 0.9rem;border-radius:var(--r-sm);font-weight:500;font-size:0.85rem;" onclick="submitFlagDocument()">บันทึก Flag</button>
     </div>
   </div>
 </div>
@@ -2879,7 +2637,7 @@
     <div class="field-group"><label class="field-label">ชื่อ-นามสกุล</label><input class="field-input" type="text" id="userDisplayNameInput" placeholder="สมชาย กิตติคุณ" /></div>
     <div class="field-group">
       <label class="field-label">บทบาท</label>
-      <select class="field-select" id="userRoleSelect"><option value="staff">Staff</option><option value="admin">Admin</option></select>
+      <select class="field-select" id="userRoleSelect"><option value="staff">Staff</option><option value="admin">Admin</option><option value="sys_admin" id="userRoleSysAdminOption" style="display:none;">SysAdmin</option></select>
     </div>
     <div class="field-group">
       <label class="field-label">บริษัทที่ดูแล</label>
@@ -2901,23 +2659,21 @@
       <h3 class="modal-title">📋 Clone Template to Company</h3>
       <button class="modal-close" onclick="closeModal('modal-clone-template')">×</button>
     </div>
-    <div style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;">Clone จาก: <strong>Express GL (Master)</strong></div>
+    <div style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;">Clone จาก: <strong id="cloneTemplateSourceName">—</strong></div>
+    <div id="cloneTemplateError" class="field-hint" style="display:none;color:var(--danger);margin-bottom:0.75rem;"></div>
     <div class="field-group">
       <label class="field-label">บริษัทปลายทาง *</label>
-      <select class="field-select">
+      <select class="field-select" id="cloneTemplateCompanySelect">
         <option value="">— เลือกบริษัท —</option>
-        <option>บริษัท เมโทร อีเล็กทริค จำกัด</option>
-        <option>ห้างหุ้นส่วนจำกัด ซันชายน์</option>
-        <option>บริษัท กรีน ซัพพลาย จำกัด</option>
       </select>
     </div>
     <div class="field-group">
       <label class="field-label">ชื่อ Template ใหม่ *</label>
-      <input class="field-input" type="text" placeholder="GL เมโทร อีเล็กทริค" />
+      <input class="field-input" type="text" id="cloneTemplateNameInput" placeholder="เช่น GL เมโทร อีเล็กทริค" />
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-clone-template')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-clone-template');showToast('Clone จากการ์ดตัวอย่างนี้ยังไม่เชื่อมต่อ backend (deferred) — ใช้ POST /v1/templates/{id}/clone ผ่าน Live API Bridge แทน','warn')">Clone →</button>
+      <button class="btn btn-primary" id="cloneTemplateSubmitBtn" onclick="submitCloneTemplate()">Clone →</button>
     </div>
   </div>
 </div>
@@ -2988,23 +2744,63 @@
 <div class="modal-backdrop" id="modal-import-coa">
   <div class="modal">
     <div class="modal-header">
-      <h3 class="modal-title">📁 นำเข้า COA</h3>
+      <h3 class="modal-title">📁 นำเข้า COA (YAML/CSV)</h3>
       <button class="modal-close" onclick="closeModal('modal-import-coa')">×</button>
     </div>
-    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;">
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="coaFormat" checked /> YAML</label>
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="coaFormat" /> CSV</label>
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+      <strong style="color:var(--accent);">Upsert:</strong>
+      <span>account_code ที่มีอยู่แล้วจะถูกอัปเดต ส่วนรายการใหม่จะถูกเพิ่มเข้าไป</span>
     </div>
-    <div class="dropzone" style="padding:1.5rem;margin-bottom:1rem;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin:0 auto 0.5rem;display:block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <p style="font-size:0.82rem;color:var(--muted);text-align:center;">ลากไฟล์ YAML/CSV มาวาง หรือคลิกเพื่อเลือก</p>
+    <div class="field-group">
+      <label class="field-label">ไฟล์ YAML หรือ CSV *</label>
+      <input class="field-input" type="file" id="coaImportFileInput" accept=".yaml,.yml,.csv" />
+      <div class="field-hint">YAML: key `accounts: [{code,name,type}]` · CSV header: account_code,account_name,account_type</div>
     </div>
-    <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer;margin-bottom:1rem;">
-      <input type="checkbox" checked /> Upsert mode (อัปเดต account code ที่มีอยู่แล้ว)
-    </label>
+    <div id="coaImportResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-import-coa')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-import-coa');showToast('COA import ยังไม่มี backend API (deferred)','warn')">นำเข้า</button>
+      <button class="btn btn-primary" id="coaImportSubmitBtn" onclick="importCoaFile()">นำเข้า</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import COA from PDF (AI extract, review-before-save) -->
+<div class="modal-backdrop" id="modal-import-coa-pdf">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📄 นำเข้า COA จาก PDF (AI)</h3>
+      <button class="modal-close" onclick="closeModal('modal-import-coa-pdf')">×</button>
+    </div>
+    <div id="coaPdfUploadStep">
+      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+        <strong style="color:var(--accent);">AI Extract:</strong>
+        <span>ระบบจะ OCR + วิเคราะห์ผังบัญชีจากไฟล์ PDF แล้วแสดงตัวอย่างให้ตรวจสอบก่อนบันทึกจริง</span>
+      </div>
+      <div class="field-group">
+        <label class="field-label">ไฟล์ COA PDF *</label>
+        <input class="field-input" type="file" id="coaPdfFileInput" accept=".pdf" />
+      </div>
+      <div id="coaPdfExtractResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-import-coa-pdf')">ยกเลิก</button>
+        <button class="btn btn-primary" id="coaPdfExtractBtn" onclick="extractCoaPdf()">วิเคราะห์ด้วย AI</button>
+      </div>
+    </div>
+    <div id="coaPdfReviewStep" style="display:none;">
+      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+        <strong>ตรวจสอบก่อนบันทึก:</strong>
+        <span>แก้ไขได้ก่อนกด "ยืนยันและบันทึก" — ยังไม่มีการบันทึกจนกว่าจะกดยืนยัน</span>
+      </div>
+      <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
+        <table class="data-table">
+          <thead><tr><th style="width:110px;">Account Code</th><th>ชื่อบัญชี</th><th style="width:140px;">ประเภท</th><th style="width:40px;"></th></tr></thead>
+          <tbody id="coaPdfPreviewBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-import-coa-pdf')">ยกเลิก</button>
+        <button class="btn btn-primary" id="coaPdfConfirmBtn" onclick="confirmCoaPdfImport()">ยืนยันและบันทึก</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3051,6 +2847,29 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-import-customer')">ยกเลิก</button>
       <button class="btn btn-primary" id="customerImportSubmitBtn" onclick="importCustomerMasterFile()">นำเข้า</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Product/Price-List modal -->
+<div class="modal-backdrop" id="modal-import-product">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">📁 นำเข้า Product/Price List</h3>
+      <button class="modal-close" onclick="closeModal('modal-import-product')">×</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
+      <strong style="color:var(--accent);">Format:</strong>
+      <span>รองรับ CSV ปกติ (product_code,product_name,unit,unit_cost,category) หรือไฟล์รายงานสินค้าคงเหลือจาก Express โดยตรง</span>
+    </div>
+    <div class="field-group">
+      <label class="field-label">ไฟล์ CSV *</label>
+      <input class="field-input" type="file" id="productImportFileInput" accept=".csv" />
+    </div>
+    <div id="productImportResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-import-product')">ยกเลิก</button>
+      <button class="btn btn-primary" id="productImportSubmitBtn" onclick="importProductMasterFile()">นำเข้า</button>
     </div>
   </div>
 </div>
@@ -3104,11 +2923,6 @@
     });
     // Scroll content to top
     document.getElementById('mainContent').scrollTop = 0;
-  }
-
-  function openTemplateConfigurator(mode, templateName) {
-    navigate('s-template-configurator');
-    showToast((mode === 'new' ? 'เปิดสร้าง template ใหม่' : 'เปิด ' + mode + ' template: ' + templateName), '');
   }
 
   // Dead/shadowed: window.saStartAnalysis is reassigned in installListeners()
@@ -3167,20 +2981,10 @@
     _origNavigate(screenId);
   };
 
-  function confirmTemplateDelete(templateName) {
-    // Deferred: "Templates บริษัท" cards are static demo entries (not loaded from
-    // the live /v1/templates list), so there is no real template id to call
-    // DELETE /v1/templates/{id} with here. The backend endpoint already exists
-    // and is used by the "Live API Bridge" template flow further up this screen.
-    document.getElementById('confirmTitle').textContent = 'ลบ Template (Deferred)';
-    document.getElementById('confirmBody').textContent = 'การลบ template "' + templateName + '" จากการ์ดตัวอย่างนี้ยังไม่เชื่อมต่อ backend จริง';
-    const okBtn = document.getElementById('confirmOkBtn');
-    okBtn.onclick = function () {
-      closeModal('modal-confirm');
-      showToast('ลบ template ยังไม่เชื่อมต่อ backend สำหรับการ์ดตัวอย่างนี้ (deferred)', 'warn');
-    };
-    openModal('modal-confirm');
-  }
+  // confirmTemplateDelete / openTemplateConfiguratorReal / createBlankTemplateFlow
+  // moved to the "use strict" API-helpers IIFE below (they call
+  // apiFetch/auth/refreshTemplates/syncSelectedTemplate, which live there) —
+  // see the block right after refreshTemplates()/renderTemplatesTabs().
 
   /* Company/User create-edit-reset flows are wired to real APIs further below
      (openCompanyDrawerForCreate/Edit, openUserDrawerForCreate/Edit, resetUserPasswordPrompt). */
@@ -3266,6 +3070,10 @@
     userDrawerMode: "create",
     userDrawerEditId: "",
     selectedCompanyDetailId: "",
+    pendingUploadFiles: [],
+    workflowDocuments: [],
+    reviewScanSelectedId: "",
+    reviewMappingSelectedId: "",
   };
 
   var QUICK_DEFAULT_FIELDS = [
@@ -3433,6 +3241,61 @@
     }
   }
 
+  // Routes to the app shell, or to the forced change-password screen when the
+  // user is still on a temp/reset password (TASK-1204 first-login intent).
+  // No dismiss control on the force screen — the backend also 428s every
+  // admin/company/master-data/template/export call until this is done, so
+  // this is enforcement, not just a UI nag the user could otherwise skip.
+  function applyPostLoginVisibility(user) {
+    var loginScreen = getEl("login-screen");
+    var appShell = getEl("app");
+    var forceScreen = getEl("force-change-password-screen");
+    var mustChange = !!(user && user.must_change_password);
+    if (loginScreen) loginScreen.style.display = "none";
+    if (forceScreen) forceScreen.style.display = mustChange ? "flex" : "none";
+    if (appShell) appShell.classList.toggle("visible", !mustChange);
+  }
+
+  async function submitForceChangePassword() {
+    var oldPw = getEl("forceChangeOldPw").value || "";
+    var newPw = getEl("forceChangeNewPw").value || "";
+    var confirmPw = getEl("forceChangeConfirmPw").value || "";
+    var errorEl = getEl("forceChangePasswordError");
+    errorEl.style.display = "none";
+    if (!oldPw || !newPw || !confirmPw) {
+      errorEl.style.display = "block";
+      errorEl.textContent = "กรุณากรอกข้อมูลให้ครบ";
+      return;
+    }
+    if (newPw !== confirmPw) {
+      errorEl.style.display = "block";
+      errorEl.textContent = "รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน";
+      return;
+    }
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/auth/change-password"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ old_password: oldPw, new_password: newPw }),
+      });
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      state.currentUser = result.user;
+      showToast("เปลี่ยนรหัสผ่านสำเร็จ ✓", "ok");
+      applyPostLoginVisibility(state.currentUser);
+      navigate("s-dashboard");
+      try { await refreshTemplates(); } catch (refreshError) { /* best-effort */ }
+      try { await loadCompanies(); } catch (companiesError) { /* best-effort */ }
+      try { await loadUsers(); } catch (usersError) { /* best-effort */ }
+    } catch (error) {
+      errorEl.style.display = "block";
+      errorEl.textContent = "เปลี่ยนรหัสผ่านไม่สำเร็จ: " + error.message;
+    }
+  }
+
   function updateTopbarUser(user) {
     var displayName = user && user.display_name ? user.display_name : "LedgerFlow User";
     var role = user && user.role ? String(user.role) : "staff";
@@ -3450,6 +3313,28 @@
       avatar.textContent = initials;
       avatar.title = displayName + " - " + role;
     }
+    applyRoleBasedVisibility(role);
+  }
+
+  // Role-aware UI visibility (TASK-1204 ac_1204_ui / ac_1204_system_menu):
+  // Users nav + company-create are Admin+ only; Internal Console is sys_admin
+  // only. Fails closed (everything defaults to display:none in the markup)
+  // so a role we don't recognize doesn't accidentally show admin surfaces.
+  // The backend enforces the real access control (require_admin/require_sys_admin);
+  // this only avoids showing a control that would just 403 on click.
+  function applyRoleBasedVisibility(role) {
+    var isAdminOrAbove = role === "admin" || role === "sys_admin";
+    var isSysAdmin = role === "sys_admin";
+    var usersNav = getEl("usersNavItem");
+    if (usersNav) usersNav.style.display = isAdminOrAbove ? "" : "none";
+    var consoleBtn = getEl("internalConsoleTopbarBtn");
+    if (consoleBtn) consoleBtn.style.display = isSysAdmin ? "" : "none";
+    var consoleNote = getEl("internalConsoleNavNote");
+    if (consoleNote) consoleNote.style.display = isSysAdmin ? "" : "none";
+    var createCompanyBtn = getEl("createCompanyBtn");
+    if (createCompanyBtn) createCompanyBtn.style.display = isSysAdmin ? "" : "none";
+    var sysAdminRoleOption = getEl("userRoleSysAdminOption");
+    if (sysAdminRoleOption) sysAdminRoleOption.style.display = isSysAdmin ? "" : "none";
   }
 
   function getPrimaryCompanyId(user) {
@@ -3497,6 +3382,10 @@
       state.currentUser = payload.user || null;
       state.currentCompanyId = "";
       await getCurrentUser();
+      if (state.currentUser && state.currentUser.must_change_password) {
+        applyPostLoginVisibility(state.currentUser);
+        return; // admin/company/master-data APIs all 428 until password is changed
+      }
       setAppVisibility(true);
       navigate("s-dashboard");
       showToast("เข้าสู่ระบบสำเร็จ", "ok");
@@ -3533,7 +3422,7 @@
         state.currentUser = user;
         state.currentCompanyId = getPrimaryCompanyId(user);
         updateTopbarUser(user);
-        setAppVisibility(true);
+        applyPostLoginVisibility(user);
         setBadge("liveApiAuthState", "JWT ready", "badge-ok");
       } else {
         state.currentUser = null;
@@ -4193,6 +4082,228 @@
     getEl("liveTemplateStatus").textContent = "Loaded " + state.templates.length + " template(s) from API.";
     getEl("exportLiveStatus").textContent = "Templates ready for preview, validate, and export.";
     refreshConfiguratorTestTab();
+    renderTemplatesTabs();
+  }
+
+  /* ── Templates screen: real company-scoped Master/Company lists (Pack C —
+     replaces the fixture cards; reuses state.templates from refreshTemplates,
+     which already fetches GET /v1/templates?company_id=<selected>). ── */
+
+  function renderTemplatesTabs() {
+    var all = state.templates || [];
+    var masters = all.filter(function (t) { return t.is_master; });
+    var companyTemplates = all.filter(function (t) { return !t.is_master; });
+
+    var masterCountEl = getEl("tmplMasterCount");
+    if (masterCountEl) masterCountEl.textContent = String(masters.length);
+    var companyCountEl = getEl("tmplCompanyCount");
+    if (companyCountEl) companyCountEl.textContent = String(companyTemplates.length);
+
+    var statusEl = getEl("templatesStatus");
+    if (statusEl) {
+      statusEl.textContent = state.currentCompanyId
+        ? "โหลด " + masters.length + " master template และ " + companyTemplates.length + " template ของบริษัทที่เลือก"
+        : "โหลด " + masters.length + " master template — เลือกบริษัทด้านบนเพื่อดู Templates บริษัท";
+    }
+
+    var masterBody = getEl("tmplMasterCardsBody");
+    if (masterBody) {
+      masterBody.innerHTML = masters.length
+        ? masters.map(renderMasterTemplateCard).join("")
+        : '<p style="color:#6b7280;font-size:.9rem;">ยังไม่มี master template</p>';
+    }
+
+    var companyBody = getEl("tmplCompanyCardsBody");
+    var companyHint = getEl("tmplCompanyHint");
+    if (companyBody) {
+      if (!state.currentCompanyId) {
+        companyBody.innerHTML = "";
+        if (companyHint) companyHint.textContent = "เลือกบริษัทด้านบนเพื่อดู Templates ของบริษัทนั้น";
+      } else if (!companyTemplates.length) {
+        companyBody.innerHTML = "";
+        if (companyHint) companyHint.textContent = "บริษัทนี้ยังไม่มี Template — Clone จาก Master Templates ด้านบน";
+      } else {
+        if (companyHint) companyHint.textContent = "Templates ของบริษัทที่เลือก (" + companyTemplates.length + " รายการ)";
+        companyBody.innerHTML = companyTemplates.map(renderCompanyTemplateCard).join("");
+      }
+    }
+  }
+
+  function renderMasterTemplateCard(t) {
+    var colCount = Array.isArray(t.columns) ? t.columns.length : 0;
+    return '<div class="card">' +
+      '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">' +
+        '<span style="font-size:1.3rem;">📋</span>' +
+        '<strong style="font-size:1.05rem;">' + escapeHtml(t.template_name) + '</strong>' +
+        '<span class="badge badge-accent" style="margin-left:auto;">Master</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;">' +
+        '<span class="badge badge-muted">Type: ' + escapeHtml(t.template_type || "—") + '</span>' +
+        '<span class="badge badge-muted">Format: ' + escapeHtml((t.file_format || "").toUpperCase()) + '</span>' +
+      '</div>' +
+      '<p style="margin:.5rem 0;font-size:.875rem;color:#374151;line-height:1.6;"><strong>' + colCount + ' columns</strong></p>' +
+      '<div style="display:flex;gap:.5rem;margin-top:.75rem;">' +
+        '<button class="btn btn-ghost btn-sm" onclick="openTemplateConfiguratorReal(\'view\',\'' + t.id + '\')">👁 ดู</button>' +
+        '<button class="btn btn-primary btn-sm" onclick="openCloneTemplateModal(\'' + t.id + '\',\'' + escapeHtml(t.template_name).replace(/'/g, "&#39;") + '\')">📋 Clone to Company</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderCompanyTemplateCard(t) {
+    var sourceLabel = t.cloned_from ? "Clone" : "Company";
+    var sourceTemplate = t.cloned_from ? getTemplateById(t.cloned_from) : null;
+    var sourceNote = sourceTemplate ? ("Clone of " + escapeHtml(sourceTemplate.template_name)) : (t.cloned_from ? ("Clone of " + escapeHtml(t.cloned_from)) : "สร้างเอง");
+    var colCount = Array.isArray(t.columns) ? t.columns.length : 0;
+    return '<div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">' +
+      '<div>' +
+        '<strong>' + escapeHtml(t.template_name) + '</strong>' +
+        '<span class="badge badge-purple" style="margin-left:.5rem;">' + sourceLabel + '</span>' +
+        '<p style="margin:.25rem 0;font-size:.8rem;color:#6b7280;">' + sourceNote + ' · ' + colCount + ' columns · ' + escapeHtml((t.file_format || "").toUpperCase()) + '</p>' +
+      '</div>' +
+      '<div style="display:flex;gap:.5rem;">' +
+        '<button class="btn btn-ghost btn-sm" onclick="openTemplateConfiguratorReal(\'view\',\'' + t.id + '\')">👁 ดู</button>' +
+        '<button class="btn btn-primary btn-sm" onclick="openTemplateConfiguratorReal(\'edit\',\'' + t.id + '\')">✏️ แก้ไข</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="confirmTemplateDelete(\'' + t.id + '\',\'' + escapeHtml(t.template_name).replace(/'/g, "&#39;") + '\')">🗑</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function populateTemplatesCompanySelects() {
+    var companies = state.companies || [];
+    [{ id: "templatesCompanySelect", placeholder: "— เลือกบริษัท —" },
+     { id: "cloneTemplateCompanySelect", placeholder: "— เลือกบริษัท —" }].forEach(function (cfg) {
+      var select = getEl(cfg.id);
+      if (!select) return;
+      var currentValue = select.value;
+      select.innerHTML = "";
+      var placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = cfg.placeholder;
+      select.appendChild(placeholder);
+      companies.forEach(function (company) {
+        var option = document.createElement("option");
+        option.value = company.id;
+        option.textContent = company.name;
+        select.appendChild(option);
+      });
+      if (currentValue && companies.some(function (c) { return c.id === currentValue; })) {
+        select.value = currentValue;
+      }
+    });
+    var templatesSelect = getEl("templatesCompanySelect");
+    if (templatesSelect && state.currentCompanyId) templatesSelect.value = state.currentCompanyId;
+  }
+
+  function onTemplatesCompanyChange() {
+    var select = getEl("templatesCompanySelect");
+    state.currentCompanyId = select ? select.value : "";
+    refreshTemplates().catch(handleError);
+  }
+
+  var _cloneTemplateSourceId = "";
+
+  function openCloneTemplateModal(templateId, templateName) {
+    _cloneTemplateSourceId = templateId;
+    getEl("cloneTemplateSourceName").textContent = templateName;
+    getEl("cloneTemplateNameInput").value = "";
+    getEl("cloneTemplateError").style.display = "none";
+    populateTemplatesCompanySelects();
+    var companySelect = getEl("cloneTemplateCompanySelect");
+    if (companySelect && state.currentCompanyId) companySelect.value = state.currentCompanyId;
+    openModal("modal-clone-template");
+  }
+
+  async function submitCloneTemplate() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = getEl("cloneTemplateCompanySelect").value;
+    var newName = (getEl("cloneTemplateNameInput").value || "").trim();
+    var errorEl = getEl("cloneTemplateError");
+    if (!companyId) {
+      errorEl.style.display = "block";
+      errorEl.textContent = "กรุณาเลือกบริษัทปลายทาง";
+      return;
+    }
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/templates/" + encodeURIComponent(_cloneTemplateSourceId) + "/clone"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ company_id: companyId, template_name: newName || null }),
+        }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var cloned = await response.json();
+      closeModal("modal-clone-template");
+      showToast("Clone template สำเร็จ ✓", "ok");
+      state.currentCompanyId = companyId;
+      var templatesSelect = getEl("templatesCompanySelect");
+      if (templatesSelect) templatesSelect.value = companyId;
+      await refreshTemplates();
+      if (cloned && cloned.id) openTemplateConfiguratorReal("edit", cloned.id);
+    } catch (error) {
+      errorEl.style.display = "block";
+      errorEl.textContent = "Clone ไม่สำเร็จ: " + error.message;
+    }
+  }
+
+  // Real view/edit: reuses the exact same mechanism the "Live API Bridge"
+  // panel's template dropdown already uses (syncSelectedTemplate), so an
+  // existing template's real saved columns load into the Configurator instead
+  // of just showing a toast.
+  function openTemplateConfiguratorReal(mode, templateId) {
+    syncSelectedTemplate(templateId);
+    navigate('s-template-configurator');
+    if (typeof setConfiguratorTab === "function") setConfiguratorTab('configure');
+    var label = state.activeTemplate ? state.activeTemplate.template_name : templateId;
+    showToast((mode === 'edit' ? 'เปิดแก้ไข' : 'เปิดดู') + ' template: ' + label, '');
+  }
+
+  // "+ สร้าง Template ใหม่" without a sample file: there's no blank-columns
+  // editor separate from the Configure-tab table shared with Export, so this
+  // clears the active template/columns and points at the real creation path
+  // (Auto-detect from Sample File -> Apply to Tab ② -> Save as Template)
+  // rather than opening an empty configurator that implies more than exists.
+  function createBlankTemplateFlow() {
+    state.selectedTemplateId = "";
+    state.activeTemplate = null;
+    state.exportColumns = [];
+    navigate('s-schema-analyzer');
+    showToast('สร้าง Template ใหม่เริ่มจากการอัปโหลดไฟล์ตัวอย่างเพื่อวิเคราะห์คอลัมน์ก่อน', '');
+  }
+
+  function confirmTemplateDelete(templateId, templateName) {
+    getEl('confirmTitle').textContent = 'ลบ Template';
+    getEl('confirmBody').textContent = 'ยืนยันการลบ template "' + templateName + '" — ไม่สามารถย้อนกลับได้';
+    var okBtn = getEl('confirmOkBtn');
+    okBtn.onclick = function () {
+      closeModal('modal-confirm');
+      deleteTemplateReal(templateId);
+    };
+    openModal('modal-confirm');
+  }
+
+  async function deleteTemplateReal(templateId) {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/templates/" + encodeURIComponent(templateId)),
+        { method: "DELETE" }
+      );
+      if (!response.ok && response.status !== 204) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      showToast("ลบ template สำเร็จ ✓", "ok");
+      await refreshTemplates();
+    } catch (error) {
+      showToast("ลบไม่สำเร็จ: " + error.message, "warn");
+    }
   }
 
   async function createDraftTemplateFromAnalysis() {
@@ -4425,6 +4536,8 @@
       state.companies = await response.json();
       renderCompaniesTable();
       populateUserCompanyCheckboxes(getCheckedUserCompanyIds());
+      populateTemplatesCompanySelects();
+      populateUploadCompanySelect();
       if (statusEl) statusEl.textContent = "โหลดบริษัททั้งหมด " + state.companies.length + " แห่ง";
     } catch (error) {
       if (statusEl) statusEl.textContent = "โหลดรายชื่อบริษัทไม่สำเร็จ: " + error.message;
@@ -4553,6 +4666,9 @@
     navigate("s-company-detail");
     loadVendorMaster(id).catch(handleError);
     loadCustomerMaster(id).catch(handleError);
+    loadChartOfAccounts(id).catch(handleError);
+    loadMappingRules(id).catch(handleError);
+    loadProductMaster(id).catch(handleError);
   }
 
   /* ── Users (W4 SIT closure — real persistence, replaces static demo rows) ── */
@@ -4860,8 +4976,25 @@
         throw new Error(errorBody.detail || ("HTTP " + response.status));
       }
       var result = await response.json();
+      var rowErrors = Array.isArray(result.errors) ? result.errors : [];
+      if (result.imported === 0 && result.updated === 0 && rowErrors.length > 0) {
+        // Real customer files (e.g. Express Accounting report exports) often
+        // don't match the expected vendor_code/vendor_name CSV shape — every
+        // row can fail validation. A 200 response with 0/0 must not be shown
+        // as success (TC-RWG01-14): surface the row errors instead.
+        if (resultEl) {
+          resultEl.style.display = "block";
+          resultEl.style.color = "var(--danger)";
+          resultEl.innerHTML = "นำเข้าไม่สำเร็จ — ไม่มีแถวที่นำเข้าได้ (" + rowErrors.length + " แถวมีปัญหา):<br/>" +
+            rowErrors.slice(0, 5).map(function (e) { return "แถว " + e.row_number + ": " + escapeHtml(e.message); }).join("<br/>");
+        }
+        showToast("นำเข้า Vendor Master ไม่สำเร็จ — 0 รายการ ตรวจสอบรูปแบบไฟล์ CSV", "warn");
+        return;
+      }
       closeModal("modal-import-vendor");
-      showToast("นำเข้า Vendor Master สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ ✓", "ok");
+      var okMsg = "นำเข้า Vendor Master สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ";
+      if (rowErrors.length > 0) okMsg += " (ข้าม " + rowErrors.length + " แถวที่มีปัญหา)";
+      showToast(okMsg + " ✓", "ok");
       await loadVendorMaster(companyId);
     } catch (error) {
       if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "นำเข้าไม่สำเร็จ: " + error.message; }
@@ -4891,16 +5024,1044 @@
         throw new Error(errorBody.detail || ("HTTP " + response.status));
       }
       var result = await response.json();
+      var rowErrors = Array.isArray(result.errors) ? result.errors : [];
+      if (result.imported === 0 && result.updated === 0 && rowErrors.length > 0) {
+        // See importVendorMasterFile: a 200 with 0/0 rows imported is a real
+        // customer-file-format failure, not success (TC-RWG01-14).
+        if (resultEl) {
+          resultEl.style.display = "block";
+          resultEl.style.color = "var(--danger)";
+          resultEl.innerHTML = "นำเข้าไม่สำเร็จ — ไม่มีแถวที่นำเข้าได้ (" + rowErrors.length + " แถวมีปัญหา):<br/>" +
+            rowErrors.slice(0, 5).map(function (e) { return "แถว " + e.row_number + ": " + escapeHtml(e.message); }).join("<br/>");
+        }
+        showToast("นำเข้า Customer Master ไม่สำเร็จ — 0 รายการ ตรวจสอบรูปแบบไฟล์ CSV", "warn");
+        return;
+      }
       closeModal("modal-import-customer");
-      showToast("นำเข้า Customer Master สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ ✓", "ok");
+      var okMsg = "นำเข้า Customer Master สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ";
+      if (rowErrors.length > 0) okMsg += " (ข้าม " + rowErrors.length + " แถวที่มีปัญหา)";
+      showToast(okMsg + " ✓", "ok");
       await loadCustomerMaster(companyId);
     } catch (error) {
       if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "นำเข้าไม่สำเร็จ: " + error.message; }
     }
   }
 
+  /* ── Product / Price-List Master (Pack C — separate from enable_stock;
+     foundation for future line-item/product matching quality) ── */
+
+  async function loadProductMaster(companyId, search) {
+    var statusEl = getEl("productMasterStatus");
+    var tbody = getEl("productMasterTableBody");
+    try {
+      var url = "/api/v1/companies/" + encodeURIComponent(companyId) + "/product-master";
+      if (search) url += "?q=" + encodeURIComponent(search);
+      var response = await apiFetch(auth.apiUrl(url));
+      if (!response.ok) throw new Error("Product master load failed: HTTP " + response.status);
+      var result = await response.json();
+      var items = result.items || [];
+      if (statusEl) statusEl.textContent = "สินค้า " + (result.total != null ? result.total : items.length) + " รายการ";
+      if (tbody) {
+        tbody.innerHTML = items.length
+          ? items.map(function (p) {
+              var cost = p.unit_cost != null ? Number(p.unit_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : "—";
+              return "<tr>" +
+                '<td class="mono" style="font-weight:600;">' + escapeHtml(p.code) + "</td>" +
+                "<td>" + escapeHtml(p.name) + "</td>" +
+                "<td>" + escapeHtml(p.unit || "—") + "</td>" +
+                '<td class="mono" style="text-align:right;">' + cost + "</td>" +
+                "<td>" + escapeHtml(p.category || "—") + "</td>" +
+              "</tr>";
+            }).join("")
+          : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มีข้อมูลสินค้า — นำเข้า CSV เพื่อเริ่มต้น</td></tr>';
+      }
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "โหลดข้อมูลสินค้าไม่สำเร็จ: " + error.message;
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+    }
+  }
+
+  function searchProductMaster() {
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) return;
+    var search = (getEl("productSearchInput") && getEl("productSearchInput").value || "").trim();
+    loadProductMaster(companyId, search).catch(handleError);
+  }
+
+  async function importProductMasterFile() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    var resultEl = getEl("productImportResult");
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var fileInput = getEl("productImportFileInput");
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "กรุณาเลือกไฟล์ CSV ก่อน"; }
+      return;
+    }
+    var form = new FormData();
+    form.append("file", fileInput.files[0]);
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/product-master/import"),
+        { method: "POST", body: form }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      var rowErrors = Array.isArray(result.errors) ? result.errors : [];
+      if (result.imported === 0 && result.updated === 0 && rowErrors.length > 0) {
+        if (resultEl) {
+          resultEl.style.display = "block";
+          resultEl.style.color = "var(--danger)";
+          resultEl.innerHTML = "นำเข้าไม่สำเร็จ — ไม่มีแถวที่นำเข้าได้ (" + rowErrors.length + " แถวมีปัญหา):<br/>" +
+            rowErrors.slice(0, 5).map(function (e) { return "แถว " + e.row_number + ": " + escapeHtml(e.message); }).join("<br/>");
+        }
+        showToast("นำเข้า Product Master ไม่สำเร็จ — 0 รายการ ตรวจสอบรูปแบบไฟล์ CSV", "warn");
+        return;
+      }
+      closeModal("modal-import-product");
+      var okMsg = "นำเข้า Product Master สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ";
+      if (rowErrors.length > 0) okMsg += " (ข้าม " + rowErrors.length + " แถวที่มีปัญหา)";
+      showToast(okMsg + " ✓", "ok");
+      await loadProductMaster(companyId);
+    } catch (error) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "นำเข้าไม่สำเร็จ: " + error.message; }
+    }
+  }
+
+  /* ── Chart of Accounts (TASK-1203 — real API, replaces fixture table) ── */
+
+  state.coaAccounts = state.coaAccounts || [];
+  state.coaPdfPreview = state.coaPdfPreview || [];
+
+  async function loadChartOfAccounts(companyId) {
+    var statusEl = getEl("coaStatus");
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/coa"));
+      if (!response.ok) throw new Error("COA load failed: HTTP " + response.status);
+      state.coaAccounts = await response.json();
+      if (statusEl) statusEl.textContent = "ผังบัญชี " + state.coaAccounts.length + " รายการ";
+      renderCoaTable();
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "โหลดผังบัญชีไม่สำเร็จ: " + error.message;
+      var tbody = getEl("coaTableBody");
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+    }
+  }
+
+  function renderCoaTable() {
+    var tbody = getEl("coaTableBody");
+    if (!tbody) return;
+    var search = (getEl("coaSearchInput") && getEl("coaSearchInput").value || "").trim().toLowerCase();
+    var rows = state.coaAccounts || [];
+    if (search) {
+      rows = rows.filter(function (a) {
+        return a.account_code.toLowerCase().indexOf(search) !== -1 || a.account_name.toLowerCase().indexOf(search) !== -1;
+      });
+    }
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มีผังบัญชี — นำเข้า YAML/CSV หรือ PDF เพื่อเริ่มต้น</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function (a) {
+      return "<tr>" +
+        '<td class="mono" style="font-weight:600;">' + escapeHtml(a.account_code) + "</td>" +
+        "<td>" + escapeHtml(a.account_name) + "</td>" +
+        "<td>" + escapeHtml(a.account_type || "") + "</td>" +
+        '<td style="text-align:center;">' + (a.is_active ? '<span class="badge badge-ok">Active</span>' : '<span class="badge badge-muted">Inactive</span>') + "</td>" +
+      "</tr>";
+    }).join("");
+  }
+
+  async function importCoaFile() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    var resultEl = getEl("coaImportResult");
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var fileInput = getEl("coaImportFileInput");
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "กรุณาเลือกไฟล์ YAML/CSV ก่อน"; }
+      return;
+    }
+    var form = new FormData();
+    form.append("file", fileInput.files[0]);
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/coa/import"),
+        { method: "POST", body: form }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      closeModal("modal-import-coa");
+      showToast("นำเข้า COA สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ ✓", "ok");
+      await loadChartOfAccounts(companyId);
+    } catch (error) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "นำเข้าไม่สำเร็จ: " + error.message; }
+    }
+  }
+
+  function openCoaPdfModal() {
+    getEl("coaPdfUploadStep").style.display = "block";
+    getEl("coaPdfReviewStep").style.display = "none";
+    getEl("coaPdfExtractResult").style.display = "none";
+    var fileInput = getEl("coaPdfFileInput");
+    if (fileInput) fileInput.value = "";
+    state.coaPdfPreview = [];
+    openModal("modal-import-coa-pdf");
+  }
+
+  function renderCoaPdfPreviewTable() {
+    var tbody = getEl("coaPdfPreviewBody");
+    if (!tbody) return;
+    tbody.innerHTML = state.coaPdfPreview.map(function (a, i) {
+      return "<tr>" +
+        '<td><input class="field-input mono" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(a.code) + '" onchange="updateCoaPdfPreviewField(' + i + ',\'code\',this.value)" /></td>' +
+        '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(a.name) + '" onchange="updateCoaPdfPreviewField(' + i + ',\'name\',this.value)" /></td>' +
+        '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(a.type || "") + '" onchange="updateCoaPdfPreviewField(' + i + ',\'type\',this.value)" /></td>' +
+        '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:0.2rem 0.4rem;" onclick="removeCoaPdfPreviewRow(' + i + ')">🗑</button></td>' +
+      "</tr>";
+    }).join("");
+  }
+
+  function updateCoaPdfPreviewField(index, field, value) {
+    if (state.coaPdfPreview[index]) state.coaPdfPreview[index][field] = value;
+  }
+
+  function removeCoaPdfPreviewRow(index) {
+    state.coaPdfPreview.splice(index, 1);
+    renderCoaPdfPreviewTable();
+  }
+
+  async function extractCoaPdf() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    var resultEl = getEl("coaPdfExtractResult");
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var fileInput = getEl("coaPdfFileInput");
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "กรุณาเลือกไฟล์ PDF ก่อน"; }
+      return;
+    }
+    var form = new FormData();
+    form.append("file", fileInput.files[0]);
+    var extractBtn = getEl("coaPdfExtractBtn");
+    if (extractBtn) { extractBtn.disabled = true; extractBtn.textContent = "กำลังวิเคราะห์..."; }
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/coa/import-pdf"),
+        { method: "POST", body: form }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      state.coaPdfPreview = result.accounts || [];
+      renderCoaPdfPreviewTable();
+      getEl("coaPdfUploadStep").style.display = "none";
+      getEl("coaPdfReviewStep").style.display = "block";
+    } catch (error) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "วิเคราะห์ไม่สำเร็จ: " + error.message; }
+    } finally {
+      if (extractBtn) { extractBtn.disabled = false; extractBtn.textContent = "วิเคราะห์ด้วย AI"; }
+    }
+  }
+
+  async function confirmCoaPdfImport() {
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/coa/confirm"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accounts: state.coaPdfPreview }),
+        }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      closeModal("modal-import-coa-pdf");
+      showToast("บันทึกผังบัญชีสำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ ✓", "ok");
+      await loadChartOfAccounts(companyId);
+    } catch (error) {
+      showToast("บันทึกไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  /* ── Mapping Rules (TASK-1203 — real API via AccountMappingRule, replaces fixture table) ── */
+
+  state.mappingRules = state.mappingRules || [];
+  state.mappingRuleModalMode = "create";
+  state.mappingRuleEditId = "";
+  state.mappingRulesDocxPreview = [];
+
+  async function loadMappingRules(companyId) {
+    var statusEl = getEl("mappingRulesStatus");
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/mapping-rules"));
+      if (!response.ok) throw new Error("Mapping rules load failed: HTTP " + response.status);
+      state.mappingRules = await response.json();
+      if (statusEl) statusEl.textContent = "Mapping rules " + state.mappingRules.length + " รายการ";
+      renderMappingRulesTable();
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "โหลด mapping rules ไม่สำเร็จ: " + error.message;
+      var tbody = getEl("mappingRulesTableBody");
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+    }
+  }
+
+  function renderMappingRulesTable() {
+    var tbody = getEl("mappingRulesTableBody");
+    if (!tbody) return;
+    if (!state.mappingRules.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มี mapping rule — เพิ่มเองหรือ นำเข้าจาก DOCX</td></tr>';
+      return;
+    }
+    tbody.innerHTML = state.mappingRules.map(function (r) {
+      return "<tr>" +
+        "<td>" + escapeHtml(r.vendor_name) + "</td>" +
+        "<td>" + escapeHtml(r.document_type || "—") + "</td>" +
+        '<td class="mono">' + escapeHtml(r.recommended_debit_code || "—") + "</td>" +
+        '<td><span class="badge badge-ok">Confirmed ' + r.confirmed_count + ' ครั้ง</span></td>' +
+        '<td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;">' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openMappingRuleModal(\'edit\',\'' + r.id + '\')">แก้ไข</button>' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="deleteMappingRule(\'' + r.id + '\')">🗑</button>' +
+        "</div></td>" +
+      "</tr>";
+    }).join("");
+  }
+
+  function openMappingRuleModal(mode, ruleId) {
+    state.mappingRuleModalMode = mode;
+    state.mappingRuleEditId = ruleId || "";
+    getEl("mappingRuleModalError").style.display = "none";
+    if (mode === "edit") {
+      var rule = (state.mappingRules || []).find(function (r) { return r.id === ruleId; });
+      if (!rule) { showToast("ไม่พบ mapping rule นี้", "warn"); return; }
+      getEl("mappingRuleModalTitle").textContent = "แก้ไข Mapping Rule";
+      getEl("mappingRuleVendorInput").value = rule.vendor_name;
+      getEl("mappingRuleDocTypeInput").value = rule.document_type || "";
+      getEl("mappingRuleDebitCodeInput").value = rule.recommended_debit_code || "";
+      getEl("mappingRuleAccountNameInput").value = rule.recommended_account_name || "";
+    } else {
+      getEl("mappingRuleModalTitle").textContent = "เพิ่ม Mapping Rule";
+      getEl("mappingRuleVendorInput").value = "";
+      getEl("mappingRuleDocTypeInput").value = "";
+      getEl("mappingRuleDebitCodeInput").value = "";
+      getEl("mappingRuleAccountNameInput").value = "";
+    }
+    openModal("modal-mapping-rule");
+  }
+
+  async function saveMappingRuleModal() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var vendorName = (getEl("mappingRuleVendorInput").value || "").trim();
+    if (!vendorName) {
+      var errorEl = getEl("mappingRuleModalError");
+      errorEl.style.display = "block";
+      errorEl.textContent = "กรุณากรอก Vendor / Keyword";
+      return;
+    }
+    var payload = {
+      vendor_name: vendorName,
+      document_type: (getEl("mappingRuleDocTypeInput").value || "").trim() || null,
+      recommended_debit_code: (getEl("mappingRuleDebitCodeInput").value || "").trim() || null,
+      recommended_account_name: (getEl("mappingRuleAccountNameInput").value || "").trim() || null,
+    };
+    try {
+      var isEdit = state.mappingRuleModalMode === "edit";
+      var url = isEdit
+        ? "/api/v1/companies/" + encodeURIComponent(companyId) + "/mapping-rules/" + encodeURIComponent(state.mappingRuleEditId)
+        : "/api/v1/companies/" + encodeURIComponent(companyId) + "/mapping-rules";
+      var response = await apiFetch(auth.apiUrl(url), {
+        method: isEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      closeModal("modal-mapping-rule");
+      showToast("บันทึก mapping rule สำเร็จ ✓", "ok");
+      await loadMappingRules(companyId);
+    } catch (error) {
+      var errorEl2 = getEl("mappingRuleModalError");
+      errorEl2.style.display = "block";
+      errorEl2.textContent = "บันทึกไม่สำเร็จ: " + error.message;
+    }
+  }
+
+  async function deleteMappingRule(ruleId) {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/mapping-rules/" + encodeURIComponent(ruleId)),
+        { method: "DELETE" }
+      );
+      if (!response.ok && response.status !== 204) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      showToast("ลบ mapping rule สำเร็จ ✓", "ok");
+      await loadMappingRules(companyId);
+    } catch (error) {
+      showToast("ลบไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  function renderMappingDocxPreviewTable() {
+    var tbody = getEl("mappingDocxPreviewBody");
+    if (!tbody) return;
+    tbody.innerHTML = state.mappingRulesDocxPreview.map(function (r, i) {
+      return "<tr>" +
+        '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.vendor_name || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'vendor_name\',this.value)" /></td>' +
+        '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.document_type || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'document_type\',this.value)" /></td>' +
+        '<td><input class="field-input mono" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.recommended_debit_code || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'recommended_debit_code\',this.value)" /></td>' +
+        '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.recommended_account_name || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'recommended_account_name\',this.value)" /></td>' +
+      "</tr>";
+    }).join("");
+  }
+
+  function updateMappingDocxPreviewField(index, field, value) {
+    if (state.mappingRulesDocxPreview[index]) state.mappingRulesDocxPreview[index][field] = value;
+  }
+
+  async function extractMappingRulesDocx() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    var resultEl = getEl("mappingDocxExtractResult");
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var fileInput = getEl("mappingDocxFileInput");
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "กรุณาเลือกไฟล์ DOCX ก่อน"; }
+      return;
+    }
+    var form = new FormData();
+    form.append("file", fileInput.files[0]);
+    var extractBtn = getEl("mappingDocxExtractBtn");
+    if (extractBtn) { extractBtn.disabled = true; extractBtn.textContent = "กำลังวิเคราะห์..."; }
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/mapping-rules/import-docx"),
+        { method: "POST", body: form }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      state.mappingRulesDocxPreview = result.rules || [];
+      renderMappingDocxPreviewTable();
+      getEl("mappingDocxUploadStep").style.display = "none";
+      getEl("mappingDocxReviewStep").style.display = "block";
+    } catch (error) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "วิเคราะห์ไม่สำเร็จ: " + error.message; }
+    } finally {
+      if (extractBtn) { extractBtn.disabled = false; extractBtn.textContent = "วิเคราะห์ด้วย AI"; }
+    }
+  }
+
+  async function confirmMappingRulesDocxImport() {
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/mapping-rules/confirm"),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rules: state.mappingRulesDocxPreview }),
+        }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      closeModal("modal-import-mapping-docx");
+      showToast("บันทึก mapping rules สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ ✓", "ok");
+      await loadMappingRules(companyId);
+    } catch (error) {
+      showToast("บันทึกไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     W4 SIT closure Pack B — real Upload -> Process -> Review Scan ->
+     Review Mapping workflow (replaces the former fixture-only screens).
+     ══════════════════════════════════════════════════════════════════════ */
+
+  var DOCUMENT_STATUS_LABELS = {
+    uploaded: "อัปโหลดแล้ว",
+    processing: "กำลังประมวลผล",
+    review_scan: "รอตรวจสอบ (Scan)",
+    scan_approved: "อนุมัติแล้ว — รอ Mapping",
+    scan_flagged: "ถูก Flag",
+    mapping_confirmed: "Confirm Mapping แล้ว",
+    failed: "ผิดพลาด",
+  };
+
+  function populateUploadCompanySelect() {
+    var select = getEl("uploadCompanySelect");
+    if (!select) return;
+    var companies = state.companies || [];
+    var currentValue = state.currentCompanyId || select.value;
+    select.innerHTML = '<option value="">— เลือกบริษัท —</option>';
+    companies.forEach(function (company) {
+      var option = document.createElement("option");
+      option.value = company.id;
+      option.textContent = company.name + " (" + company.tax_id + ")";
+      select.appendChild(option);
+    });
+    if (currentValue && companies.some(function (c) { return c.id === currentValue; })) {
+      select.value = currentValue;
+    }
+  }
+
+  function onUploadCompanyChange() {
+    var select = getEl("uploadCompanySelect");
+    state.currentCompanyId = select ? select.value : "";
+  }
+
+  function goToUpload() {
+    navigate("s-upload");
+    populateUploadCompanySelect();
+    renderUploadFileList();
+  }
+
+  function handleUploadFilesSelected(event) {
+    var files = (event && event.target && event.target.files) ? Array.from(event.target.files) : [];
+    state.pendingUploadFiles = files;
+    renderUploadFileList();
+  }
+
+  function removeUploadFile(index) {
+    state.pendingUploadFiles.splice(index, 1);
+    renderUploadFileList();
+  }
+
+  function formatFileSize(bytes) {
+    if (!bytes && bytes !== 0) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function renderUploadFileList() {
+    var files = state.pendingUploadFiles || [];
+    var countEl = getEl("uploadFileCount");
+    if (countEl) countEl.textContent = String(files.length);
+    var body = getEl("uploadFileListBody");
+    if (!body) return;
+    if (!files.length) {
+      body.innerHTML = '<p style="color:#6b7280;font-size:.85rem;">ยังไม่ได้เลือกไฟล์</p>';
+      return;
+    }
+    body.innerHTML = files.map(function (file, index) {
+      return '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.85rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;">' +
+        '<span class="mono" style="font-size:0.82rem;flex:1;">' + escapeHtml(file.name) + '</span>' +
+        '<span style="color:var(--muted);font-size:0.78rem;">' + formatFileSize(file.size) + '</span>' +
+        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);" onclick="removeUploadFile(' + index + ')">✕</button>' +
+      '</div>';
+    }).join("");
+  }
+
+  async function submitUpload() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.currentCompanyId;
+    var statusEl = getEl("uploadStatus");
+    if (!companyId) {
+      showToast("กรุณาเลือกบริษัทก่อนอัปโหลด", "warn");
+      return;
+    }
+    var files = state.pendingUploadFiles || [];
+    if (!files.length) {
+      showToast("กรุณาเลือกไฟล์ก่อนอัปโหลด", "warn");
+      return;
+    }
+    var form = new FormData();
+    files.forEach(function (file) { form.append("files", file); });
+    if (statusEl) statusEl.textContent = "กำลังอัปโหลด " + files.length + " ไฟล์...";
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/documents/upload"),
+        { method: "POST", body: form }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      showToast("อัปโหลดสำเร็จ " + result.documents.length + " ไฟล์ ✓", "ok");
+      state.pendingUploadFiles = [];
+      renderUploadFileList();
+      if (statusEl) statusEl.textContent = "";
+      await goToProcessing();
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "";
+      showToast("อัปโหลดไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  async function loadWorkflowDocuments() {
+    if (!state.currentCompanyId) {
+      state.workflowDocuments = [];
+      return;
+    }
+    var response = await apiFetch(
+      auth.apiUrl("/api/v1/companies/" + encodeURIComponent(state.currentCompanyId) + "/documents")
+    );
+    if (!response.ok) throw new Error("Document list failed: HTTP " + response.status);
+    state.workflowDocuments = await response.json();
+  }
+
+  async function goToProcessing() {
+    navigate("s-processing");
+    var user = await requireLiveAuth();
+    if (!user) return;
+    try {
+      await loadWorkflowDocuments();
+    } catch (error) {
+      handleError(error);
+      return;
+    }
+    renderProcessingTable();
+  }
+
+  function renderProcessingTable() {
+    var docs = state.workflowDocuments || [];
+    var body = getEl("processingTableBody");
+    var summaryEl = getEl("processingSummaryText");
+    var percentEl = getEl("processingPercentText");
+    var fillEl = getEl("processingProgressFill");
+    if (!docs.length) {
+      if (body) body.innerHTML = '<tr><td colspan="3" style="color:#6b7280;font-size:.85rem;">ยังไม่มีเอกสาร — ไปที่ Upload ก่อน</td></tr>';
+      if (summaryEl) summaryEl.textContent = "ยังไม่มีเอกสารที่ต้องประมวลผล";
+      if (percentEl) percentEl.textContent = "0%";
+      if (fillEl) fillEl.style.width = "0%";
+      return;
+    }
+    var done = docs.filter(function (d) { return d.status !== "uploaded" && d.status !== "processing"; }).length;
+    var percent = Math.round((done / docs.length) * 100);
+    if (summaryEl) summaryEl.textContent = "ประมวลผลแล้ว " + done + " / " + docs.length + " เอกสาร";
+    if (percentEl) percentEl.textContent = percent + "%";
+    if (fillEl) fillEl.style.width = percent + "%";
+    if (body) {
+      body.innerHTML = docs.map(function (doc) {
+        var badgeClass = doc.status === "failed" ? "badge-danger"
+          : (doc.status === "uploaded" || doc.status === "processing") ? "badge-muted"
+          : "badge-ok";
+        var label = DOCUMENT_STATUS_LABELS[doc.status] || doc.status;
+        var errorNote = doc.processing_error
+          ? '<div style="font-size:.72rem;color:var(--danger);margin-top:.2rem;">' + escapeHtml(doc.processing_error) + '</div>'
+          : "";
+        var actionCell = doc.status === "uploaded" || doc.status === "failed"
+          ? '<button class="btn btn-ghost btn-sm" onclick="processOneDocument(\'' + doc.id + '\')">▶ ประมวลผล</button>'
+          : "";
+        return "<tr><td class=\"mono\" style=\"font-size:0.82rem;\">" + escapeHtml(doc.filename) + errorNote + "</td>" +
+          "<td><span class=\"badge " + badgeClass + "\">" + escapeHtml(label) + "</span></td>" +
+          "<td>" + actionCell + "</td></tr>";
+      }).join("");
+    }
+  }
+
+  async function processOneDocument(documentId) {
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/documents/" + encodeURIComponent(documentId) + "/process"), {
+        method: "POST",
+      });
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var updated = await response.json();
+      var index = state.workflowDocuments.findIndex(function (d) { return d.id === documentId; });
+      if (index >= 0) state.workflowDocuments[index] = updated;
+      renderProcessingTable();
+      return updated;
+    } catch (error) {
+      showToast("ประมวลผลไม่สำเร็จ: " + error.message, "warn");
+      return null;
+    }
+  }
+
+  async function startProcessingAll() {
+    var pending = (state.workflowDocuments || []).filter(function (d) { return d.status === "uploaded"; });
+    if (!pending.length) {
+      showToast("ไม่มีเอกสารที่รอประมวลผล", "");
+      return;
+    }
+    var startBtn = getEl("processingStartBtn");
+    if (startBtn) startBtn.disabled = true;
+    for (var i = 0; i < pending.length; i++) {
+      await processOneDocument(pending[i].id);
+    }
+    if (startBtn) startBtn.disabled = false;
+    showToast("ประมวลผลเสร็จสิ้น " + pending.length + " เอกสาร", "ok");
+    await goToReviewScan();
+  }
+
+  async function goToReviewScan() {
+    navigate("s-review-scan");
+    var user = await requireLiveAuth();
+    if (!user) return;
+    try {
+      await loadWorkflowDocuments();
+    } catch (error) {
+      handleError(error);
+      return;
+    }
+    renderReviewScanList();
+  }
+
+  function renderReviewScanList() {
+    var docs = (state.workflowDocuments || []).filter(function (d) {
+      return d.status === "review_scan" || d.status === "scan_flagged" || d.status === "scan_approved";
+    });
+    var countEl = getEl("reviewScanCount");
+    if (countEl) countEl.textContent = String(docs.length);
+    var approved = docs.filter(function (d) { return d.status === "scan_approved"; }).length;
+    var summaryEl = getEl("reviewScanSummaryText");
+    if (summaryEl) summaryEl.textContent = "อนุมัติแล้ว " + approved + " / " + docs.length + " เอกสาร";
+    var body = getEl("reviewScanListBody");
+    if (!body) return;
+    if (!docs.length) {
+      body.innerHTML = '<li style="padding:0.75rem 1rem;color:#6b7280;font-size:.82rem;">ไม่มีเอกสารที่รอตรวจสอบ</li>';
+      return;
+    }
+    body.innerHTML = docs.map(function (doc) {
+      var isSelected = doc.id === state.reviewScanSelectedId;
+      var badge = doc.status === "scan_approved" ? '<span class="badge badge-ok">✓</span>'
+        : doc.status === "scan_flagged" ? '<span class="badge badge-warn">🚩</span>'
+        : '<span class="badge badge-accent">●</span>';
+      var confidence = (doc.overall_confidence != null) ? Math.round(doc.overall_confidence * 100) + "%" : "—";
+      return '<li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;' +
+        (isSelected ? "background:var(--accent-soft);border-left:3px solid var(--accent);" : "") + '" onclick="selectReviewScanDocument(\'' + doc.id + '\')">' +
+        '<span class="mono" style="font-size:0.8rem;flex:1;">' + escapeHtml(doc.invoice_number || doc.filename) + '</span>' +
+        badge + '<span class="mono" style="font-size:0.72rem;color:var(--muted);">' + confidence + '</span></li>';
+    }).join("");
+  }
+
+  async function selectReviewScanDocument(documentId) {
+    state.reviewScanSelectedId = documentId;
+    renderReviewScanList();
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/documents/" + encodeURIComponent(documentId)));
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var doc = await response.json();
+      renderReviewScanDetail(doc);
+      loadReviewScanFilePreview(documentId, doc.content_type, doc.filename);
+    } catch (error) {
+      handleError(error);
+    }
+  }
+
+  async function loadReviewScanFilePreview(documentId, contentType, filename) {
+    var body = getEl("reviewScanPreviewBody");
+    var downloadLink = getEl("reviewScanDownloadLink");
+    body.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">กำลังโหลดไฟล์...</span>';
+    downloadLink.style.display = "none";
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/documents/" + encodeURIComponent(documentId) + "/file"));
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var blob = await response.blob();
+      var objectUrl = URL.createObjectURL(blob);
+      downloadLink.href = objectUrl;
+      downloadLink.download = filename || "document";
+      downloadLink.style.display = "inline";
+      if (contentType === "application/pdf") {
+        body.innerHTML = '<iframe src="' + objectUrl + '" style="width:100%;height:100%;border:none;" title="เอกสาร"></iframe>';
+      } else if (contentType && contentType.indexOf("image/") === 0) {
+        body.innerHTML = "";
+        var img = document.createElement("img");
+        img.src = objectUrl;
+        img.style.maxWidth = "100%";
+        img.style.maxHeight = "100%";
+        img.style.objectFit = "contain";
+        body.appendChild(img);
+      } else {
+        body.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">ไม่รองรับการแสดงตัวอย่างชนิดไฟล์นี้ — ใช้ลิงก์ดาวน์โหลดด้านบน</span>';
+      }
+    } catch (error) {
+      body.innerHTML = '<span style="font-size:0.8rem;color:var(--danger);">โหลดไฟล์ไม่สำเร็จ: ' + escapeHtml(error.message) + '</span>';
+    }
+  }
+
+  function renderReviewScanDetail(doc) {
+    getEl("reviewScanDocFilename").textContent = doc.filename;
+    var badgesEl = getEl("reviewScanBadges");
+    var confidence = (doc.overall_confidence != null) ? Math.round(doc.overall_confidence * 100) + "% ความมั่นใจ" : "—";
+    var confBadgeClass = (doc.overall_confidence != null && doc.overall_confidence >= 0.8) ? "badge-ok" : "badge-warn";
+    var taxBadge = doc.taxid_match === false
+      ? '<span class="badge badge-warn">⚠ เลขผู้เสียภาษีไม่ตรงกัน</span>'
+      : doc.taxid_match === true ? '<span class="badge badge-ok">✓ เลขผู้เสียภาษีตรงกัน</span>' : "";
+    badgesEl.innerHTML = '<span class="badge ' + confBadgeClass + '">' + confidence + '</span>' + taxBadge;
+
+    var fieldsEl = getEl("reviewScanFields");
+    fieldsEl.innerHTML = [
+      ["เลขที่ใบแจ้งหนี้", "reviewScanFieldInvoiceNumber", doc.invoice_number],
+      ["วันที่ในเอกสาร", "reviewScanFieldInvoiceDate", doc.invoice_date],
+      ["ชื่อผู้ขาย", "reviewScanFieldSellerName", doc.seller_name],
+      ["เลขผู้เสียภาษีผู้ซื้อ", "reviewScanFieldBuyerTaxId", doc.buyer_tax_id],
+    ].map(function (triple) {
+      return '<div class="field-group" style="margin:0;"><label class="field-label">' + triple[0] + '</label>' +
+        '<input class="field-input mono" type="text" id="' + triple[1] + '" value="' + escapeHtml(triple[2] || "") + '" /></div>';
+    }).join("");
+
+    var amountsEl = getEl("reviewScanAmounts");
+    [
+      ["ยอดก่อนภาษี", "reviewScanFieldNetAmount", doc.net_amount],
+      ["VAT", "reviewScanFieldVatAmount", doc.vat_amount],
+      ["WHT", "reviewScanFieldWhtAmount", doc.wht_amount],
+      ["ยอดสุทธิ", "reviewScanFieldTotalAmount", doc.total_amount],
+    ].forEach(function (triple, index) {
+      if (index === 0) amountsEl.innerHTML = "";
+      var wrap = document.createElement("div");
+      wrap.innerHTML = '<div style="font-size:0.72rem;color:var(--muted);">' + triple[0] + '</div>' +
+        '<input class="field-input mono" style="padding:3px 6px;font-size:0.85rem;font-weight:600;" id="' + triple[1] + '" value="' + (triple[2] != null ? triple[2] : "") + '" />';
+      amountsEl.appendChild(wrap);
+    });
+
+    getEl("reviewScanApproveBtn").disabled = false;
+    getEl("reviewScanFlagBtn").disabled = false;
+    getEl("reviewScanSaveBtn").disabled = false;
+  }
+
+  async function saveReviewScanFieldEdits() {
+    if (!state.reviewScanSelectedId) return;
+    var body = {
+      invoice_number: getEl("reviewScanFieldInvoiceNumber").value || null,
+      invoice_date: getEl("reviewScanFieldInvoiceDate").value || null,
+      seller_name: getEl("reviewScanFieldSellerName").value || null,
+      buyer_tax_id: getEl("reviewScanFieldBuyerTaxId").value || null,
+      net_amount: getEl("reviewScanFieldNetAmount").value === "" ? null : Number(getEl("reviewScanFieldNetAmount").value),
+      vat_amount: getEl("reviewScanFieldVatAmount").value === "" ? null : Number(getEl("reviewScanFieldVatAmount").value),
+      wht_amount: getEl("reviewScanFieldWhtAmount").value === "" ? null : Number(getEl("reviewScanFieldWhtAmount").value),
+      total_amount: getEl("reviewScanFieldTotalAmount").value === "" ? null : Number(getEl("reviewScanFieldTotalAmount").value),
+    };
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/documents/" + encodeURIComponent(state.reviewScanSelectedId) + "/fields"),
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      showToast("บันทึกการแก้ไขแล้ว ✓", "ok");
+      await loadWorkflowDocuments();
+      renderReviewScanList();
+    } catch (error) {
+      showToast("บันทึกไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  async function approveReviewScanDocument() {
+    if (!state.reviewScanSelectedId) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/documents/" + encodeURIComponent(state.reviewScanSelectedId) + "/approve"),
+        { method: "POST" }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      showToast("Approve สำเร็จ ✓", "ok");
+      await loadWorkflowDocuments();
+      renderReviewScanList();
+    } catch (error) {
+      showToast("Approve ไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  async function approveAllReviewScan() {
+    if (!state.currentCompanyId) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(state.currentCompanyId) + "/documents/approve-all"),
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var result = await response.json();
+      showToast("Approve All สำเร็จ " + result.approved + " เอกสาร ✓", "ok");
+      await loadWorkflowDocuments();
+      renderReviewScanList();
+    } catch (error) {
+      showToast("Approve All ไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  async function submitFlagDocument() {
+    if (!state.reviewScanSelectedId) return;
+    var reason = getEl("flagReasonSelect").value;
+    var comment = getEl("flagCommentInput").value || null;
+    var errorEl = getEl("flagError");
+    errorEl.style.display = "none";
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/documents/" + encodeURIComponent(state.reviewScanSelectedId) + "/flag"),
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: reason, comment: comment }) }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      closeModal("modal-flag");
+      showToast("Flag บันทึกแล้ว", "ok");
+      await loadWorkflowDocuments();
+      renderReviewScanList();
+    } catch (error) {
+      errorEl.style.display = "block";
+      errorEl.textContent = "Flag ไม่สำเร็จ: " + error.message;
+    }
+  }
+
+  async function goToReviewMapping() {
+    navigate("s-review-mapping");
+    var user = await requireLiveAuth();
+    if (!user) return;
+    try {
+      await loadWorkflowDocuments();
+    } catch (error) {
+      handleError(error);
+      return;
+    }
+    renderReviewMappingList();
+  }
+
+  function renderReviewMappingList() {
+    var docs = (state.workflowDocuments || []).filter(function (d) {
+      return d.status === "scan_approved" || d.status === "mapping_confirmed";
+    });
+    var confirmedCount = docs.filter(function (d) { return d.status === "mapping_confirmed"; }).length;
+    var countEl = getEl("reviewMappingCount");
+    if (countEl) countEl.textContent = String(docs.length);
+    var badgeEl = getEl("reviewMappingSummaryBadge");
+    if (badgeEl) badgeEl.textContent = "Confirm แล้ว " + confirmedCount + "/" + docs.length + " เอกสาร";
+    var body = getEl("reviewMappingListBody");
+    if (!body) return;
+    if (!docs.length) {
+      body.innerHTML = '<li style="padding:0.75rem 1rem;color:#6b7280;font-size:.82rem;">ไม่มีเอกสารที่รอ mapping</li>';
+      return;
+    }
+    body.innerHTML = docs.map(function (doc) {
+      var isSelected = doc.id === state.reviewMappingSelectedId;
+      var badge = doc.status === "mapping_confirmed"
+        ? '<span class="badge badge-ok" style="font-size:0.65rem;">Confirmed</span>'
+        : '<span class="badge badge-accent" style="font-size:0.65rem;">รอ Confirm</span>';
+      return '<li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;' +
+        (isSelected ? "background:var(--accent-soft);border-left:3px solid var(--accent);" : "") + '" onclick="selectReviewMappingDocument(\'' + doc.id + '\')">' +
+        '<span class="mono" style="font-size:0.78rem;flex:1;">' + escapeHtml(doc.invoice_number || doc.filename) + '</span>' + badge + '</li>';
+    }).join("");
+  }
+
+  async function selectReviewMappingDocument(documentId) {
+    state.reviewMappingSelectedId = documentId;
+    renderReviewMappingList();
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/documents/" + encodeURIComponent(documentId)));
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var doc = await response.json();
+      renderReviewMappingDetail(doc);
+    } catch (error) {
+      handleError(error);
+    }
+  }
+
+  function renderReviewMappingDetail(doc) {
+    var container = getEl("reviewMappingDetail");
+    var voucher = doc.voucher;
+    if (!voucher) {
+      container.innerHTML = '<p style="color:#6b7280;font-size:.85rem;">เอกสารนี้ยังไม่มี journal voucher (ประมวลผลไม่พบ rule ที่จับคู่ได้)</p>';
+      return;
+    }
+    function fmt(v) { return v != null ? Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"; }
+    var balanceCard = voucher.is_balanced
+      ? '<div class="card" style="margin-bottom:0.75rem;padding:0.85rem 1rem;background:var(--ok-soft);border:1px solid var(--ok);">' +
+          '<div style="display:flex;align-items:center;gap:1rem;font-size:0.85rem;"><span style="color:var(--ok);font-weight:700;font-size:1rem;">✓ Balance</span>' +
+          '<span>Sum Dr <strong class="mono">฿' + fmt(voucher.total_debit) + '</strong> = Sum Cr <strong class="mono">฿' + fmt(voucher.total_credit) + '</strong></span></div></div>'
+      : '<div class="card" style="margin-bottom:0.75rem;padding:0.85rem 1rem;background:var(--danger-soft);border:1px solid var(--danger);">' +
+          '<div style="display:flex;align-items:center;gap:1rem;font-size:0.85rem;"><span style="color:var(--danger);font-weight:700;font-size:1rem;">✗ Unbalanced</span>' +
+          '<span>Sum Dr <strong class="mono">฿' + fmt(voucher.total_debit) + '</strong> ≠ Sum Cr <strong class="mono">฿' + fmt(voucher.total_credit) + '</strong></span></div></div>';
+
+    var rows = voucher.lines.map(function (line) {
+      return '<tr><td style="color:var(--muted);">' + line.line_order + '</td>' +
+        '<td><input class="field-input mono" style="padding:3px 6px;font-size:0.82rem;" value="' + escapeHtml(line.account_code) + '" ' +
+          (voucher.status === "confirmed" ? "readonly" : "onchange=\"updateMappingLineAccountCode('" + voucher.id + "','" + line.id + "',this.value)\"") + ' /></td>' +
+        '<td>' + escapeHtml(line.account_name || "") + '</td>' +
+        '<td class="mono" style="text-align:right;">' + (line.is_debit ? fmt(line.amount) : "—") + '</td>' +
+        '<td class="mono" style="text-align:right;">' + (!line.is_debit ? fmt(line.amount) : "—") + '</td></tr>';
+    }).join("");
+
+    var confirmDisabled = voucher.status === "confirmed" || !voucher.is_balanced;
+    container.innerHTML =
+      '<div class="card" style="margin-bottom:0.75rem;padding:1rem;">' +
+        '<h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;">' + escapeHtml(doc.invoice_number || doc.filename) + (doc.seller_name ? " — " + escapeHtml(doc.seller_name) : "") + '</h3>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;">' +
+          '<div class="field-group" style="margin:0;"><label class="field-label">Voucher No</label><input class="field-input mono" style="background:var(--surface);" value="' + escapeHtml(voucher.voucher_no || "—") + '" readonly /></div>' +
+          '<div class="field-group" style="margin:0;"><label class="field-label">Date</label><input class="field-input mono" style="background:var(--surface);" value="' + escapeHtml(voucher.voucher_date || "") + '" readonly /></div>' +
+          '<div class="field-group" style="margin:0;"><label class="field-label">Book</label><input class="field-input mono" style="background:var(--surface);" value="' + escapeHtml(voucher.book_code || "—") + '" readonly /></div>' +
+        '</div></div>' +
+      balanceCard +
+      '<div class="card" style="padding:0;"><div class="table-wrap"><table class="data-table">' +
+        '<thead><tr><th style="width:40px;">#</th><th style="width:140px;">Account Code</th><th>Account Name</th><th style="text-align:right;width:130px;">Dr (฿)</th><th style="text-align:right;width:130px;">Cr (฿)</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div></div>' +
+      '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;justify-content:flex-end;">' +
+        '<button class="btn btn-primary" id="confirmMappingBtn" onclick="confirmReviewMappingVoucher(\'' + voucher.id + '\')" ' + (confirmDisabled ? "disabled" : "") + '>✓ Confirm Mapping</button>' +
+      '</div>';
+  }
+
+  async function updateMappingLineAccountCode(voucherId, lineId, accountCode) {
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/journal-vouchers/" + encodeURIComponent(voucherId) + "/lines/" + encodeURIComponent(lineId)),
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account_code: accountCode }) }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var voucher = await response.json();
+      var doc = await (await apiFetch(auth.apiUrl("/api/v1/documents/" + encodeURIComponent(state.reviewMappingSelectedId)))).json();
+      renderReviewMappingDetail(doc);
+      showToast("อัปเดต Account Code แล้ว (" + (voucher.is_balanced ? "ยอด Balance" : "ยอดยังไม่ Balance") + ")", voucher.is_balanced ? "ok" : "warn");
+    } catch (error) {
+      showToast("อัปเดตไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  async function confirmReviewMappingVoucher(voucherId) {
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/journal-vouchers/" + encodeURIComponent(voucherId) + "/confirm"),
+        { method: "POST" }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      showToast("Confirm Mapping สำเร็จ ✓", "ok");
+      await loadWorkflowDocuments();
+      renderReviewMappingList();
+      await selectReviewMappingDocument(state.reviewMappingSelectedId);
+    } catch (error) {
+      showToast("Confirm Mapping ไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
   function installListeners() {
     window.doLogin = doLiveLogin;
+    window.submitForceChangePassword = submitForceChangePassword;
     window.openCompanyDrawerForCreate = openCompanyDrawerForCreate;
     window.openCompanyDrawerForEdit = openCompanyDrawerForEdit;
     window.saveCompanyDrawer = saveCompanyDrawer;
@@ -4911,6 +6072,46 @@
     window.resetUserPasswordPrompt = resetUserPasswordPrompt;
     window.importVendorMasterFile = importVendorMasterFile;
     window.importCustomerMasterFile = importCustomerMasterFile;
+    window.renderCoaTable = renderCoaTable;
+    window.openCoaPdfModal = openCoaPdfModal;
+    window.extractCoaPdf = extractCoaPdf;
+    window.confirmCoaPdfImport = confirmCoaPdfImport;
+    window.updateCoaPdfPreviewField = updateCoaPdfPreviewField;
+    window.removeCoaPdfPreviewRow = removeCoaPdfPreviewRow;
+    window.importCoaFile = importCoaFile;
+    window.openMappingRuleModal = openMappingRuleModal;
+    window.saveMappingRuleModal = saveMappingRuleModal;
+    window.deleteMappingRule = deleteMappingRule;
+    window.extractMappingRulesDocx = extractMappingRulesDocx;
+    window.confirmMappingRulesDocxImport = confirmMappingRulesDocxImport;
+    window.updateMappingDocxPreviewField = updateMappingDocxPreviewField;
+    window.searchProductMaster = searchProductMaster;
+    window.importProductMasterFile = importProductMasterFile;
+    window.onTemplatesCompanyChange = onTemplatesCompanyChange;
+    window.openCloneTemplateModal = openCloneTemplateModal;
+    window.submitCloneTemplate = submitCloneTemplate;
+    window.openTemplateConfiguratorReal = openTemplateConfiguratorReal;
+    window.createBlankTemplateFlow = createBlankTemplateFlow;
+    window.confirmTemplateDelete = confirmTemplateDelete;
+    window.deleteTemplateReal = deleteTemplateReal;
+    window.onUploadCompanyChange = onUploadCompanyChange;
+    window.handleUploadFilesSelected = handleUploadFilesSelected;
+    window.removeUploadFile = removeUploadFile;
+    window.submitUpload = submitUpload;
+    window.goToUpload = goToUpload;
+    window.goToProcessing = goToProcessing;
+    window.processOneDocument = processOneDocument;
+    window.startProcessingAll = startProcessingAll;
+    window.goToReviewScan = goToReviewScan;
+    window.selectReviewScanDocument = selectReviewScanDocument;
+    window.approveReviewScanDocument = approveReviewScanDocument;
+    window.saveReviewScanFieldEdits = saveReviewScanFieldEdits;
+    window.approveAllReviewScan = approveAllReviewScan;
+    window.submitFlagDocument = submitFlagDocument;
+    window.goToReviewMapping = goToReviewMapping;
+    window.selectReviewMappingDocument = selectReviewMappingDocument;
+    window.updateMappingLineAccountCode = updateMappingLineAccountCode;
+    window.confirmReviewMappingVoucher = confirmReviewMappingVoucher;
     var fileInput = getEl("sa-file-input");
     if (fileInput) {
       fileInput.addEventListener("change", function () {

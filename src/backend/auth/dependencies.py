@@ -72,13 +72,31 @@ async def require_password_finalized(
     return current_user
 
 
+ADMIN_ROLES = {"admin", "sys_admin"}
+
+
 async def require_admin(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
-    if current_user.role != "admin":
+    """Admin or sys_admin (sys_admin is a superset of admin — TASK-1204 3-role model)."""
+    if current_user.role not in ADMIN_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
+        )
+    return current_user
+
+
+async def require_sys_admin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """Internal/system-only surfaces (Internal Console, company create/delete —
+    ac_1204_sysadmin / ac_1204_admin_deny): admin does NOT satisfy this guard.
+    """
+    if current_user.role != "sys_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System admin access required",
         )
     return current_user
 
@@ -93,3 +111,22 @@ async def get_user_company_ids(
         )
     )
     return [str(company_id) for company_id in company_ids]
+
+
+async def ensure_company_access(
+    db: AsyncSession,
+    current_user: User,
+    company_id: uuid.UUID | str,
+) -> None:
+    """Company scoping (TASK-1204 ac_1204_staff_scope): admin/sys_admin see every
+    company; staff may only touch companies they are assigned to via
+    `user_company_assignments`.
+    """
+    if current_user.role in ADMIN_ROLES:
+        return
+    allowed = await get_user_company_ids(db, current_user.id)
+    if str(company_id) not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not assigned to this company",
+        )
