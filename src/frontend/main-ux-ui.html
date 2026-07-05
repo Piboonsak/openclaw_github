@@ -1024,8 +1024,8 @@
         <label class="field-label">Encoding</label>
         <select class="field-select" id="exportEncodingSelect">
           <option value="utf-8">UTF-8</option>
-          <option value="utf-8-bom">UTF-8 BOM</option>
-          <option value="tis-620">TIS-620</option>
+          <option value="utf-8-sig">UTF-8 BOM</option>
+          <option value="cp874">TIS-620</option>
         </select>
       </div>
     </div>
@@ -1603,6 +1603,70 @@
     <div id="configRuntimeSummary" style="margin-top:.85rem;font-size:.82rem;color:var(--muted);">Run Auto-detect and apply the result to populate the configurator runtime state.</div>
   </div>
 
+  <div class="card" style="padding:1rem;margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div class="section-title" style="margin-bottom:.35rem;">Persistent Setup Flow</div>
+        <p class="subtitle" style="margin:0;">ทำตาม 3 แท็บนี้: อัปโหลดและตรวจจับ → กำหนด Columns → ทดสอบ Output ก่อนบันทึกหรือส่งต่อไปหน้า Export</p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" type="button" id="configTabBtn-upload" onclick="setConfiguratorTab('upload')">① Upload & Detect</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="configTabBtn-configure" onclick="setConfiguratorTab('configure')">② กำหนด Columns</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="configTabBtn-test" onclick="setConfiguratorTab('test')">③ ทดสอบ Output</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="configuratorTab-upload">
+    <div class="card" style="padding:1rem;margin-bottom:1rem;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div class="section-title" style="margin-bottom:.35rem;">Upload & Detect</div>
+          <p class="subtitle" style="margin:0;">อัปโหลด `.csv`, `.xlsx`, `.xls` แล้วให้ `POST /api/v1/templates/analyze` แนะนำ mapping, transform, และ sample profile ให้แท็บถัดไป</p>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" type="button" onclick="saStartAnalysis()">อัปโหลด Sample File</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="setConfiguratorTab('configure')">Skip → Tab ②</button>
+        </div>
+      </div>
+      <div style="margin-top:1rem;display:grid;grid-template-columns:1.2fr .8fr;gap:1rem;align-items:start;">
+        <div class="card" style="margin:0;padding:.875rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;">
+            <div class="section-title" style="margin:0;font-size:.88rem;">Detected Mapping</div>
+            <span class="badge badge-muted" id="configDetectBadge">No sample uploaded</span>
+          </div>
+          <div id="configAnalysisTable" style="margin-top:.85rem;font-size:.82rem;color:var(--muted);">ยังไม่มีผลวิเคราะห์สด — อัปโหลด sample file ในแท็บนี้ก่อน</div>
+        </div>
+        <div class="card" style="margin:0;padding:.875rem;background:#f0fdf4;border-color:#bbf7d0;">
+          <div class="section-title" style="margin-bottom:.5rem;font-size:.88rem;">Apply Result</div>
+          <div style="font-size:.82rem;color:#166534;line-height:1.7;">
+            ใช้ผลวิเคราะห์เพื่อ pre-fill คอลัมน์ในแท็บ ② และใช้ sample data เดียวกันต่อในแท็บ ③ ได้ทันที
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.85rem;">
+            <button class="btn btn-primary btn-sm" type="button" onclick="applyAnalysisToConfigurator()">Apply to Tab ②</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="setConfiguratorTab('configure')">Skip without Apply</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="navigate('s-schema-analyzer')">เปิดหน้าวิเคราะห์แบบเต็ม</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="configuratorTab-configure" style="display:none;">
+  <div class="card" style="padding:1rem;margin-bottom:1rem;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div class="section-title" style="margin-bottom:.35rem;">Live Column Config</div>
+        <p class="subtitle" style="margin:0;">คอลัมน์ชุดนี้จะถูกใช้เป็น runtime payload สำหรับ save/update template, preview, และ export bridge</p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="saveExportColumnsAsTemplate().catch(handleError)">💾 Save as Company Template</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="updateActiveTemplateColumns().catch(handleError)">↺ Update Template</button>
+        <button class="btn btn-primary btn-sm" type="button" onclick="setConfiguratorTab('test');refreshConfiguratorTestTab()">ไปแท็บ ③</button>
+      </div>
+    </div>
+    <div id="configConfigureLiveColumns" style="margin-top:.85rem;font-size:.82rem;color:var(--muted);">ยังไม่มี runtime columns จาก live analysis</div>
+  </div>
   <!-- 3-column layout -->
   <div style="display:grid;grid-template-columns:220px 1fr 280px;gap:1rem;align-items:start;">
 
@@ -2046,6 +2110,32 @@
     </div><!-- /right col -->
 
   </div><!-- /3-col grid -->
+  </div><!-- /#configuratorTab-configure -->
+
+  <div id="configuratorTab-test" style="display:none;">
+    <div class="card" style="padding:1rem;margin-bottom:1rem;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div class="section-title" style="margin-bottom:.35rem;">ทดสอบ Output</div>
+          <p class="subtitle" style="margin:0;">ตรวจโครงสร้างคอลัมน์, sample preview, และ save readiness ก่อนยืนยันเป็น template จริง</p>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="setConfiguratorTab('configure')">← กลับไปแก้ Columns</button>
+          <button class="btn btn-primary btn-sm" type="button" onclick="previewExport().catch(handleError)">Refresh Preview</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:1rem;align-items:start;margin-top:1rem;">
+        <div class="card" style="margin:0;padding:.875rem;">
+          <div class="section-title" style="margin-bottom:.6rem;font-size:.88rem;">Round-trip Preview</div>
+          <div id="configTestPreview" style="font-size:.82rem;color:var(--muted);">ยังไม่ได้ preview จาก runtime columns</div>
+        </div>
+        <div class="card" style="margin:0;padding:.875rem;">
+          <div class="section-title" style="margin-bottom:.6rem;font-size:.88rem;">Structural Checks</div>
+          <div id="configTestChecks" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div><!-- /#s-template-configurator -->
 
 
@@ -3555,6 +3645,7 @@
     activeTemplate: null,
     currentUser: null,
     currentCompanyId: "",
+    configuratorTab: "upload",
     exportMode: "template",
     exportColumns: [],
   };
@@ -3855,6 +3946,149 @@
     });
   }
 
+  function buildRuntimeColumnPayload(options) {
+    var settings = options || {};
+    var visibleColumns = state.exportColumns.filter(function (column) {
+      return column.visible !== false;
+    });
+    return visibleColumns.map(function (column) {
+      return {
+        source_field: column.source_field,
+        header_label: column.header_label,
+        data_type: column.data_type || "string",
+        transform: settings.disableTransforms ? null : (column.transform || null),
+        format_pattern: column.format_pattern || null,
+        default_value: column.default_value || null
+      };
+    });
+  }
+
+  function setConfiguratorTab(tab) {
+    state.configuratorTab = tab;
+    ["upload", "configure", "test"].forEach(function (name) {
+      var panel = getEl("configuratorTab-" + name);
+      var trigger = getEl("configTabBtn-" + name);
+      var selected = name === tab;
+      if (panel) panel.style.display = selected ? "block" : "none";
+      if (trigger) {
+        trigger.classList.toggle("btn-primary", selected);
+        trigger.classList.toggle("btn-ghost", !selected);
+      }
+    });
+  }
+
+  function renderConfiguratorAnalysisTable() {
+    var host = getEl("configAnalysisTable");
+    if (!host) return;
+    var columns = Array.isArray(state.analysis && state.analysis.columns) ? state.analysis.columns : [];
+    if (!columns.length) {
+      host.innerHTML = "<div style=\"font-size:.82rem;color:var(--muted);\">ยังไม่มีผลวิเคราะห์สด — อัปโหลด sample file ในแท็บนี้ก่อน</div>";
+      return;
+    }
+    var rows = columns.map(function (column, index) {
+      var confidence = Number(column.confidence || 0);
+      var lowConfidence = confidence < 80;
+      return [
+        "<tr", (lowConfidence ? " style=\"background:#fff7ed;\"" : ""), ">",
+        "<td style=\"text-align:center;color:var(--muted);\">", index + 1, "</td>",
+        "<td><span class=\"mono\">", escapeHtml(column.original_header || "-"), "</span></td>",
+        "<td><span class=\"mono\" style=\"color:var(--accent);\">", escapeHtml(column.lf_field || "-"), "</span></td>",
+        "<td><span class=\"badge ", (lowConfidence ? "badge-warn" : "badge-ok"), "\">", escapeHtml((column.confidence || 0) + "%"), "</span></td>",
+        "<td>", escapeHtml(column.suggested_transform || "—"), "</td>",
+        "</tr>"
+      ].join("");
+    }).join("");
+    host.innerHTML = [
+      "<div class=\"table-wrap\">",
+      "<table class=\"data-table\" style=\"font-size:.78rem;\">",
+      "<thead><tr><th style=\"width:42px;\">#</th><th>Source Header</th><th>LF Field</th><th>Confidence</th><th>Suggested Transform</th></tr></thead>",
+      "<tbody>", rows, "</tbody>",
+      "</table>",
+      "</div>"
+    ].join("");
+  }
+
+  function renderConfiguratorChecks() {
+    var host = getEl("configTestChecks");
+    if (!host) return;
+    var columns = buildRuntimeColumnPayload();
+    var headers = columns.map(function (column) { return column.header_label; });
+    var headerMatch = headers.length > 0;
+    var columnCount = columns.length > 0;
+    var hasSample = !!state.analysisSampleData.length;
+    var previewReady = !!getEl("configTestPreview") && getEl("configTestPreview").textContent.indexOf("ยังไม่ได้") === -1;
+    var checks = [
+      { label: "column_count", pass: columnCount, note: columnCount ? columns.length + " columns ready" : "ยังไม่มี column ที่พร้อมทดสอบ" },
+      { label: "header_match", pass: headerMatch, note: headerMatch ? headers.slice(0, 4).join(", ") : "ยังไม่มี header" },
+      { label: "sample_loaded", pass: hasSample, note: hasSample ? state.analysisSampleData.length + " sample row(s)" : "ยังไม่ได้ apply sample file" },
+      { label: "preview_ready", pass: previewReady, note: previewReady ? "preview rendered" : "ต้องกด Preview ก่อน" },
+      { label: "save_allowed", pass: !hasSample || (columnCount && headerMatch), note: !hasSample ? "structural-only mode" : ((columnCount && headerMatch) ? "save allowed" : "fix structure first") }
+    ];
+    host.innerHTML = checks.map(function (check) {
+      return [
+        "<div style=\"display:flex;justify-content:space-between;gap:.75rem;padding:.45rem .6rem;border:1px solid var(--line);border-radius:6px;\">",
+        "<span class=\"mono\" style=\"font-size:.78rem;\">", escapeHtml(check.label), "</span>",
+        "<span style=\"text-align:right;font-size:.78rem;color:", (check.pass ? "var(--accent)" : "#b45309"), ";\">",
+        (check.pass ? "PASS" : "WARN"), " · ", escapeHtml(check.note),
+        "</span></div>"
+      ].join("");
+    }).join("");
+  }
+
+  function renderConfiguratorConfigurePanel() {
+    var host = getEl("configConfigureLiveColumns");
+    if (!host) return;
+    var columns = buildRuntimeColumnPayload();
+    if (!columns.length) {
+      host.innerHTML = "<div style=\"font-size:.82rem;color:var(--muted);\">ยังไม่มี runtime columns จาก live analysis หรือ template ที่เลือก</div>";
+      return;
+    }
+    host.innerHTML = [
+      "<div style=\"font-size:.82rem;color:var(--muted);margin-bottom:.6rem;\">",
+      columns.length, " active column(s) · ",
+      escapeHtml(columns.slice(0, 4).map(function (column) {
+        return column.header_label + " -> " + column.source_field;
+      }).join(" | ")),
+      "</div>",
+      "<div class=\"table-wrap\"><table class=\"data-table\" style=\"font-size:.78rem;\">",
+      "<thead><tr><th>#</th><th>Header</th><th>Source</th><th>Transform</th></tr></thead><tbody>",
+      columns.map(function (column, index) {
+        return "<tr><td>" + (index + 1) + "</td><td>" + escapeHtml(column.header_label) + "</td><td><span class=\"mono\">" + escapeHtml(column.source_field) + "</span></td><td>" + escapeHtml(column.transform || "—") + "</td></tr>";
+      }).join(""),
+      "</tbody></table></div>"
+    ].join("");
+  }
+
+  function refreshConfiguratorTestTab() {
+    var previewHost = getEl("configTestPreview");
+    if (previewHost) {
+      if (!state.exportColumns.length) {
+        previewHost.innerHTML = "<div style=\"font-size:.82rem;color:var(--muted);\">ยังไม่ได้เตรียม preview จากคอลัมน์จริง</div>";
+      } else {
+        previewHost.innerHTML = renderPreviewTable(buildQuickExportTable());
+      }
+    }
+    renderConfiguratorConfigurePanel();
+    renderConfiguratorChecks();
+  }
+
+  function applyAnalysisToConfigurator() {
+    if (!state.analysis) {
+      showToast("Run schema analysis first", "warn");
+      return;
+    }
+    state.exportColumns = buildColumnsFromAnalysis(state.analysis).map(function (column) {
+      column.visible = true;
+      return column;
+    });
+    renderExportColumnsPanel();
+    renderExportAddColumnOptions();
+    updateConfiguratorRuntimeFromAnalysis();
+    setConfiguratorTab("configure");
+    refreshConfiguratorTestTab();
+    showToast("Configurator updated from live analysis", "ok");
+  }
+
   function inferTemplateType(result) {
     if (!result) return "gl_export";
     return result.suggested_row_source === "journal_lines" ? "gl_export" : "document_export";
@@ -3885,6 +4119,8 @@
       }
     });
     refreshExportColumnsFromActiveTemplate();
+    renderConfiguratorConfigurePanel();
+    refreshConfiguratorTestTab();
   }
 
   /* ── Export: Adjust Columns panel (inline, per UX-FREEZE-EXPORT-CONFIGURATOR.md Decision 2) ── */
@@ -3956,6 +4192,7 @@
         "</tr>"
       ].join("");
     }).join("");
+    renderConfiguratorConfigurePanel();
   }
 
   function moveExportColumn(index, delta) {
@@ -3965,24 +4202,31 @@
     var moved = cols.splice(index, 1)[0];
     cols.splice(target, 0, moved);
     renderExportColumnsPanel();
+    refreshConfiguratorTestTab();
   }
 
   function toggleExportColumnVisible(index) {
     var col = state.exportColumns[index];
     if (!col) return;
     col.visible = !col.visible;
+    renderConfiguratorConfigurePanel();
+    refreshConfiguratorTestTab();
   }
 
   function renameExportColumn(index, value) {
     var col = state.exportColumns[index];
     if (!col) return;
     col.header_label = value;
+    renderConfiguratorConfigurePanel();
+    refreshConfiguratorTestTab();
   }
 
   function setExportColumnTransform(index, value) {
     var col = state.exportColumns[index];
     if (!col) return;
     col.transform = value;
+    renderConfiguratorConfigurePanel();
+    refreshConfiguratorTestTab();
   }
 
   async function addExportColumnFromSelect() {
@@ -3996,6 +4240,7 @@
     state.exportColumns.push(cloneExportColumn(field));
     renderExportColumnsPanel();
     renderExportAddColumnOptions();
+    refreshConfiguratorTestTab();
   }
 
   function setExportMode(mode) {
@@ -4011,7 +4256,7 @@
     var hint = getEl("exportModeHint");
     if (hint) {
       hint.textContent = mode === "quick"
-        ? "โหมด Quick Export — ทุก field พร้อมใช้ ไม่มี transform ไม่ต้องเลือก template (ดาวน์โหลดเป็น UTF-8 CSV ทันที)"
+        ? "โหมด Quick Export — ทุก field พร้อมใช้ ไม่มี transform และใช้ runtime columns ส่งตรงไป `/api/v1/export`"
         : "โหมด Template Export — เลือก template ด้านบนเพื่อ pre-fill คอลัมน์ (รองรับ transform ต่อคอลัมน์)";
     }
     state.exportColumns = mode === "quick"
@@ -4019,6 +4264,7 @@
       : buildColumnsFromTemplateForExport(state.activeTemplate);
     renderExportColumnsPanel();
     renderExportAddColumnOptions();
+    refreshConfiguratorTestTab();
   }
 
   function refreshExportColumnsFromActiveTemplate() {
@@ -4026,6 +4272,7 @@
     state.exportColumns = buildColumnsFromTemplateForExport(state.activeTemplate);
     renderExportColumnsPanel();
     renderExportAddColumnOptions();
+    refreshConfiguratorTestTab();
   }
 
   function csvEscape(value) {
@@ -4045,15 +4292,7 @@
   }
 
   function renderQuickPreview() {
-    var table = buildQuickExportTable();
-    var container = getEl("exportPreviewInline");
-    if (!container) return;
-    if (!table.headers.length) {
-      container.innerHTML = "<div style=\"color:var(--muted);\">เลือกอย่างน้อย 1 คอลัมน์ (แสดง) ก่อน preview</div>";
-      return;
-    }
-    container.innerHTML = "Quick Export preview (client-side, no template engine) — " + table.rows.length + " sample row(s)." + renderPreviewTable(table);
-    setBadge("exportLiveBadge", "Preview ready (client-side)", "badge-accent");
+    refreshConfiguratorTestTab();
   }
 
   async function downloadQuickExportCsv() {
@@ -4264,6 +4503,8 @@
       "<br><span class=\"mono\">", escapeHtml(topColumns || "No mapped columns"), "</span>"
     ].join("");
     getEl("liveTemplateName").value = (result.file_info.filename || "W4 Draft").replace(/\.[^.]+$/, "") + " Draft";
+    setBadge("configDetectBadge", columns.length + " mapped column(s)", "badge-ok");
+    renderConfiguratorAnalysisTable();
   }
 
   function updateConfiguratorRuntimeFromAnalysis() {
@@ -4280,6 +4521,7 @@
       }).join(" | ")),
       "</span>"
     ].join("");
+    refreshConfiguratorTestTab();
   }
 
   async function refreshTemplates() {
@@ -4316,6 +4558,7 @@
     }
     getEl("liveTemplateStatus").textContent = "Loaded " + state.templates.length + " template(s) from API.";
     getEl("exportLiveStatus").textContent = "Templates ready for preview, validate, and export.";
+    refreshConfiguratorTestTab();
   }
 
   async function createDraftTemplateFromAnalysis() {
@@ -4388,33 +4631,34 @@
   }
 
   async function previewExport() {
-    if (state.exportMode === "quick") {
-      renderQuickPreview();
-      return;
-    }
     var user = await requireLiveAuth();
     if (!user) return;
-    var templateId = getSelectedTemplateId();
-    if (!templateId) {
+    var templateId = state.exportMode === "template" ? getSelectedTemplateId() : null;
+    if (state.exportMode === "template" && !templateId) {
       showToast("Select a template first", "warn");
       return;
     }
+    var payload = {
+      template_id: templateId,
+      sample_data: getEffectiveSampleData(),
+      column_overrides: buildRuntimeColumnPayload({ disableTransforms: state.exportMode === "quick" })
+    };
     var response = await apiFetch(auth.apiUrl("/api/v1/export/preview"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        template_id: templateId,
-        sample_data: getEffectiveSampleData()
-      })
+      body: JSON.stringify(payload)
     });
     if (!response.ok) {
       throw new Error("Export preview failed: HTTP " + response.status);
     }
     var preview = await response.json();
     setBadge("exportLiveBadge", "Preview ready", "badge-accent");
-    getEl("exportLiveStatus").textContent = "Live export preview loaded from `/api/v1/export/preview`.";
+    getEl("exportLiveStatus").textContent = state.exportMode === "quick"
+      ? "Quick Export preview loaded from `/api/v1/export/preview` using null-template runtime columns."
+      : "Live export preview loaded from `/api/v1/export/preview` with per-run column overrides.";
     var previewContainer = getEl("exportPreviewInline");
     if (previewContainer) previewContainer.innerHTML = renderPreviewTable(preview);
+    refreshConfiguratorTestTab();
   }
 
   async function validateExport() {
@@ -4446,14 +4690,10 @@
   }
 
   async function downloadExportFile() {
-    if (state.exportMode === "quick") {
-      await downloadQuickExportCsv();
-      return;
-    }
     var user = await requireLiveAuth();
     if (!user) return;
-    var templateId = getSelectedTemplateId();
-    if (!templateId) {
+    var templateId = state.exportMode === "template" ? getSelectedTemplateId() : null;
+    if (state.exportMode === "template" && !templateId) {
       showToast("Select a template first", "warn");
       return;
     }
@@ -4465,6 +4705,7 @@
       body: JSON.stringify({
         template_id: templateId,
         sample_data: getEffectiveSampleData(),
+        column_overrides: buildRuntimeColumnPayload({ disableTransforms: state.exportMode === "quick" }),
         format: format,
         encoding: encoding,
         filename: "w4-live-export"
@@ -4483,7 +4724,9 @@
     link.remove();
     URL.revokeObjectURL(url);
     setBadge("exportLiveBadge", "File generated", "badge-ok");
-    getEl("exportLiveStatus").textContent = "Downloaded live export file via `/api/v1/export`.";
+    getEl("exportLiveStatus").textContent = state.exportMode === "quick"
+      ? "Downloaded Quick Export via `/api/v1/export` using null-template runtime columns."
+      : "Downloaded live export file via `/api/v1/export` with per-run overrides.";
   }
 
   function bindActionButton(id, action) {
@@ -4559,8 +4802,7 @@
           showToast("Using visual prototype only - no live analysis yet", "warn");
           return;
         }
-        updateConfiguratorRuntimeFromAnalysis();
-        showToast("Configurator updated from live analysis", "ok");
+        applyAnalysisToConfigurator();
       };
     }
 
@@ -4583,10 +4825,14 @@
       if (!select) return;
       select.addEventListener("change", function () {
         syncSelectedTemplate(select.value);
+        refreshConfiguratorTestTab();
       });
     });
 
     setExportMode(state.exportMode || "template");
+    setConfiguratorTab(state.configuratorTab || "upload");
+    renderConfiguratorAnalysisTable();
+    refreshConfiguratorTestTab();
 
     var avatar = document.querySelector(".topbar-user");
     if (avatar) {

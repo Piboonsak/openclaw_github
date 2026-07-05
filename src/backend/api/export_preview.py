@@ -7,23 +7,29 @@ Routes:
 
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.backend.api.schemas.template_schemas import PreviewResponse
+from src.backend.api.schemas.template_schemas import ColumnDefSchema, PreviewResponse
 from src.backend.api.templates import cols_from_jsonb, render_preview
 from src.backend.auth.dependencies import get_current_active_user
 from src.backend.db.models import ExportTemplate, User
 from src.backend.db.session import get_db
 from src.backend.services.export_service import validate_balance
+from src.backend.services.template_engine import TemplateEngine
 
 router = APIRouter()
 
 _PREVIEW_MAX_ROWS = 10
+_SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._ -]+")
+_UNSAFE_WHITESPACE_RE = re.compile(r"[\r\n\t]+")
+_SPACE_RUN_RE = re.compile(r" {2,}")
 
 
 # ---------------------------------------------------------------------------
@@ -31,8 +37,9 @@ _PREVIEW_MAX_ROWS = 10
 # ---------------------------------------------------------------------------
 
 class ExportPreviewRequest(BaseModel):
-    template_id: str
+    template_id: Optional[uuid.UUID] = None
     sample_data: list[dict] = Field(default=[], max_length=50)
+    column_overrides: list[ColumnDefSchema] = Field(default=[])
 
 
 class VoucherLine(BaseModel):
@@ -62,6 +69,34 @@ class ValidateResponse(BaseModel):
     unbalanced_vouchers: list[UnbalancedVoucher]
 
 
+class ExportFileRequest(BaseModel):
+    template_id: Optional[uuid.UUID] = None
+    sample_data: list[dict] = Field(default=[], max_length=200)
+    format: Optional[str] = Field(default=None, pattern="^(csv|xlsx)$")
+    filename: Optional[str] = None
+    column_overrides: list[ColumnDefSchema] = Field(default=[])
+    encoding: Optional[str] = None
+    delimiter: Optional[str] = None
+
+
+def _sanitize_download_stem(name: str | None) -> str:
+    """Return a header-safe filename stem with dangerous characters removed."""
+    cleaned = _UNSAFE_WHITESPACE_RE.sub(" ", (name or "").strip())
+    cleaned = _SAFE_FILENAME_RE.sub("_", cleaned)
+    cleaned = _SPACE_RUN_RE.sub(" ", cleaned)
+    cleaned = cleaned.strip(" .") or "ledgerflow-export"
+    return cleaned[:120]
+
+
+def _csv_media_type_for_encoding(encoding: str) -> str:
+    normalized = (encoding or "utf-8").lower()
+    if normalized in ("tis-620", "cp874"):
+        return "text/csv; charset=windows-874"
+    if normalized == "utf-8-bom":
+        return "text/csv; charset=utf-8"
+    return f"text/csv; charset={normalized}"
+
+
 # ---------------------------------------------------------------------------
 # ac_1104_preview — preview via template engine
 # ---------------------------------------------------------------------------
@@ -72,11 +107,30 @@ async def export_preview(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_active_user),
 ) -> PreviewResponse:
-    """Return formatted JSON table preview (first 10 rows) using the named template."""
-    tmpl = await db.get(ExportTemplate, uuid.UUID(body.template_id))
-    if not tmpl or not tmpl.is_active:
-        raise HTTPException(status_code=404, detail="Template not found")
-    cols = cols_from_jsonb(tmpl.columns if isinstance(tmpl.columns, list) else [])
+    """Return formatted JSON table preview (first 10 rows).
+
+    Supports both export paths:
+      - ``template_id`` set -> load saved template columns (Template Export)
+      - ``template_id`` null + ``column_overrides`` provided -> Quick Export,
+        rendered from the per-run column list with no saved template needed
+    """
+    runtime_columns = [col.model_dump() for col in body.column_overrides]
+    template_columns: list[dict[str, Any]] = []
+
+    if body.template_id:
+        tmpl = await db.get(ExportTemplate, body.template_id)
+        if not tmpl or not tmpl.is_active:
+            raise HTTPException(status_code=404, detail="Template not found")
+        template_columns = tmpl.columns if isinstance(tmpl.columns, list) else []
+
+    columns_json = runtime_columns or template_columns
+    if not columns_json:
+        raise HTTPException(
+            status_code=422,
+            detail="Provide template_id or column_overrides for preview",
+        )
+
+    cols = cols_from_jsonb(columns_json)
     return render_preview(cols, body.sample_data, max_rows=_PREVIEW_MAX_ROWS)
 
 
@@ -101,4 +155,65 @@ async def export_validate(
     return ValidateResponse(
         valid=result["valid"],
         unbalanced_vouchers=[UnbalancedVoucher(**u) for u in result["unbalanced_vouchers"]],
+    )
+
+
+@router.post("/v1/export")
+async def export_file(
+    body: ExportFileRequest,
+    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """Generate CSV/XLSX bytes from a saved template or per-run column overrides."""
+    runtime_columns = [col.model_dump() for col in body.column_overrides]
+    template_columns: list[dict[str, Any]] = []
+    file_format = body.format or "csv"
+    encoding = body.encoding or "utf-8"
+    delimiter = body.delimiter or ","
+    template_name = "ledgerflow-export"
+
+    if body.template_id:
+        tmpl = await db.get(ExportTemplate, body.template_id)
+        if not tmpl or not tmpl.is_active:
+            raise HTTPException(status_code=404, detail="Template not found")
+        template_name = tmpl.template_name
+        template_columns = tmpl.columns if isinstance(tmpl.columns, list) else []
+        file_format = body.format or tmpl.file_format or "csv"
+        encoding = body.encoding or tmpl.encoding or "utf-8"
+        delimiter = body.delimiter or tmpl.delimiter or ","
+
+    columns_json = runtime_columns or template_columns
+    if not columns_json:
+        raise HTTPException(
+            status_code=422,
+            detail="Provide template_id or column_overrides for export",
+        )
+
+    columns = cols_from_jsonb(columns_json)
+    engine = TemplateEngine(
+        columns=columns,
+        encoding=encoding,
+        delimiter=delimiter,
+        file_format=file_format,
+    )
+    headers, rows = engine.render(body.sample_data, column_overrides=columns)
+    safe_stem = _sanitize_download_stem(body.filename or template_name)
+
+    if file_format == "xlsx":
+        payload = engine.write_excel(headers, rows, columns=columns)
+        return Response(
+            content=payload,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_stem}.xlsx"',
+            },
+        )
+
+    payload = engine.write_csv(headers, rows, columns=columns)
+    return Response(
+        content=payload,
+        media_type=_csv_media_type_for_encoding(encoding),
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_stem}.csv"',
+        },
     )
