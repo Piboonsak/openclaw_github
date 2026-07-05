@@ -10,6 +10,7 @@
     "test": "pytest tests/ --cov",
     "lint": "ruff check src/ && mypy src/",
     "format": "ruff format src/",
+    "verify:w4-html": "node scripts/verify-w4-html-integrity.mjs",
     "validate:agents-skills": "node scripts/validate-agent-skill-docs.mjs",
     "sync:agent-defs": "node scripts/sync-agent-definitions.mjs",
     "setup:hooks": "node scripts/setup-git-hooks.mjs",
