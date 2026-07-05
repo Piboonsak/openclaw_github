@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.backend.auth.auth import create_refresh_token, hash_password
 from src.backend.auth import router as auth_router_module
+from src.backend.auth.auth import create_refresh_token, hash_password
 from src.backend.auth.dependencies import get_current_active_user
 from src.backend.auth.router import router
 from src.backend.db.session import get_db
@@ -51,7 +51,9 @@ def test_login_success(monkeypatch) -> None:
         return user if username == "admin" else None
 
     app.dependency_overrides[get_db] = fake_get_db
-    monkeypatch.setattr(auth_router_module, "_find_user_by_login", fake_find_user_by_login)
+    monkeypatch.setattr(
+        auth_router_module, "_find_user_by_login", fake_find_user_by_login
+    )
 
     response = client.post(
         "/api/v1/auth/login",
@@ -77,7 +79,9 @@ def test_login_invalid_credentials(monkeypatch) -> None:
         return None
 
     app.dependency_overrides[get_db] = fake_get_db
-    monkeypatch.setattr(auth_router_module, "_find_user_by_login", fake_find_user_by_login)
+    monkeypatch.setattr(
+        auth_router_module, "_find_user_by_login", fake_find_user_by_login
+    )
 
     response = client.post(
         "/api/v1/auth/login",
@@ -113,7 +117,9 @@ def test_me_returns_profile(monkeypatch) -> None:
 
     app.dependency_overrides[get_db] = fake_get_db
     app.dependency_overrides[get_current_active_user] = fake_current_user
-    monkeypatch.setattr(auth_router_module, "get_user_company_ids", fake_get_user_company_ids)
+    monkeypatch.setattr(
+        auth_router_module, "get_user_company_ids", fake_get_user_company_ids
+    )
 
     response = client.get("/api/v1/auth/me")
 

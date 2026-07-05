@@ -1,0 +1,105 @@
+{
+  "doc_id": "W4-EPIC10-SIT-FIX-AND-CLOSE-RESULT-01",
+  "version": "2026-07-05",
+  "status": "closed-with-live-proof",
+  "source_handoff": "docs/requirement/phaseII/epic-10/W4-EPIC10-SIT-FIX-AND-CLOSE-HANDOFF-01.prompt.json",
+  "root_issue_fixed": "Fixed real index parity/content corruption by syncing src/frontend/index.html to accepted W4 surface src/frontend/main-ux-ui.html and added a focused parity/integrity guard to prevent false-positive deploy PASS.",
+  "files_changed": [
+    "src/frontend/index.html",
+    "scripts/verify-w4-html-integrity.mjs",
+    "package.json"
+  ],
+  "git": {
+    "branch": "dev",
+    "fix_commit": "90e04e0",
+    "fix_commit_message": "fix(frontend): enforce W4 html parity and integrity guard"
+  },
+  "local_verification": {
+    "verify_script": "npm run verify:w4-html",
+    "result": "pass",
+    "notes": "Marker checks + mojibake checks + byte parity checks passed before deploy dispatch."
+  },
+  "control_plane_deploy": {
+    "repo": "Piboonsak/Openclaw",
+    "workflow": "deploy-ai-accounting-copilot-sit.yml",
+    "run_id": 28728028264,
+    "run_url": "https://github.com/Piboonsak/Openclaw/actions/runs/28728028264",
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "d0f7aad800e465bc1a6ba63894f493b2523a3d6b"
+  },
+  "live_runtime_proof": {
+    "public_edge": {
+      "phase2_prototype": 401,
+      "index_html": 401,
+      "api_health": 200,
+      "api_health_ready": 200,
+      "note": "Basic Auth gate remains active on web routes; health endpoints remain reachable as designed by SIT edge policy."
+    },
+    "internal_sit_host": {
+      "deployed_app_sha": "90e04e0",
+      "phase2_prototype": 200,
+      "index_html_frontend": 200,
+      "api_health": 200,
+      "api_health_ready": 200
+    },
+    "chk_01_phase2_runtime_health": {
+      "result": "pass",
+      "evidence": [
+        "GET http://127.0.0.1:18081/phase2/prototype -> 200",
+        "Live markers found: exportModeQuickCard, exportModeTemplateCard, exportTemplateSelect, exportColumnsBody, exportPreviewInline"
+      ]
+    },
+    "chk_02_index_runtime_parity": {
+      "result": "pass",
+      "evidence": [
+        "GET http://127.0.0.1:18180/index.html -> 200",
+        "Same W4 markers found on index.html: exportModeQuickCard, exportModeTemplateCard, exportTemplateSelect, exportColumnsBody, exportPreviewInline",
+        "Thai labels rendered in served HTML (no mojibake signatures observed in verification output)"
+      ]
+    },
+    "chk_03_quick_export_runtime_wiring": {
+      "result": "pass",
+      "evidence": [
+        "template_id: null marker present",
+        "column_overrides marker present",
+        "runtime calls present: /api/v1/export/preview and /api/v1/export",
+        "status text indicates null-template runtime-column flow"
+      ]
+    },
+    "chk_04_template_export_runtime_wiring": {
+      "result": "pass",
+      "evidence": [
+        "column_overrides payload path present in template mode",
+        "preview and export endpoint markers present on production-facing route"
+      ]
+    },
+    "chk_05_configurator_clickability": {
+      "result": "pass",
+      "evidence": [
+        "configTabBtn-upload marker present",
+        "configTabBtn-configure marker present",
+        "configTabBtn-test marker present",
+        "3-tab actions are wired by onclick setConfiguratorTab(...) on live artifact"
+      ]
+    }
+  },
+  "guard_added_or_updated": {
+    "script": "scripts/verify-w4-html-integrity.mjs",
+    "npm_script": "verify:w4-html",
+    "coverage": [
+      "Required W4 marker presence in both HTML files",
+      "Mojibake signature detection",
+      "Byte-identical parity check"
+    ]
+  },
+  "final_closure_status": {
+    "sit_issue_state": "close-ready",
+    "summary": "Root parity/content defect fixed in Git, stronger guard added, control-plane deploy succeeded, and live runtime checks CHK-01..CHK-05 passed on SIT runtime.",
+    "w4_blocking_residual": "none"
+  },
+  "residual_follow_up_non_blocking": [
+    "Keep verify:w4-html in CI/pre-deploy quality gates to prevent future parity drift.",
+    "Optionally attach selected run artifact logs (sit-smoke.log, sit-http.log) to issue comment for audit convenience."
+  ]
+}

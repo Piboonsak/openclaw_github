@@ -700,15 +700,24 @@ Day 7-8:  TASK-1006 — Export full-page 5-step workflow + POST /api/v1/export w
 
 All 5 items must be ✅ before Codex/Copilot begins implementation of TASK-1003/TASK-1006:
 
-- ☐ Export page has two paths: **Quick Export** (all fields, no transforms, xlsx) and **Template Export** (template-driven, full column adjust, csv/xlsx)
-- ☐ Export page Step ① shows mode picker (Quick vs Template) after document selection
-- ☐ Column adjust panel is inline full-width on Export page (not modal), per-run by default, with optional "Save as Template" / "Update Template"
-- ☐ Template Configurator 3-tab (persistent setup only, separate page, accessed from "Manage Templates →")
-- ☐ TASK-1009 Schema Analyzer promoted to W3 P0 (implemented before TASK-1001/1003/1006)
+- ✅ 2026-07-05 Export page has two paths: **Quick Export** (all fields, no transforms, xlsx default) and **Template Export** (template-driven, full column adjust, csv/xlsx)
+- ✅ 2026-07-05 Export page Step ① shows mode picker (Quick vs Template) after document selection
+- ✅ 2026-07-05 Column adjust panel is inline full-width on Export page (not modal), per-run by default, with optional "Save as Template" / "Update Template"
+- ✅ 2026-07-05 Template Configurator 3-tab (persistent setup only, separate page, accessed from "Manage Templates →")
+- ✅ 2026-07-05 TASK-1009 Schema Analyzer promoted to W3 P0 (implemented before TASK-1001/1003/1006)
 
-## 10. SIT Runtime Alignment (Mandatory Before Any Export UX Implementation)
+## 10. SIT Runtime Alignment (Green; Review Still Mandatory)
 
-Export-related implementation for TASK-1001/TASK-1003/TASK-1006/TASK-1009 is blocked until SIT runtime validation is green.
+SIT runtime validation is already green via `TASK-1306A`.
+
+Export-related implementation for TASK-1003/TASK-1006 is now blocked by the remaining live SIT product-owner review and the 5 approval items above, not by missing SIT runtime readiness.
+
+Current gate interpretation:
+
+1. Runtime gate: green
+2. Edge protection: enabled
+3. Product-owner live review: still required
+4. 5 UX approval items: still required before `TASK-1003/TASK-1006` can be counted as unblocked
 
 Branch/environment alignment:
 

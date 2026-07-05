@@ -1,0 +1,120 @@
+{
+  "_comment": "Claude Code implementation handoff for W4 UX/UI changes. This is an implementation task, not a review-only task.",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-UXUI-IMPLEMENT",
+  "title": "Implement W4 UX/UI corrections on the production-facing surface per freeze doc and latest review issues",
+  "risk_tier": "MEDIUM",
+  "lane": "Claude Code - frontend UX/UI implementation",
+
+  "objective": "Implement the W4 UX/UI design corrections on the production-facing review surface. Do not stop at reviewing docs. Modify the real UI so it follows the frozen Export + Configurator design and the latest user review comments.",
+
+  "source_of_truth": [
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/W4-UX-FREEZE-ACCEPTANCE-REVIEW.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/epic-10/README-EPIC-10.md",
+    "docs/requirement/phaseII/epic-10/CLIENT-TEMPLATE-ANALYSIS.md",
+    "docs/requirement/phaseII/epic-10/EPIC-10-TASKS-DETAIL.md",
+    "docs/requirement/phaseII/MENU-TREE-IA.html"
+  ],
+
+  "production_surface_rule": {
+    "implement_here": "src/frontend/main-ux-ui.html",
+    "review_route": "/phase2/prototype",
+    "do_not_use_as_primary_target": [
+      "src/frontend/ux-ui-prototype.html",
+      "src/frontend/template-configurator-demo.html",
+      "docs/requirement/phaseII/PHASE-II-PROTOTYPE.html"
+    ]
+  },
+
+  "issues_to_fix": [
+    {
+      "id": "UX-EXPORT-01",
+      "title": "Export Config + Preview must preserve PoC-level column control",
+      "requirements": [
+        "User must be able to select fields and reorder columns before export.",
+        "This must work for both export without a template and export from a selected template.",
+        "After selecting a template, user must still be able to adjust columns for that run.",
+        "The adjustment panel must be inline on the export page, not popup-first or modal-first.",
+        "The design must align with the frozen two-path export flow in UX-FREEZE-EXPORT-CONFIGURATOR.md."
+      ]
+    },
+    {
+      "id": "UX-COMPANY-01",
+      "title": "Company management entry and AP/AR split",
+      "requirements": [
+        "The company-management entry labeled COA should be reframed toward broader Settings.",
+        "AP and AR data management/import flows should be separated instead of merged into one generic vendor/customer area.",
+        "Use the sample references below to shape the separation intent:",
+        "private_data/poc/Comp_1/APAR/AP-CCSS.csv",
+        "private_data/poc/Comp_1/APAR/AR-CCSS.csv"
+      ]
+    },
+    {
+      "id": "UX-TEMPLATE-01",
+      "title": "Additional customer template families must be reflected in the UI direction",
+      "requirements": [
+        "Use the customer sample packs under private_data/poc/Comp_1/template/excelformat as implementation references where the requirement is already clear.",
+        "Do not bury ambiguous items; keep UI work aligned only to the low-ambiguity formats already promoted into Epic 10 planning."
+      ]
+    }
+  ],
+
+  "customer_reference_files": [
+    "private_data/poc/Comp_1/APAR/AP-CCSS.csv",
+    "private_data/poc/Comp_1/APAR/AR-CCSS.csv",
+    "private_data/poc/Comp_1/template/excelformat/Excel format (สร้างเอง)",
+    "private_data/poc/Comp_1/template/excelformat/Master"
+  ],
+
+  "implementation_expectations": [
+    "1. Implement on src/frontend/main-ux-ui.html and any directly supporting frontend files/tests only.",
+    "2. Keep the Export flow aligned with the freeze doc: Quick Export and Template Export, with inline column adjustment and preview-before-download.",
+    "3. Preserve PoC-style column selection and drag-drop reordering instead of reducing the flow to a locked template or popup-only export.",
+    "4. Keep Template Configurator as the persistent setup area and Export adjustment as the per-run area.",
+    "5. Reflect the company-management AP/AR separation direction in the production-facing UX where it already exists in scope; do not perform a broad unrelated admin redesign.",
+    "6. Update or add focused Playwright coverage for the changed UX paths where practical."
+  ],
+
+  "minimum_acceptance_criteria": [
+    "Export UI on the production-facing surface supports field selection and column reordering.",
+    "Quick Export works as a no-template path with adjustable columns.",
+    "Template Export still allows per-run column adjustment after template selection.",
+    "Export adjustment is inline on the page, not modal-first.",
+    "Company-management UX no longer communicates the relevant area as only COA if that area is touched in this pass.",
+    "AP and AR separation is represented clearly if the relevant company-management section is touched in this pass.",
+    "Changes are implemented on the production-facing surface, not only in demo/reference files."
+  ],
+
+  "allowed_scope": [
+    "src/frontend/**",
+    "tests/e2e/**",
+    "docs/requirement/phaseII/epic-10/**",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md"
+  ],
+
+  "forbidden_scope": [
+    ".env*",
+    "secrets/",
+    "src/backend/auth/**",
+    "src/backend/ml/**"
+  ],
+
+  "deliverable_format": {
+    "report_sections": [
+      "Summary",
+      "Files changed",
+      "Which issue IDs were implemented",
+      "What remains blocked or out of scope",
+      "Focused verification"
+    ]
+  },
+
+  "final_instruction_to_claude": "Implement the UX/UI changes. Do not answer with a review-only summary. If something cannot be completed because of a real blocker, say exactly what remains blocked and why."
+}

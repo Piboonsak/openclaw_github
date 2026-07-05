@@ -1,0 +1,143 @@
+{
+  "_comment": "Running handoff doc 01 for the next Epic 10 W4 SIT deploy cycle. This replaces stale deploy assumptions in older prompts and follows the Openclaw CI/CD process.",
+  "_doc_id": "W4-EPIC10-SIT-DEPLOY-HANDOFF-01",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-EPIC10-SIT-REDEPLOY-01",
+  "title": "Redeploy Epic 10 W4 export/configurator updates to SIT and verify live wiring",
+  "risk_tier": "MEDIUM",
+  "lane": "Copilot - deploy / runtime proof / post-deploy verification",
+
+  "objective": "Deploy the latest dev snapshot of ai-accounting-copilot to SIT through the Openclaw control-plane workflow, then verify that the production-facing W4 surface on /phase2/prototype is serving the latest export/configurator implementation with real frontend-backend wiring.",
+
+  "mandatory_process": {
+    "source": "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "procedure": "Procedure A - Deploy Code Change",
+    "non_negotiables": [
+      "No direct VPS modifications outside the approved Git + GitHub Actions deploy path",
+      "Use the Openclaw control-plane workflow only",
+      "On failure, inspect workflow logs and runtime evidence before suggesting any new code change",
+      "Deployment proof must include commit SHA, workflow run, and verification result"
+    ]
+  },
+
+  "workflow_context": {
+    "workflow_file": "D:/01_gitrepo/Openclaw/.github/workflows/deploy-ai-accounting-copilot-sit.yml",
+    "workflow_name": "Deploy ai-accounting-copilot SIT",
+    "dispatch_ref": "dev",
+    "sit_url": "https://sit.yahwan.biz",
+    "expected_public_surface": "/phase2/prototype",
+    "expected_alias": "/prototype",
+    "legacy_reference_only": "/workflow-demo",
+    "static_fallback_check": "/index.html"
+  },
+
+  "source_of_truth": [
+    "docs/requirement/phaseII/epic-10/UX-FREEZE-FINAL-CODEX-HANDOFF.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/W4-UX-FREEZE-ACCEPTANCE-REVIEW.md",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html"
+  ],
+
+  "repo_state_to_assume": {
+    "freeze_gate_status": "Formal checkbox close already committed in docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "quick_export_backend_status": "Frontend now sends template_id:null plus column_overrides to /api/v1/export/preview and /api/v1/export",
+    "template_export_override_status": "Template Export preview/download now send column_overrides for per-run edits",
+    "configurator_status": "3-tab configurator shell exists on main-ux-ui.html, but still needs live verification on SIT",
+    "index_status": "index.html has been mechanically resynced from main-ux-ui.html and now needs real browser/static verification",
+    "known_non_blocking_note": "downloadQuickExportCsv() and renderQuickPreview() remain as orphaned helper functions; they are no longer the primary bound path"
+  },
+
+  "what_to_do": [
+    "1. Trigger the Openclaw workflow Deploy ai-accounting-copilot SIT against dev.",
+    "2. Follow Procedure A discipline from Openclaw README: deploy first, then verify, and if anything fails, inspect logs before proposing fixes.",
+    "3. Watch the workflow steps and capture the run URL plus the deployed ref/SHA.",
+    "4. If the workflow fails, inspect the workflow sections in order and summarize the first real failing step, not a downstream symptom.",
+    "5. After a successful deploy, verify these routes with SIT auth in place: /phase2, /phase2/prototype, /prototype, /workflow-demo, /index.html, /api/health, /api/health/ready.",
+    "6. Verify that /phase2/prototype is the accepted production-facing W4 surface and not serving a stale shell.",
+    "7. Verify that /index.html does not visibly lag behind the accepted W4 surface after this deploy.",
+    "8. Verify that Quick Export now uses the real backend path, not the old client-side fallback behavior.",
+    "9. Verify that Template Export preview/download reflect per-run column edits through column_overrides.",
+    "10. Verify that the Configurator shows the 3-tab structure on the live production-facing surface."
+  ],
+
+  "focus_checks_after_deploy": [
+    {
+      "id": "CHK-01",
+      "name": "Quick Export preview wiring",
+      "expectation": "POST /api/v1/export/preview with template_id:null plus column_overrides"
+    },
+    {
+      "id": "CHK-02",
+      "name": "Quick Export download wiring",
+      "expectation": "POST /api/v1/export with template_id:null plus column_overrides"
+    },
+    {
+      "id": "CHK-03",
+      "name": "Template Export per-run overrides",
+      "expectation": "preview/download requests include column_overrides when the user adjusts columns"
+    },
+    {
+      "id": "CHK-04",
+      "name": "Configurator 3-tab surface",
+      "expectation": "Upload & Detect / Configure Columns / Test Output visible on the production-facing surface"
+    },
+    {
+      "id": "CHK-05",
+      "name": "index.html parity",
+      "expectation": "fallback/static route does not show the old pre-W4 export UX"
+    }
+  ],
+
+  "if_workflow_fails_check_logs_in_this_order": [
+    "Workflow step: Validate required secrets",
+    "Workflow step: Configure SSH",
+    "Workflow step: Deploy SIT stack",
+    "Workflow step: Provision SIT public edge",
+    "Workflow step: Run SIT smoke with auth",
+    "Workflow step: Capture DB/Redis/MinIO runtime evidence"
+  ],
+
+  "runtime_evidence_files_to_note": [
+    "evidence/sit-deploy.log",
+    "evidence/sit-edge.log",
+    "evidence/sit-smoke.log",
+    "evidence/sit-feature-runtime.log"
+  ],
+
+  "acceptance_criteria": [
+    "Workflow completes successfully against the intended dev ref/SHA",
+    "/phase2/prototype serves the latest W4 export/configurator artifact",
+    "/prototype redirects correctly to /phase2/prototype",
+    "/workflow-demo remains legacy-only and is not mistaken for deploy proof",
+    "/index.html does not show obviously stale pre-W4 UX",
+    "Quick Export uses the real backend null-template path",
+    "Template Export preview/download reflect per-run overrides",
+    "Configurator 3-tab structure is visible on live SIT",
+    "Final report includes workflow run, deployed SHA, route status, and remaining blockers if any"
+  ],
+
+  "deliverable_format": {
+    "report_sections": [
+      "Doc ID",
+      "Workflow run URL",
+      "Deployed ref/SHA",
+      "Route status table",
+      "Quick Export wiring result",
+      "Template Export override result",
+      "Configurator 3-tab result",
+      "Index parity result",
+      "If failed: first failing workflow/log step and exact blocker"
+    ]
+  },
+
+  "final_instruction_to_copilot": "Do the deploy and verification work end to end. Follow the Openclaw CI/CD procedure and inspect workflow/runtime logs before suggesting any new code changes. Do not stop at a plan."
+}

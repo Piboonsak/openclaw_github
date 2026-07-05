@@ -1,0 +1,99 @@
+{
+  "_comment": "Runtime diagnosis result handoff for Codex follow-up discussion.",
+  "_doc_id": "W4-EPIC10-SIT-RUNTIME-DIAGNOSIS-RESULT-01",
+  "_version": "2026-07-05",
+  "_repo": "YAHWAN-SHOP/ai-accounting-copilot",
+  "_branch": "dev",
+  "_workflow_run_url": "https://github.com/Piboonsak/Openclaw/actions/runs/28726759828",
+  "_deployed_sha": "56f1f956fb3be792598a88fa3ca2817eac55225c",
+
+  "task": {
+    "id": "TASK-W4-EPIC10-SIT-RUNTIME-DIAG-01",
+    "title": "Classify SIT runtime mismatch with evidence",
+    "status": "completed"
+  },
+
+  "report": {
+    "doc_id": "W4-EPIC10-SIT-RUNTIME-DIAGNOSIS-HANDOFF-01",
+    "observed_symptom": [
+      "Manual browser checks showed broken-looking index surface with mojibake-like text.",
+      "Deploy workflow was green but user-visible behavior appeared inconsistent across routes."
+    ],
+    "workflow_proof_vs_runtime_proof_gap": [
+      "Existing PASS evidence leaned on source-file markers and reachability checks.",
+      "Runtime-level body integrity and route-specific rendering quality were not mandatory pass gates.",
+      "This created a false-positive risk: deploy success without proving user-visible correctness."
+    ],
+    "container_runtime_status": {
+      "compose": "healthy",
+      "backend": "serving requests",
+      "postgres": "healthy",
+      "redis": "healthy",
+      "minio": "healthy",
+      "evidence": [
+        "docker compose ps showed all SIT services up.",
+        "backend and nginx logs showed repeated 200 for /phase2/prototype, /api/v1/auth/me, /api/v1/templates."
+      ]
+    },
+    "route_and_browser_findings": {
+      "route_status": {
+        "/phase2/prototype": 200,
+        "/prototype": "307 redirect to /phase2/prototype",
+        "/index.html": 200,
+        "/api/health": 200,
+        "/api/health/ready": 200
+      },
+      "body_integrity": {
+        "/phase2/prototype": "readable content; Thai text appears correct",
+        "/index.html": "mojibake-like corrupted text appears in title/comments/labels"
+      },
+      "hash_check": {
+        "index_file_vs_runtime": "match",
+        "prototype_file_vs_runtime": "match",
+        "conclusion": "runtime serves current artifacts; issue is in artifact content for index route, not stale cache"
+      },
+      "header_check": {
+        "index_content_type": "text/html",
+        "index_charset_header": "not explicit",
+        "meta_charset": "UTF-8 present",
+        "interpretation": "primary issue is content corruption, not service outage"
+      }
+    },
+    "primary_root_cause_classification": {
+      "primary_bucket": "frontend encoding/content corruption",
+      "secondary_bucket": "workflow proof gap / false positive",
+      "rejected_buckets": [
+        "backend service failure",
+        "stale artifact or wrong file serving"
+      ]
+    },
+    "exact_next_approved_action": [
+      "Apply Git fix to repair corrupted content in src/frontend/index.html (and any generator/source feeding it) using clean UTF-8 bytes.",
+      "Add CI guard for mojibake token detection on shipped HTML routes.",
+      "Redeploy SIT via Openclaw control-plane workflow only.",
+      "Update deploy acceptance checks to require runtime body integrity checks on both /index.html and /phase2/prototype, not source markers only."
+    ]
+  },
+
+  "evidence_refs": [
+    "docs/requirement/phaseII/epic-10/W4-EPIC10-SIT-RUNTIME-DIAGNOSIS-HANDOFF-01.prompt.json",
+    "docs/requirement/phaseII/epic-10/W4-EPIC10-SIT-DEPLOY-RESULT-01.prompt.json",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-deploy.log",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-smoke.log",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-http.log"
+  ],
+
+  "prompt_for_codex_next_discussion": {
+    "goal": "Design and implement the minimal safe fix for index route content corruption, then strengthen SIT verification gates.",
+    "constraints": [
+      "No direct VPS mutation",
+      "Git changes plus workflow deploy only",
+      "Preserve working /phase2/prototype behavior"
+    ],
+    "ask": [
+      "Identify exact source of corrupted bytes entering src/frontend/index.html.",
+      "Provide minimal patch and focused tests/checks.",
+      "Propose acceptance checklist updates that block false-positive deploy PASS."
+    ]
+  }
+}

@@ -433,7 +433,7 @@ SIT note:
 **Risk**: HIGH
 **Duration**: ~3-4 days
 **Closes pain points**: PP-2, PP-5, PP-8, PP-15, PP-16, PP-17
-**Output**: `docker/docker-compose.sit.yml`, `docker/nginx/nginx-sit.conf`, `docker/.env.sit.example`, `scripts/deploy/deploy-sit.sh`, `scripts/deploy/smoke-sit.sh`, `scripts/seed_sit.py`, `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`
+**Output**: `docker/docker-compose.sit.yml`, `docker/nginx/nginx-sit.conf`, `docker/.env.sit.example`, `scripts/deploy/deploy-sit.sh`, `scripts/deploy/smoke-sit.sh`, `scripts/seed_sit.py`, `docs/requirement/phaseII/epic-13/sit-env-setup-plan.md`, Openclaw workflow evidence: [run 28332426427](https://github.com/Piboonsak/Openclaw/actions/runs/28332426427), [run 28335254413](https://github.com/Piboonsak/Openclaw/actions/runs/28335254413)
 
 ### Purpose
 
@@ -529,11 +529,15 @@ If SIT deploy is unhealthy:
 - Basic Auth challenge proof (401 without credentials)
 - Openclaw control-plane workflow run URL used for SIT/UAT gate dispatch
 
-### Completion evidence (2026-06-28)
+### Completion evidence (2026-06-29 refresh)
 
-- Final green workflow: `Piboonsak/Openclaw` Actions run `28332426427`
-- Deploy flow passed: SSH preflight, SIT stack deploy, smoke, runtime evidence, HTTP gate evidence, network exposure evidence, summary generation, artifact upload
-- Runtime state verified during green run: backend/postgres/redis/minio healthy, Celery running, Basic Auth gate enforced, internal dependency ports not publicly exposed
+- First full green workflow for SIT gate: `Piboonsak/Openclaw` Actions run `28332426427`
+- Re-validation after edge/auth hardening: `Piboonsak/Openclaw` Actions run `28335254413` (head SHA `c7fec6ab8e56a1a2008d79e84a71303c917da387`)
+- Deploy flow passed: SSH preflight, SIT stack deploy, public edge provision, smoke, runtime evidence, HTTP gate evidence, network exposure evidence, summary generation, artifact upload
+- Runtime state verified during final run: backend/postgres/redis/minio healthy, Celery running, Basic Auth gate enforced, internal dependency ports not publicly exposed
+- HTTP verification after final run:
+   - No auth => `401 Unauthorized` on `https://sit.yahwan.biz/api/health`
+   - With auth => `200 OK` on `/api/health` and `/api/health/ready`
 
 ### Rollout blockers encountered and resolved
 
@@ -557,6 +561,40 @@ If SIT deploy is unhealthy:
    - Why it happened: one step passed a literal shell expression to `psql`, and another assumed `nmap` existed on the runner
    - Fix applied: fixed shell expansion for Postgres defaults and replaced runner-side `nmap` with a host-side read-only `ss` probe over SSH
    - Prevention for UAT/PROD: keep evidence steps shell-safe and dependency-light; test them as part of the workflow, not as an afterthought
+5. **Edge auth file unreadable (`500` on `/api/health`)**
+   - Why it blocked: SIT smoke failed at liveness check via public edge even though backend container returned `200`
+   - Why it happened: nginx could not read `/opt/ledgerflow/secrets/sit/.htpasswd` (`Permission denied`) because file mode was too strict
+   - Fix applied: changed workflow provisioning to write `.htpasswd` with mode `644`
+   - Prevention for UAT/PROD: for host-level auth files used by nginx, validate runtime read permissions in smoke evidence
+6. **Basic Auth mismatch (`401` despite credentials supplied)**
+   - Why it blocked: SIT smoke still failed at liveness check with `Expected 200, got 401`
+   - Why it happened: active edge credential did not match workflow-provided secret values used in smoke
+   - Fix applied: reset `BWCACC_SIT_BASIC_AUTH_USER`/`BWCACC_SIT_BASIC_AUTH_PASS`, reran deploy to regenerate `.htpasswd` deterministically from secrets
+   - Prevention for UAT/PROD: keep one canonical secret source for gate auth and re-provision auth artifacts on every deploy run
+7. **Review surface routes `/prototype` and `/phase2` returned `404`** (W4 UX approval gate blocker)
+   - Why it blocked: W4 UX approval gates could not open — reviewers could not reach the Phase II prototype and timeline pages on SIT
+   - Why it happened: `nginx-sit-yahwan.conf` catch-all `location /` forwarded all non-API traffic to the **frontend static container** (port 18180, serving `src/frontend` files only), but `/prototype`, `/phase2`, `/phase2/timeline`, `/phase2/prototype`, `/timeline`, and `/manual` are FastAPI route handlers that only exist in the **backend** (port 18081); the static container had no knowledge of these paths → 404
+   - Fix applied: added explicit location blocks for these backend routes **before** `location /` in `deploy/sit-site/nginx-sit-yahwan.conf`; commit `e2e8a51` pushed to `dev`; Openclaw SIT workflow run [28692639601](https://github.com/Piboonsak/Openclaw/actions/runs/28692639601) deployed and verified
+   - Also: added `^deploy/` to `ACTION_PATTERNS` in `scripts/min_action_check.py` so future infra changes in `deploy/` are classified as actionable by the pre-commit hook
+   - Prevention for UAT/PROD: map out every route served by the application and ensure the edge nginx config has explicit proxy rules for any non-static FastAPI routes before the catch-all
+
+### Completion evidence (2026-07-04 refresh — review surface fixed)
+
+- Review surface routing fix: `Piboonsak/Openclaw` Actions run [28692639601](https://github.com/Piboonsak/Openclaw/actions/runs/28692639601) (commit `e2e8a51`)
+- Verification result (2026-07-04):
+
+| Route | HTTP (with auth) | HTTP (no auth) |
+|-------|-----------------|----------------|
+| `/api/health` | 200 ✅ | 401 ✅ |
+| `/api/health/ready` | 200 ✅ | 401 ✅ |
+| `/prototype` | 200 ✅ | 401 ✅ |
+| `/phase2` | 200 ✅ | 401 ✅ |
+| `/phase2/timeline` | 200 ✅ | — |
+| `/phase2/prototype` | 200 ✅ | — |
+| `/timeline` | 307 → `/phase2/timeline` ✅ | — |
+| `/manual` | 200 ✅ | — |
+
+W4 UX approval gates unblocked: all 4 primary acceptance criteria met.
 
 ### Manual prerequisites
 

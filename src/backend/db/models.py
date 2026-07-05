@@ -17,7 +17,6 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
-    Enum as SqlEnum,
     Float,
     ForeignKey,
     Index,
@@ -29,12 +28,14 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy import (
+    Enum as SqlEnum,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.backend.db.base import Base
 from src.backend.db.enums import MatchType
-
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -42,9 +43,7 @@ from src.backend.db.enums import MatchType
 
 
 def _uuid_pk() -> Mapped[uuid.UUID]:
-    return mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    return mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
 
 def _now() -> Mapped[datetime]:
@@ -198,9 +197,7 @@ class DocumentBatch(Base):
     company: Mapped[Company] = relationship(back_populates="document_batches")
     documents: Mapped[list[Document]] = relationship(back_populates="batch")
 
-    __table_args__ = (
-        Index("ix_batches_company_status", "company_id", "status"),
-    )
+    __table_args__ = (Index("ix_batches_company_status", "company_id", "status"),)
 
 
 class Document(Base):
@@ -376,9 +373,7 @@ class ChartOfAccount(Base):
     company: Mapped[Company] = relationship(back_populates="chart_of_accounts")
 
     __table_args__ = (
-        UniqueConstraint(
-            "company_id", "account_code", name="uq_company_account_code"
-        ),
+        UniqueConstraint("company_id", "account_code", name="uq_company_account_code"),
     )
 
 
@@ -477,9 +472,7 @@ class ExportJob(Base):
         back_populates="export_job"
     )
 
-    __table_args__ = (
-        Index("ix_export_jobs_company", "company_id"),
-    )
+    __table_args__ = (Index("ix_export_jobs_company", "company_id"),)
 
 
 class ExportFile(Base):
@@ -694,9 +687,7 @@ class DocumentFlag(Base):
 
     document: Mapped[Document] = relationship(back_populates="flags")
 
-    __table_args__ = (
-        Index("ix_flags_document_status", "document_id", "status"),
-    )
+    __table_args__ = (Index("ix_flags_document_status", "document_id", "status"),)
 
 
 class FieldCorrection(Base):
@@ -716,9 +707,7 @@ class FieldCorrection(Base):
 
     document: Mapped[Document] = relationship(back_populates="field_corrections")
 
-    __table_args__ = (
-        Index("ix_corrections_document", "document_id"),
-    )
+    __table_args__ = (Index("ix_corrections_document", "document_id"),)
 
 
 # ---------------------------------------------------------------------------
@@ -815,6 +804,4 @@ class AccountMappingCache(Base):
         back_populates="account_mapping_cache_entries"
     )
 
-    __table_args__ = (
-        Index("ix_mapping_company_ocr_name", "company_id", "ocr_name"),
-    )
+    __table_args__ = (Index("ix_mapping_company_ocr_name", "company_id", "ocr_name"),)

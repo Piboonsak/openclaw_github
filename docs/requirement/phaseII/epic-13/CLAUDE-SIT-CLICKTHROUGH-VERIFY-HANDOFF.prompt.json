@@ -1,0 +1,135 @@
+{
+  "_comment": "Claude Code handoff: finish the W4 UX approval-gate verification on live SIT. This is not a docs-only review task. Claude must validate the clickable webapp and return a final gate decision with evidence.",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-UX-GATE-LIVE-VERIFY",
+  "title": "Close the W4 Export + Configurator approval gate on live SIT with clickable webapp proof",
+  "risk_tier": "MEDIUM",
+  "lane": "Claude Code - UX acceptance plus live browser verification",
+
+  "objective": "Finish the W4 approval-gate verification on live SIT. Do not stop at document review. Open the real webapp, log in, click through the production-facing review surface, verify the 5 approval items from docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md against the live UI, and return a final pass/fail result with evidence.",
+
+  "background": {
+    "user_report": "User reported that the SIT surface looked static like the reference prototype and asked whether the W4 UX freeze gate really requires a genuinely clickable SIT environment before TASK-1003 and TASK-1006 can begin.",
+    "repo_state": "Current repo guidance already separates production-facing review vs demo/reference surfaces. The production-facing route is /phase2/prototype backed by src/frontend/main-ux-ui.html. Legacy workflow-demo remains available only for internal comparison.",
+    "current_need": "What is still missing is final browser-driven proof against the real live surface for the 5 approval-gate items. This task exists to close that gap honestly."
+  },
+
+  "source_of_truth": [
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-UX-FREEZE-ACCEPTANCE-REVIEW.md",
+    "docs/requirement/phaseII/PHASE-II-PROTOTYPE.html"
+  ],
+
+  "interface_mapping": {
+    "production_review_surface": {
+      "route": "https://sit.yahwan.biz/phase2/prototype",
+      "file": "src/frontend/main-ux-ui.html",
+      "rule": "This is the only valid W4 SIT/UAT approval surface."
+    },
+    "legacy_demo_surface": {
+      "route": "https://sit.yahwan.biz/workflow-demo",
+      "file": "src/frontend/ux-ui-prototype.html",
+      "rule": "Reference only. Do not use this as primary approval proof."
+    },
+    "reference_prototype_doc": {
+      "file": "docs/requirement/phaseII/PHASE-II-PROTOTYPE.html",
+      "rule": "Reference baseline only. Not runtime proof."
+    },
+    "static_fallback": {
+      "route": "https://sit.yahwan.biz/index.html",
+      "file": "src/frontend/index.html",
+      "rule": "Parity check only. Not enough by itself for gate closure."
+    }
+  },
+
+  "hard_requirement": {
+    "must_finish_not_just_review": true,
+    "must_use_live_clickable_webapp": true,
+    "must_test_in_browser": true,
+    "must_not_return_docs_only_analysis": true
+  },
+
+  "approval_gate_items": [
+    "Export page has two paths: Quick Export (all fields, no transforms, xlsx default) and Template Export (template-driven, full column adjust, csv/xlsx).",
+    "Export page Step 1 shows mode picker (Quick vs Template) after document selection.",
+    "Column adjust panel is inline full-width on Export page (not modal), per-run by default, with optional Save as Template / Update Template.",
+    "Template Configurator is a 3-tab persistent setup page, separate from Export, accessed from Manage Templates.",
+    "TASK-1009 Schema Analyzer is present as the upstream path before TASK-1003/TASK-1006 and is visible/usable in the live review surface."
+  ],
+
+  "what_claude_must_do": [
+    "1. Read the source-of-truth docs first, especially docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md section 9 Approval Gate.",
+    "2. Open a fresh browser session against https://sit.yahwan.biz/phase2/prototype using the operator-supplied Basic Auth credentials.",
+    "3. Log in through the real app login form using the operator-supplied app credentials.",
+    "4. Verify that the app is genuinely interactive, not a static HTML shell: navigation must change screens, buttons must respond, and relevant flows must render distinct content.",
+    "5. Click through the production-facing UI and evaluate the 5 approval items against the live webapp.",
+    "6. Check browser console and failing network requests while navigating. Record any 401, 404, 500, or broken JS behavior.",
+    "7. Also open https://sit.yahwan.biz/index.html in a fresh reload and confirm whether it behaves the same as /phase2/prototype after the cache fix.",
+    "8. If any approval item is missing or unclear, report FAIL or UNCLEAR honestly with exact screen/path evidence. Do not silently reinterpret the gate as passed.",
+    "9. If all 5 items are not clearly present and usable on the live production-facing surface, state that TASK-1003 and TASK-1006 must remain blocked."
+  ],
+
+  "minimum_click_paths": [
+    "Login screen -> dashboard or app shell visible",
+    "Navigate to Templates",
+    "Open Manage Templates or Template Configurator entry",
+    "Open Schema Analyzer / Upload & Detect area if present",
+    "Navigate to the production-facing Export-related flow",
+    "Attempt to observe document-selection -> mode-picker -> adjust/panel structure",
+    "Confirm whether export is still old embedded step behavior or the new full-page flow"
+  ],
+
+  "acceptance_criteria": [
+    "A real browser session is used on live SIT, not only curl or static file inspection.",
+    "PASS, FAIL, or UNCLEAR is returned for each of the 5 approval items.",
+    "Every item result includes route or screen evidence from the live production-facing surface.",
+    "Console and network errors are checked and summarized.",
+    "A final gate decision is produced: either approval gate closed, or still blocked with exact reasons.",
+    "The answer clearly distinguishes live clickable proof from document/reference proof."
+  ],
+
+  "reference_docs": [
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-UX-FREEZE-ACCEPTANCE-REVIEW.md",
+    "docs/requirement/phaseII/PHASE-II-PROTOTYPE.html",
+    "docs/requirement/phaseII/epic-13/COPILOT-SIT-REVIEW-SURFACE-HANDOFF.prompt.md"
+  ],
+
+  "allowed_scope": [
+    "docs/ux/**",
+    "docs/requirement/phaseII/**",
+    "tests/e2e/**"
+  ],
+
+  "forbidden_scope": [
+    ".env*",
+    "secrets/",
+    "config/openclaw.prod.json5"
+  ],
+
+  "credentials_handling": "Basic Auth credentials and app login credentials are operator-supplied out of band. Do not commit, print, or store plaintext credentials in repo files, logs, screenshots, or handoff artifacts.",
+
+  "deliverable_format": {
+    "report_file": "docs/requirement/phaseII/epic-13/TASK-W4-UX-GATE-LIVE-VERIFY-REPORT.md",
+    "sections": [
+      "Summary",
+      "Environment and route verified",
+      "Browser-driven click path",
+      "Approval gate result table (5 items: PASS/FAIL/UNCLEAR)",
+      "Console/network issues",
+      "Final gate decision",
+      "Remaining blockers"
+    ]
+  },
+
+  "final_instruction_to_claude": "This task is only complete when you have tested the live clickable webapp and returned a final gate decision with evidence. A docs-only review, static HTML comparison, or API-only verification is not enough."
+}

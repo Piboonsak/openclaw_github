@@ -5,6 +5,13 @@
 ## Documentation
 
 - **[EPIC-10-TASKS-DETAIL.md](EPIC-10-TASKS-DETAIL.md)** — full design for all tasks with ACs, schemas, governance fields
+- **[UX-FREEZE-FINAL-CODEX-HANDOFF.md](UX-FREEZE-FINAL-CODEX-HANDOFF.md)** — 2026-07-05: UX freeze final resolution + what Claude already implemented on `main-ux-ui.html` (Export mode picker/inline columns, AP/AR split, Express master cards) + what's left for Codex on `TASK-1003`/`TASK-1006`. **Read this before touching Export/Configurator/Companies UI.**
+- **[W4-CLAUDE-COMPLETED-SUMMARY-FOR-CODEX-REVIEW.md](W4-CLAUDE-COMPLETED-SUMMARY-FOR-CODEX-REVIEW.md)** — 2026-07-05: consolidated diff-level summary of both Claude passes (frontend UX/UI + backend Quick Export contract), with specific review checkpoints for Codex. **Read this before reviewing or building on top of either pass.**
+- **[W4-EPIC10-CLAUDE-FOLLOWUP-01-COMPLETION.md](W4-EPIC10-CLAUDE-FOLLOWUP-01-COMPLETION.md)** — 2026-07-05: Configurator evidence-hardening pass. Found and fixed a real bug (every Configurator tab button threw `ReferenceError` on click — looked wired, wasn't), replaced the static column-editor mockup with a real one shared with the Export screen, fixed corrupted-encoding test assertions, and added real interaction-based regression tests. **Read this if you're about to touch the Configurator or its test coverage.**
+- **[W4-EPIC10-CLAUDE-DOCS-CARRYOVER-CLEANUP-01-COMPLETION.md](W4-EPIC10-CLAUDE-DOCS-CARRYOVER-CLEANUP-01-COMPLETION.md)** — 2026-07-05: doc/carryover reconciliation pass across `W4-EXECUTION-PLAN.md`, `W4-TASK-BOARD.md`, and `PHASE-II-EPIC-ROADMAP.md`. Resolved the `TASK-906` cross-report tracking item, removed stale "Configurator unbuilt"/"gate still hold" wording, and added explicit deferral notes for template delete/clone and the row-grouping strategy panel. **Read this to find the current, non-contradictory W4 status without cross-checking every doc yourself.**
+- **[W4-SIT-E2E-CLAUDE-CODE-COMPLETION-01.md](W4-SIT-E2E-CLAUDE-CODE-COMPLETION-01.md)** — 2026-07-05: whole-product-shell visible-control audit + closure. Found Companies/Users/Company-detail COA-AP-AR-Settings/Internal Console were 100% static demo markup faking success on every action. Added real `Company`/`User` DB-backed CRUD APIs (`/v1/admin/companies`, `/v1/admin/users` + reset-password) and rewired Companies/Users/AP-AR to them; converted every remaining fake-success control to an honest deferred/disabled state or a labeled demo-data banner. **Read this before touching Companies, Users, AP/AR, or any Internal Console screen.**
+- **[W4-SIT-E2E-CODEX-REVIEW-01.md](W4-SIT-E2E-CODEX-REVIEW-01.md)** — 2026-07-05: Codex's review of the pass above — not deploy-ready yet; found residual fake-success controls on Review Scan/Review Mapping/Processing and the still-failing `index.html` parity check.
+- **[W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md](W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md)** — 2026-07-05: closes every residual finding from the Codex review above (Review Scan Approve/Approve All, Review Mapping Confirm, Processing retry, plus the adjacent Flag modal found in re-audit) and includes a full justified list of every remaining `'ok'`-toast in `main-ux-ui.html`. **Read this for the final, Codex-reviewed state of the visible-control audit before Copilot deploys.**
 
 ## At a glance
 
@@ -22,10 +29,11 @@
 |------|-------|-----------|--------|-------------------|
 | TASK-1001 | Template engine backend | L | Done (`a350333`) | PP-2, PP-3, PP-5, PP-8 |
 | TASK-1002 | Template CRUD + Clone API endpoints | M | Done (`66c7419`) | PP-2, PP-3, PP-5, PP-8 |
-| TASK-1003 | Template Configurator UI | L | Hold - SIT + UX freeze approval | PP-2, PP-3, PP-5, PP-8 |
+| TASK-1003 | Template Configurator UI | L | UX freeze resolved 2026-07-04 (see [handoff](UX-FREEZE-FINAL-CODEX-HANDOFF.md)); 3-tab rebuild still pending — Codex | PP-2, PP-3, PP-5, PP-8 |
 | TASK-1004 | Master templates + seed migration | M | New | PP-2, PP-3, PP-5 |
 | TASK-1005 | Clone workflow | M | New | PP-2, PP-3, PP-5, PP-8 |
-| TASK-1006 | Export screen integration | M | Hold - depends on TASK-1003 + same gate | PP-2, PP-3, PP-5, PP-11 |
+| TASK-1006 | Export screen integration | M | Export mode-picker + inline columns implemented by Claude 2026-07-05 on `main-ux-ui.html`; backend `column_overrides`/`template_id:null` still pending — see [handoff](UX-FREEZE-FINAL-CODEX-HANDOFF.md) | PP-2, PP-3, PP-5, PP-11 |
+| TASK-1014 | Customer template-pack coverage expansion | M | New | PP-2, PP-3, PP-5, PP-11 |
 
 ## Dependencies
 
@@ -55,6 +63,8 @@ W5 Day 3-5:  TASK-1006 — Export screen integration (template selector + previe
 8. Export screen shows template selector dropdown, preview table (first 5 rows), and download button
 9. Balance validation blocks export when Sum(Debit) != Sum(Credit) per voucher
 10. All ACs pass with pytest tests
+11. Production-facing export retains PoC-level column select/reorder flexibility for both no-template and template-based export
+12. Additional customer `excelformat` sample packs are classified into Epic work vs backlog questions
 
 ## Discussion Prompts
 

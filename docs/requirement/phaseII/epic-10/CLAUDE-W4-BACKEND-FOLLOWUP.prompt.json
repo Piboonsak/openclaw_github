@@ -1,0 +1,95 @@
+{
+  "_comment": "Claude Code backend follow-up for W4 Quick Export real backend support. This is implementation work, not review-only work.",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-BACKEND-FOLLOWUP",
+  "title": "Implement backend support for Quick Export column_overrides and null-template export flow",
+  "risk_tier": "MEDIUM",
+  "lane": "Claude Code - backend implementation follow-up",
+
+  "objective": "Implement the missing backend support so Quick Export can use the real export pipeline instead of the current frontend-only CSV fallback. This specifically means supporting template_id = null together with column_overrides for preview/export flows, aligned with the frozen W4 export design.",
+
+  "source_of_truth": [
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/W4-UX-FREEZE-ACCEPTANCE-REVIEW.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/epic-10/EPIC-10-TASKS-DETAIL.md",
+    "docs/requirement/phaseII/epic-10/UX-FREEZE-FINAL-CODEX-HANDOFF.md"
+  ],
+
+  "background": {
+    "current_frontend_state": "The production-facing export UI on src/frontend/main-ux-ui.html now supports Quick Export and Template Export with inline column adjustment. However, Quick Export currently falls back to client-side CSV because the backend does not yet support template_id:null plus column_overrides.",
+    "why_this_matters": "The frozen W4 design expects Quick Export to be a real path in the export pipeline, not a demo-only or client-only fallback. This backend gap is the main remaining mismatch between the current frontend pass and the frozen W4 export spec.",
+    "known_related_paths": [
+      "POST /api/v1/export",
+      "POST /api/v1/export/preview",
+      "POST /api/v1/export/validate"
+    ]
+  },
+
+  "required_behavior": [
+    "Quick Export must work without selecting a template.",
+    "Quick Export must accept user-adjusted columns for the current run.",
+    "The backend must support template_id = null together with column_overrides for preview/export behavior.",
+    "Template Export behavior must keep working and must not regress.",
+    "The implementation must stay aligned with the frozen W4 acceptance wording, especially ac_1006_r2 through ac_1006_r7."
+  ],
+
+  "what_to_build": [
+    "1. Extend the export request contract so template_id may be null when the caller provides a valid column_overrides array for Quick Export.",
+    "2. Support preview generation for the null-template path using column_overrides as the effective export definition.",
+    "3. Support export generation for the null-template path using column_overrides as the effective export definition.",
+    "4. Ensure encoding/format handling is consistent with the canonical enum and existing export behavior.",
+    "5. Keep balance validation behavior intact for the real export flow.",
+    "6. Add or update focused backend/API tests for the new Quick Export path.",
+    "7. If any frontend contract assumption must change, document it explicitly in the implementation report instead of making silent breaking changes."
+  ],
+
+  "likely_files_to_touch": [
+    "src/backend/api/export_preview.py",
+    "src/backend/services/export_service.py",
+    "src/backend/app/endpoints.py",
+    "src/backend/api/schemas/**",
+    "tests/api/test_export_api.py",
+    "tests/services/**"
+  ],
+
+  "acceptance_criteria": [
+    "POST /api/v1/export/preview accepts a Quick Export-style request with template_id:null plus column_overrides and returns a valid preview payload.",
+    "POST /api/v1/export accepts a Quick Export-style request with template_id:null plus column_overrides and returns a valid file response.",
+    "Template-based export behavior still works after the change.",
+    "Balance validation still blocks invalid exports where required.",
+    "Focused tests cover the null-template Quick Export path and pass.",
+    "The implementation report clearly states what was changed and any remaining backend/frontend gap."
+  ],
+
+  "allowed_scope": [
+    "src/backend/**",
+    "tests/**",
+    "docs/requirement/phaseII/epic-10/**"
+  ],
+
+  "forbidden_scope": [
+    ".env*",
+    "secrets/",
+    "src/backend/auth/**",
+    "src/backend/ml/**"
+  ],
+
+  "deliverable_format": {
+    "report_sections": [
+      "Summary",
+      "Files changed",
+      "Request contract updates",
+      "Tests added or updated",
+      "What still remains outside this task",
+      "Verification"
+    ]
+  },
+
+  "final_instruction_to_claude": "Implement the backend follow-up. Do not answer with a plan-only or review-only summary. If the change cannot be completed safely, return the exact blocker and the exact missing contract or dependency."
+}

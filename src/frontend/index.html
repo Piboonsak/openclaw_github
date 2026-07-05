@@ -572,6 +572,10 @@
     <h1>Dashboard</h1>
     <p class="subtitle">ภาพรวมระบบ — บริษัท เมโทร อีเล็กทริค จำกัด</p>
   </div>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong style="color:var(--accent);">Demo data:</strong>
+    <span>KPI และกิจกรรมล่าสุดด้านล่างเป็นข้อมูลตัวอย่าง (fixture) ยังไม่เชื่อมต่อ backend จริง</span>
+  </div>
 
   <div class="kpi-row">
     <div class="kpi-card">
@@ -652,6 +656,10 @@
   <div class="page-header">
     <h1>Upload</h1>
     <p class="subtitle">อัปโหลดเอกสาร</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong style="color:var(--accent);">Demo data:</strong>
+    <span>รายการไฟล์และ dropzone ด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่ upload จริงไปยัง backend ในหน้านี้</span>
   </div>
 
   <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.25rem;">
@@ -734,6 +742,10 @@
     <h1>Processing</h1>
     <p class="subtitle">กำลังประมวลผล — Batch #2605-001</p>
   </div>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong style="color:var(--accent);">Demo data:</strong>
+    <span>สถานะ batch ด้านล่างเป็นข้อมูลตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ Celery job จริงในหน้านี้</span>
+  </div>
 
   <div class="card" style="margin-bottom:1rem;">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.6rem;">
@@ -794,6 +806,10 @@
   <div class="page-header">
     <h1>Review Scan</h1>
     <p class="subtitle">ตรวจสอบข้อมูลที่สกัดจากเอกสาร</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong style="color:var(--accent);">Demo data:</strong>
+    <span>เอกสารและผลสกัดด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ OCR/extraction pipeline จริงในหน้านี้</span>
   </div>
 
   <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
@@ -867,7 +883,7 @@
           </div>
         </div>
         <div style="display:flex;gap:0.5rem;">
-          <button class="btn btn-primary" style="flex:1;" onclick="showToast('Approve แล้ว ✓','ok')">✓ Approve</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="showToast('Approve ยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">✓ Approve</button>
           <button class="btn btn-ghost" onclick="openModal('modal-flag')">🚩 Flag</button>
         </div>
       </div>
@@ -877,7 +893,7 @@
   <div class="toolbar" style="margin-top:1rem;padding:0.85rem 1rem;background:white;border:1px solid var(--line);border-radius:10px;justify-content:space-between;">
     <button class="btn btn-ghost">← ก่อนหน้า</button>
     <div style="display:flex;gap:0.5rem;">
-      <button class="btn btn-ghost" onclick="showToast('Approve ทั้งหมดแล้ว ✓','ok')">✓ Approve All ที่เหลือ</button>
+      <button class="btn btn-ghost" onclick="showToast('Approve ทั้งหมดยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">✓ Approve All ที่เหลือ</button>
       <button class="btn btn-primary" onclick="navigate('s-review-mapping')">ไปที่ Review Mapping →</button>
     </div>
   </div>
@@ -891,6 +907,10 @@
       <span class="badge badge-accent">Confirm แล้ว 4/11 เอกสาร</span>
       <button class="btn btn-ghost btn-sm" onclick="navigate('s-export')">ไปที่ Export →</button>
     </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong style="color:var(--accent);">Demo data:</strong>
+    <span>รายการ Dr/Cr ด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ journal mapping จริงในหน้านี้</span>
   </div>
 
   <div style="display:grid;grid-template-columns:260px 1fr;gap:1rem;align-items:start;">
@@ -948,7 +968,7 @@
 
       <div style="display:flex;gap:0.5rem;margin-top:0.75rem;justify-content:flex-end;">
         <button class="btn btn-ghost">← แก้ไข Scan</button>
-        <button class="btn btn-primary" onclick="showToast('Confirm Mapping แล้ว ✓','ok')">✓ Confirm Mapping</button>
+        <button class="btn btn-primary" onclick="showToast('Confirm Mapping ยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">✓ Confirm Mapping</button>
       </div>
     </div>
   </div>
@@ -1100,18 +1120,15 @@
   <div class="page-header"><h1>Companies</h1><p class="subtitle">จัดการบริษัทลูกค้า</p></div>
   <div class="toolbar" style="margin-bottom:1.25rem;">
     <input class="search-input" type="search" placeholder="ค้นหาบริษัท..." />
-    <button class="btn btn-primary btn-sm" onclick="openDrawer('drawer-company')">+ เพิ่มบริษัท</button>
+    <button class="btn btn-primary btn-sm" onclick="openCompanyDrawerForCreate()">+ เพิ่มบริษัท</button>
   </div>
+  <div id="companiesStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลดรายชื่อบริษัท...</div>
   <div class="card" style="padding:0;">
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>ชื่อบริษัท</th><th>เลขภาษี</th><th>สาขา</th><th style="text-align:center;">เอกสาร/เดือน</th><th style="text-align:center;">สถานะ</th><th style="text-align:center;">จัดการ</th></tr></thead>
-        <tbody>
-          <tr><td style="font-weight:500;">บริษัท เมโทร อีเล็กทริค จำกัด</td><td class="mono" style="font-size:0.8rem;">0105560123456</td><td style="color:var(--muted);font-size:0.82rem;">สำนักงานใหญ่</td><td class="mono" style="text-align:center;">312</td><td style="text-align:center;"><span class="badge badge-ok">Active ✓</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" onclick="openDrawer('drawer-company');showToast('เปิดแก้ไขข้อมูลบริษัท','')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="navigate('s-company-detail')">⚙️ ตั้งค่า</button></div></td></tr>
-          <tr><td style="font-weight:500;">ห้างหุ้นส่วนจำกัด ซันชายน์ เทรดดิ้ง</td><td class="mono" style="font-size:0.8rem;">0103550098765</td><td style="color:var(--muted);font-size:0.82rem;">สำนักงานใหญ่</td><td class="mono" style="text-align:center;">87</td><td style="text-align:center;"><span class="badge badge-ok">Active ✓</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" onclick="openDrawer('drawer-company');showToast('เปิดแก้ไขข้อมูลบริษัท','')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="navigate('s-company-detail')">⚙️ ตั้งค่า</button></div></td></tr>
-          <tr><td style="font-weight:500;">บริษัท กรีน ซัพพลาย จำกัด</td><td class="mono" style="font-size:0.8rem;">0107561234567</td><td style="color:var(--muted);font-size:0.82rem;">สำนักงานใหญ่</td><td class="mono" style="text-align:center;">0</td><td style="text-align:center;"><span class="badge badge-ok">Active ✓</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" onclick="openDrawer('drawer-company');showToast('เปิดแก้ไขข้อมูลบริษัท','')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="navigate('s-company-detail')">⚙️ ตั้งค่า</button></div></td></tr>
-          <tr><td style="font-weight:500;">บริษัท ธนาสิน โฮลดิ้ง จำกัด</td><td class="mono" style="font-size:0.8rem;">0101530012345</td><td style="color:var(--muted);font-size:0.82rem;">สาขา 001</td><td class="mono" style="text-align:center;">145</td><td style="text-align:center;"><span class="badge badge-ok">Active ✓</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" onclick="openDrawer('drawer-company');showToast('เปิดแก้ไขข้อมูลบริษัท','')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="navigate('s-company-detail')">⚙️ ตั้งค่า</button></div></td></tr>
-          <tr style="opacity:0.7;"><td style="font-weight:500;">บริษัท สยามเทคโน จำกัด</td><td class="mono" style="font-size:0.8rem;">0107540098721</td><td style="color:var(--muted);font-size:0.82rem;">สำนักงานใหญ่</td><td class="mono" style="text-align:center;">56</td><td style="text-align:center;"><span class="badge badge-muted">Inactive</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" onclick="openDrawer('drawer-company');showToast('เปิดแก้ไขข้อมูลบริษัท','')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="navigate('s-company-detail')">⚙️ ตั้งค่า</button></div></td></tr>
+        <thead><tr><th>ชื่อบริษัท</th><th>เลขภาษี</th><th>สาขา</th><th style="text-align:center;">สถานะ</th><th style="text-align:center;">จัดการ</th></tr></thead>
+        <tbody id="companiesTableBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem;">กำลังโหลด...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1119,11 +1136,11 @@
 </section>
 
 <!-- ═══ SCREEN 8: COMPANY DETAIL ═══ -->
-<section id="s-company-detail" class="screen">
+<section id="s-company-detail" class="screen" data-company-id="">
   <div style="background:white;border-bottom:1px solid var(--line);padding:1rem 1.5rem;">
     <button class="btn btn-ghost btn-sm" onclick="navigate('s-companies')" style="margin-bottom:0.75rem;">← กลับรายการบริษัท</button>
     <div style="display:flex;align-items:center;gap:1rem;">
-      <div><h1 style="font-size:1.05rem;font-weight:700;margin-bottom:4px;">บริษัท เมโทร อีเล็กทริค จำกัด</h1><div style="font-size:0.8rem;color:var(--muted);display:flex;gap:1rem;align-items:center;">เลขภาษี: <span class="mono">0105560123456</span> · สาขา: สำนักงานใหญ่ <span class="badge badge-ok" style="margin-left:0.25rem;">Active</span></div></div>
+      <div><h1 id="companyDetailName" style="font-size:1.05rem;font-weight:700;margin-bottom:4px;">—</h1><div style="font-size:0.8rem;color:var(--muted);display:flex;gap:1rem;align-items:center;">เลขภาษี: <span class="mono" id="companyDetailTaxId">—</span> · สาขา: <span id="companyDetailBranch">—</span> <span class="badge badge-ok" id="companyDetailStatus" style="margin-left:0.25rem;">Active</span></div></div>
     </div>
     <div class="tab-bar" style="margin-top:1rem;margin-bottom:-1px;">
       <button class="tab active" onclick="switchTab(event,'company-coa','s-company-detail')">ผังบัญชี (COA)</button>
@@ -1134,9 +1151,13 @@
   </div>
   <div style="padding:1.5rem;max-width:1000px;">
     <div id="company-coa">
+    <div style="display:flex;align-items:center;gap:0.6rem;padding:0.65rem 0.9rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+      <strong style="color:var(--warn);">Deferred:</strong>
+      <span>COA CRUD/import ยังไม่มี backend API — ตารางนี้เป็นตัวอย่างข้อมูล (fixture) ดู Epic 10 follow-up</span>
+    </div>
     <div class="toolbar" style="margin-bottom:1rem;">
       <input class="search-input" type="search" placeholder="ค้นหา account code..." />
-      <button class="btn btn-primary btn-sm" onclick="showToast('เปิดฟอร์มเพิ่ม COA รายการใหม่','')">+ เพิ่มรายการ</button>
+      <button class="btn btn-primary btn-sm" onclick="showToast('ฟีเจอร์เพิ่ม COA รายการยังไม่เชื่อมต่อ backend (deferred)','warn')">+ เพิ่มรายการ</button>
       <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-coa')">📁 นำเข้า YAML/CSV</button>
     </div>
     <div class="card" style="padding:0;">
@@ -1169,7 +1190,7 @@
           <div style="font-size:0.82rem;color:var(--muted);">รายการผู้จำหน่ายที่ใช้ matching ตอน import และเตรียมสำหรับ export (Accounts Payable)</div>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" onclick="showToast('เปิดฟอร์มเพิ่มผู้จำหน่าย','')">+ เพิ่มผู้จำหน่าย</button>
+          <button class="btn btn-primary btn-sm" onclick="showToast('เพิ่มทีละรายการยังไม่รองรับ — ใช้ นำเข้า CSV แทน (deferred)','warn')">+ เพิ่มผู้จำหน่าย</button>
           <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-vendor')">📁 นำเข้า Vendor CSV/YAML</button>
         </div>
       </div>
@@ -1179,24 +1200,15 @@
         <span>เพิ่มแถวผู้จำหน่ายได้แม้ยังไม่มีรหัส แล้วค่อยอัปเดตทีหลังด้วยเลขที่บัญชีของบริษัทเดียวกัน</span>
       </div>
 
+      <div id="vendorMasterStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลด...</div>
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th style="width:130px;">Vendor Code</th><th>ชื่อผู้จำหน่าย</th><th style="width:150px;">เลขภาษี</th><th style="width:160px;">Match Key</th><th style="width:130px;">สถานะรหัส</th><th style="width:90px;text-align:center;">จัดการ</th></tr></thead>
-            <tbody>
-              <tr><td class="mono" style="font-weight:600;">V-0001</td><td>ธนาคารกสิกรไทย จำกัด (มหาชน)</td><td class="mono">0107536000226</td><td><span class="badge badge-ok">Tax ID</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขผู้จำหน่าย: ธนาคารกสิกรไทย','')">แก้ไข</button></td></tr>
-              <tr><td class="mono" style="font-weight:600;">V-0002</td><td>บริษัท ออฟฟิศแมท (ไทย) จำกัด</td><td class="mono">0105561004321</td><td><span class="badge badge-accent">Tax ID + Name</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขผู้จำหน่าย: ออฟฟิศแมท','')">แก้ไข</button></td></tr>
-              <tr style="background:var(--warn-soft);"><td class="mono" style="font-weight:600;color:var(--warn);">—</td><td>บริษัท กรีน ซัพพลาย จำกัด</td><td class="mono">0123456789012</td><td><span class="badge badge-warn">Name fallback</span></td><td><span class="badge badge-warn">Pending code</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไขรหัสผู้จำหน่ายภายหลัง','warn')">กำหนดรหัส</button></td></tr>
-              <tr><td class="mono" style="font-weight:600;">V-0004</td><td>ห้างหุ้นส่วนฯ ซันชายน์</td><td class="mono">0103557009876</td><td><span class="badge badge-ok">Tax ID</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขผู้จำหน่าย: ซันชายน์','')">แก้ไข</button></td></tr>
+            <thead><tr><th style="width:130px;">Vendor Code</th><th>ชื่อผู้จำหน่าย</th><th style="width:150px;">GL Code</th><th style="width:130px;">สถานะ</th></tr></thead>
+            <tbody id="vendorMasterTableBody">
+              <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
             </tbody>
           </table>
-        </div>
-        <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:var(--surface);">
-          <span style="font-size:0.8rem;color:var(--muted);">แสดง 4 จาก 19 ผู้จำหน่าย · 1 รายการยังไม่มีรหัส</span>
-          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <button class="btn btn-ghost btn-sm">โหลดเพิ่ม</button>
-            <button class="btn btn-ghost btn-sm" onclick="showToast('ระบบจะไล่ตรวจผู้จำหน่ายที่ยังไม่มีรหัสก่อน export','warn')">ตรวจสอบก่อน export</button>
-          </div>
         </div>
       </div>
     </div>
@@ -1207,7 +1219,7 @@
           <div style="font-size:0.82rem;color:var(--muted);">รายการลูกค้าที่ใช้ matching ตอน import และเตรียมสำหรับ export (Accounts Receivable) — แยกจาก AP เพื่อไม่ให้ปนกัน</div>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" onclick="showToast('เปิดฟอร์มเพิ่มลูกค้า','')">+ เพิ่มลูกค้า</button>
+          <button class="btn btn-primary btn-sm" onclick="showToast('เพิ่มทีละรายการยังไม่รองรับ — ใช้ นำเข้า CSV แทน (deferred)','warn')">+ เพิ่มลูกค้า</button>
           <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-customer')">📁 นำเข้า Customer CSV/YAML</button>
         </div>
       </div>
@@ -1217,24 +1229,15 @@
         <span>เพิ่มแถวลูกค้าได้แม้ยังไม่มีรหัส แล้วค่อยอัปเดตทีหลังด้วยเลขที่บัญชีของบริษัทเดียวกัน</span>
       </div>
 
+      <div id="customerMasterStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลด...</div>
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th style="width:130px;">Customer Code</th><th>ชื่อลูกค้า</th><th style="width:150px;">เลขภาษี</th><th style="width:160px;">Match Key</th><th style="width:130px;">สถานะรหัส</th><th style="width:90px;text-align:center;">จัดการ</th></tr></thead>
-            <tbody>
-              <tr><td class="mono" style="font-weight:600;">C-0001</td><td>บริษัท ไทยวัสดุ ก่อสร้าง จำกัด</td><td class="mono">0105561009988</td><td><span class="badge badge-ok">Tax ID</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขลูกค้า: ไทยวัสดุ ก่อสร้าง','')">แก้ไข</button></td></tr>
-              <tr><td class="mono" style="font-weight:600;">C-0002</td><td>ห้างหุ้นส่วนฯ บางกอก มาร์เก็ตติ้ง</td><td class="mono">0103552001234</td><td><span class="badge badge-accent">Tax ID + Name</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขลูกค้า: บางกอก มาร์เก็ตติ้ง','')">แก้ไข</button></td></tr>
-              <tr style="background:var(--warn-soft);"><td class="mono" style="font-weight:600;color:var(--warn);">—</td><td>บริษัท นิว เจนเนอเรชั่น จำกัด</td><td class="mono">0987654321098</td><td><span class="badge badge-warn">Name fallback</span></td><td><span class="badge badge-warn">Pending code</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('เปิดแก้ไขรหัสลูกค้าภายหลัง','warn')">กำหนดรหัส</button></td></tr>
-              <tr><td class="mono" style="font-weight:600;">C-0004</td><td>บ. ออฟฟิศแมท (ไทย) จำกัด</td><td class="mono">0105561004321</td><td><span class="badge badge-ok">Tax ID</span></td><td><span class="badge badge-ok">Assigned</span></td><td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="showToast('แก้ไขลูกค้า: ออฟฟิศแมท','')">แก้ไข</button></td></tr>
+            <thead><tr><th style="width:130px;">Customer Code</th><th>ชื่อลูกค้า</th><th style="width:100px;">AR Flag</th><th style="width:130px;">สถานะ</th></tr></thead>
+            <tbody id="customerMasterTableBody">
+              <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
             </tbody>
           </table>
-        </div>
-        <div style="padding:0.75rem 1.25rem;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:var(--surface);">
-          <span style="font-size:0.8rem;color:var(--muted);">แสดง 4 จาก 12 ลูกค้า · 1 รายการยังไม่มีรหัส</span>
-          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <button class="btn btn-ghost btn-sm">โหลดเพิ่ม</button>
-            <button class="btn btn-ghost btn-sm" onclick="showToast('ระบบจะไล่ตรวจลูกค้าที่ยังไม่มีรหัสก่อน export','warn')">ตรวจสอบก่อน export</button>
-          </div>
         </div>
       </div>
     </div>
@@ -1245,7 +1248,7 @@
             <h3 class="section-title" style="margin:0 0 0.35rem;">COA Defaults</h3>
             <div style="font-size:0.82rem;color:var(--muted);">ค่าตั้งต้นที่ workflow และ template จะอ้างอิงก่อน export</div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="showToast('บันทึก COA defaults แล้ว ✓','ok')">บันทึกค่าเริ่มต้น</button>
+          <button class="btn btn-primary btn-sm" onclick="showToast('COA defaults ยังไม่เชื่อมต่อ backend (deferred)','warn')">บันทึกค่าเริ่มต้น</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.85rem;margin-top:1rem;">
           <div class="field-group" style="margin:0;"><label class="field-label">Default AP account</label><select class="field-select"><option>2100 - เจ้าหนี้การค้า</option><option>2201 - ภาษีมูลค่าเพิ่มค้างจ่าย</option></select></div>
@@ -1282,17 +1285,15 @@
   <div class="page-header"><h1>Users</h1><p class="subtitle">จัดการผู้ใช้งาน</p></div>
   <div class="toolbar" style="margin-bottom:1.25rem;">
     <input class="search-input" type="search" placeholder="ค้นหาผู้ใช้งาน..." />
-    <button class="btn btn-primary btn-sm" onclick="openCreateUser()">+ เพิ่มผู้ใช้</button>
+    <button class="btn btn-primary btn-sm" onclick="openUserDrawerForCreate()">+ เพิ่มผู้ใช้</button>
   </div>
+  <div id="usersStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลดรายชื่อผู้ใช้...</div>
   <div class="card" style="padding:0;">
     <div class="table-wrap">
       <table class="data-table">
         <thead><tr><th>ชื่อผู้ใช้</th><th>อีเมล</th><th>บทบาท</th><th>บริษัทที่ดูแล</th><th style="width:160px;">เข้าสู่ระบบล่าสุด</th><th style="text-align:center;">สถานะ</th><th style="text-align:center;width:150px;">จัดการ</th></tr></thead>
-        <tbody>
-          <tr><td style="font-weight:500;">สมชาย กิตติคุณ</td><td class="mono" style="font-size:0.8rem;">somchai@bwc.co.th</td><td><span class="badge badge-purple">Admin</span></td><td style="font-size:0.82rem;color:var(--muted);">ทุกบริษัท</td><td class="mono" style="font-size:0.78rem;">2026-06-20 09:15</td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openUserEditor('สมชาย กิตติคุณ')">แก้ไข</button><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openResetPassword('สมชาย กิตติคุณ')">Reset PW</button></div></td></tr>
-          <tr><td style="font-weight:500;">วิภา นันทวงษ์</td><td class="mono" style="font-size:0.8rem;">wipa@bwc.co.th</td><td><span class="badge badge-accent">Staff</span></td><td style="font-size:0.82rem;color:var(--muted);">เมโทร, ซันชายน์</td><td class="mono" style="font-size:0.78rem;">2026-06-20 08:42</td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openUserEditor('วิภา นันทวงษ์')">แก้ไข</button><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openResetPassword('วิภา นันทวงษ์')">Reset PW</button></div></td></tr>
-          <tr><td style="font-weight:500;">อนุชา ทวีสุข</td><td class="mono" style="font-size:0.8rem;">anucha@bwc.co.th</td><td><span class="badge badge-accent">Staff</span></td><td style="font-size:0.82rem;color:var(--muted);">กรีน ซัพพลาย</td><td class="mono" style="font-size:0.78rem;">2026-06-19 16:30</td><td style="text-align:center;"><span class="badge badge-ok">Active</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openUserEditor('อนุชา ทวีสุข')">แก้ไข</button><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openResetPassword('อนุชา ทวีสุข')">Reset PW</button></div></td></tr>
-          <tr style="opacity:0.7;"><td style="font-weight:500;">มาลี ศรีสวัสดิ์</td><td class="mono" style="font-size:0.8rem;">malee@bwc.co.th</td><td><span class="badge badge-accent">Staff</span></td><td style="font-size:0.82rem;color:var(--muted);">ธนาสิน</td><td class="mono" style="font-size:0.78rem;">2026-06-18 14:20</td><td style="text-align:center;"><span class="badge badge-muted">Inactive</span></td><td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;"><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openUserEditor('มาลี ศรีสวัสดิ์')">แก้ไข</button><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openResetPassword('มาลี ศรีสวัสดิ์')">Reset PW</button></div></td></tr>
+        <tbody id="usersTableBody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1.5rem;">กำลังโหลด...</td></tr>
         </tbody>
       </table>
     </div>
@@ -2110,7 +2111,10 @@
       </div>
       <button class="btn btn-ghost" onclick="navigate('s-templates')">ยกเลิก</button>
       <button class="btn btn-ghost" onclick="navigate('s-schema-analyzer')">อัปโหลดไฟล์ใหม่</button>
-      <button class="btn btn-primary" id="applyAnalysisToConfiguratorBtn" onclick="navigate('s-template-configurator');showToast('Pre-filled จาก Sample File — 8 columns · Confidence 94%','ok')">
+      <!-- installListeners() overwrites this element's onclick with the real
+           applyAnalysisToConfigurator() handler; the inline attribute below is
+           a harmless static fallback and must not claim a result. -->
+      <button class="btn btn-primary" id="applyAnalysisToConfiguratorBtn" onclick="navigate('s-template-configurator')">
         Apply to Configurator →
       </button>
     </div>
@@ -2164,6 +2168,10 @@
     <div>
       <h1 style="margin:0 0 .25rem;">Cost Control</h1>
       <span style="color:#6b7280;font-size:.9rem;">ติดตามค่าใช้จ่าย LLM</span>
+      <div style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.8rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-top:0.6rem;font-size:0.78rem;">
+        <strong style="color:var(--accent);">Demo data:</strong>
+        <span>ตัวเลขค่าใช้จ่ายด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ cost-tracking API จริง</span>
+      </div>
     </div>
     <div class="tab-pills">
       <button class="tab-pill active" onclick="pillSwitch(this)">วันนี้</button>
@@ -2202,7 +2210,7 @@
     <div class="card" style="padding:1rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;">
         <h3 class="section-title" style="margin:0;font-size:.9rem;">Budget per บริษัท</h3>
-        <button class="btn btn-ghost btn-sm">ตั้งค่า Budget</button>
+        <button class="btn btn-ghost btn-sm" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">ตั้งค่า Budget</button>
       </div>
 
       <!-- เมโทร -->
@@ -2335,7 +2343,7 @@
         <label class="field-label" style="font-size:.8rem;">ถึงวันที่</label>
         <input class="field-input" type="date" style="font-size:.82rem;" />
       </div>
-      <button class="btn btn-primary btn-sm">ดูข้อมูล</button>
+      <button class="btn btn-primary btn-sm" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">ดูข้อมูล</button>
     </div>
   </div>
 </div><!-- /#s-cost -->
@@ -2350,7 +2358,11 @@
       <h1 style="margin:0 0 .25rem;">Audit Log</h1>
       <span style="color:#6b7280;font-size:.9rem;">ประวัติการใช้งาน</span>
     </div>
-    <button class="btn btn-ghost btn-sm">📥 Export CSV</button>
+    <button class="btn btn-ghost btn-sm" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">📥 Export CSV</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong style="color:var(--accent);">Demo data:</strong>
+    <span>รายการ audit log ด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ `audit_logs` table จริง</span>
   </div>
 
   <!-- Filter bar -->
@@ -2487,6 +2499,10 @@
     <h1 style="margin:0 0 .25rem;">Settings</h1>
     <span style="color:#6b7280;font-size:.9rem;">ตั้งค่าระบบ <span class="badge badge-danger" style="font-size:.72rem;vertical-align:middle;">Admin only</span></span>
   </div>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong style="color:var(--accent);">Demo data:</strong>
+    <span>Model Router/API Keys/System Status ด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ config API จริง (routing จริงอ่านจาก env/settings.py)</span>
+  </div>
 
   <div class="tab-bar" style="margin-bottom:1rem;">
     <button class="tab active" onclick="switchTab(event,'set-model','s-settings')">Model Router</button>
@@ -2579,7 +2595,7 @@
         </div>
       </div>
       <div style="margin-top:1rem;padding-top:.875rem;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;">
-        <button class="btn btn-primary">💾 บันทึกการตั้งค่า</button>
+        <button class="btn btn-primary" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">💾 บันทึกการตั้งค่า</button>
       </div>
     </div>
 
@@ -2589,26 +2605,27 @@
   <div id="set-api" style="display:none;">
     <div class="card" style="padding:1rem;">
       <h3 class="section-title" style="margin:0 0 .875rem;font-size:.9rem;">API Keys</h3>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;">Deferred: คีย์จริงถูกโหลดจาก env/secrets ตอน startup (ดู <code>secrets_loader.py</code>) — หน้านี้เป็นตัวอย่างเท่านั้น ยังแก้ไขผ่าน UI ไม่ได้</div>
       <div class="field-group">
         <label class="field-label">Google AI (Gemini) API Key</label>
         <div style="display:flex;gap:.5rem;">
-          <input class="field-input" type="password" value="AIzaSy••••••••••••••••••••••" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:.82rem;" />
-          <button class="btn btn-ghost btn-sm">แสดง</button>
-          <button class="btn btn-ghost btn-sm">เปลี่ยน</button>
+          <input class="field-input" type="password" value="AIzaSy••••••••••••••••••••••" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:.82rem;" disabled />
+          <button class="btn btn-ghost btn-sm" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">แสดง</button>
+          <button class="btn btn-ghost btn-sm" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">เปลี่ยน</button>
         </div>
         <span class="field-hint">ใช้สำหรับ Gemini 2.5 Flash (Free &amp; Paid)</span>
       </div>
       <div class="field-group" style="margin-top:.75rem;">
         <label class="field-label">Anthropic API Key</label>
         <div style="display:flex;gap:.5rem;">
-          <input class="field-input" type="password" value="sk-ant-••••••••••••••••••••••" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:.82rem;" />
-          <button class="btn btn-ghost btn-sm">แสดง</button>
-          <button class="btn btn-ghost btn-sm">เปลี่ยน</button>
+          <input class="field-input" type="password" value="sk-ant-••••••••••••••••••••••" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:.82rem;" disabled />
+          <button class="btn btn-ghost btn-sm" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">แสดง</button>
+          <button class="btn btn-ghost btn-sm" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">เปลี่ยน</button>
         </div>
         <span class="field-hint">ใช้สำหรับ Claude Sonnet 4 (Tier 3 escalation)</span>
       </div>
       <div style="margin-top:.875rem;padding-top:.875rem;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;">
-        <button class="btn btn-primary">💾 บันทึก API Keys</button>
+        <button class="btn btn-primary" disabled title="ยังไม่เชื่อมต่อ backend (deferred)" style="opacity:0.55;cursor:not-allowed;">💾 บันทึก API Keys</button>
       </div>
     </div>
   </div>
@@ -2766,7 +2783,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-proc-error')">ข้าม</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-proc-error');showToast('กำลังลองใหม่...','ok')">ลองใหม่</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-proc-error');showToast('Retry ยังไม่เชื่อมต่อ backend job queue จริง (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">ลองใหม่</button>
     </div>
   </div>
 </div>
@@ -2794,7 +2811,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-flag')">ยกเลิก</button>
-      <button class="btn btn-warn" style="background:var(--warn);color:white;border-color:var(--warn);display:inline-flex;align-items:center;gap:0.35rem;padding:0.45rem 0.9rem;border-radius:var(--r-sm);font-weight:500;font-size:0.85rem;" onclick="closeModal('modal-flag');showToast('Flag เอกสารแล้ว','warn')">บันทึก Flag</button>
+      <button class="btn btn-warn" style="background:var(--warn);color:white;border-color:var(--warn);display:inline-flex;align-items:center;gap:0.35rem;padding:0.45rem 0.9rem;border-radius:var(--r-sm);font-weight:500;font-size:0.85rem;" onclick="closeModal('modal-flag');showToast('Flag ยังไม่เชื่อมต่อ backend (deferred) — ข้อมูลนี้เป็นตัวอย่าง','warn')">บันทึก Flag</button>
     </div>
   </div>
 </div>
@@ -2832,17 +2849,18 @@
 <div class="drawer-backdrop" id="drawer-company">
   <div class="drawer">
     <div class="drawer-header">
-      <h3 class="drawer-title">เพิ่มบริษัทใหม่</h3>
+      <h3 class="drawer-title" id="companyDrawerTitle">เพิ่มบริษัทใหม่</h3>
       <button class="modal-close" onclick="closeDrawer('drawer-company')">×</button>
     </div>
-    <div class="field-group"><label class="field-label">ชื่อบริษัท *</label><input class="field-input" type="text" placeholder="บริษัท XYZ จำกัด" /></div>
-    <div class="field-group"><label class="field-label">เลขประจำตัวผู้เสียภาษี *</label><input class="field-input mono" type="text" maxlength="13" placeholder="0000000000000" /></div>
-    <div class="field-group"><label class="field-label">รหัสสาขา</label><input class="field-input mono" type="text" placeholder="00000 (สำนักงานใหญ่)" /></div>
-    <div class="field-group"><label class="field-label">ที่อยู่</label><textarea class="field-input" rows="3" style="resize:vertical;"></textarea></div>
-    <div class="field-group"><label class="field-label">ประเภทธุรกิจ</label><input class="field-input" type="text" placeholder="ค้าปลีก / บริการ / ผลิต..." /></div>
+    <div id="companyDrawerError" class="field-hint" style="display:none;color:var(--danger);margin-bottom:0.75rem;"></div>
+    <div class="field-group"><label class="field-label">ชื่อบริษัท *</label><input class="field-input" type="text" id="companyNameInput" placeholder="บริษัท XYZ จำกัด" /></div>
+    <div class="field-group"><label class="field-label">เลขประจำตัวผู้เสียภาษี *</label><input class="field-input mono" type="text" id="companyTaxIdInput" maxlength="13" placeholder="0000000000000" /></div>
+    <div class="field-group"><label class="field-label">รหัสสาขา</label><input class="field-input mono" type="text" id="companyBranchCodeInput" placeholder="00000 (สำนักงานใหญ่)" /></div>
+    <div class="field-group"><label class="field-label">ที่อยู่</label><textarea class="field-input" id="companyAddressInput" rows="3" style="resize:vertical;"></textarea></div>
+    <div class="field-group"><label class="field-label">ประเภทธุรกิจ</label><input class="field-input" type="text" id="companyBusinessTypeInput" placeholder="ค้าปลีก / บริการ / ผลิต..." /></div>
     <div style="display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1.5rem;">
       <button class="btn btn-ghost" onclick="closeDrawer('drawer-company')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeDrawer('drawer-company');showToast('เพิ่มบริษัทแล้ว ✓','ok')">บันทึก</button>
+      <button class="btn btn-primary" id="companyDrawerSaveBtn" onclick="saveCompanyDrawer()">บันทึก</button>
     </div>
   </div>
 </div>
@@ -2851,28 +2869,27 @@
 <div class="drawer-backdrop" id="drawer-user">
   <div class="drawer">
     <div class="drawer-header">
-      <h3 class="drawer-title">เพิ่มผู้ใช้งาน</h3>
+      <h3 class="drawer-title" id="userDrawerTitle">เพิ่มผู้ใช้งาน</h3>
       <button class="modal-close" onclick="closeDrawer('drawer-user')">×</button>
     </div>
-    <div class="field-group"><label class="field-label">Email *</label><input class="field-input" type="email" placeholder="user@bwc.co.th" /></div>
-    <div class="field-group"><label class="field-label">Username *</label><input class="field-input" type="text" placeholder="username" /></div>
-    <div class="field-group"><label class="field-label">ชื่อ-นามสกุล</label><input class="field-input" type="text" placeholder="สมชาย กิตติคุณ" /></div>
+    <div id="userDrawerError" class="field-hint" style="display:none;color:var(--danger);margin-bottom:0.75rem;"></div>
+    <div id="userDrawerTempPassword" style="display:none;background:var(--ok-soft);border:1px solid var(--ok);border-radius:8px;padding:0.75rem;margin-bottom:0.85rem;font-size:0.84rem;"></div>
+    <div class="field-group"><label class="field-label">Email *</label><input class="field-input" type="email" id="userEmailInput" placeholder="user@bwc.co.th" /></div>
+    <div class="field-group"><label class="field-label">Username *</label><input class="field-input" type="text" id="userUsernameInput" placeholder="username" /></div>
+    <div class="field-group"><label class="field-label">ชื่อ-นามสกุล</label><input class="field-input" type="text" id="userDisplayNameInput" placeholder="สมชาย กิตติคุณ" /></div>
     <div class="field-group">
       <label class="field-label">บทบาท</label>
-      <select class="field-select"><option>Staff</option><option>Admin</option></select>
+      <select class="field-select" id="userRoleSelect"><option value="staff">Staff</option><option value="admin">Admin</option></select>
     </div>
     <div class="field-group">
       <label class="field-label">บริษัทที่ดูแล</label>
-      <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem;">
-        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;"><input type="checkbox" checked /> บริษัท เมโทร อีเล็กทริค จำกัด</label>
-        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;"><input type="checkbox" /> ห้างหุ้นส่วนจำกัด ซันชายน์</label>
-        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;"><input type="checkbox" /> บริษัท กรีน ซัพพลาย จำกัด</label>
-        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;"><input type="checkbox" /> บริษัท ธนาสิน โฮลดิ้ง จำกัด</label>
+      <div id="userCompanyCheckboxes" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.25rem;">
+        <span style="font-size:0.8rem;color:var(--muted);">กำลังโหลดรายชื่อบริษัท...</span>
       </div>
     </div>
     <div style="display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1.5rem;">
       <button class="btn btn-ghost" onclick="closeDrawer('drawer-user')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeDrawer('drawer-user');showToast('เพิ่มผู้ใช้แล้ว ✓','ok')">บันทึก</button>
+      <button class="btn btn-primary" id="userDrawerSaveBtn" onclick="saveUserDrawer()">บันทึก</button>
     </div>
   </div>
 </div>
@@ -2900,7 +2917,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-clone-template')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-clone-template');navigate('s-template-configurator');showToast('Clone แล้ว — เปิด Configurator','ok')">Clone →</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-clone-template');showToast('Clone จากการ์ดตัวอย่างนี้ยังไม่เชื่อมต่อ backend (deferred) — ใช้ POST /v1/templates/{id}/clone ผ่าน Live API Bridge แทน','warn')">Clone →</button>
     </div>
   </div>
 </div>
@@ -2932,7 +2949,7 @@
     <div class="field-group" style="margin-top:1rem;"><label class="field-label">Alert Threshold (%)</label><input class="field-input mono" type="number" value="80" /></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-budget')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-budget');showToast('บันทึก budget แล้ว ✓','ok')">บันทึก</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-budget');showToast('Budget limit API ยังไม่เชื่อมต่อ (deferred)','warn')">บันทึก</button>
     </div>
   </div>
 </div>
@@ -2987,7 +3004,7 @@
     </label>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-import-coa')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-import-coa');showToast('นำเข้า COA 47 รายการ ✓','ok')">นำเข้า</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-import-coa');showToast('COA import ยังไม่มี backend API (deferred)','warn')">นำเข้า</button>
     </div>
   </div>
 </div>
@@ -2999,25 +3016,18 @@
       <h3 class="modal-title">📁 นำเข้า Vendor Master</h3>
       <button class="modal-close" onclick="closeModal('modal-import-vendor')">×</button>
     </div>
-    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="vendorFormat" checked /> CSV</label>
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="vendorFormat" /> YAML</label>
-    </div>
     <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
       <strong style="color:var(--accent);">Matching priority:</strong>
-      <span>เลขภาษีผู้ขายก่อน แล้ว fallback ชื่อผู้ขาย · ถ้ายังไม่มีรหัสให้สร้างแถวไว้ก่อน</span>
+      <span>เลขภาษีผู้ขายก่อน แล้ว fallback ชื่อผู้ขาย · ถ้ายังไม่มีรหัสให้สร้างแถวไว้ก่อน (รองรับไฟล์ CSV เท่านั้น)</span>
     </div>
-    <div class="dropzone" style="padding:1.5rem;margin-bottom:1rem;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin:0 auto 0.5rem;display:block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <p style="font-size:0.82rem;color:var(--muted);text-align:center;">ลากไฟล์ CSV/YAML มาวาง หรือคลิกเพื่อเลือก</p>
+    <div class="field-group">
+      <label class="field-label">ไฟล์ CSV *</label>
+      <input class="field-input" type="file" id="vendorImportFileInput" accept=".csv" />
     </div>
-    <label style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.85rem;cursor:pointer;margin-bottom:1rem;line-height:1.45;">
-      <input type="checkbox" checked />
-      <span>สร้างแถวผู้จำหน่ายได้แม้ยังไม่มี Vendor Code แล้วค่อยอัปเดตเลขภายหลัง</span>
-    </label>
+    <div id="vendorImportResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-import-vendor')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-import-vendor');showToast('นำเข้า Vendor Master 19 รายการ ✓','ok')">นำเข้า</button>
+      <button class="btn btn-primary" id="vendorImportSubmitBtn" onclick="importVendorMasterFile()">นำเข้า</button>
     </div>
   </div>
 </div>
@@ -3029,25 +3039,18 @@
       <h3 class="modal-title">📁 นำเข้า Customer Master (AR)</h3>
       <button class="modal-close" onclick="closeModal('modal-import-customer')">×</button>
     </div>
-    <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="customerFormat" checked /> CSV</label>
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer;"><input type="radio" name="customerFormat" /> YAML</label>
-    </div>
     <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
       <strong style="color:var(--accent);">Matching priority:</strong>
-      <span>เลขภาษีลูกค้าก่อน แล้ว fallback ชื่อลูกค้า · ถ้ายังไม่มีรหัสให้สร้างแถวไว้ก่อน</span>
+      <span>เลขภาษีลูกค้าก่อน แล้ว fallback ชื่อลูกค้า · ถ้ายังไม่มีรหัสให้สร้างแถวไว้ก่อน (รองรับไฟล์ CSV เท่านั้น)</span>
     </div>
-    <div class="dropzone" style="padding:1.5rem;margin-bottom:1rem;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin:0 auto 0.5rem;display:block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <p style="font-size:0.82rem;color:var(--muted);text-align:center;">ลากไฟล์ CSV/YAML มาวาง หรือคลิกเพื่อเลือก</p>
+    <div class="field-group">
+      <label class="field-label">ไฟล์ CSV *</label>
+      <input class="field-input" type="file" id="customerImportFileInput" accept=".csv" />
     </div>
-    <label style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.85rem;cursor:pointer;margin-bottom:1rem;line-height:1.45;">
-      <input type="checkbox" checked />
-      <span>สร้างแถวลูกค้าได้แม้ยังไม่มี Customer Code แล้วค่อยอัปเดตเลขภายหลัง</span>
-    </label>
+    <div id="customerImportResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-import-customer')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-import-customer');showToast('นำเข้า Customer Master 12 รายการ ✓','ok')">นำเข้า</button>
+      <button class="btn btn-primary" id="customerImportSubmitBtn" onclick="importCustomerMasterFile()">นำเข้า</button>
     </div>
   </div>
 </div>
@@ -3060,6 +3063,11 @@
      ═══════════════════════════════════════════════════════════ -->
 <script>
   /* ── LOGIN ── */
+  /* Dead/shadowed: window.doLogin is reassigned to the real doLiveLogin() in
+     installListeners() before the page becomes interactive, so this fake
+     "Simulate login" body (and its 'ok' toast) never actually runs. Left in
+     place rather than deleted to avoid touching the login flow in a
+     blocker-fix pass; see W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md. */
   function doLogin(e) {
     e.preventDefault();
     const u = document.getElementById('loginUser').value;
@@ -3103,7 +3111,12 @@
     showToast((mode === 'new' ? 'เปิดสร้าง template ใหม่' : 'เปิด ' + mode + ' template: ' + templateName), '');
   }
 
-  // Schema Analyzer flow
+  // Dead/shadowed: window.saStartAnalysis is reassigned in installListeners()
+  // to click the real file input (which triggers real runSchemaAnalysis()),
+  // so this fake progress-bar simulation and its 'ok' toast never actually
+  // run. Left in place rather than deleted to avoid touching the Schema
+  // Analyzer flow in a blocker-fix pass; see
+  // W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md.
   function saStartAnalysis() {
     document.getElementById('sa-step-upload').style.display = 'none';
     document.getElementById('sa-step-analyzing').style.display = 'block';
@@ -3155,42 +3168,22 @@
   };
 
   function confirmTemplateDelete(templateName) {
-    document.getElementById('confirmTitle').textContent = 'ลบ Template';
-    document.getElementById('confirmBody').textContent = 'ยืนยันการลบ template "' + templateName + '" หรือไม่';
+    // Deferred: "Templates บริษัท" cards are static demo entries (not loaded from
+    // the live /v1/templates list), so there is no real template id to call
+    // DELETE /v1/templates/{id} with here. The backend endpoint already exists
+    // and is used by the "Live API Bridge" template flow further up this screen.
+    document.getElementById('confirmTitle').textContent = 'ลบ Template (Deferred)';
+    document.getElementById('confirmBody').textContent = 'การลบ template "' + templateName + '" จากการ์ดตัวอย่างนี้ยังไม่เชื่อมต่อ backend จริง';
     const okBtn = document.getElementById('confirmOkBtn');
     okBtn.onclick = function () {
       closeModal('modal-confirm');
-      showToast('ลบ template ' + templateName + ' แล้ว', 'warn');
+      showToast('ลบ template ยังไม่เชื่อมต่อ backend สำหรับการ์ดตัวอย่างนี้ (deferred)', 'warn');
     };
     openModal('modal-confirm');
   }
 
-  function openUserEditor(displayName) {
-    const title = document.querySelector('#drawer-user .drawer-title');
-    if (title) title.textContent = 'แก้ไขผู้ใช้งาน: ' + displayName;
-    const saveBtn = document.querySelector('#drawer-user .btn.btn-primary');
-    if (saveBtn) saveBtn.textContent = 'บันทึกการแก้ไข';
-    openDrawer('drawer-user');
-  }
-
-  function openCreateUser() {
-    const title = document.querySelector('#drawer-user .drawer-title');
-    if (title) title.textContent = 'เพิ่มผู้ใช้งาน';
-    const saveBtn = document.querySelector('#drawer-user .btn.btn-primary');
-    if (saveBtn) saveBtn.textContent = 'บันทึก';
-    openDrawer('drawer-user');
-  }
-
-  function openResetPassword(displayName) {
-    document.getElementById('confirmTitle').textContent = 'Reset Password';
-    document.getElementById('confirmBody').textContent = 'ระบบจะสร้างลิงก์รีเซ็ตรหัสผ่านสำหรับ ' + displayName + ' และส่งให้แอดมินตรวจสอบก่อนส่งต่อ';
-    const okBtn = document.getElementById('confirmOkBtn');
-    okBtn.onclick = function () {
-      closeModal('modal-confirm');
-      showToast('สร้าง reset password flow สำหรับ ' + displayName + ' แล้ว', 'ok');
-    };
-    openModal('modal-confirm');
-  }
+  /* Company/User create-edit-reset flows are wired to real APIs further below
+     (openCompanyDrawerForCreate/Edit, openUserDrawerForCreate/Edit, resetUserPasswordPrompt). */
 
   /* ── MODALS ── */
   function openModal(id) {
@@ -3266,6 +3259,13 @@
     configuratorTab: "upload",
     exportMode: "template",
     exportColumns: [],
+    companies: [],
+    users: [],
+    companyDrawerMode: "create",
+    companyDrawerEditId: "",
+    userDrawerMode: "create",
+    userDrawerEditId: "",
+    selectedCompanyDetailId: "",
   };
 
   var QUICK_DEFAULT_FIELDS = [
@@ -3504,6 +3504,16 @@
         await refreshTemplates();
       } catch (refreshError) {
         getEl("liveTemplateStatus").textContent = "Logged in. Template list is not ready yet.";
+      }
+      try {
+        await loadCompanies();
+      } catch (companiesError) {
+        getEl("companiesStatus").textContent = "Logged in. Company list is not ready yet.";
+      }
+      try {
+        await loadUsers();
+      } catch (usersError) {
+        getEl("usersStatus").textContent = "Logged in. User list is not ready yet.";
       }
     } catch (error) {
       setAppVisibility(false);
@@ -4399,8 +4409,508 @@
     showToast("Live schema analysis completed", "ok");
   }
 
+  /* ── Companies (W4 SIT closure — real persistence, replaces JSON-store demo) ── */
+
+  function findCompanyById(id) {
+    return (state.companies || []).find(function (c) { return c.id === id; }) || null;
+  }
+
+  async function loadCompanies() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var statusEl = getEl("companiesStatus");
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/admin/companies"));
+      if (!response.ok) throw new Error("Company list failed: HTTP " + response.status);
+      state.companies = await response.json();
+      renderCompaniesTable();
+      populateUserCompanyCheckboxes(getCheckedUserCompanyIds());
+      if (statusEl) statusEl.textContent = "โหลดบริษัททั้งหมด " + state.companies.length + " แห่ง";
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "โหลดรายชื่อบริษัทไม่สำเร็จ: " + error.message;
+      throw error;
+    }
+  }
+
+  function renderCompaniesTable() {
+    var tbody = getEl("companiesTableBody");
+    if (!tbody) return;
+    if (!state.companies.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem;">ยังไม่มีบริษัท — กด "+ เพิ่มบริษัท" เพื่อเริ่มต้น</td></tr>';
+      return;
+    }
+    tbody.innerHTML = state.companies.map(function (company) {
+      var statusBadge = company.is_active
+        ? '<span class="badge badge-ok">Active ✓</span>'
+        : '<span class="badge badge-muted">Inactive</span>';
+      return "<tr>" +
+        '<td style="font-weight:500;">' + escapeHtml(company.name) + "</td>" +
+        '<td class="mono" style="font-size:0.8rem;">' + escapeHtml(company.tax_id) + "</td>" +
+        '<td style="color:var(--muted);font-size:0.82rem;">' + escapeHtml(company.branch_code) + "</td>" +
+        '<td style="text-align:center;">' + statusBadge + "</td>" +
+        '<td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;">' +
+          '<button class="btn btn-ghost btn-sm" onclick="openCompanyDrawerForEdit(\'' + company.id + '\')">แก้ไข</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openCompanyDetailScreen(\'' + company.id + '\')">⚙️ ตั้งค่า</button>' +
+        "</div></td>" +
+      "</tr>";
+    }).join("");
+  }
+
+  function setCompanyDrawerError(message) {
+    var el = getEl("companyDrawerError");
+    if (!el) return;
+    if (!message) { el.style.display = "none"; el.textContent = ""; return; }
+    el.style.display = "block";
+    el.textContent = message;
+  }
+
+  function openCompanyDrawerForCreate() {
+    state.companyDrawerMode = "create";
+    state.companyDrawerEditId = "";
+    getEl("companyDrawerTitle").textContent = "เพิ่มบริษัทใหม่";
+    getEl("companyDrawerSaveBtn").textContent = "บันทึก";
+    getEl("companyNameInput").value = "";
+    getEl("companyTaxIdInput").value = "";
+    getEl("companyBranchCodeInput").value = "";
+    getEl("companyAddressInput").value = "";
+    getEl("companyBusinessTypeInput").value = "";
+    setCompanyDrawerError("");
+    openDrawer("drawer-company");
+  }
+
+  function openCompanyDrawerForEdit(id) {
+    var company = findCompanyById(id);
+    if (!company) { showToast("ไม่พบข้อมูลบริษัทนี้", "warn"); return; }
+    state.companyDrawerMode = "edit";
+    state.companyDrawerEditId = id;
+    getEl("companyDrawerTitle").textContent = "แก้ไขบริษัท: " + company.name;
+    getEl("companyDrawerSaveBtn").textContent = "บันทึกการแก้ไข";
+    getEl("companyNameInput").value = company.name;
+    getEl("companyTaxIdInput").value = company.tax_id;
+    getEl("companyBranchCodeInput").value = company.branch_code;
+    getEl("companyAddressInput").value = company.address || "";
+    getEl("companyBusinessTypeInput").value = company.business_type || "";
+    setCompanyDrawerError("");
+    openDrawer("drawer-company");
+  }
+
+  async function saveCompanyDrawer() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var name = getEl("companyNameInput").value.trim();
+    var taxId = getEl("companyTaxIdInput").value.trim();
+    if (!name || !taxId) {
+      setCompanyDrawerError("กรุณากรอกชื่อบริษัทและเลขประจำตัวผู้เสียภาษี");
+      return;
+    }
+    var payload = {
+      name: name,
+      tax_id: taxId,
+      branch_code: getEl("companyBranchCodeInput").value.trim() || "00000",
+      address: getEl("companyAddressInput").value.trim() || null,
+      business_type: getEl("companyBusinessTypeInput").value.trim() || null
+    };
+    var isEdit = state.companyDrawerMode === "edit";
+    var url = isEdit
+      ? "/api/v1/admin/companies/" + encodeURIComponent(state.companyDrawerEditId)
+      : "/api/v1/admin/companies";
+    try {
+      var response = await apiFetch(auth.apiUrl(url), {
+        method: isEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      setCompanyDrawerError("");
+      closeDrawer("drawer-company");
+      showToast(isEdit ? "บันทึกการแก้ไขบริษัทแล้ว ✓" : "เพิ่มบริษัทแล้ว ✓", "ok");
+      await loadCompanies();
+    } catch (error) {
+      setCompanyDrawerError(error.message || "บันทึกไม่สำเร็จ");
+    }
+  }
+
+  function openCompanyDetailScreen(id) {
+    var company = findCompanyById(id);
+    if (!company) { showToast("ไม่พบข้อมูลบริษัทนี้", "warn"); return; }
+    state.selectedCompanyDetailId = id;
+    var section = getEl("s-company-detail");
+    if (section) section.setAttribute("data-company-id", id);
+    var nameEl = getEl("companyDetailName");
+    if (nameEl) nameEl.textContent = company.name;
+    var taxEl = getEl("companyDetailTaxId");
+    if (taxEl) taxEl.textContent = company.tax_id;
+    var branchEl = getEl("companyDetailBranch");
+    if (branchEl) branchEl.textContent = company.branch_code;
+    var statusEl = getEl("companyDetailStatus");
+    if (statusEl) {
+      statusEl.textContent = company.is_active ? "Active" : "Inactive";
+      statusEl.className = "badge " + (company.is_active ? "badge-ok" : "badge-muted");
+    }
+    navigate("s-company-detail");
+    loadVendorMaster(id).catch(handleError);
+    loadCustomerMaster(id).catch(handleError);
+  }
+
+  /* ── Users (W4 SIT closure — real persistence, replaces static demo rows) ── */
+
+  function findUserById(id) {
+    return (state.users || []).find(function (u) { return u.id === id; }) || null;
+  }
+
+  function companyNamesForIds(ids) {
+    if (!ids || !ids.length) return "—";
+    return ids.map(function (id) {
+      var company = findCompanyById(id);
+      return company ? company.name : id;
+    }).join(", ");
+  }
+
+  async function loadUsers() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var statusEl = getEl("usersStatus");
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/admin/users"));
+      if (!response.ok) throw new Error("User list failed: HTTP " + response.status);
+      state.users = await response.json();
+      renderUsersTable();
+      if (statusEl) statusEl.textContent = "โหลดผู้ใช้ทั้งหมด " + state.users.length + " คน";
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "โหลดรายชื่อผู้ใช้ไม่สำเร็จ: " + error.message;
+      throw error;
+    }
+  }
+
+  function renderUsersTable() {
+    var tbody = getEl("usersTableBody");
+    if (!tbody) return;
+    if (!state.users.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1.5rem;">ยังไม่มีผู้ใช้งาน</td></tr>';
+      return;
+    }
+    tbody.innerHTML = state.users.map(function (u) {
+      var roleBadge = u.role === "admin"
+        ? '<span class="badge badge-purple">Admin</span>'
+        : '<span class="badge badge-accent">Staff</span>';
+      var statusBadge = u.is_active
+        ? '<span class="badge badge-ok">Active</span>'
+        : '<span class="badge badge-muted">Inactive</span>';
+      var lastLogin = u.last_login ? escapeHtml(String(u.last_login).replace("T", " ").slice(0, 16)) : "—";
+      return "<tr>" +
+        '<td style="font-weight:500;">' + escapeHtml(u.display_name || u.username) + "</td>" +
+        '<td class="mono" style="font-size:0.8rem;">' + escapeHtml(u.email) + "</td>" +
+        "<td>" + roleBadge + "</td>" +
+        '<td style="font-size:0.82rem;color:var(--muted);">' + escapeHtml(companyNamesForIds(u.company_ids)) + "</td>" +
+        '<td class="mono" style="font-size:0.78rem;">' + lastLogin + "</td>" +
+        '<td style="text-align:center;">' + statusBadge + "</td>" +
+        '<td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;">' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openUserDrawerForEdit(\'' + u.id + '\')">แก้ไข</button>' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="resetUserPasswordPrompt(\'' + u.id + '\')">Reset PW</button>' +
+        "</div></td>" +
+      "</tr>";
+    }).join("");
+  }
+
+  function populateUserCompanyCheckboxes(selectedIds) {
+    var container = getEl("userCompanyCheckboxes");
+    if (!container) return;
+    var selected = selectedIds || [];
+    if (!state.companies || !state.companies.length) {
+      container.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">ยังไม่มีบริษัท — เพิ่มบริษัทก่อน</span>';
+      return;
+    }
+    container.innerHTML = state.companies.map(function (company) {
+      var checked = selected.indexOf(company.id) !== -1 ? "checked" : "";
+      return '<label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;">' +
+        '<input type="checkbox" class="user-company-checkbox" value="' + company.id + '" ' + checked + " /> " +
+        escapeHtml(company.name) +
+      "</label>";
+    }).join("");
+  }
+
+  function getCheckedUserCompanyIds() {
+    var boxes = document.querySelectorAll(".user-company-checkbox:checked");
+    return Array.prototype.slice.call(boxes).map(function (box) { return box.value; });
+  }
+
+  function setUserDrawerError(message) {
+    var el = getEl("userDrawerError");
+    if (!el) return;
+    if (!message) { el.style.display = "none"; el.textContent = ""; return; }
+    el.style.display = "block";
+    el.textContent = message;
+  }
+
+  function setUserDrawerTempPassword(html) {
+    var el = getEl("userDrawerTempPassword");
+    if (!el) return;
+    if (!html) { el.style.display = "none"; el.innerHTML = ""; return; }
+    el.style.display = "block";
+    el.innerHTML = html;
+  }
+
+  function openUserDrawerForCreate() {
+    state.userDrawerMode = "create";
+    state.userDrawerEditId = "";
+    getEl("userDrawerTitle").textContent = "เพิ่มผู้ใช้งาน";
+    getEl("userDrawerSaveBtn").textContent = "บันทึก";
+    getEl("userEmailInput").value = "";
+    getEl("userEmailInput").disabled = false;
+    getEl("userUsernameInput").value = "";
+    getEl("userUsernameInput").disabled = false;
+    getEl("userDisplayNameInput").value = "";
+    getEl("userRoleSelect").value = "staff";
+    setUserDrawerError("");
+    setUserDrawerTempPassword("");
+    populateUserCompanyCheckboxes([]);
+    openDrawer("drawer-user");
+  }
+
+  function openUserDrawerForEdit(id) {
+    var u = findUserById(id);
+    if (!u) { showToast("ไม่พบผู้ใช้นี้", "warn"); return; }
+    state.userDrawerMode = "edit";
+    state.userDrawerEditId = id;
+    getEl("userDrawerTitle").textContent = "แก้ไขผู้ใช้งาน: " + (u.display_name || u.username);
+    getEl("userDrawerSaveBtn").textContent = "บันทึกการแก้ไข";
+    getEl("userEmailInput").value = u.email;
+    getEl("userEmailInput").disabled = true;
+    getEl("userUsernameInput").value = u.username;
+    getEl("userUsernameInput").disabled = true;
+    getEl("userDisplayNameInput").value = u.display_name || "";
+    getEl("userRoleSelect").value = u.role;
+    setUserDrawerError("");
+    setUserDrawerTempPassword("");
+    populateUserCompanyCheckboxes(u.company_ids || []);
+    openDrawer("drawer-user");
+  }
+
+  async function saveUserDrawer() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var isEdit = state.userDrawerMode === "edit";
+    var companyIds = getCheckedUserCompanyIds();
+    try {
+      if (isEdit) {
+        var updatePayload = {
+          display_name: getEl("userDisplayNameInput").value.trim() || null,
+          role: getEl("userRoleSelect").value,
+          company_ids: companyIds
+        };
+        var updateResponse = await apiFetch(auth.apiUrl("/api/v1/admin/users/" + encodeURIComponent(state.userDrawerEditId)), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatePayload)
+        });
+        if (!updateResponse.ok) {
+          var updateErrorBody = await updateResponse.json().catch(function () { return {}; });
+          throw new Error(updateErrorBody.detail || ("HTTP " + updateResponse.status));
+        }
+        setUserDrawerError("");
+        closeDrawer("drawer-user");
+        showToast("บันทึกการแก้ไขผู้ใช้แล้ว ✓", "ok");
+        await loadUsers();
+      } else {
+        var email = getEl("userEmailInput").value.trim();
+        var username = getEl("userUsernameInput").value.trim();
+        if (!email || !username) {
+          setUserDrawerError("กรุณากรอก Email และ Username");
+          return;
+        }
+        var createPayload = {
+          email: email,
+          username: username,
+          display_name: getEl("userDisplayNameInput").value.trim() || null,
+          role: getEl("userRoleSelect").value,
+          company_ids: companyIds
+        };
+        var createResponse = await apiFetch(auth.apiUrl("/api/v1/admin/users"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(createPayload)
+        });
+        if (!createResponse.ok) {
+          var createErrorBody = await createResponse.json().catch(function () { return {}; });
+          throw new Error(createErrorBody.detail || ("HTTP " + createResponse.status));
+        }
+        var created = await createResponse.json();
+        setUserDrawerError("");
+        setUserDrawerTempPassword(
+          "สร้างผู้ใช้แล้ว — รหัสผ่านชั่วคราว: <strong class=\"mono\">" + escapeHtml(created.temp_password) +
+          "</strong><br/>กรุณาส่งให้ผู้ใช้และแจ้งให้เปลี่ยนรหัสผ่านตอน login ครั้งแรก"
+        );
+        showToast("เพิ่มผู้ใช้แล้ว ✓", "ok");
+        await loadUsers();
+      }
+    } catch (error) {
+      setUserDrawerError(error.message || "บันทึกไม่สำเร็จ");
+    }
+  }
+
+  function resetUserPasswordPrompt(id) {
+    var u = findUserById(id);
+    if (!u) { showToast("ไม่พบผู้ใช้นี้", "warn"); return; }
+    getEl("confirmTitle").textContent = "Reset Password";
+    getEl("confirmBody").textContent = "ยืนยันการสร้างรหัสผ่านชั่วคราวใหม่สำหรับ " + (u.display_name || u.username) + "?";
+    var okBtn = getEl("confirmOkBtn");
+    okBtn.onclick = function () {
+      closeModal("modal-confirm");
+      performResetUserPassword(id).catch(handleError);
+    };
+    openModal("modal-confirm");
+  }
+
+  async function performResetUserPassword(id) {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var response = await apiFetch(auth.apiUrl("/api/v1/admin/users/" + encodeURIComponent(id) + "/reset-password"), {
+      method: "POST"
+    });
+    if (!response.ok) {
+      var errorBody = await response.json().catch(function () { return {}; });
+      throw new Error(errorBody.detail || ("Reset password failed: HTTP " + response.status));
+    }
+    var result = await response.json();
+    showToast("สร้างรหัสผ่านชั่วคราวใหม่แล้ว: " + result.temp_password, "ok");
+    await loadUsers();
+  }
+
+  /* ── AP/AR master data (W4 SIT closure — wired to existing TASK-1207 API) ── */
+
+  async function loadVendorMaster(companyId) {
+    var statusEl = getEl("vendorMasterStatus");
+    var tbody = getEl("vendorMasterTableBody");
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/vendor-master"));
+      if (!response.ok) throw new Error("Vendor master load failed: HTTP " + response.status);
+      var result = await response.json();
+      var items = result.items || [];
+      if (statusEl) statusEl.textContent = "ผู้จำหน่าย " + (result.total != null ? result.total : items.length) + " รายการ";
+      if (tbody) {
+        tbody.innerHTML = items.length
+          ? items.map(function (v) {
+              var glCode = v.extra && v.extra.gl_code ? v.extra.gl_code : "—";
+              return "<tr>" +
+                '<td class="mono" style="font-weight:600;">' + escapeHtml(v.code) + "</td>" +
+                "<td>" + escapeHtml(v.name) + "</td>" +
+                '<td class="mono">' + escapeHtml(glCode) + "</td>" +
+                "<td>" + (v.is_active ? '<span class="badge badge-ok">Active</span>' : '<span class="badge badge-muted">Inactive</span>') + "</td>" +
+              "</tr>";
+            }).join("")
+          : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มีข้อมูลผู้จำหน่าย — นำเข้า CSV เพื่อเริ่มต้น</td></tr>';
+      }
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "โหลดข้อมูลผู้จำหน่ายไม่สำเร็จ: " + error.message;
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+    }
+  }
+
+  async function loadCustomerMaster(companyId) {
+    var statusEl = getEl("customerMasterStatus");
+    var tbody = getEl("customerMasterTableBody");
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/customer-master"));
+      if (!response.ok) throw new Error("Customer master load failed: HTTP " + response.status);
+      var result = await response.json();
+      var items = result.items || [];
+      if (statusEl) statusEl.textContent = "ลูกค้า " + (result.total != null ? result.total : items.length) + " รายการ";
+      if (tbody) {
+        tbody.innerHTML = items.length
+          ? items.map(function (c) {
+              var arFlag = c.extra && c.extra.ar_flag != null ? c.extra.ar_flag : "—";
+              return "<tr>" +
+                '<td class="mono" style="font-weight:600;">' + escapeHtml(c.code) + "</td>" +
+                "<td>" + escapeHtml(c.name) + "</td>" +
+                '<td class="mono">' + escapeHtml(String(arFlag)) + "</td>" +
+                "<td>" + (c.is_active ? '<span class="badge badge-ok">Active</span>' : '<span class="badge badge-muted">Inactive</span>') + "</td>" +
+              "</tr>";
+            }).join("")
+          : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มีข้อมูลลูกค้า — นำเข้า CSV เพื่อเริ่มต้น</td></tr>';
+      }
+    } catch (error) {
+      if (statusEl) statusEl.textContent = "โหลดข้อมูลลูกค้าไม่สำเร็จ: " + error.message;
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+    }
+  }
+
+  async function importVendorMasterFile() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    var resultEl = getEl("vendorImportResult");
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var fileInput = getEl("vendorImportFileInput");
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "กรุณาเลือกไฟล์ CSV ก่อน"; }
+      return;
+    }
+    var form = new FormData();
+    form.append("file", fileInput.files[0]);
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/vendor-master/import"),
+        { method: "POST", body: form }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      closeModal("modal-import-vendor");
+      showToast("นำเข้า Vendor Master สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ ✓", "ok");
+      await loadVendorMaster(companyId);
+    } catch (error) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "นำเข้าไม่สำเร็จ: " + error.message; }
+    }
+  }
+
+  async function importCustomerMasterFile() {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var companyId = state.selectedCompanyDetailId;
+    var resultEl = getEl("customerImportResult");
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var fileInput = getEl("customerImportFileInput");
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "กรุณาเลือกไฟล์ CSV ก่อน"; }
+      return;
+    }
+    var form = new FormData();
+    form.append("file", fileInput.files[0]);
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/customer-master/import"),
+        { method: "POST", body: form }
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var result = await response.json();
+      closeModal("modal-import-customer");
+      showToast("นำเข้า Customer Master สำเร็จ — เพิ่มใหม่ " + result.imported + ", อัปเดต " + result.updated + " รายการ ✓", "ok");
+      await loadCustomerMaster(companyId);
+    } catch (error) {
+      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "นำเข้าไม่สำเร็จ: " + error.message; }
+    }
+  }
+
   function installListeners() {
     window.doLogin = doLiveLogin;
+    window.openCompanyDrawerForCreate = openCompanyDrawerForCreate;
+    window.openCompanyDrawerForEdit = openCompanyDrawerForEdit;
+    window.saveCompanyDrawer = saveCompanyDrawer;
+    window.openCompanyDetailScreen = openCompanyDetailScreen;
+    window.openUserDrawerForCreate = openUserDrawerForCreate;
+    window.openUserDrawerForEdit = openUserDrawerForEdit;
+    window.saveUserDrawer = saveUserDrawer;
+    window.resetUserPasswordPrompt = resetUserPasswordPrompt;
+    window.importVendorMasterFile = importVendorMasterFile;
+    window.importCustomerMasterFile = importCustomerMasterFile;
     var fileInput = getEl("sa-file-input");
     if (fileInput) {
       fileInput.addEventListener("change", function () {
@@ -4504,6 +5014,16 @@
         await refreshTemplates();
       } catch (error) {
         getEl("liveTemplateStatus").textContent = "Templates will load after login.";
+      }
+      try {
+        await loadCompanies();
+      } catch (error) {
+        getEl("companiesStatus").textContent = "Companies will load after login.";
+      }
+      try {
+        await loadUsers();
+      } catch (error) {
+        getEl("usersStatus").textContent = "Users will load after login.";
       }
     } else {
       setAppVisibility(false);

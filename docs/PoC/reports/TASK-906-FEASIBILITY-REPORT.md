@@ -1,13 +1,15 @@
 # TASK-906 Feasibility Report
 
-> Status: Interim W3 feasibility readout  
-> Updated: 2026-06-28  
+> Status: W4 carry-forward planning readout  
+> Updated: 2026-07-04  
 > Decision level: Conditional, not final Go/No-Go  
-> Scope note: This report uses available PoC artifacts and review outputs. It does not claim final locked accuracy because human-verified ground truth and timed review measurements are still pending.
+> Scope note: This report uses available PoC artifacts and review outputs. It remains a planning input for Phase II/2 and does not claim final locked accuracy because human-verified ground truth and timed review measurements are still pending.
 
 ## Executive decision
 
 TASK-906 is feasible enough to continue into a controlled Epic 14 design, but not enough to approve full production line-item automation without review gates.
+
+This wording remains valid after W3 backend completion. The export/template backend path is now materially further along than when this report was first drafted, but line-item feasibility itself still depends on locked evaluation data rather than backend-export completion.
 
 Recommended decision: **Conditional Go**
 

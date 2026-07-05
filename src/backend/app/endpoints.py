@@ -15,6 +15,8 @@ from src.backend.api.master_import import router as _master_import_router
 from src.backend.api.schema_analyze import router as _schema_analyze_router
 from src.backend.api.export_preview import router as _export_preview_router
 from src.backend.api.templates import router as _templates_router
+from src.backend.api.companies_admin import router as _companies_admin_router
+from src.backend.api.users_admin import router as _users_admin_router
 
 from celery.result import AsyncResult
 from fastapi import (
@@ -590,3 +592,7 @@ router.include_router(_templates_router)
 
 # ── TASK-1104: Export Preview + Balance Validation ──────────────────────────
 router.include_router(_export_preview_router)
+
+# ── W4 SIT closure: real Company/User CRUD (TASK-1203/TASK-1204 minimal slice) ─
+router.include_router(_companies_admin_router)
+router.include_router(_users_admin_router)

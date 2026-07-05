@@ -40,8 +40,14 @@ test.describe("PoC User-Trial Smoke", () => {
     await expect(await getWithRetry(request, "/api/health")).toBeOK();
   });
 
-  test("prototype loads with theme assets", async ({ page }) => {
+  test("prototype alias resolves to the production-facing review page", async ({ page }) => {
     await gotoWithRetry(page, "/prototype");
+    await expect(page).toHaveTitle(/Full Prototype/);
+    await expect(page).toHaveURL(/\/phase2\/prototype$/);
+  });
+
+  test("legacy workflow demo loads with theme assets", async ({ page }) => {
+    await gotoWithRetry(page, "/workflow-demo");
     await expect(page).toHaveTitle(/LedgerFlow/);
     await expect(page.locator(".topbar-title")).toHaveText("LedgerFlow");
     const cssResponse = await page.request.get("/static/ux-ui-prototype.css", {
@@ -65,7 +71,7 @@ test.describe("PoC User-Trial Smoke", () => {
     await expect(page).toHaveTitle(/Full Prototype/);
   });
 
-  test("core workflow controls render without console errors", async ({
+  test("legacy workflow controls render without console errors", async ({
     page,
   }) => {
     const errors: string[] = [];
@@ -80,7 +86,7 @@ test.describe("PoC User-Trial Smoke", () => {
       }
     });
 
-    await gotoWithRetry(page, "/prototype");
+    await gotoWithRetry(page, "/workflow-demo");
     await page.waitForLoadState("networkidle");
     await expect(page.locator(".step-item")).toHaveCount(6);
     await expect(page.locator("#coaRuleResultWrap")).toBeAttached();

@@ -2,6 +2,7 @@
 
 **Timeline: 8 สัปดาห์ (Phase II/1 Go-Live) + CR-based (Phase II/2)**
 **Baseline Date: 2026-06-15**
+**W4 Update: 2026-07-05 — SIT close now requires an end-to-end clickable vertical slice; see `W4-DESIGN-IA-SYNC-2026-07-05.md`**
 **Payment: 50% Kickoff → 10% UAT → 20% Prod → 20% Phase II/2**
 
 ---
@@ -15,9 +16,9 @@
 | **0** | UX Contract & Workflow Freeze | Lock workflow, state machine, API/DB impact before DB work | TASK-001~006 | ux,infra | Done | 2-4d |
 | **8** | Platform Foundation | DB activation, JWT Auth, MinIO S3, Celery workers | TASK-801A~808 | infra,10 | Partial | 2w |
 | **9** | Extraction Accuracy + Line Item PoC | VAT fix, WHT, OCR gridline, Line item feasibility | TASK-901~906 | 1,2,4 | Partial | 1.5w |
-| **10** | Template Engine + Configurator UI | Dynamic export, drag-drop UI, Master/Clone | TASK-1001~1006 | 5,6,7,8,9 | Partial - backend done, UI gated | 2.5w |
+| **10** | Template Engine + Configurator UI | Dynamic export, drag-drop UI, Master/Clone | TASK-1001~1006 | 5,6,7,8,9 | Partial - backend done, SIT gate cleared 2026-07-05, Configurator/Export UI wired on `main-ux-ui.html` (acceptance pass + `index.html` parity remaining) | 2.5w |
 | **11** | Purchase Tax Report Integration | ภาษีซื้อ integrate กับ template engine | TASK-1101,1104 | 3 | Done (W3 backend) | 0.5w |
-| **12** | Admin UI + Login | Login, MVP Dashboard, Company/COA, User mgmt | TASK-1201~1204 | 7 | Design | 1.5w |
+| **12** | Admin UI + Login | Login, MVP Dashboard, Company/COA, User mgmt | TASK-1201~1204 | 7 | Design - minimum Company/User persistence pulled into W4 SIT closure; full scope remains W5-W6 | 1.5w |
 | **13** | Infrastructure + Deployment | Hostinger VPS (UAT/Prod), DNS bwcacc.com, CI/CD, Firewall, Backup, Offsite R2 | TASK-1301~1312 | 10 | Design | ~2w (parallel) |
 
 ### Phase II/2 — Post-Go-Live Enhancement (CR-based)
@@ -27,6 +28,31 @@
 | **14** | Line Item + Inventory (Full) | Full line item extraction + inventory data prep | TASK-1401~1404 | 2,4 | 2-3w |
 | **15** | Sales Tax Report | รายงานภาษีขาย | TASK-1501~1502 | 3 | 1w |
 | **16** | Full Dashboard + Monitoring | Full KPI dashboard, Sentry, Audit log UI | TASK-1601~1604 | infra | 1.5w |
+
+---
+
+## W4 SIT End-to-End Overlay (2026-07-05)
+
+The roadmap remains the planning baseline, but W4 SIT closure now uses the stricter runtime rule defined in `W4-DESIGN-IA-SYNC-2026-07-05.md`:
+
+- Route health, static marker parity, or a single Epic 10 export/configurator pass is not enough to call SIT complete.
+- Every visible SIT action must be `wired`, `disabled/deferred`, or `hidden`.
+- Fake-success UI is a blocker.
+- Minimum Epic 12 Company/User persistence is pulled into W4 because the SIT shell exposes those screens.
+- Full Epic 12 depth, richer dashboards, Epic 14, Epic 15, and Epic 16 stay in their planned lanes unless explicitly promoted.
+
+| Epic | W4 SIT expectation |
+| --- | --- |
+| 0 | IA/design docs must be updated when runtime scope changes |
+| 8 | DB/auth/runtime services must support the proven vertical slice |
+| 9 | Upload/review surfaces must be real or visibly deferred; fixture-only behavior must be labeled |
+| 10 | Export/Configurator must remain wired to real backend APIs |
+| 11 | Purchase-tax export may ride the template/export path; separate screens must not fake completion |
+| 12 | Minimum Company/User/Admin persistence is W4-blocking if screens remain visible |
+| 13 | Deploy proof must include live browser clicks and API/network evidence |
+| 14 | Keep hidden/deferred unless line-item PoC surface is intentionally shown |
+| 15 | Keep hidden/deferred unless sales-tax export path is intentionally wired |
+| 16 | Internal/advanced monitoring can be shell-only only if clearly labeled and not customer-facing proof |
 
 ---
 
@@ -192,10 +218,10 @@
 |------|------|-----------|--------|---------|
 | TASK-1001 | Template engine backend (column mapping logic, field→column rendering, transforms) | L | Done (`a350333`) | W3 |
 | TASK-1002 | Template CRUD + Clone API endpoints (REST) | M | Done (`66c7419`) | W3 |
-| TASK-1003 | Template Configurator UI (drag-drop reorder, field picker, inline rename) | L | Hold - live SIT PO approval gate | W4 |
+| TASK-1003 | Template Configurator UI (drag-drop reorder, field picker, inline rename) | L | Gate cleared 2026-07-05; 3-tab shell + real column editor built on `main-ux-ui.html`, full `ac_1003_r1`-`r7` acceptance pass remaining — see `epic-10/W4-EPIC10-CLAUDE-FOLLOWUP-01-COMPLETION.md` | W4 |
 | TASK-1004 | Master templates (Express GL 8-col, Purchase Tax 12-col) + seed migration | M | New | W4 |
 | TASK-1005 | Clone workflow (Master → Company, deep-copy columns JSONB, open editor) | M | New | W5 |
-| TASK-1006 | Export screen integration (template selector → preview → download CSV/Excel) | M | Hold - depends on TASK-1003 + same gate | W5 |
+| TASK-1006 | Export screen integration (template selector → preview → download CSV/Excel) | M | Gate cleared 2026-07-05; Quick + Template Export both wired to real backend endpoints on `main-ux-ui.html`; `src/frontend/index.html` parity is Copilot's active lane | W5 |
 
 **UI Interactions (Req #5-9 coverage):**
 
@@ -244,6 +270,8 @@
 ---
 
 ### Epic 12: Admin UI + Login (W5-6)
+
+> **W4 pull-forward note (2026-07-05):** Full Epic 12 remains W5-W6, but the minimum Company/User persistence slice is W4-blocking if those screens stay visible in SIT. Create/edit actions must persist through backend APIs or be disabled/deferred with clear wording; fake-success toasts are not acceptable.
 
 | Task | งาน | Complexity | สถานะ | สัปดาห์ |
 |------|------|-----------|--------|---------|
@@ -553,17 +581,17 @@ W2: Epic 8 (Auth/MinIO/Celery) + Epic 9 (WHT/OCR) + Epic 13 (DNS/CI/CD)
         ↓ DB + Auth ready
 W3: Epic 10 backend (1001,1002) + Epic 11 (1101,1104) complete
         ↓ live SIT review + 5 UX freeze approvals
-W4: Epic 10 (Configurator UI) + Epic 13 (Docker UAT)
+W4: Epic 10 (Configurator UI) + Epic 13 (Docker UAT) + minimum Epic 12 Company/User SIT slice
         ↓
-W5: Epic 10 (Clone+Export) + Epic 12 (Login/Company)
+W5: Epic 10 (Clone+Export) + Epic 12 full Login/Company depth
         ↓
-W6: Epic 12 (Dashboard/Users) + Epic 13 (Backup/Firewall)
+W6: Epic 12 full Dashboard/Users + Epic 13 (Backup/Firewall)
         ↓ All features complete
 W7: Integration test + UAT deploy (uat.bwcacc.com) → UAT sign-off
         ↓
 W8: PROD deploy (app.bwcacc.com) → Go-Live
 
-Critical Path: Epic 8 → Epic 10 backend → PO freeze approval → Epic 10 UI / Epic 12 → UAT → PROD
+Critical Path: Epic 8 → Epic 10 backend → PO freeze approval → W4 SIT vertical slice → Epic 10 UI / Epic 12 depth → UAT → PROD
 Parallel:      Epic 9 (accuracy) + Epic 13 (infrastructure)
 ```
 

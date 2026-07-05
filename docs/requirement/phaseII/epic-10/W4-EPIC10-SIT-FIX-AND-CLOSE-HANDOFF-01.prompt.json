@@ -1,0 +1,156 @@
+{
+  "_comment": "Running handoff doc 01 for the Epic 10 W4 SIT fix-and-close cycle. Use this after runtime diagnosis confirmed that backend/runtime services are healthy but index.html parity/content is still broken on SIT.",
+  "_doc_id": "W4-EPIC10-SIT-FIX-AND-CLOSE-HANDOFF-01",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-EPIC10-SIT-FIX-CLOSE-01",
+  "title": "Fix W4 SIT runtime parity/content issues, redeploy, and close with live proof",
+  "risk_tier": "HIGH",
+  "lane": "Copilot - implementation plus deploy plus runtime closeout",
+
+  "objective": "Finish the W4 SIT issue end to end. Apply the minimal Git fix needed to repair src/frontend/index.html parity and content integrity without breaking /phase2/prototype, strengthen the verification gate to catch false-positive deploy passes, redeploy through the Openclaw control-plane workflow, and return live runtime proof that both routes behave correctly.",
+
+  "mandatory_process": {
+    "source": "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "procedure": "Procedure A - Deploy Code Change, followed by Procedure C style runtime verification if anything looks inconsistent",
+    "non_negotiables": [
+      "No direct VPS modifications outside the approved Git plus GitHub Actions path",
+      "Implement the fix in Git first, then redeploy through Openclaw only",
+      "Do not stop at diagnosis or source-file proof; this task is complete only with live runtime verification",
+      "If new runtime inconsistency appears after deploy, inspect logs and runtime evidence before proposing another code pass"
+    ]
+  },
+
+  "starting_context": {
+    "diagnosis_result_doc": "docs/requirement/phaseII/epic-10/W4-EPIC10-SIT-RUNTIME-DIAGNOSIS-RESULT-01.prompt.json",
+    "claude_followup_completion_doc": "docs/requirement/phaseII/epic-10/W4-EPIC10-CLAUDE-FOLLOWUP-01-COMPLETION.md",
+    "deployed_sha_from_diagnosis": "56f1f956fb3be792598a88fa3ca2817eac55225c",
+    "confirmed_runtime_truths": [
+      "SIT containers and backend dependencies are healthy enough to serve requests",
+      "/phase2/prototype is the real production-facing W4 surface",
+      "/index.html is still stale or content-corrupted and does not match accepted W4 parity expectations",
+      "This is not primarily a backend outage"
+    ],
+    "repo_truths_to_preserve": [
+      "main-ux-ui.html already contains the real export/configurator wiring",
+      "Quick Export uses the backend null-template path",
+      "Template Export sends column_overrides",
+      "Configurator 3-tab shell plus real editor exists on main-ux-ui.html"
+    ]
+  },
+
+  "source_of_truth": [
+    "docs/requirement/phaseII/epic-10/W4-EPIC10-SIT-RUNTIME-DIAGNOSIS-RESULT-01.prompt.json",
+    "docs/requirement/phaseII/epic-10/W4-EPIC10-CLAUDE-FOLLOWUP-01-COMPLETION.md",
+    "docs/requirement/phaseII/epic-10/UX-FREEZE-FINAL-CODEX-HANDOFF.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html",
+    "D:/01_gitrepo/Openclaw/.github/workflows/deploy-ai-accounting-copilot-sit.yml"
+  ],
+
+  "what_to_do": [
+    "1. Confirm exactly how src/frontend/index.html differs from src/frontend/main-ux-ui.html in the W4-critical areas. Focus on mojibake, stale text, stale Quick Export fallback logic, missing configurator editor markers, and any content-integrity issue that can confuse SIT review.",
+    "2. Apply the minimal safe Git fix so index.html no longer contradicts the accepted W4 surface. Preserve the known-good /phase2/prototype behavior while repairing index parity and clean UTF-8 content.",
+    "3. Remove or replace any remaining stale index-side content that still implies client-side-only Quick Export or pre-W4 configurator behavior.",
+    "4. Add a lightweight verification guard that would have caught this false-positive deploy. This can be a focused check or script that validates shipped HTML body integrity/parity markers on both src/frontend/main-ux-ui.html and src/frontend/index.html.",
+    "5. Run focused local checks before deploy. At minimum: parse/structure checks for edited HTML and the smallest relevant test/check for the new guard.",
+    "6. Commit the fix on the intended branch if your workflow requires it, then trigger the Openclaw SIT deploy workflow against the correct ref.",
+    "7. After deploy, perform live runtime verification on both /phase2/prototype and /index.html. Use browser/runtime proof, not source-line proof only.",
+    "8. Confirm that the final result is good enough to close this SIT issue. If anything remains open, state the exact residual blocker and whether it is W4-blocking or only follow-up cleanup."
+  ],
+
+  "must_fix_or_verify": [
+    {
+      "id": "FIX-01",
+      "name": "index.html parity and encoding/content integrity",
+      "expectation": "index.html no longer shows mojibake or stale W4 UX and does not contradict main-ux-ui.html in the accepted review path intent"
+    },
+    {
+      "id": "FIX-02",
+      "name": "No stale Quick Export fallback messaging on shipped review surfaces",
+      "expectation": "Shipped surface does not imply client-side-only Quick Export behavior if runtime path is backend-driven"
+    },
+    {
+      "id": "FIX-03",
+      "name": "Configurator parity markers",
+      "expectation": "index.html contains current W4 configurator/editor markers needed for parity review and does not lag behind the latest accepted shell"
+    },
+    {
+      "id": "FIX-04",
+      "name": "Guard against future false-positive deploy pass",
+      "expectation": "A focused verification step exists for body integrity/parity markers, not only route reachability or source markers"
+    }
+  ],
+
+  "focused_live_checks_after_redeploy": [
+    {
+      "id": "CHK-01",
+      "name": "phase2 runtime health",
+      "expectation": "/phase2/prototype loads with readable content and no blocker-level console or network errors"
+    },
+    {
+      "id": "CHK-02",
+      "name": "index runtime parity",
+      "expectation": "/index.html loads with readable UTF-8 content and does not show stale pre-W4 export/configurator UX"
+    },
+    {
+      "id": "CHK-03",
+      "name": "Quick Export runtime wiring",
+      "expectation": "Quick Export preview/download still call backend endpoints with null-template runtime columns after the parity fix"
+    },
+    {
+      "id": "CHK-04",
+      "name": "Template Export runtime wiring",
+      "expectation": "Template Export preview/download still reflect per-run column_overrides"
+    },
+    {
+      "id": "CHK-05",
+      "name": "Configurator clickability",
+      "expectation": "Configurator tabs and key actions remain clickable on the production-facing surface after redeploy"
+    }
+  ],
+
+  "if_deploy_or_runtime_fails_check_in_this_order": [
+    "Openclaw workflow run summary and first failing step",
+    "Evidence logs generated by the workflow",
+    "SIT route status for /phase2/prototype and /index.html",
+    "Browser console and failed network requests on the live routes",
+    "Whether the new parity/body-integrity guard would have predicted the failure"
+  ],
+
+  "acceptance_criteria": [
+    "The Git fix is minimal and targeted at the actual parity/content problem, not a broad unrelated rewrite",
+    "src/frontend/index.html no longer contains obvious mojibake or stale W4 contradictions",
+    "A focused guard exists to reduce false-positive deploy PASS risk for HTML body integrity/parity",
+    "Openclaw SIT deploy completes against the intended ref/SHA",
+    "Live runtime proof confirms both /phase2/prototype and /index.html behave correctly",
+    "Quick Export and Template Export runtime wiring still work after the fix",
+    "Final response clearly separates what is closed now from any non-blocking follow-up"
+  ],
+
+  "deliverable_format": {
+    "report_file_optional": "docs/requirement/phaseII/epic-10/W4-EPIC10-SIT-FIX-AND-CLOSE-RESULT-01.prompt.json",
+    "report_sections": [
+      "Doc ID",
+      "Root issue fixed",
+      "Files changed",
+      "Local verification",
+      "Workflow run URL",
+      "Deployed ref/SHA",
+      "Live route/runtime proof",
+      "Guard added or updated",
+      "Final closure status",
+      "Residual follow-up if any"
+    ]
+  },
+
+  "final_instruction_to_copilot": "Take this through to closure. Do the Git fix, strengthen the proof gate, redeploy through Openclaw, and verify the live runtime end to end. Do not stop at diagnosis, plan-only output, or source-marker evidence."
+}

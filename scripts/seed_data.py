@@ -40,6 +40,7 @@ DEFAULT_INCLUDED_PAGE_CREDITS = 20_000
 DEFAULT_PRICE_ORIGINAL_THB = 45_000.00
 DEFAULT_PRICE_EFFECTIVE_THB = 25_500.00
 
+
 def get_required_env(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
@@ -225,7 +226,9 @@ def build_credit_plan_seed(plan_name: str = DEFAULT_PLAN_NAME) -> dict[str, Any]
     }
 
 
-def _get_or_create_tenant(session: Session, name: str, slug: str) -> tuple[Tenant, bool]:
+def _get_or_create_tenant(
+    session: Session, name: str, slug: str
+) -> tuple[Tenant, bool]:
     tenant = session.execute(
         select(Tenant).where(Tenant.slug == slug)
     ).scalar_one_or_none()
@@ -452,7 +455,9 @@ def seed_database(
 def run_seed() -> dict[str, int]:
     session_factory = get_sync_session_factory()
     admin_password = get_required_env("ADMIN_PASSWORD")
-    admin_email = os.getenv("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL).strip() or DEFAULT_ADMIN_EMAIL
+    admin_email = (
+        os.getenv("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL).strip() or DEFAULT_ADMIN_EMAIL
+    )
     admin_username = get_required_env("ADMIN_USERNAME")
     companies_path = Path(
         os.getenv("COMPANIES_STORE", str(DEFAULT_COMPANIES_PATH))

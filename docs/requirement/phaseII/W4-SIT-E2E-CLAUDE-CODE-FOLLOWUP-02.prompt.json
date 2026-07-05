@@ -1,0 +1,114 @@
+{
+  "_comment": "Follow-up handoff after Codex Review 01 found residual fake-success controls on visible fixture workflow screens. This must complete before Copilot deploys the W4 SIT E2E vertical slice.",
+  "_doc_id": "W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-SIT-E2E-CLAUDE-FOLLOWUP-02",
+  "title": "Close residual fake-success controls found by Codex Review 01",
+  "risk_tier": "HIGH",
+  "lane": "Claude Code - frontend visible-control cleanup and local verification",
+
+  "objective": "Fix the remaining visible fixture workflow controls that still show success toasts without backend persistence. The prior pass wired Company/User/AP/AR, but Codex Review 01 found residual Review Scan / Review Mapping / Processing demo actions still claiming success. Make those controls honestly deferred/disabled or wire them if a real backend exists.",
+
+  "hard_boundary": {
+    "do_not_touch": [
+      "Openclaw deploy workflows",
+      "Direct VPS/runtime environment",
+      "src/frontend/index.html parity lane unless explicitly needed for local validation"
+    ],
+    "allowed_scope": [
+      "src/frontend/main-ux-ui.html",
+      "tests/e2e/**",
+      "docs/requirement/phaseII/W4-TASK-BOARD.md",
+      "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+      "docs/requirement/phaseII/epic-10/**"
+    ],
+    "implementation_rule": "This is a blocker fix, not a memo-only review. Edit the repo so visible controls do not fake success."
+  },
+
+  "source_of_truth": [
+    "docs/requirement/phaseII/epic-10/W4-SIT-E2E-CODEX-REVIEW-01.md",
+    "docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-CODE-COMPLETION-01.md",
+    "docs/requirement/phaseII/W4-DESIGN-IA-SYNC-2026-07-05.md",
+    "docs/requirement/phaseII/W4-SIT-END-TO-END-CLOSURE-PLAN.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "src/frontend/main-ux-ui.html"
+  ],
+
+  "known_findings_to_fix": [
+    {
+      "id": "FIND-01",
+      "file": "src/frontend/main-ux-ui.html",
+      "approx_line": 886,
+      "issue": "Review Scan approve button still calls showToast('Approve แล้ว ✓','ok') on fixture data.",
+      "required_fix": "Disable/defer it with clear wording, or wire a real backend approval endpoint if one exists."
+    },
+    {
+      "id": "FIND-02",
+      "file": "src/frontend/main-ux-ui.html",
+      "approx_line": 896,
+      "issue": "Review Scan approve-all button still calls showToast('Approve ทั้งหมดแล้ว ✓','ok') on fixture data.",
+      "required_fix": "Disable/defer it with clear wording, or wire a real backend bulk-approval endpoint if one exists."
+    },
+    {
+      "id": "FIND-03",
+      "file": "src/frontend/main-ux-ui.html",
+      "approx_line": 971,
+      "issue": "Review Mapping confirm button still calls showToast('Confirm Mapping แล้ว ✓','ok') on fixture data.",
+      "required_fix": "Disable/defer it with clear wording, or wire a real backend confirm endpoint if one exists."
+    },
+    {
+      "id": "FIND-04",
+      "file": "src/frontend/main-ux-ui.html",
+      "approx_line": 2783,
+      "issue": "Processing retry modal still says it is retrying with an ok toast while the screen is fixture/demo data.",
+      "required_fix": "Make it warning/deferred or wire a real retry task endpoint."
+    }
+  ],
+
+  "what_to_do": [
+    "1. Re-run a grep/static audit for `showToast` calls that pass `ok` on visible fixture/demo screens.",
+    "2. Classify every remaining `ok` toast as real backend success, auth/session success, export/template API success, or fake success.",
+    "3. For fake-success controls, change the UI to disabled/deferred/warn wording or wire a real backend call if the route already exists.",
+    "4. Keep real API-backed success toasts intact for Company/User/AP/AR/Export/Template/Configurator actions.",
+    "5. Add or update one focused E2E/static test that catches the Review Scan / Review Mapping residual fake-success regression.",
+    "6. Update W4 task/plan wording only if the status changes; do not claim live SIT proof.",
+    "7. Produce a follow-up completion report for Codex review."
+  ],
+
+  "acceptance_criteria": [
+    "No visible fixture/demo workflow control still claims approve/confirm/retry success without backend persistence.",
+    "A static grep summary of remaining `showToast(..., ok)` calls is included and each remaining ok toast is justified as real API/auth success or explicitly non-blocking.",
+    "Company/User/AP/AR/Export/Configurator wired flows are not regressed.",
+    "At least one focused test or static check is added/updated for the residual fake-success class.",
+    "`npm run verify:w4-html` may still fail only because of `index.html` parity, which remains Copilot's lane; do not silently ignore any new failure.",
+    "Completion report clearly states whether Copilot may proceed after Codex review."
+  ],
+
+  "recommended_checks": [
+    "Select-String or rg for `showToast` with `ok` in `src/frontend/main-ux-ui.html`",
+    "npm run verify:w4-html (record result; index parity may still be expected failure until Copilot)",
+    "Focused Playwright/static test for review/mapping deferred controls",
+    "Existing W4 export/admin CRUD tests if feasible"
+  ],
+
+  "deliverable_format": {
+    "completion_report": "docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md",
+    "report_sections": [
+      "Doc ID",
+      "Files changed",
+      "Residual fake-success controls fixed",
+      "Remaining ok-toast audit",
+      "Tests/checks run",
+      "Known residuals",
+      "Codex review note",
+      "Copilot readiness"
+    ]
+  },
+
+  "final_instruction_to_claude": "Close the blocker in code, not just docs. Do not deploy. Leave index.html parity/live SIT proof to Copilot."
+}

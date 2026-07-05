@@ -1,0 +1,104 @@
+{
+  "_comment": "Running handoff doc 01 for Claude follow-up work during W4 while Copilot handles SIT deploy/redeploy.",
+  "_doc_id": "W4-EPIC10-CLAUDE-FOLLOWUP-01",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-EPIC10-CLAUDE-FOLLOWUP-01",
+  "title": "Close the four non-deploy W4 follow-up items while SIT redeploy is running",
+  "risk_tier": "MEDIUM",
+  "lane": "Claude Code - frontend verification, evidence, and cleanup follow-up",
+
+  "objective": "Own the four remaining non-deploy W4 follow-up items in one staged pass while Copilot handles SIT deploy. Do real repo work, not only review: tighten Configurator evidence and wiring proof, improve focused regression coverage, align W4 status wording to the current repo truth, and either remove or explicitly document leftover dead-code / cleanup items.",
+
+  "source_of_truth": [
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/W4-UX-FREEZE-ACCEPTANCE-REVIEW.md",
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/epic-10/UX-FREEZE-FINAL-CODEX-HANDOFF.md",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html",
+    "tests/e2e/w4-export-uxui.spec.ts",
+    "tests/api/test_export_api.py"
+  ],
+
+  "four_work_items": [
+    {
+      "id": "W4-03-05",
+      "name": "Configurator and template-flow evidence hardening",
+      "intent": "Treat TASK-1003, W4-04, and W4-05 as a combined repo-hardening pass: prove the 3-tab Configurator structure is not just shell markup, and tighten any missing wiring/evidence that can be completed safely in this pass."
+    },
+    {
+      "id": "W4-09",
+      "name": "Focused E2E or smoke pack expansion",
+      "intent": "Improve the regression pack so it checks the current W4 shape more truthfully, especially around the 3-tab Configurator and the export wiring markers."
+    },
+    {
+      "id": "W4-11",
+      "name": "Doc and status alignment",
+      "intent": "Update status wording so W4 docs reflect the current truth: SIT gate passed, checkbox close committed, Configurator shell landed, backend contract available, remaining work now about live proof and closure detail."
+    },
+    {
+      "id": "W4-CLEANUP",
+      "name": "Dead code or explicit cleanup note",
+      "intent": "Review the leftover orphaned Quick Export helper functions and either remove them if low-risk and truly unused, or document them explicitly as a non-blocking cleanup follow-up."
+    }
+  ],
+
+  "work_rules": [
+    "Do not do SIT deploy, VPS changes, or control-plane workflow work. Copilot owns that lane.",
+    "Do not reopen the already accepted UX freeze debate unless you find a concrete repo-level contradiction.",
+    "Prefer repo-grounded implementation and focused verification over long narrative analysis.",
+    "If a cleanup is risky for this pass, document it clearly instead of forcing it into the same patch."
+  ],
+
+  "what_to_do": [
+    "1. Read W4-TASK-BOARD.md and map the four work items to the actual repo state before editing anything.",
+    "2. Inspect main-ux-ui.html and current tests to see which parts of the Configurator and export flow are structural only versus actually evidenced by tests or runtime markers.",
+    "3. Strengthen the Configurator follow-up where safe: tab-state behavior, apply-from-analysis flow, runtime summaries, preview/test-surface wiring, and template-flow evidence.",
+    "4. Expand tests/evidence so the W4 regression pack checks the current intended surface more truthfully than a DOM-only shell pass.",
+    "5. Update W4 docs/status wording to match the repo snapshot after this pass.",
+    "6. Review renderQuickPreview() and downloadQuickExportCsv() in main-ux-ui.html. If they are truly orphaned and removal is low-risk, delete them. If not, leave them and add a clear cleanup note in the relevant W4 doc.",
+    "7. Run focused verification for every code/doc change you make and report the exact result."
+  ],
+
+  "success_criteria": [
+    "W4-03/04/05 evidence is stronger than before: the 3-tab Configurator and related flow are not described as 'not yet built' if the repo already contains them.",
+    "W4-09 regression coverage is improved with tests or equivalent proof that match the current W4 implementation shape.",
+    "W4-11 wording is aligned to the current repo state, not stale handoff assumptions.",
+    "The Quick Export orphaned-helper question is resolved either by cleanup or by explicit documented deferral.",
+    "Final answer states exactly what remains for Copilot SIT verification versus what is now complete locally."
+  ],
+
+  "allowed_scope": [
+    "src/frontend/**",
+    "tests/e2e/**",
+    "tests/api/**",
+    "docs/requirement/phaseII/W4-*.md",
+    "docs/requirement/phaseII/epic-10/**",
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md"
+  ],
+
+  "forbidden_scope": [
+    ".env*",
+    "secrets/**",
+    "config/openclaw.prod.json5",
+    "D:/01_gitrepo/Openclaw/.github/workflows/**"
+  ],
+
+  "deliverable_format": {
+    "sections": [
+      "What changed",
+      "Verification run",
+      "What remains for Copilot on SIT",
+      "What remains for Codex after SIT",
+      "Any cleanup explicitly deferred"
+    ]
+  },
+
+  "final_instruction_to_claude": "Do the four work items as real repo work in one staged pass. Do not stop at a review memo. Leave the deploy lane alone and hand back a cleaner, better-evidenced W4 repo state."
+}

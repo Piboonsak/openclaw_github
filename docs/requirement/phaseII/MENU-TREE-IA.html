@@ -367,6 +367,31 @@
 
 <div class="page-body">
 
+<!-- W4 SIT END-TO-END DESIGN OVERLAY -->
+<div style="background:white;border:2px solid var(--danger);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;">
+  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.65rem;">
+    <strong style="font-size:0.9rem;color:var(--danger);">W4 SIT End-to-End Overlay</strong>
+    <span class="badge badge-warn">Active 2026-07-05</span>
+    <span class="badge badge-muted">See W4-DESIGN-IA-SYNC-2026-07-05.md</span>
+  </div>
+  <p style="color:var(--ink);margin-bottom:0.65rem;">
+    This IA remains the menu/design source, but SIT delivery now has a stricter runtime rule:
+    every visible screen, button, drawer, modal, upload, setting, and export action must be
+    <strong>wired</strong>, <strong>disabled/deferred with a clear label</strong>, or <strong>hidden from SIT</strong>.
+    Fake-success toasts without backend persistence are release blockers.
+  </p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.5rem;font-size:0.78rem;">
+    <div><span class="badge badge-accent">Wired</span> Calls real API, handles errors, and persists where expected.</div>
+    <div><span class="badge badge-warn">Deferred</span> Visible but disabled/labeled with owner or later epic.</div>
+    <div><span class="badge badge-muted">Hidden</span> Removed from SIT until implementation is honest.</div>
+    <div><span class="badge" style="background:var(--danger-soft);color:var(--danger);">Blocked</span> Click shows success but does not save/load real data.</div>
+  </div>
+  <p style="color:var(--muted);margin-top:0.65rem;font-size:0.78rem;">
+    W4 pulls the minimum Company/User/Admin persistence slice forward from Epic 12 because the current SIT shell exposes those pages.
+    Epic 14, Epic 15, and Epic 16 surfaces must remain hidden or visibly deferred unless intentionally wired for SIT proof.
+  </p>
+</div>
+
 <!-- ═══ APP SHELL OVERVIEW ═══ -->
 <div class="section-label">Application Shell Layout</div>
 

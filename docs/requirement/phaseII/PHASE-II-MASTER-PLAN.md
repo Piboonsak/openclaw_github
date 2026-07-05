@@ -2,12 +2,13 @@
 
 > **Status:** Approved for implementation
 > **Approved:** 2026-06-14
-> **Updated:** 2026-06-15 — Restructured as Phase II/1 (8w go-live) + Phase II/2 (CR-based)
+> **Updated:** 2026-07-05 — Added W4 SIT end-to-end delivery rule; weekly delivery now means a browser-clickable vertical slice with honest UI state
 > **Scope:** Phase II/1 MVP (8 weeks) + Phase II/2 (CR-based, post-go-live)
 > **Team:** Solo developer
 > **Hosting:** Hostinger VPS (Singapore DC) — UAT + PROD
 > **Payment:** 50% Kickoff / 10% UAT / 20% Prod / 20% Phase II/2
 > **Epic Roadmap:** See `PHASE-II-EPIC-ROADMAP.md` for detailed task breakdown + timeline
+> **W4 Design Sync:** See `W4-DESIGN-IA-SYNC-2026-07-05.md` and `W4-SIT-END-TO-END-CLOSURE-PLAN.md` before claiming SIT complete
 
 ---
 
@@ -37,6 +38,18 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 - **Line Item PoC (TASK-906, W1):** ทดสอบ feasibility + cost ก่อนเริ่มงาน → กำหนด scope + ราคางวด 4
 
 > **Detailed task breakdown:** ดู `PHASE-II-EPIC-ROADMAP.md` (Epic 8-16, 40+ tasks)
+
+### W4 SIT Delivery Rule (2026-07-05)
+
+W4 shifted from lane-by-lane completion to an end-to-end SIT delivery rule:
+
+- Weekly delivery must be a browser-clickable vertical slice, not only route reachability or static marker checks.
+- Every visible menu item, button, upload, setting, modal, drawer, and export action in SIT must be `wired`, `disabled/deferred`, or `hidden`.
+- A fake-success toast without backend success/persistence is a release blocker.
+- Because the current SIT shell exposes Companies and Users, the minimum Company/User persistence slice is pulled forward from Epic 12 into W4 SIT closure.
+- Epic 14, Epic 15, and Epic 16 surfaces remain Phase II/2 unless explicitly wired for SIT; otherwise they must be hidden or visibly deferred.
+
+Design and IA changes from this rule are tracked in `W4-DESIGN-IA-SYNC-2026-07-05.md`.
 
 ---
 
@@ -166,6 +179,8 @@ Phase II เปลี่ยน PoC ที่พิสูจน์แนวคิ
 ---
 
 ## 7. Application Menu Structure
+
+> **W4 SIT overlay (2026-07-05):** A menu item listed here is design intent, not automatic permission to show a working-looking control in SIT. If a screen/action is visible in SIT, it must be API-backed, disabled/deferred with clear wording, or hidden until ready. This applies across the whole tree, including Admin, Internal Console, Epic 14, Epic 15, and Epic 16 surfaces.
 
 ```text
 LedgerFlow

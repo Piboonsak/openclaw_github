@@ -1,0 +1,174 @@
+{
+  "_comment": "Running handoff doc 01 for Copilot to deploy and prove the W4 end-to-end SIT vertical slice after repo-side implementation/hardening is ready.",
+  "_doc_id": "W4-SIT-E2E-COPILOT-DEPLOY-HANDOFF-01",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_control_plane_org": "Piboonsak",
+  "_control_plane_repo": "Openclaw",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-SIT-E2E-COPILOT-DEPLOY-01",
+  "title": "Deploy and verify W4 end-to-end SIT vertical slice with live proof",
+  "risk_tier": "HIGH",
+  "lane": "Copilot - CI/CD process, deploy, live runtime verification, closeout proof",
+
+  "objective": "Take the W4 end-to-end SIT vertical slice through the official Openclaw CI/CD process and return live proof that the product shell is usable or honestly deferred. Do not close on route health or marker parity alone; prove actual browser clicks, network/API behavior, persistence/deferred states, and runtime services.",
+
+  "mandatory_process": {
+    "source": "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "procedures": [
+      "Read the CI/CD README before starting.",
+      "Use Procedure E if batching multiple W4 fixes into one sprint deploy.",
+      "Use Procedure A for a single deployable code change.",
+      "Use Procedure C if live SIT behaves differently from repo/local proof."
+    ],
+    "non_negotiables": [
+      "No direct VPS modifications. SSH is read-only diagnosis only.",
+      "All changes go through local edit -> Git commit -> push -> GitHub Actions deploy -> verify.",
+      "Deployment triggers and monitoring must target Piboonsak/Openclaw as the control plane.",
+      "Do not close without commit SHA, workflow run URL, automated health proof, and regression/live clickthrough proof.",
+      "Separate route health from user-flow success in the final report."
+    ]
+  },
+
+  "preconditions": [
+    "Claude/Codex repo-side implementation has completed or explicitly marked the current handoff SHA as deploy-ready.",
+    "Read `docs/requirement/phaseII/epic-10/W4-SIT-E2E-CODEX-REVIEW-01.md` before deploy. If it says a Claude follow-up is still open, do not deploy-close yet.",
+    "Read `docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-CODE-COMPLETION-01.md` and, if present, `docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md` first.",
+    "If `docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md` is missing, perform only pre-deploy diagnosis/readiness checks and do not claim W4 SIT closure.",
+    "`npm run verify:w4-html` must pass before deploy. If it fails because `index.html` parity is stale, repair/sync `src/frontend/index.html` with the accepted `src/frontend/main-ux-ui.html` surface before deploying."
+  ],
+
+  "source_of_truth": [
+    "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "docs/requirement/phaseII/W4-DESIGN-IA-SYNC-2026-07-05.md",
+    "docs/requirement/phaseII/W4-SIT-END-TO-END-CLOSURE-PLAN.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-SIT-E2E-CLAUDE-CODE-HANDOFF-01.prompt.json",
+    "docs/requirement/phaseII/epic-10/W4-SIT-E2E-CODEX-REVIEW-01.md",
+    "docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-CODE-COMPLETION-01.md",
+    "docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-CODE-FOLLOWUP-02-COMPLETION.md",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html",
+    "D:/01_gitrepo/Openclaw/.github/workflows/deploy-ai-accounting-copilot-sit.yml"
+  ],
+
+  "what_to_do": [
+    "1. Read the Openclaw CI/CD README and follow the correct procedure in order. Do not skip procedure steps.",
+    "2. Confirm the deployable ref/SHA and what repo-side changes are included. Reconcile Claude completion, Codex review, and any Claude follow-up completion with the actual git diff.",
+    "3. Run or review required local/pre-deploy checks for the W4 E2E scope. At minimum confirm the HTML integrity/parity guard, real-click checks, and focused backend/API tests that are available. `npm run verify:w4-html` must pass before deploy.",
+    "4. Deploy through the Openclaw control-plane workflow only. Do not modify the VPS directly.",
+    "5. After deploy, verify runtime services and routes. Confirm backend health, DB/Redis/service availability as exposed by approved health checks/logs, and public route status.",
+    "6. Run a credentialed browser clickthrough on the live SIT surface. Do not stop at 200 OK.",
+    "7. Capture failed network requests, console errors, auth/session behavior, and API payload behavior for the W4 proof path.",
+    "8. Confirm that `/phase2/prototype` and `/index.html` do not contradict each other in the W4 proof path.",
+    "9. Return a closeout JSON report with workflow URL, deployed SHA, route/runtime proof, live clickthrough proof, residual issues, and whether W4 SIT is PASS or BLOCKED.",
+    "10. If anything fails, classify the failure as deploy/runtime/config/code/design and hand it back with exact evidence. Do not call the task done."
+  ],
+
+  "required_live_clickthrough": [
+    {
+      "id": "CHK-E2E-01",
+      "name": "Login/session",
+      "expectation": "Can enter the SIT review surface with the intended credential/session state; auth failures are understood and documented."
+    },
+    {
+      "id": "CHK-E2E-02",
+      "name": "Dashboard",
+      "expectation": "Dashboard loads without blocker-level console/network errors and does not misrepresent shell-only data as final if deferred."
+    },
+    {
+      "id": "CHK-E2E-03",
+      "name": "Companies",
+      "expectation": "Add/Edit Company persists and survives refresh/re-login, or the UI is visibly disabled/deferred with no fake-success toast."
+    },
+    {
+      "id": "CHK-E2E-04",
+      "name": "Company settings COA/AP/AR",
+      "expectation": "COA/AP/AR/settings surfaces are separate and honest; import/add controls are real or visibly deferred."
+    },
+    {
+      "id": "CHK-E2E-05",
+      "name": "Users",
+      "expectation": "Add/Edit User persists and survives refresh/re-login, or the UI is visibly disabled/deferred with no fake-success toast."
+    },
+    {
+      "id": "CHK-E2E-06",
+      "name": "Templates / Configurator",
+      "expectation": "Configurator tabs/actions click without ReferenceError; save/update/preview behavior is real or deferred clearly."
+    },
+    {
+      "id": "CHK-E2E-07",
+      "name": "Export",
+      "expectation": "Quick Export preview/download call backend with template_id null; Template Export sends runtime column_overrides."
+    },
+    {
+      "id": "CHK-E2E-08",
+      "name": "Upload/Processing/Review",
+      "expectation": "Visible controls either load real/fixture-labeled data or are visibly deferred; no fake success."
+    },
+    {
+      "id": "CHK-E2E-09",
+      "name": "Future/internal surfaces",
+      "expectation": "Internal Console, Cost Control, Audit Log, Settings, Epic 14/15/16-looking controls are wired, role-guarded, hidden, or deferred."
+    },
+    {
+      "id": "CHK-E2E-10",
+      "name": "Route parity",
+      "expectation": "`/phase2/prototype` and `/index.html` do not present contradictory W4 UX or stale broken content."
+    }
+  ],
+
+  "runtime_checks": [
+    "Public route status for `/phase2/prototype` and `/index.html` with auth behavior noted.",
+    "Backend health endpoint status using approved GET checks.",
+    "Container/service status or logs only through read-only diagnosis if needed.",
+    "API calls observed during live clickthrough for Company/User/Template/Export paths.",
+    "Browser console errors and failed network requests."
+  ],
+
+  "acceptance_criteria": [
+    "Openclaw deploy workflow completed for the intended ref/SHA.",
+    "Workflow run URL and deployed SHA are recorded.",
+    "Automated health checks pass or any failure is explicitly classified and blocking.",
+    "Live browser clickthrough covers the full W4 product-shell proof path.",
+    "Company/User actions are proven persisted or visibly deferred on live SIT.",
+    "No visible W4 proof-path action shows success without backend success.",
+    "Export/Configurator live behavior remains correct after deploy.",
+    "`/phase2/prototype` and `/index.html` do not contradict the accepted W4 surface.",
+    "Final report clearly says PASS or BLOCKED with evidence."
+  ],
+
+  "blocked_exit_conditions": [
+    "Cannot verify credentials/session on SIT.",
+    "Backend services or DB/Redis dependencies are down for the proof path.",
+    "Company/User still show fake-success behavior on live SIT.",
+    "Export/Configurator regresses from the accepted W4 backend wiring.",
+    "The deployed SHA does not include the intended repo-side fixes.",
+    "Workflow passes but browser clickthrough fails."
+  ],
+
+  "deliverable_format": {
+    "result_report": "docs/requirement/phaseII/W4-SIT-E2E-COPILOT-DEPLOY-RESULT-01.prompt.json",
+    "report_sections": [
+      "Doc ID",
+      "Input completion report reviewed",
+      "Deployed ref/SHA",
+      "Openclaw workflow run URL",
+      "CI/CD procedure followed",
+      "Automated health checks",
+      "Live route proof",
+      "Live clickthrough proof",
+      "Network/API evidence summary",
+      "Persistence/deferred-state proof",
+      "Residual issues",
+      "Final status: PASS or BLOCKED"
+    ]
+  },
+
+  "final_instruction_to_copilot": "Take this through the official Openclaw CI/CD procedure and prove live SIT behavior. Do not claim W4 SIT closure from route 200, marker parity, or local-only proof. Close only with browser-level evidence and deployed-runtime proof."
+}

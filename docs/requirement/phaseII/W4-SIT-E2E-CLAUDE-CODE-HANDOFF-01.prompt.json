@@ -1,0 +1,161 @@
+{
+  "_comment": "Running handoff doc 01 for Claude Code to make the visible SIT product shell honest and usable before Copilot performs final deploy/runtime proof.",
+  "_doc_id": "W4-SIT-E2E-CLAUDE-CODE-HANDOFF-01",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-SIT-E2E-CLAUDE-01",
+  "title": "Implement and harden W4 end-to-end SIT product-shell usability",
+  "risk_tier": "HIGH",
+  "lane": "Claude Code - implementation, UI/API wiring, visible-control audit, local proof",
+
+  "objective": "Make the current SIT product shell honest and usable end to end. Audit every visible navigation item and primary action, then either wire it to real backend behavior, visibly disable/defer it, or hide it from the SIT review surface. The goal is to eliminate fake-success UI and prepare a local-verified build that Copilot can deploy and prove on live SIT.",
+
+  "hard_boundary": {
+    "do_not_touch": [
+      "Openclaw deploy workflows unless only reading for context",
+      "Direct VPS/runtime environment",
+      "Production secrets or credentials",
+      "Unrelated broad redesign outside visible SIT usability"
+    ],
+    "allowed_scope": [
+      "src/frontend/**",
+      "src/backend/**",
+      "tests/**",
+      "docs/requirement/phaseII/**",
+      "docs/ux/**"
+    ],
+    "implementation_rule": "This is not a review-only task. Apply the minimal safe repo changes needed so the visible SIT shell is either usable or honestly deferred."
+  },
+
+  "source_of_truth": [
+    "docs/requirement/phaseII/W4-DESIGN-IA-SYNC-2026-07-05.md",
+    "docs/requirement/phaseII/W4-SIT-END-TO-END-CLOSURE-PLAN.md",
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/MENU-TREE-IA.html",
+    "docs/requirement/phaseII/BACKLOG.md",
+    "docs/requirement/phaseII/PHASE-II-MASTER-PLAN.md",
+    "docs/requirement/phaseII/PHASE-II-EPIC-ROADMAP.md",
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html"
+  ],
+
+  "starting_context": {
+    "manual_sit_findings": [
+      "SIT still exposes product-shell actions that feel prototype-only.",
+      "Add Company and Add User looked clickable but did not obviously persist real data in manual review.",
+      "Company detail COA/AP/AR and settings actions may still include toast-only behavior.",
+      "Export/Configurator lane had previous focused proof, but W4 now requires the broader product shell to be honest."
+    ],
+    "new_design_rule": [
+      "Every visible SIT control must be Wired, Disabled/Deferred, or Hidden.",
+      "Fake-success toast without backend success is forbidden.",
+      "Minimum Epic 12 Company/User persistence is pulled into W4 if those screens remain visible.",
+      "Epic 14, Epic 15, and Epic 16 surfaces must remain hidden or clearly deferred unless intentionally wired."
+    ]
+  },
+
+  "what_to_do": [
+    "1. Build a visible-control inventory from the actual frontend, not only docs. Cover nav, buttons, drawers, modals, upload controls, export controls, settings controls, and internal-console controls.",
+    "2. Classify each visible primary action as Wired, Disabled/Deferred, Hidden, or Fake Success. Treat Fake Success as a bug to fix.",
+    "3. For W4 proof path, make the minimum vertical slice usable or honestly deferred: Login, Dashboard, Companies, Users, AP/AR company settings, Templates/Configurator, Export.",
+    "4. Wire Company create/edit to real backend persistence if endpoints and schema exist. If backend support is missing and cannot be completed safely in this pass, disable/defer the action with clear UI wording and update W4 docs.",
+    "5. Wire User create/edit to real backend persistence if endpoints and schema exist. If backend support is missing and cannot be completed safely in this pass, disable/defer the action with clear UI wording and update W4 docs.",
+    "6. For AP/AR master data, ensure AP and AR are separated. Wire list/import if backend routes exist; otherwise make import/add actions visibly deferred instead of toast-success.",
+    "7. Preserve Epic 10 Export/Configurator fixes: Quick Export must use backend null-template preview/download; Template Export must send runtime column_overrides; Configurator tabs/actions must remain clickable.",
+    "8. Inspect Upload, Processing, Review Scan, Review Mapping, Internal Console, Cost Control, Audit Log, Settings, and any Epic 14/15/16-looking surfaces. If visible but not implemented, disable/defer/hide them clearly.",
+    "9. Add or update focused tests so regressions are caught by real clicks and API/network expectations where feasible. Do not rely only on static marker checks.",
+    "10. Update W4 docs with the final visible-control audit table and any explicit deferrals, keeping `W4-TASK-BOARD.md` acceptance rows current.",
+    "11. Produce a completion report for Codex/Copilot with changed files, local verification, remaining deferrals, and exact deploy handoff notes."
+  ],
+
+  "must_cover_surfaces": [
+    {
+      "id": "SURF-01",
+      "name": "Login and session",
+      "expectation": "Login/session behavior is real or the SIT proof path clearly states the credentialed review mode being used."
+    },
+    {
+      "id": "SURF-02",
+      "name": "Dashboard",
+      "expectation": "Dashboard either loads real/session-aware summary state or is visibly labeled as a shell; it must not block the proof path."
+    },
+    {
+      "id": "SURF-03",
+      "name": "Companies",
+      "expectation": "Add/Edit Company persists through backend and survives refresh/re-login, or the action is disabled/deferred with visible wording."
+    },
+    {
+      "id": "SURF-04",
+      "name": "Company detail COA/AP/AR/settings",
+      "expectation": "COA/AP/AR tabs are separate and honest. Import/add actions are real or clearly deferred; no fake-success toast."
+    },
+    {
+      "id": "SURF-05",
+      "name": "Users",
+      "expectation": "Add/Edit User persists through backend and survives refresh/re-login, or the action is disabled/deferred with visible wording."
+    },
+    {
+      "id": "SURF-06",
+      "name": "Templates and Configurator",
+      "expectation": "Configurator stays wired and clickable; clone/delete/row-grouping are either real or explicitly deferred."
+    },
+    {
+      "id": "SURF-07",
+      "name": "Export",
+      "expectation": "Quick Export and Template Export continue to call real backend endpoints with correct payloads."
+    },
+    {
+      "id": "SURF-08",
+      "name": "Upload/Processing/Review",
+      "expectation": "Visible upload/review controls either load real/fixture-labeled data or are visibly deferred; no dead-end success."
+    },
+    {
+      "id": "SURF-09",
+      "name": "Internal and future-epic surfaces",
+      "expectation": "Internal Console, Cost Control, Audit Log, Settings, Epic 14, Epic 15, and Epic 16 surfaces are wired, role-guarded, hidden, or deferred."
+    }
+  ],
+
+  "acceptance_criteria": [
+    "A visible-control audit exists and covers all main nav surfaces plus primary actions.",
+    "No visible W4 proof-path action shows success unless the backend action succeeded.",
+    "Company add/edit and User add/edit are either persisted through backend with refresh/re-login proof or visibly deferred.",
+    "AP/AR company settings are separated and either wired or visibly deferred.",
+    "Export/Configurator backend wiring still passes focused tests after the product-shell changes.",
+    "Any future Epic 14/15/16 surface that remains visible is clearly deferred/hidden/role-guarded.",
+    "Local tests or real-click smoke checks are recorded.",
+    "W4 docs reflect the resulting truth and do not overclaim SIT completion.",
+    "The result is ready for Copilot to deploy through Openclaw and run live SIT proof."
+  ],
+
+  "recommended_local_checks": [
+    "npm run verify:w4-html if available",
+    "Playwright or focused real-click E2E covering nav -> Companies -> Users -> Templates -> Export",
+    "Focused backend/API tests for any endpoint added or changed",
+    "A grep/static check for toast-only success handlers in W4 proof-path controls"
+  ],
+
+  "deliverable_format": {
+    "completion_report": "docs/requirement/phaseII/W4-SIT-E2E-CLAUDE-CODE-COMPLETION-01.md",
+    "report_sections": [
+      "Doc ID",
+      "Files changed",
+      "Visible-control audit summary",
+      "Wired items",
+      "Disabled/deferred items",
+      "Hidden items",
+      "Fake-success blockers removed",
+      "Local verification",
+      "Known residuals",
+      "Copilot deploy handoff"
+    ]
+  },
+
+  "final_instruction_to_claude": "Finish the repo-side work, not just the review. Make the SIT shell honest and locally verified, then hand Copilot a clear deployable state. Do not deploy."
+}

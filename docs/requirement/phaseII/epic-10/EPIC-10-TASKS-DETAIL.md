@@ -24,6 +24,8 @@
 
 ### What to build
 
+Implementation note: the production-facing target is now `src/frontend/main-ux-ui.html`. Treat `src/frontend/ux-ui-prototype.html` and `src/frontend/template-configurator-demo.html` as legacy/demo references unless a later W4 decision replaces the review shell.
+
 1. **Column mapping engine**: รับ template definition + document data -> render output rows
 2. **Field resolver**: ดึง value จาก source_field (extraction fields, journal fields, computed fields)
 3. **Transform pipeline**: apply transforms ตามลำดับ
@@ -215,8 +217,8 @@ Integrate the existing Template Configurator demo HTML with real API endpoints. 
 
 | Action | File | What |
 |--------|------|------|
-| Modify | `src/frontend/ux-ui-prototype.html` | Add Template Manager tab + Configurator UI (integrate from demo) |
-| Modify | `src/frontend/template-configurator-demo.html` | Reference only -- extract working patterns into prototype |
+| Modify | `src/frontend/main-ux-ui.html` | Add Template Manager tab + Configurator UI on the production-facing review surface |
+| Modify | `src/frontend/template-configurator-demo.html` | Reference only -- extract working patterns into the production-facing prototype |
 
 ### Acceptance criteria
 
@@ -375,7 +377,7 @@ End-to-end clone workflow: user คลิก [Clone to Company] บน master te
 | Action | File | What |
 |--------|------|------|
 | Modify | `src/backend/api/templates.py` | Clone endpoint implementation (deep copy logic) |
-| Modify | `src/frontend/ux-ui-prototype.html` | Clone button + company selector + redirect to editor |
+| Modify | `src/frontend/main-ux-ui.html` | Clone button + company selector + redirect to editor |
 | Create | `tests/api/test_template_clone.py` | Clone workflow tests |
 
 ### Acceptance criteria
@@ -417,6 +419,8 @@ End-to-end clone workflow: user คลิก [Clone to Company] บน master te
 
 ### What exists today
 
+Implementation note: legacy export behavior still exists in `src/frontend/ux-ui-prototype.html`; W4 production-facing export flow should move to `src/frontend/main-ux-ui.html` or its replacement page.
+
 - Export tab ใน `ux-ui-prototype.html` with hardcoded export buttons
 - Export service (`export_service.py`) with `create_gl_ledger()` and `create_purchase_tax_report()` functions
 - Template engine (TASK-1001) and CRUD API (TASK-1002) will be ready
@@ -426,17 +430,25 @@ End-to-end clone workflow: user คลิก [Clone to Company] บน master te
 1. **Template selector dropdown** on export screen:
    - Populate from GET /api/v1/templates (filtered by current company)
    - Show template name + column count + format type
-2. **Preview before download**:
+   - After selecting a template, user must still be able to adjust selected columns for that run before preview/download
+2. **PoC-level column adjustment parity on the production-facing export surface**:
+   - Preserve PoC-style field selection and drag-drop column reordering on the export page
+   - Support this in both modes:
+     - export without a template
+     - export from a selected template
+   - Keep the adjustment panel inline on the page, not popup-first or modal-first
+   - Treat selected-template columns as a starting point, not a locked output
+3. **Preview before download**:
    - After selecting template + documents, show preview table (first 5 rows)
    - POST /api/v1/templates/{id}/preview with document_ids[]
-3. **Download button**:
+4. **Download button**:
    - POST /api/v1/export with body: `{ template_id, document_ids[], format: "csv"|"xlsx" }`
    - Return file download (Content-Disposition: attachment)
-4. **Balance validation**:
+5. **Balance validation**:
    - Before export, check Sum(Debit) = Sum(Credit) per voucher
    - If unbalanced: block export, show which vouchers are unbalanced with amounts
    - User must fix mapping before export
-5. **Unified export endpoint**: replace old hardcoded export endpoints
+6. **Unified export endpoint**: replace old hardcoded export endpoints
 
 ### Files to create/modify
 
@@ -444,7 +456,7 @@ End-to-end clone workflow: user คลิก [Clone to Company] บน master te
 |--------|------|------|
 | Modify | `src/backend/services/export_service.py` | Refactor to use template engine, add balance validation |
 | Modify | `src/backend/app/endpoints.py` | Add unified POST /api/v1/export endpoint |
-| Modify | `src/frontend/ux-ui-prototype.html` | Template selector, preview table, download button on export tab |
+| Modify | `src/frontend/main-ux-ui.html` | Template selector, preview table, download button on the production-facing export surface |
 | Create | `tests/services/test_export_integration.py` | Integration tests: template-based export, balance validation |
 
 ### Acceptance criteria
@@ -452,6 +464,8 @@ End-to-end clone workflow: user คลิก [Clone to Company] บน master te
 | ID | Condition | Test |
 |----|-----------|------|
 | ac_1006_selector | Template selector shows available templates for current company + masters | test_template_selector |
+| ac_1006_colpick | User can select/hide fields and drag-reorder columns before export on the production-facing surface | test_export_column_picker |
+| ac_1006_template_adjust | After choosing a template, user can still adjust columns for that run before preview/download | test_template_export_column_adjust |
 | ac_1006_preview | Preview shows first 5 rows formatted per template definition | test_export_preview |
 | ac_1006_csv | Download CSV works with correct encoding and delimiter | test_csv_download |
 | ac_1006_xlsx | Download Excel works with styled headers | test_xlsx_download |
@@ -1214,6 +1228,74 @@ def resolve_product(company_id: UUID, ocr_name: str) -> ProductMatch | None:
   "max_loops": 5,
   "escalation_policy": "human",
   "prerequisite": "TASK-1001 (template engine must exist), TASK-1207 (follow same import pattern)"
+}
+```
+
+---
+
+## TASK-1014: Customer template-pack coverage expansion
+
+**Owner**: Full-stack Dev
+**Risk**: MEDIUM
+**Duration**: ~2-3 days
+**Closes pain points**: PP-2, PP-3, PP-5, PP-11
+
+### Purpose
+
+Bring the additional customer-provided Excel/CSV template packs into the Epic 10 planning and implementation path instead of leaving them as loose reference files. The goal is to widen real template coverage using the files already supplied under the customer `excelformat` folders, while keeping unresolved classification questions explicit.
+
+### What exists today
+
+- Master/sample analysis from `CLIENT-TEMPLATE-ANALYSIS.md`
+- Seeded baseline templates for initial Express coverage
+- Additional customer sample sets under:
+  - `private_data/poc/Comp_1/template/excelformat/Excel format (สร้างเอง)`
+  - `private_data/poc/Comp_1/template/excelformat/Master`
+
+### What to build
+
+1. **Inventory the customer template packs**:
+   - enumerate distinct format families in the two folders
+   - separate low-ambiguity templates that can become implementation work now from items that still need customer clarification
+2. **Promote low-ambiguity formats into Epic 10 execution scope**:
+   - identify which packs should become master templates, company templates, or import QA fixtures
+   - update seed/preview/export planning to include the chosen set
+3. **Add UX support where the new formats affect the configurator/export flow**:
+   - ensure the production-facing Template Configurator and Export flows can surface the expanded template choices cleanly
+   - avoid hiding these formats behind demo-only pages
+4. **Document unresolved items explicitly**:
+   - anything needing customer confirmation must be moved to `BACKLOG.md`, not buried inside implementation notes
+
+### Files to create/modify
+
+| Action | File | What |
+|--------|------|------|
+| Modify | `docs/requirement/phaseII/epic-10/README-EPIC-10.md` | Update Epic 10 summary to include customer template-pack coverage |
+| Modify | `docs/requirement/phaseII/epic-10/CLIENT-TEMPLATE-ANALYSIS.md` | Append inventory/addendum for new folders or link out to a new coverage note |
+| Modify | `docs/requirement/phaseII/epic-10/EPIC-10-TASKS-DETAIL.md` | Add concrete follow-up scope and task links |
+| Modify | `src/frontend/main-ux-ui.html` | If needed, expose added template families on the production-facing template/export surface |
+| Create | `tests/e2e/**` | Add or extend focused coverage for newly promoted template families |
+
+### Acceptance criteria
+
+| ID | Condition | Test |
+|----|-----------|------|
+| ac_1014_inventory | Customer `excelformat` packs are inventoried and classified into implement-now vs ask-customer-later | coverage note / doc review |
+| ac_1014_scope | At least the low-ambiguity formats are promoted into Epic 10 execution notes or seed follow-up | doc diff |
+| ac_1014_surface | Newly promoted formats are represented on the production-facing export/configurator surface, not demo-only references | manual proof / Playwright |
+| ac_1014_backlog | Remaining ambiguous items are moved to backlog with explicit customer questions | backlog diff |
+
+### Governance fields
+
+```json
+{
+  "task_id": "TASK-1014",
+  "risk_tier": "MEDIUM",
+  "model_tier": "tier-2a-codex",
+  "allowed_scope": ["docs/requirement/phaseII/**", "src/frontend/**", "tests/**"],
+  "forbidden_scope": [".env*", "src/backend/auth/**", "src/backend/ml/**"],
+  "max_loops": 5,
+  "escalation_policy": "human"
 }
 ```
 

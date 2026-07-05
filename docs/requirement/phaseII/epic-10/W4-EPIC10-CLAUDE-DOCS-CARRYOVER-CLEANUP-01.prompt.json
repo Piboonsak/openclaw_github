@@ -1,0 +1,130 @@
+{
+  "_comment": "Running handoff doc 01 for Claude to clean up W4 documentation, carryover classification, and wording alignment while Copilot handles SIT fix-and-close work.",
+  "_doc_id": "W4-EPIC10-CLAUDE-DOCS-CARRYOVER-CLEANUP-01",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-EPIC10-DOCS-CARRYOVER-CLEANUP-01",
+  "title": "Clean up W4 docs, reconcile carryover status, and align follow-up wording",
+  "risk_tier": "MEDIUM",
+  "lane": "Claude Code - documentation, acceptance wording, and carryover classification",
+
+  "objective": "Bring W4 planning and handoff docs into one coherent state while Copilot handles the SIT fix-and-close lane. Reconcile wording differences, close the remaining TASK-906 status/alignment gap, classify remaining W1-W3 carryover items clearly, and write explicit deferral notes for non-closed UI items so Codex and Copilot do not step on stale or conflicting guidance.",
+
+  "hard_boundary": {
+    "do_not_touch": [
+      "Openclaw deploy workflows",
+      "SIT runtime diagnosis lane",
+      "src/frontend/index.html parity/content fix lane currently assigned to Copilot",
+      "Any direct VPS or runtime environment operation"
+    ],
+    "allowed_scope_preference": [
+      "docs/requirement/phaseII/**",
+      "docs/ux/**"
+    ],
+    "implementation_rule": "This is real repo work, not a memo-only review. Update the source docs directly."
+  },
+
+  "starting_context": {
+    "copilot_lane_now": "W4-EPIC10-SIT-FIX-AND-CLOSE-HANDOFF-01 is handling index parity/content fix plus redeploy and live proof",
+    "repo_truths_to_respect": [
+      "W4 gate is already closed in principle and recorded in docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+      "main-ux-ui.html contains the current accepted W4 export/configurator implementation surface",
+      "Quick Export backend null-template path is already wired",
+      "Template Export per-run column_overrides are already wired",
+      "Configurator 3-tab shell plus real column editor exists, but some acceptance and live-proof wording still needs cleanup"
+    ],
+    "known_doc_tensions": [
+      "Some docs still speak as if the PO checkbox close is open, while others mark it done",
+      "Some wording still treats the Configurator as not yet built, while the repo now has a 3-tab shell and editor",
+      "TASK-906 wording alignment is still open",
+      "Clone/delete and row-grouping strategy need explicit wired-vs-deferred wording"
+    ]
+  },
+
+  "source_of_truth": [
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-UX-FREEZE-ACCEPTANCE-REVIEW.md",
+    "docs/requirement/phaseII/PHASE-II-TIMELINE.html",
+    "docs/requirement/phaseII/PHASE-II-EPIC-ROADMAP.md",
+    "docs/requirement/phaseII/epic-10/UX-FREEZE-FINAL-CODEX-HANDOFF.md",
+    "docs/requirement/phaseII/epic-10/W4-EPIC10-CLAUDE-FOLLOWUP-01-COMPLETION.md",
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/BACKLOG.md"
+  ],
+
+  "what_to_do": [
+    "1. Reconcile W4 documentation so the current status is internally consistent across W4-EXECUTION-PLAN, W4-TASK-BOARD, UX-FREEZE-FINAL-CODEX-HANDOFF, and the Claude follow-up completion doc.",
+    "2. Close the remaining TASK-906 wording/status gap so the repo no longer mixes old W1-W3 language with the actual current completion state.",
+    "3. Classify remaining W1-W3 carryover and UX review follow-ups into clear buckets: direct W4 work, Epic 10 follow-up after W4, or backlog/customer-confirmation item.",
+    "4. Write explicit deferral wording for non-closed UI items so the repo stops implying they are either fully done or mysteriously missing. At minimum cover: template delete wiring, clone verification state, row-grouping strategy panel, and any still-open evidence-only item.",
+    "5. Keep deployment/runtime repair ownership with Copilot. If a doc mentions index.html parity or SIT runtime issues, reflect them as current Copilot-lane work rather than reassigning or re-solving them here.",
+    "6. Update W4 plan/board wording so it reflects the current reality: which items are done in repo, which are locally verified only, which need live SIT re-proof, and which are explicit follow-ups.",
+    "7. Add or refine backlog wording for customer-facing ambiguity discovered in W4 review intake, especially AP/AR split and additional template-pack questions, if those items still lack clean classification."
+  ],
+
+  "must_cover_topics": [
+    {
+      "id": "DOC-01",
+      "name": "TASK-906 wording alignment",
+      "expectation": "Repo docs speak consistently about TASK-906 state and why it is or is not still relevant to W4 closeout"
+    },
+    {
+      "id": "DOC-02",
+      "name": "W4 carryover classification",
+      "expectation": "Remaining items are tagged clearly as W4 now, Epic 10 next, or backlog/customer question"
+    },
+    {
+      "id": "DOC-03",
+      "name": "Configurator wording truthfulness",
+      "expectation": "Docs stop claiming the Configurator is unbuilt if the repo already contains the 3-tab shell/editor, while still preserving any remaining acceptance gaps honestly"
+    },
+    {
+      "id": "DOC-04",
+      "name": "Explicit deferral notes",
+      "expectation": "Delete wiring, clone verification, row-grouping strategy, and similar partial items are described clearly instead of left ambiguous"
+    },
+    {
+      "id": "DOC-05",
+      "name": "Copilot-lane separation",
+      "expectation": "Docs do not blur repo-doc cleanup with the active SIT fix-and-close lane"
+    }
+  ],
+
+  "preferred_file_targets": [
+    "docs/requirement/phaseII/W4-EXECUTION-PLAN.md",
+    "docs/requirement/phaseII/W4-TASK-BOARD.md",
+    "docs/requirement/phaseII/epic-10/UX-FREEZE-FINAL-CODEX-HANDOFF.md",
+    "docs/requirement/phaseII/epic-10/W4-EPIC10-CLAUDE-FOLLOWUP-01-COMPLETION.md",
+    "docs/requirement/phaseII/BACKLOG.md",
+    "docs/requirement/phaseII/PHASE-II-EPIC-ROADMAP.md"
+  ],
+
+  "acceptance_criteria": [
+    "The main W4 docs no longer contradict each other on gate status, configurator status, or remaining follow-up ownership",
+    "TASK-906 wording is aligned to current repo reality",
+    "Remaining carryover items are clearly bucketed into W4 now, later Epic 10 follow-up, or backlog/customer question",
+    "Partial items have explicit deferral notes rather than implied completion",
+    "No SIT runtime fix work is duplicated or reassigned away from Copilot",
+    "The output is committed as real doc changes in the repo, not only described in prose"
+  ],
+
+  "deliverable_format": {
+    "report_file_optional": "docs/requirement/phaseII/epic-10/W4-EPIC10-CLAUDE-DOCS-CARRYOVER-CLEANUP-01-COMPLETION.md",
+    "report_sections": [
+      "Doc ID",
+      "Files updated",
+      "Main wording reconciliations",
+      "TASK-906 alignment summary",
+      "Carryover classification summary",
+      "Explicit deferrals captured",
+      "Anything intentionally left for Copilot or Codex"
+    ]
+  },
+
+  "final_instruction_to_claude": "Finish this as direct doc work in the repo. Be decisive, keep the wording truthful, and separate active Copilot deploy/fix work from documentation and carryover cleanup."
+}

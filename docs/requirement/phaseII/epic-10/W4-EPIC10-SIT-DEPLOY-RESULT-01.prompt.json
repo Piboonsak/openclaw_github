@@ -1,0 +1,127 @@
+{
+  "_comment": "Post-deploy result handoff for Epic 10 W4 SIT redeploy cycle.",
+  "_doc_id": "W4-EPIC10-SIT-DEPLOY-RESULT-01",
+  "_version": "2026-07-05",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+
+  "task_id": "TASK-W4-EPIC10-SIT-REDEPLOY-01-RESULT",
+  "title": "Epic 10 W4 SIT redeploy result and runtime verification",
+  "risk_tier": "MEDIUM",
+  "lane": "Copilot - deploy result handoff",
+
+  "deployment_proof": {
+    "workflow_name": "Deploy ai-accounting-copilot SIT",
+    "workflow_run_url": "https://github.com/Piboonsak/Openclaw/actions/runs/28726759828",
+    "workflow_result": "success",
+    "app_ref": "dev",
+    "deployed_sha": "56f1f956fb3be792598a88fa3ca2817eac55225c",
+    "deployed_commit_message": "feat(export): wire quick export and configurator tabs to backend flow"
+  },
+
+  "route_status": {
+    "public_without_basic_auth": {
+      "/phase2": 401,
+      "/phase2/prototype": 401,
+      "/prototype": 401,
+      "/workflow-demo": 401,
+      "/index.html": 401,
+      "/api/health": 200,
+      "/api/health/ready": 200
+    },
+    "internal_runtime_check": {
+      "/phase2": 200,
+      "/phase2/prototype": 200,
+      "/prototype": {
+        "status": 307,
+        "location": "/phase2/prototype"
+      },
+      "/workflow-demo": 200,
+      "/index.html": 200,
+      "/api/health": 200,
+      "/api/health/ready": 200
+    }
+  },
+
+  "focus_checks_result": [
+    {
+      "id": "CHK-01",
+      "name": "Quick Export preview wiring",
+      "expectation": "POST /api/v1/export/preview with template_id:null plus column_overrides",
+      "result": "PASS",
+      "evidence": [
+        "src/frontend/main-ux-ui.html:4633",
+        "src/frontend/main-ux-ui.html:4646"
+      ]
+    },
+    {
+      "id": "CHK-02",
+      "name": "Quick Export download wiring",
+      "expectation": "POST /api/v1/export with template_id:null plus column_overrides",
+      "result": "PASS",
+      "evidence": [
+        "src/frontend/main-ux-ui.html:4701",
+        "src/frontend/main-ux-ui.html:4708"
+      ]
+    },
+    {
+      "id": "CHK-03",
+      "name": "Template Export per-run overrides",
+      "expectation": "preview/download include column_overrides when user adjusts columns",
+      "result": "PASS",
+      "evidence": [
+        "src/frontend/main-ux-ui.html:4643",
+        "src/frontend/main-ux-ui.html:4708"
+      ]
+    },
+    {
+      "id": "CHK-04",
+      "name": "Configurator 3-tab surface",
+      "expectation": "Upload & Detect / Configure Columns / Test Output visible on production-facing surface",
+      "result": "PASS",
+      "evidence": [
+        "src/frontend/main-ux-ui.html:1613",
+        "src/frontend/main-ux-ui.html:1614",
+        "src/frontend/main-ux-ui.html:1615",
+        "src/frontend/main-ux-ui.html:1620",
+        "src/frontend/main-ux-ui.html:1655",
+        "src/frontend/main-ux-ui.html:2115"
+      ]
+    },
+    {
+      "id": "CHK-05",
+      "name": "index.html parity",
+      "expectation": "fallback/static route does not show old pre-W4 export UX",
+      "result": "PASS",
+      "evidence": [
+        "src/frontend/index.html:1612",
+        "src/frontend/index.html:4643",
+        "src/frontend/index.html:4707"
+      ]
+    }
+  ],
+
+  "legacy_surface_note": {
+    "route": "/workflow-demo",
+    "status": "legacy reference only",
+    "result": "PASS"
+  },
+
+  "runtime_evidence_files": [
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-deploy.log",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-edge.log",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-smoke.log",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-feature-runtime.log",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-http.log",
+    "tmp/sit-evidence-run-28726759828/aiacc-sit-evidence-58/sit-ports.log"
+  ],
+
+  "final_status": {
+    "overall": "READY_FOR_NEXT_REVIEW_STEP",
+    "blockers": [],
+    "summary": "SIT redeploy completed successfully with latest dev SHA and all target W4 runtime verification checks passed."
+  }
+}

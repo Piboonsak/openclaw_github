@@ -292,13 +292,142 @@ LoveAutoBot คือ Windows desktop program ที่อ่าน iniComList c
 | BL-008 | Row filter by COA code | P1 | ~1-2d | **MOVED** to TASK-1008 |
 | BL-009 | Grab merchant portal CSV download | P2 | 1-2d | Backlog |
 | BL-010 | LoveAutoBot Rust desktop program | P3 | 2-4w | Defer (Phase III) |
+| BL-011 | AP/AR company-settings split confirmation | P1 | ~0.5-1d discovery | Backlog |
+| BL-012 | Customer `excelformat` pack classification questions | P1 | ~0.5-1d discovery | Backlog |
+| BL-013 | Cross-epic SIT clickability cleanup | P0 | W4 audit + implementation | **MOVED** to W4-E2E |
+| BL-014 | Phase II/2 visible-surface gating | P1 | ~0.5d design/audit | Backlog |
 
 ---
 
 *Created: 2026-06-15*
-*Last updated: 2026-06-27*
+*Last updated: 2026-07-05*
+
+---
+
+## BL-011: AP/AR company-settings split confirmation
+
+**Priority**: P1
+**Source**: UX/UI review comment, 2026-07-05
+**Related**: company-management follow-up, TASK-1207 import UX, W4 export/configurator planning
+**Estimated effort**: ~0.5-1 day discovery
+
+### Scope
+
+Confirm the intended UX split for company master-data management before implementation hardens the wrong structure:
+
+- current `COA` entry framing should become broader `Settings`
+- AP and AR data should be separated instead of merged into one generic vendor/customer area
+- reference files:
+  - `private_data/poc/Comp_1/APAR/AP-CCSS.csv`
+  - `private_data/poc/Comp_1/APAR/AR-CCSS.csv`
+
+### Customer questions to confirm
+
+1. Should AP and AR appear as separate tabs under Company Settings, or as separate import flows inside one master-data section?
+2. Are `AP-CCSS.csv` and `AR-CCSS.csv` the exact canonical import formats for ongoing customer maintenance, or only PoC snapshots?
+3. Should the UI labels remain accounting-specific (`ผู้จำหน่าย` / `ลูกหนี้`) or map to customer wording used in Express?
+4. Does the customer want separate preview/validation rules for AP vs AR imports?
+
+### Why backlog
+
+- the direction is clear enough to capture, but the final IA wording and exact tab structure still need customer confirmation
+- not all of this must block W4 export/configurator delivery
+
+---
+
+## BL-012: Customer `excelformat` pack classification questions
+
+**Priority**: P1
+**Source**: UX/UI review comment + new customer file drop, 2026-07-05
+**Related**: TASK-1014, Epic 10 template coverage expansion
+**Estimated effort**: ~0.5-1 day discovery
+
+### Scope
+
+The customer provided additional template/sample packs under:
+
+- `private_data/poc/Comp_1/template/excelformat/Excel format (สร้างเอง)`
+- `private_data/poc/Comp_1/template/excelformat/Master`
+
+These files should not remain as unexplained references. We need a customer-confirmed classification of which formats become:
+
+- master templates
+- company-specific templates
+- QA fixtures only
+- out-of-scope legacy examples
+
+### Customer questions to confirm
+
+1. Which files in `Excel format (สร้างเอง)` are the customer's currently used live formats vs one-off historical variants?
+2. Which files in `Master` should be treated as the canonical base templates for LedgerFlow seeding?
+3. For files marked `หลายบรรทัด`, must multi-line support be included in current scope or deferred?
+4. Are PO, Journal-RV, bank transfer, and add-master-data formats part of the same W4/W5 deliverable set or later phases?
+5. Which formats must be reviewable in the UI immediately, and which only need export-engine readiness first?
+
+### Why backlog
+
+- several files are actionable now, but final classification of the whole pack still depends on customer business priority
+- explicit backlog tracking is safer than letting implementation silently assume the wrong canonical set
+
+---
+
+## BL-013: Cross-epic SIT clickability cleanup
+
+**Priority**: P0 -> **[MOVED to W4-E2E]** *(2026-07-05)*
+**Source**: Manual SIT review, 2026-07-05
+**Related**: `W4-SIT-END-TO-END-CLOSURE-PLAN.md`, `W4-DESIGN-IA-SYNC-2026-07-05.md`, W4-E2E-01~04, Epic 0, 8, 9, 10, 11, 12, 13
+**Estimated effort**: W4 audit + targeted implementation
+
+### Problem
+
+SIT exposed a product shell where several controls looked complete but were not API-backed. Examples included Add Company, Add User, and company detail master-data actions that could close UI and show success without persisted data.
+
+### Resolution
+
+This is not a normal future backlog item. It has been moved into W4 as a SIT closure blocker:
+
+- every visible control must be classified as `wired`, `disabled/deferred`, or `hidden`
+- fake-success toasts are blockers
+- minimum Company/User persistence is pulled into W4 if those screens remain visible
+- live SIT clickthrough must prove browser action + backend/API behavior
+
+### Why it remains listed
+
+Kept here as a historical backlog entry so future planning does not reintroduce fake-success UI under later epics.
+
+---
+
+## BL-014: Phase II/2 visible-surface gating
+
+**Priority**: P1
+**Source**: W4 SIT design sync, 2026-07-05
+**Related**: Epic 14, Epic 15, Epic 16, `MENU-TREE-IA.html`, `W4-DESIGN-IA-SYNC-2026-07-05.md`
+**Estimated effort**: ~0.5 day design/audit per release surface
+
+### Scope
+
+Screens or controls for later epics must not appear as complete customer-facing functionality before they are funded and implemented.
+
+Affected surfaces:
+
+- Epic 14: line item + inventory controls
+- Epic 15: sales tax report controls
+- Epic 16: full dashboard, monitoring, audit, and internal admin controls
+
+### Required behavior
+
+If these surfaces appear in SIT before full implementation, they must be:
+
+- hidden from customer-facing navigation, or
+- disabled with a clear deferred label, or
+- placed behind internal-only role guards, or
+- backed by a real implemented API and included in SIT proof
+
+### Why backlog
+
+Not every Epic 14-16 surface blocks W4, but the design rule must carry forward so future weekly deliveries do not repeat the same "looks done, cannot use it" failure mode.
 
 ---
 
 *Created: 2026-06-15*
-*Last updated: 2026-06-22*
+*Last updated: 2026-07-05*
