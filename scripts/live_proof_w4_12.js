@@ -96,6 +96,7 @@ async function main() {
 
   const summary = {
     meta: {
+      deployedSha: env.W4_DEPLOYED_SHA || "81e5a2272e08a358dad309e82b1c22edbb90c8a3",
       companyId,
       routineCompanyId,
       companyName,
