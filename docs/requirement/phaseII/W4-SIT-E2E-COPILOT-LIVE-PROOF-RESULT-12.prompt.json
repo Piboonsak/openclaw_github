@@ -1,0 +1,201 @@
+{
+  "doc_id": "W4-SIT-E2E-COPILOT-LIVE-PROOF-RESULT-12",
+  "tracking_tag": "W4-SIT-E2E-LIVE-PROOF-12",
+  "source_handoff": "docs/requirement/phaseII/W4-SIT-E2E-COPILOT-LIVE-PROOF-12.prompt.json",
+  "date": "2026-07-07",
+  "triggered_deploy_proof": {
+    "control_plane_repo": "Piboonsak/Openclaw",
+    "workflow": "deploy-ai-accounting-copilot-sit.yml",
+    "attempts": [
+      {
+        "run_id": 28809659797,
+        "status": "failed",
+        "reason": "workflow input app_ref set to raw SHA caused git reset --hard origin/<sha> failure (unknown revision)"
+      },
+      {
+        "run_id": 28809709527,
+        "status": "success",
+        "input": {
+          "app_ref": "dev"
+        }
+      }
+    ]
+  },
+  "deployed_sha_confirmation": {
+    "expected_sha": "81e5a2272e08a358dad309e82b1c22edbb90c8a3",
+    "runtime_sha": "81e5a2272e08a358dad309e82b1c22edbb90c8a3",
+    "evidence": [
+      "ssh root@76.13.210.250: cd /opt/ledgerflow; git rev-parse HEAD",
+      "ssh root@76.13.210.250: git log -1 --oneline => 81e5a22 fix(review-scan): write naive UTC timestamps so approve/confirm stop 500ing on asyncpg"
+    ],
+    "match": true
+  },
+  "workflow_run_url": "https://github.com/Piboonsak/Openclaw/actions/runs/28809709527",
+  "auth_session_used": {
+    "method": "runtime token path",
+    "why": "stable live-proof execution without first-login credential noise",
+    "details": [
+      "JWT minted inside SIT backend container using src.backend.auth.auth.create_access_token() for admin user",
+      "JWT injected to browser localStorage key lf_token",
+      "Basic Auth to edge used from local .env.sit.local (SIT_BASIC_USER/SIT_BASIC_PASS)"
+    ]
+  },
+  "lp_01_browser_evidence": {
+    "target": "Company COA PDF async flow",
+    "company": {
+      "name": "บริษัท ฤทธิ์ล้ำเลิศ จำกัด",
+      "tax_id": "0125561025189",
+      "company_id": "78ea65ed-d929-4b20-8bcd-b0a06ddece8b"
+    },
+    "sample_pdf": "D:/01_gitrepo/ai-accounting-copilot/private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ ผังบัญชี.pdf",
+    "artifact_dir": "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z",
+    "screenshots": [
+      "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z/lp01-01-company-detail.png",
+      "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z/lp01-02-progress-running.png",
+      "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z/lp01-03-review-table.png"
+    ],
+    "visible_results": {
+      "progress_visible": true,
+      "review_table_rows": 245,
+      "confirm_clicked": true
+    }
+  },
+  "lp_01_network_evidence": {
+    "start_async": {
+      "endpoint": "POST /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/import-pdf-async",
+      "status": 202,
+      "response": {
+        "task_id": "b1691fb2-d6c2-491f-a5b7-31603523322a",
+        "status": "queued"
+      }
+    },
+    "polling": {
+      "endpoint": "GET /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/import-pdf-async/{task_id}",
+      "observed_status_sequence": [
+        "running(stage=llm)",
+        "succeeded"
+      ],
+      "succeeded_seen": true,
+      "succeeded_timestamp_utc": "2026-07-06T17:29:33.144Z"
+    },
+    "confirm": {
+      "endpoint": "POST /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/confirm",
+      "status": 200,
+      "response": {
+        "imported": 0,
+        "updated": 245,
+        "errors": []
+      }
+    },
+    "post_confirm_get": {
+      "endpoint": "GET /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa",
+      "status": 200,
+      "note": "confirmed rows persisted and retrievable"
+    },
+    "http_504_check": {
+      "found_in_lp01_flow": false,
+      "evidence": "all captured LP-01 API responses in summary/events are 202/200 only"
+    }
+  },
+  "lp_01_worker_backend_nginx_evidence": {
+    "worker": [
+      "Task src.backend.workers.tasks.extract_coa_pdf[b1691fb2-d6c2-491f-a5b7-31603523322a] received at 2026-07-06 17:27:14",
+      "Task ...extract_coa_pdf[b1691fb2-d6c2-491f-a5b7-31603523322a] succeeded in 137.2177s with company_id 78ea65ed-d929-4b20-8bcd-b0a06ddece8b"
+    ],
+    "backend": [
+      "POST /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/import-pdf-async HTTP/1.1 202 Accepted",
+      "multiple GET /coa/import-pdf-async/b1691fb2-d6c2-491f-a5b7-31603523322a HTTP/1.1 200 OK",
+      "POST /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/confirm HTTP/1.1 200 OK",
+      "GET /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa HTTP/1.1 200 OK"
+    ],
+    "nginx": {
+      "note": "direct nginx-tail extraction from frontend container was flaky under interactive shell quoting in this pass; backend+browser+worker evidence already shows the full request/response chain without 504 for the tested task id"
+    }
+  },
+  "lp_01_conclusion": {
+    "status": "PASS",
+    "summary": "COA PDF async flow is closed on live SHA 81e5a22: start returns 202 quickly, polling runs to succeeded, review table appears, confirm returns 200, and COA remains retrievable by GET without 504."
+  },
+  "lp_02_browser_evidence": {
+    "target": "Review Scan approval recovery",
+    "flow": "Upload -> Processing -> Review Scan -> Review Mapping",
+    "routine_company_id": "7fef16e0-bb19-47fb-b9f6-0540993142a9",
+    "sample_files": [
+      "D:/01_gitrepo/ai-accounting-copilot/private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ บิลซื้อ RRL/03062026125257.pdf",
+      "D:/01_gitrepo/ai-accounting-copilot/private_data/poc/Comp_1/ฤทธิ์ล้ำเลิศ บิลซื้อ RRL/03062026125316.pdf"
+    ],
+    "screenshots": [
+      "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z/lp02-01-upload-ready.png",
+      "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z/lp02-02-processing-screen.png",
+      "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z/lp02-03-review-scan.png",
+      "test-results/w4-live-proof-12/2026-07-06T17-27-07-497Z/lp02-04-review-mapping.png"
+    ],
+    "visible_results": {
+      "review_mapping_count": 8,
+      "mapping_items_count": 8,
+      "confirm_button_disabled": false
+    }
+  },
+  "lp_02_network_evidence": {
+    "upload": {
+      "endpoint": "POST /api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/upload",
+      "status": 200,
+      "uploaded_count": 2,
+      "document_ids": [
+        "02c81949-dc5a-42be-b85e-0eea05b241df",
+        "ed503e25-8b97-457c-8a5b-5894c57a90fd"
+      ]
+    },
+    "processing": {
+      "endpoint": "POST /api/v1/documents/{id}/process",
+      "observed_statuses": [200],
+      "note": "backend logs confirm process=200 for both newly uploaded docs"
+    },
+    "approve_single": {
+      "endpoint": "POST /api/v1/documents/02c81949-dc5a-42be-b85e-0eea05b241df/approve",
+      "status": 200
+    },
+    "approve_all": {
+      "endpoint": "POST /api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/approve-all",
+      "status": 200,
+      "response": {
+        "approved": 7
+      }
+    },
+    "confirm_mapping": {
+      "endpoint": "POST /api/v1/journal-vouchers/6661cb3e-b4b2-4eb6-b42c-2537fe7c7e0a/confirm",
+      "status": 200
+    }
+  },
+  "lp_02_backend_evidence": {
+    "backend_log_lines": [
+      "POST /api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/upload HTTP/1.1 200 OK",
+      "POST /api/v1/documents/02c81949-dc5a-42be-b85e-0eea05b241df/process HTTP/1.1 200 OK",
+      "POST /api/v1/documents/ed503e25-8b97-457c-8a5b-5894c57a90fd/process HTTP/1.1 200 OK",
+      "POST /api/v1/documents/02c81949-dc5a-42be-b85e-0eea05b241df/approve HTTP/1.1 200 OK",
+      "POST /api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/approve-all HTTP/1.1 200 OK",
+      "POST /api/v1/journal-vouchers/6661cb3e-b4b2-4eb6-b42c-2537fe7c7e0a/confirm HTTP/1.1 200 OK"
+    ],
+    "error_check": {
+      "approve_500_seen": false,
+      "approve_all_500_seen": false
+    }
+  },
+  "lp_02_conclusion": {
+    "status": "PASS",
+    "summary": "Review Scan recovery is closed on live SHA 81e5a22: approve and approve-all are 200 (no 500), documents move to Review Mapping, and confirm mapping returns 200 on a balanced voucher."
+  },
+  "residual_issues_if_any": [
+    "No blocker found for LP-01 and LP-02 on the deployed SHA.",
+    "Operational note: direct nginx tail extraction via SSH one-liners was brittle due PowerShell quoting; backend and worker logs plus captured browser network events were used as primary evidence."
+  ],
+  "repo_changes_made": [
+    "Added script: scripts/live_proof_w4_12.js",
+    "Added report: docs/requirement/phaseII/W4-SIT-E2E-COPILOT-LIVE-PROOF-RESULT-12.prompt.json"
+  ],
+  "commit_push_proof_if_any": {
+    "status": "pending",
+    "note": "will be filled after commit and push to origin/dev"
+  },
+  "final_status": "PASS_LIVE_PROOF"
+}
