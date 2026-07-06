@@ -1,0 +1,133 @@
+{
+  "Doc ID": "W4-SIT-E2E-COPILOT-UPLOAD-OCR-RUNTIME-DIAGNOSIS-RESULT-16",
+  "Runtime ref checked": {
+    "expected_branch": "dev",
+    "minimum_runtime_ref": "bb7bd5f",
+    "evidence": [
+      "Openclaw deploy run 28824833076 reset SIT to origin/dev and pinned HEAD at bb7bd5f",
+      "This diagnosis pass required no new app code deploy"
+    ],
+    "local_repo_head_for_report_artifacts": "724b2c50ccd65c417a9fbc568a48666fdd5e11d0"
+  },
+  "Workflow run link or note if no deploy needed": {
+    "deploy_needed_for_this_diagnosis": false,
+    "last_relevant_deploy_workflow": "https://github.com/Piboonsak/Openclaw/actions/runs/28824833076",
+    "note": "No-code diagnosis pass executed on current live SIT runtime"
+  },
+  "Browser reproduction steps": [
+    "Open https://sit.yahwan.biz/phase2/prototype with SIT Basic Auth",
+    "Login with app user sit-admin@ledgerflow.local",
+    "Navigate to Upload screen and keep selected company from topbar context",
+    "Upload one real sample PDF: private_data/poc/Comp_1/.../03062026125257.pdf",
+    "Navigate Processing and trigger start processing",
+    "Observe POST /documents/upload and POST /documents/{id}/process network outcomes"
+  ],
+  "Network evidence": {
+    "artifact_dir": "test-results/w4-upload-ocr-diagnosis-16/2026-07-06T21-59-11-222Z",
+    "summary_file": "test-results/w4-upload-ocr-diagnosis-16/2026-07-06T21-59-11-222Z/summary.json",
+    "events_file": "test-results/w4-upload-ocr-diagnosis-16/2026-07-06T21-59-11-222Z/network-events.json",
+    "upload_request": {
+      "status": 200,
+      "url": "https://sit.yahwan.biz/api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/upload",
+      "document_id": "cbf15e20-cce1-4cbe-963b-683e752ef6aa",
+      "timestamp_utc": "2026-07-06T21:59:23.143Z"
+    },
+    "process_request": {
+      "status": 200,
+      "url": "https://sit.yahwan.biz/api/v1/documents/cbf15e20-cce1-4cbe-963b-683e752ef6aa/process",
+      "timestamp_utc": "2026-07-06T21:59:39.735Z",
+      "result_status": "review_scan",
+      "processing_error": null
+    }
+  },
+  "Backend/container evidence": {
+    "health_endpoints": {
+      "/api/health": {
+        "status": "healthy",
+        "services": {
+          "db": "ok",
+          "redis": "ok",
+          "minio": "ok"
+        }
+      },
+      "/api/health/ready": {
+        "status": "ready",
+        "services": {
+          "db": "ok",
+          "redis": "ok",
+          "minio": "ok"
+        }
+      }
+    },
+    "container_status_snapshot": [
+      "ledgerflow-sit-backend-1 Up (healthy)",
+      "ledgerflow-sit-celery-worker-1 Up",
+      "ledgerflow-sit-postgres-1 Up (healthy)",
+      "ledgerflow-sit-minio-1 Up (healthy)",
+      "ledgerflow-sit-redis-1 Up (healthy)",
+      "ledgerflow-sit-frontend-1 Up (healthy)"
+    ],
+    "backend_log_correlation": [
+      "POST /api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/upload 200 OK",
+      "POST /api/v1/documents/cbf15e20-cce1-4cbe-963b-683e752ef6aa/process 200 OK"
+    ],
+    "db_row_for_uploaded_document": {
+      "id": "cbf15e20-cce1-4cbe-963b-683e752ef6aa",
+      "storage_key_present": true,
+      "sha256_present": true,
+      "file_size_bytes": 692584,
+      "status": "review_scan"
+    },
+    "object_storage_readback": {
+      "storage_client": "S3StorageClient",
+      "object_read_ok": true,
+      "object_size": 692584
+    },
+    "local_cache_materialization": {
+      "upload_root": "/app/src/backend/ml/cache/uploads",
+      "recent_cached_file_seen": "e03457d759c84587251a352b642c3da621a4232b772a0e233098b076fab9b88f.pdf"
+    }
+  },
+  "Runtime config provenance": {
+    "method": "Checked resolved config inside backend container (no secret values printed)",
+    "presence_status": {
+      "DATABASE_URL": "present_non_empty",
+      "REDIS_URL": "present_non_empty",
+      "STORAGE_PROVIDER": "present_non_empty",
+      "UPLOAD_ROOT": "present_non_empty",
+      "MINIO_ENDPOINT": "present_non_empty",
+      "MINIO_BUCKET": "present_non_empty",
+      "MINIO_ACCESS_KEY": "present_non_empty",
+      "MINIO_SECRET_KEY": "present_non_empty",
+      "OPENROUTER_API_KEY": "present_non_empty",
+      "OCR_ENGINE": "present_non_empty"
+    },
+    "resolved_non_secret_values": {
+      "STORAGE_PROVIDER": "minio",
+      "OCR_ENGINE": "tesseract",
+      "UPLOAD_ROOT": "/app/src/backend/ml/cache/uploads"
+    },
+    "env_example_staleness_note": {
+      "stale": true,
+      "observed_mismatch": [
+        ".env.example still documents STORAGE_TYPE/STORAGE_LOCAL_PATH/SECRET_KEY/CLAUDE_API_KEY",
+        "runtime code uses STORAGE_PROVIDER/STORAGE_LOCAL_ROOT/JWT_SECRET_KEY/OPENROUTER_API_KEY (+ MINIO_*)"
+      ],
+      "impact": "High confusion risk during manual SIT setup/troubleshooting, but not the active blocker in this reproduced run"
+    }
+  },
+  "First failing boundary": {
+    "boundary": "none_in_this_reproduction",
+    "detail": "Upload boundary passed, storage write+cache passed, process boundary passed, OCR+LLM path produced extracted result and moved document to review_scan"
+  },
+  "Diagnosis conclusion": {
+    "classification": "No runtime config/service blocker reproduced in this live run",
+    "code_vs_runtime": "Current evidence points away from runtime misconfiguration as a systemic blocker",
+    "what_this_means": "User-reported failure is likely intermittent/user-path-specific/input-specific rather than a constant missing secret/dependency"
+  },
+  "Recommended next action": [
+    "If user still hits failure, capture exact failing request in browser (status + response body) and matching backend log timestamp from that session",
+    "Add temporary structured error logging around upload/process exception branches in backend if intermittent failures continue",
+    "Update .env.example to match config/settings.py naming to reduce operator confusion during SIT diagnostics"
+  ]
+}
