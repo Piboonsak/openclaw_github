@@ -1,0 +1,70 @@
+{
+  "Doc ID": "W4-SIT-E2E-COPILOT-COMPANY-CONTEXT-LIVE-PROOF-RESULT-15",
+  "Target ref deployed": {
+    "branch": "dev",
+    "expected_head_sha": "bb7bd5ff23e3b4df824d8a1c4bdb0ae1efb7c2ce",
+    "expected_short_sha": "bb7bd5f",
+    "deploy_log_evidence": [
+      "APP_REF: dev",
+      "81e5a22..bb7bd5f  dev        -> origin/dev",
+      "HEAD is now at bb7bd5f fix(shell): validate selected company against state-accessible list, not just company_ids"
+    ]
+  },
+  "Workflow run link": "https://github.com/Piboonsak/Openclaw/actions/runs/28824833076",
+  "Runtime SHA proof": {
+    "source": "Openclaw deploy workflow log",
+    "run_id": 28824833076,
+    "status": "completed",
+    "conclusion": "success",
+    "notes": "SIT /api/health endpoint does not expose git SHA. Runtime SHA proven from deployment log lines that reset to origin/dev and pin HEAD at bb7bd5f."
+  },
+  "Credential/session notes": {
+    "sit_basic_auth_user": "admin",
+    "app_login_user": "sit-admin@ledgerflow.local",
+    "auth_method": "ui_login",
+    "force_change_password_gate": "not triggered",
+    "app_login_password_source": "user-provided for this run"
+  },
+  "Live proof steps executed": [
+    "Opened /phase2/prototype on SIT with Basic Auth",
+    "Logged in with app user sit-admin@ledgerflow.local",
+    "Captured auth/me events and topbar company list",
+    "Selected second company in topbar: e346975d-179c-4c03-92e1-4d8210e264e0 (Contoso Services Co., Ltd.)",
+    "Navigated Upload -> Processing -> Review Scan",
+    "Verified company-scoped /api/v1/companies/{id}/documents calls remained on selected company B",
+    "Verified selected company at end still B (no snap back) after auth/me refresh events"
+  ],
+  "Network evidence": {
+    "artifact_summary": "test-results/w4-company-context-live-proof-15/2026-07-06T21-45-25-370Z/summary.json",
+    "artifact_events": "test-results/w4-company-context-live-proof-15/2026-07-06T21-45-25-370Z/network-events.json",
+    "selected_company_b": "e346975d-179c-4c03-92e1-4d8210e264e0",
+    "auth_me_refresh_seen": true,
+    "auth_me_refresh_count_after_select_b": 6,
+    "processing_first_company_scoped_call": {
+      "method": "GET",
+      "status": 200,
+      "url": "https://sit.yahwan.biz/api/v1/companies/e346975d-179c-4c03-92e1-4d8210e264e0/documents"
+    },
+    "review_scan_first_company_scoped_call": {
+      "method": "GET",
+      "status": 200,
+      "url": "https://sit.yahwan.biz/api/v1/companies/e346975d-179c-4c03-92e1-4d8210e264e0/documents"
+    },
+    "upload_stage_note": "Upload stage UI company value matched selected company B. First company-scoped documents call was observed on Processing transition."
+  },
+  "Screenshot evidence": [
+    "test-results/w4-company-context-live-proof-15/2026-07-06T21-45-25-370Z/01-topbar-company-b-selected.png",
+    "test-results/w4-company-context-live-proof-15/2026-07-06T21-45-25-370Z/02-review-scan-with-company-b.png"
+  ],
+  "Acceptance criteria status": {
+    "SIT runtime SHA is bb7bd5f or newer on dev after deploy": "PASS",
+    "Topbar selector lists real accessible companies": "PASS",
+    "After selecting company B, company-scoped API calls keep using B across auth refresh": "PASS",
+    "Topbar does not snap back to company A across Upload -> Processing -> Review Scan": "PASS",
+    "Proof recorded with network + screenshot evidence": "PASS",
+    "If fails, identify first drift request": "N/A (no drift observed)",
+    "note": "This run's company B is included in auth/me.company_ids for this user. Drift fix behavior still validated across transitions and refresh events."
+  },
+  "Final status": "PASS - live SIT proof confirms no snap-back drift for selected company in this session",
+  "Next recommendation": "Run one additional proof with an admin/sys_admin user where selected company B is visible in topbar but absent from auth/me.company_ids to strictly satisfy the preferred edge-shape scenario."
+}
