@@ -145,3 +145,69 @@ test.describe("W4 SIT closure — one selected-company source of truth (HR-01)",
     expect(companyId).toBe(COMPANY_B.id);
   });
 });
+
+// W4-SIT-E2E-COMPANY-CONTEXT-FOLLOWUP-14 (Codex P1): admin/sys_admin users see
+// EVERY active company from /api/v1/admin/companies — a superset of their
+// personal auth/me.company_ids. Selecting one of those "not personally
+// assigned" companies must survive requireLiveAuth() (which runs on every live
+// action). Here the admin is assigned only to A but can list A and B; selecting
+// B must not snap back to A on the next API action.
+const ADMIN_ASSIGNED_A_ONLY = {
+  ...FAKE_USER,
+  company_ids: [COMPANY_A.id],
+};
+
+async function adminSeesBothMocks(page: Page) {
+  await page.route("**/api/v1/auth/me", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ADMIN_ASSIGNED_A_ONLY) })
+  );
+  await page.route("**/api/v1/admin/companies", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([COMPANY_A, COMPANY_B]) })
+  );
+  await page.route("**/api/v1/admin/users", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+  );
+  await page.route("**/api/v1/templates**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+  );
+}
+
+test.describe("W4 SIT closure — admin selection persistence beyond auth/me.company_ids (FOLLOWUP-14)", () => {
+  test("topbar lists every company the admin can access, not just personally-assigned ones", async ({ page }) => {
+    await adminSeesBothMocks(page);
+    await login(page);
+
+    const options = await page.locator("#topbarCompanySelect option").allTextContents();
+    // B is NOT in auth/me.company_ids yet must appear (admin sees all).
+    expect(options).toContain(COMPANY_A.name);
+    expect(options).toContain(COMPANY_B.name);
+  });
+
+  test("selecting a company outside auth/me.company_ids persists across a requireLiveAuth() action", async ({ page }) => {
+    await adminSeesBothMocks(page);
+    // Capture the company id used by the document-list fetch that Processing
+    // fires after re-auth (goToProcessing -> requireLiveAuth -> getCurrentUser).
+    let resolveDocsCompanyId: (id: string) => void = () => {};
+    const firstDocsCompanyId = new Promise<string>((resolve) => {
+      resolveDocsCompanyId = resolve;
+    });
+    await page.route("**/api/v1/companies/*/documents", (route) => {
+      const match = route.request().url().match(/companies\/([^/]+)\/documents/);
+      if (match) resolveDocsCompanyId(match[1]);
+      return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    });
+    await login(page);
+
+    // Select B — a company the admin can see but is not in auth/me.company_ids.
+    await page.selectOption("#topbarCompanySelect", COMPANY_B.id);
+    await page.click("[data-screen='s-processing']");
+
+    // Would FAIL on 26bd05e: resolveSelectedCompanyId validated only against
+    // company_ids=[A], so B fell back to primary A and the fetch used A while
+    // the topbar still showed B (the exact drift symptom).
+    const companyId = await firstDocsCompanyId;
+    expect(companyId).toBe(COMPANY_B.id);
+    // And the topbar must still show B after the re-auth round-trip.
+    await expect(page.locator("#topbarCompanySelect")).toHaveValue(COMPANY_B.id);
+  });
+});

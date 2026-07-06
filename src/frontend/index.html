@@ -3353,12 +3353,30 @@
     return String(user.company_ids[0] || "");
   }
 
+  function getAccessibleCompanyIds(user) {
+    // The API-backed accessible list is the source of truth once loaded.
+    // admin/sys_admin see every active company from /v1/admin/companies —
+    // a superset of auth/me.company_ids — while staff see only assigned ones
+    // (src/backend/api/companies_admin.py::list_companies). Fall back to
+    // auth/me.company_ids only before state.companies has loaded.
+    var fromState = (state.companies || []).map(function (c) { return String(c.id); });
+    if (fromState.length) return fromState;
+    return (user && Array.isArray(user.company_ids)) ? user.company_ids.map(String) : [];
+  }
+
   function resolveSelectedCompanyId(user) {
-    var ids = (user && Array.isArray(user.company_ids)) ? user.company_ids.map(String) : [];
-    if (state.currentCompanyId && ids.indexOf(String(state.currentCompanyId)) !== -1) {
-      return String(state.currentCompanyId);
+    var accessible = getAccessibleCompanyIds(user);
+    var selected = String(state.currentCompanyId || "");
+    if (selected && accessible.indexOf(selected) !== -1) {
+      return selected;
     }
-    return getPrimaryCompanyId(user);
+    // Deterministic default: keep the user's primary assignment if it is
+    // accessible, otherwise the first accessible company.
+    var primary = getPrimaryCompanyId(user);
+    if (primary && accessible.indexOf(primary) !== -1) {
+      return primary;
+    }
+    return accessible.length ? accessible[0] : "";
   }
 
   function apiFetch(input, init) {
@@ -3437,11 +3455,13 @@
       var user = await auth.getCurrentUser(true);
       if (user) {
         state.currentUser = user;
-        // Preserve a still-valid user-selected company across re-auth
-        // (requireLiveAuth runs getCurrentUser on every live action). Only
-        // (re)seed to the primary company when nothing valid is selected —
-        // otherwise the shared source of truth (W4-SIT-E2E-COMPANY-CONTEXT-13)
-        // would be silently reset to company_ids[0] on the next API action.
+        // Preserve a still-accessible selected company across re-auth
+        // (requireLiveAuth runs getCurrentUser on every live action).
+        // Validity is checked against the API-backed accessible list
+        // (state.companies) — for admin/sys_admin that is a superset of
+        // auth/me.company_ids — so selecting a company the admin can see but
+        // is not personally assigned to is not snapped back to company_ids[0]
+        // on the next API action (W4-SIT-E2E-COMPANY-CONTEXT-FOLLOWUP-14).
         state.currentCompanyId = resolveSelectedCompanyId(user);
         updateTopbarUser(user);
         applyPostLoginVisibility(user);
@@ -4619,6 +4639,12 @@
       var response = await apiFetch(auth.apiUrl("/api/v1/admin/companies"));
       if (!response.ok) throw new Error("Company list failed: HTTP " + response.status);
       state.companies = await response.json();
+      // Validate the shared selected company against the freshly loaded
+      // accessible list. If nothing valid is selected yet (e.g. an admin whose
+      // auth/me.company_ids is empty but who can list companies), fall to a
+      // deterministic default so the topbar/operational context is real, not
+      // blank (W4-SIT-E2E-COMPANY-CONTEXT-FOLLOWUP-14).
+      state.currentCompanyId = resolveSelectedCompanyId(user);
       renderCompaniesTable();
       populateUserCompanyCheckboxes(getCheckedUserCompanyIds());
       populateTemplatesCompanySelects();
