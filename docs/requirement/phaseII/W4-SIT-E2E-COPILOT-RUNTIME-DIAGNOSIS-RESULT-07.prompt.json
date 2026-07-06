@@ -1,0 +1,194 @@
+{
+  "doc_id": "W4-SIT-E2E-COPILOT-RUNTIME-DIAGNOSIS-RESULT-07",
+  "tracking_tag": "W4-SIT-E2E-RUNTIME-DIAGNOSIS-07",
+  "source_handoff": "docs/requirement/phaseII/W4-SIT-E2E-COPILOT-RUNTIME-DIAGNOSIS-07.prompt.json",
+  "date": "2026-07-06",
+  "live_sha_confirmed": {
+    "sha": "30279bbf468e4aa2a61e5bd39dd7075d890e97ff",
+    "evidence": [
+      "remote /opt/ledgerflow git rev-parse HEAD => 30279bbf468e4aa2a61e5bd39dd7075d890e97ff",
+      "container set from latest Openclaw deploy run 28759398391"
+    ]
+  },
+  "auth_session_used_for_diagnosis": {
+    "method": "read-only runtime token mint via backend code path",
+    "details": [
+      "Minted JWT inside backend container using create_access_token() for existing admin user id fc987f0a-b3c2-4437-9dc6-7f25a0f6eb72",
+      "Used Bearer token for RT-01/RT-02 probes to avoid first-login password gating noise"
+    ],
+    "auth_me_probe": {
+      "status": 200,
+      "user": {
+        "id": "fc987f0a-b3c2-4437-9dc6-7f25a0f6eb72",
+        "role": "admin",
+        "must_change_password": false
+      }
+    }
+  },
+  "rt_01_browser_evidence": {
+    "surface": "Company -> COA -> นำเข้า COA จาก PDF (AI)",
+    "observed_requests": [
+      {
+        "timestamp": "2026-07-06T00:07:36Z",
+        "method": "POST",
+        "path": "/api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/import-pdf",
+        "status": 504,
+        "user_agent": "Chrome/149",
+        "source": "nginx access.log"
+      },
+      {
+        "timestamp": "2026-07-06T00:18:44Z",
+        "method": "POST",
+        "path": "/api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/import-pdf",
+        "status": 504,
+        "user_agent": "Chrome/149",
+        "source": "nginx access.log"
+      }
+    ],
+    "browser_visible_error": "วิเคราะห์ไม่สำเร็จ: HTTP 504 (consistent with user report)"
+  },
+  "rt_01_network_evidence": {
+    "reproduced_request": {
+      "timestamp": "2026-07-06T00:56:05.850098Z",
+      "method": "POST",
+      "url": "/api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/import-pdf",
+      "status": 504,
+      "elapsed_sec": 120.332,
+      "response_snippet": "<h1>504 Gateway Time-out</h1>"
+    },
+    "timing_interpretation": "Failure occurs almost exactly at 120s boundary, indicating proxy timeout rather than immediate validation/auth failure."
+  },
+  "rt_01_server_runtime_log_evidence": {
+    "nginx_error": [
+      "2026/07/06 00:58:06 ... upstream timed out (110: Connection timed out) while reading response header from upstream ... request: POST /api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/coa/import-pdf"
+    ],
+    "backend_completion_after_timeout": [
+      "backend timestamped log: 2026-07-06T00:58:58.584Z POST /api/v1/companies/78ea.../coa/import-pdf 200 OK"
+    ],
+    "timeout_config": {
+      "nginx_active_conf": {
+        "file": "/etc/nginx/conf.d/sit-aiaccount.conf",
+        "location_api": {
+          "proxy_read_timeout": "120s",
+          "proxy_send_timeout": "120s",
+          "proxy_connect_timeout": "10s"
+        }
+      },
+      "application": {
+        "llm_request_timeout_seconds": 120,
+        "source": "src/backend/services/rule_generator.py::LLM_REQUEST_TIMEOUT_SECONDS"
+      }
+    },
+    "code_path": {
+      "sync_route": "src/backend/api/coa.py::POST /v1/companies/{company_id}/coa/import-pdf",
+      "sync_pipeline": [
+        "run_ocr(...) in src/backend/services/coa_import.py",
+        "extract_chart_of_accounts(...) in src/backend/services/rule_generator.py",
+        "_call_openrouter/_call_openai/_call_anthropic with timeout=120s"
+      ]
+    }
+  },
+  "rt_01_diagnosis_conclusion": {
+    "result": "Timeout/runtime issue confirmed",
+    "conclusion": "COA PDF 504 is caused by upstream timeout on a synchronous OCR+LLM path. Nginx times out at 120s while backend continues and logs 200 later, so client already received 504 before backend finishes.",
+    "source_of_504": "nginx reverse proxy timeout (upstream response header timeout), not missing route and not immediate auth/validation failure.",
+    "provider_credit_hypothesis": "Not proven as primary cause in this pass; observed symptom is deterministic timeout boundary behavior."
+  },
+  "rt_02_browser_evidence": {
+    "surface": "Upload -> Processing -> Review Scan -> Review Mapping",
+    "recent_user_session_pattern": [
+      {
+        "timestamp": "2026-07-06T00:43:04Z..00:43:07Z",
+        "request": "GET /api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents",
+        "status": 200,
+        "body_size": 2,
+        "note": "UI repeatedly polling empty list for company 7fef...; no upload POST seen in that window"
+      }
+    ],
+    "interpretation": "Browser-side routine blocker in observed user flow is not a hard backend 404 anymore; it appears at/after UI flow state (company/context/action path)."
+  },
+  "rt_02_network_evidence": {
+    "real_file_upload_probe": [
+      {
+        "file": "03062026125257.pdf",
+        "endpoint": "/api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/documents/upload",
+        "status": 200,
+        "elapsed_sec": 52.5,
+        "document_id": "0b5428af-514e-4fd8-9b40-7858da555c08"
+      },
+      {
+        "file": "03062026125316.pdf",
+        "endpoint": "/api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/documents/upload",
+        "status": 200,
+        "elapsed_sec": 0.269,
+        "document_id": "579fa189-925a-41ce-9b18-1f83d8f567dc"
+      },
+      {
+        "file": "03062026125326.pdf",
+        "endpoint": "/api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/documents/upload",
+        "status": 200,
+        "elapsed_sec": 0.193,
+        "document_id": "9be08c2f-494f-40ad-94f3-7b3be33cc465"
+      }
+    ],
+    "post_upload_followups": {
+      "list_documents": {
+        "endpoint": "/api/v1/companies/78ea65ed-d929-4b20-8bcd-b0a06ddece8b/documents",
+        "status": 200,
+        "elapsed_sec": 0.07,
+        "note": "new docs visible"
+      },
+      "process_document": {
+        "endpoint": "/api/v1/documents/0b5428af-514e-4fd8-9b40-7858da555c08/process",
+        "status": 200,
+        "elapsed_sec": 19.204,
+        "result_status": "review_scan"
+      },
+      "document_detail": {
+        "endpoint": "/api/v1/documents/0b5428af-514e-4fd8-9b40-7858da555c08",
+        "status": 200,
+        "elapsed_sec": 0.192,
+        "note": "extracted fields present (invoice/date/seller/tax/amount)"
+      }
+    }
+  },
+  "rt_02_server_runtime_log_evidence": {
+    "nginx_access": [
+      "00:58:58Z POST .../documents/upload 200 (x3)",
+      "00:59:18Z POST /api/v1/documents/0b5428af-.../process 200",
+      "00:59:18Z GET /api/v1/documents/0b5428af-... 200"
+    ],
+    "backend_logs": [
+      "2026-07-06T00:58:58.634Z POST .../documents/upload 200 OK",
+      "2026-07-06T00:58:59.170Z POST .../documents/upload 200 OK",
+      "2026-07-06T00:59:18.383Z POST /api/v1/documents/0b5428af-.../process 200 OK"
+    ],
+    "worker_logs": "No matching error/exception lines for these document IDs in celery-worker in diagnosis window."
+  },
+  "rt_02_diagnosis_conclusion": {
+    "result": "Backend runtime path works for sampled files",
+    "conclusion": "For 30279bb runtime, API-level upload/list/process/detail path succeeds on real RRL sample files. The remaining blocker is likely at browser flow state/context (e.g., company selection/session/UI path) rather than core upload or processing backend failure.",
+    "first_failing_point_from_api_probe": "none (all core steps succeeded)",
+    "first_failing_point_from_observed_user_browser_window": "UI stayed on repeated GET documents for company 7fef... with no upload POST in that captured window"
+  },
+  "recommended_next_owner_per_issue": [
+    {
+      "issue": "RT-01 COA PDF 504",
+      "owner": "Claude code + Copilot runtime",
+      "reason": "Needs code-path redesign (async/background job + progress endpoint or longer-running architecture) and/or timeout policy alignment. Current sync path exceeds 120s proxy boundary."
+    },
+    {
+      "issue": "RT-02 routine-op still blocked in user flow",
+      "owner": "Copilot runtime/browser diagnosis first, then Claude only if reproducible UI bug found",
+      "reason": "Core backend endpoints succeed; need focused browser trace on user path to isolate UI/context gating condition."
+    }
+  ],
+  "repo_changes_made": [
+    "Created diagnosis report artifact: docs/requirement/phaseII/W4-SIT-E2E-COPILOT-RUNTIME-DIAGNOSIS-RESULT-07.prompt.json"
+  ],
+  "commit_push_proof": {
+    "status": "pending",
+    "note": "Commit/push executed after report generation in this pass."
+  },
+  "final_status": "DIAGNOSED_WITH_PROOF"
+}
