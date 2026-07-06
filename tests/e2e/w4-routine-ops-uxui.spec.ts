@@ -211,8 +211,11 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     await expect(page.locator("#reviewScanFields input[value='INV-002']")).toHaveCount(1);
     await expect(page.locator("#reviewScanApproveBtn")).toBeEnabled();
 
+    // Register the response listener BEFORE clicking — the mocked response can
+    // resolve in the microtask gap after click() and be missed forever otherwise.
+    const approveResponse = page.waitForResponse((r) => r.url().includes("/documents/doc-2/approve"));
     await page.click("#reviewScanApproveBtn");
-    await page.waitForResponse((r) => r.url().includes("/documents/doc-2/approve"));
+    await approveResponse;
     expect(approveCalled).toBe(true);
   });
 
@@ -240,9 +243,10 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     await expect(page.locator("#reviewScanSaveBtn")).toBeEnabled();
 
     await page.fill("#reviewScanFieldInvoiceNumber", "INV-002-CORRECTED");
+    const fieldsResponse = page.waitForResponse((r) => r.url().includes("/documents/doc-2/fields"));
     await page.click("#reviewScanSaveBtn");
 
-    await page.waitForResponse((r) => r.url().includes("/documents/doc-2/fields"));
+    await fieldsResponse;
     expect(putBody.invoice_number).toBe("INV-002-CORRECTED");
   });
 
@@ -322,8 +326,11 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     await expect(page.locator("#reviewMappingDetail")).toContainText("✓ Balance");
     await expect(page.locator("#reviewMappingDetail input[value='5040']")).toHaveCount(1);
 
+    // Register the response listener BEFORE clicking — the mocked response can
+    // resolve in the microtask gap after click() and be missed forever otherwise.
+    const confirmResponse = page.waitForResponse((r) => r.url().includes("/journal-vouchers/voucher-1/confirm"));
     await page.click("#confirmMappingBtn");
-    await page.waitForResponse((r) => r.url().includes("/journal-vouchers/voucher-1/confirm"));
+    await confirmResponse;
     expect(confirmCalled).toBe(true);
   });
 
@@ -375,9 +382,10 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     await page.click("#reviewMappingListBody li");
     const firstLineInput = page.locator("#reviewMappingDetail table.data-table input.mono").first();
     await firstLineInput.fill("5099");
+    const lineResponse = page.waitForResponse((r) => r.url().includes("/journal-vouchers/voucher-1/lines/line-1"));
     await firstLineInput.dispatchEvent("change");
 
-    await page.waitForResponse((r) => r.url().includes("/journal-vouchers/voucher-1/lines/line-1"));
+    await lineResponse;
     expect(putBody).toEqual({ account_code: "5099" });
   });
 });

@@ -41,3 +41,25 @@ class CoaPdfPreviewResponse(BaseModel):
 
 class CoaConfirmRequest(BaseModel):
     accounts: list[ChartOfAccountEntry]
+
+
+class CoaPdfAsyncStartResponse(BaseModel):
+    """Fast-return handle for the background COA PDF extraction job."""
+
+    task_id: str
+    status: str = "queued"
+
+
+class CoaPdfAsyncStatusResponse(BaseModel):
+    """Polling payload for a background COA PDF extraction job.
+
+    status: queued | running | succeeded | failed
+    stage (while running): fetching_file | ocr | llm
+    """
+
+    task_id: str
+    status: str
+    stage: Optional[str] = None
+    accounts: Optional[list[ChartOfAccountEntry]] = None
+    company_name_detected: Optional[str] = None
+    error: Optional[str] = None

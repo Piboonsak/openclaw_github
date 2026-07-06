@@ -22,7 +22,10 @@ from src.backend.db.base import get_sync_session_factory
 from src.backend.db.enums import DocumentStatus
 from src.backend.db.models import Company, Document, Extraction, JournalLine, JournalVoucher
 from src.backend.pipeline.orchestrator import run_pipeline
+from src.backend.services.coa_import import ocr_pdf_to_text
 from src.backend.services.document_workflow import build_pipeline_persistence_plan
+from src.backend.services.rule_generator import extract_chart_of_accounts
+from src.backend.storage import get_storage_client
 from src.backend.workers.celery_app import celery_app
 
 
@@ -111,6 +114,81 @@ def _run_and_persist_pipeline(document_id: str) -> dict[str, Any]:
             "status": plan.status,
             "pipeline_error": plan.processing_error,
         }
+
+
+def _report_progress(task, stage: str) -> None:
+    """Best-effort progress reporting: a broken/unreachable result backend
+    must never kill the actual extraction work (also keeps eager-mode test
+    runs, which have no live Redis, from failing on state updates)."""
+    try:
+        task.update_state(state="PROGRESS", meta={"stage": stage})
+    except Exception:
+        pass
+
+
+def _materialize_coa_source(storage_key: str, sha256: str, filename: str | None) -> Path:
+    """Return a local path to the uploaded COA PDF inside *this* container.
+
+    The backend and celery-worker containers do not share an upload volume
+    (docker/docker-compose.sit.yml mounts none), so the local cache written
+    by the API process is usually absent here — fall back to downloading the
+    bytes from object storage (MinIO on SIT) by storage key.
+    """
+    ext = Path(filename or "").suffix.lower() or ".pdf"
+    local_path = settings.UPLOAD_ROOT / f"{sha256}{ext}"
+    if local_path.exists():
+        return local_path
+    content = get_storage_client().download_bytes(storage_key)
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(content)
+    return local_path
+
+
+@celery_app.task(bind=True, time_limit=600, soft_time_limit=540)
+def extract_coa_pdf(
+    self,
+    *,
+    company_id: str,
+    storage_key: str,
+    sha256: str,
+    filename: str | None = None,
+) -> dict[str, Any]:
+    """Run the COA PDF OCR+LLM extraction as a background job
+    (W4-SIT-E2E-COA-ASYNC-10). The synchronous route dies at the nginx 120s
+    proxy wall on SIT (runtime diagnosis 07: live run took ~173s), so this
+    task carries per-task time limits above the app-wide 120/180 defaults.
+
+    Returns the same review-before-save preview payload the sync route
+    produces — nothing is written to the database; the client must still
+    POST the reviewed rows to `/coa/confirm`.
+    """
+    _report_progress(self, "fetching_file")
+    session_factory = get_sync_session_factory()
+    with session_factory() as session:
+        company = session.get(Company, uuid.UUID(company_id))
+        if company is None:
+            raise ValueError(f"Company not found: {company_id}")
+        company_name = company.name
+        business_type = company.business_type or ""
+
+    local_path = _materialize_coa_source(storage_key, sha256, filename)
+
+    _report_progress(self, "ocr")
+    coa_text = ocr_pdf_to_text(local_path)
+    if not coa_text.strip():
+        raise RuntimeError("COA PDF yielded no readable text.")
+
+    _report_progress(self, "llm")
+    accounts = extract_chart_of_accounts(
+        company_name=company_name,
+        business_type=business_type,
+        coa_text=coa_text,
+    )
+    return {
+        "company_id": company_id,
+        "company_name_detected": company_name,
+        "accounts": accounts,
+    }
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)

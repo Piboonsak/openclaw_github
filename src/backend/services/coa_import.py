@@ -166,6 +166,19 @@ async def upsert_chart_of_accounts(
     return summary
 
 
+def ocr_pdf_to_text(pdf_path: Path | str) -> str:
+    """OCR a COA PDF into plain text. Split out of
+    `extract_coa_preview_from_pdf` so the Celery worker can report OCR and
+    LLM as separate progress stages (W4-SIT-E2E-COA-ASYNC-10).
+    """
+    ocr_output = run_ocr(str(pdf_path))
+    return "\n".join(
+        str(block.get("text", "")).strip()
+        for block in ocr_output.get("blocks", [])
+        if str(block.get("text", "")).strip()
+    )
+
+
 async def extract_coa_preview_from_pdf(
     pdf_path: Path,
     company_name: str,
@@ -176,12 +189,7 @@ async def extract_coa_preview_from_pdf(
     not touch the database — the caller must POST the (possibly edited)
     result to the confirm/upsert endpoint to persist it.
     """
-    ocr_output = run_ocr(str(pdf_path))
-    coa_text = "\n".join(
-        str(block.get("text", "")).strip()
-        for block in ocr_output.get("blocks", [])
-        if str(block.get("text", "")).strip()
-    )
+    coa_text = ocr_pdf_to_text(pdf_path)
     if not coa_text.strip():
         raise RuntimeError("COA PDF yielded no readable text.")
 

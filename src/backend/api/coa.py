@@ -12,6 +12,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
+from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,8 @@ from src.backend.api.schemas.coa_schemas import (
     ChartOfAccountResponse,
     CoaConfirmRequest,
     CoaImportResult,
+    CoaPdfAsyncStartResponse,
+    CoaPdfAsyncStatusResponse,
     CoaPdfPreviewResponse,
 )
 from src.backend.auth.dependencies import ensure_company_access, get_current_active_user
@@ -31,6 +34,8 @@ from src.backend.services.coa_import import (
     upsert_chart_of_accounts,
 )
 from src.backend.storage import materialize_local_cache, store_document_bytes
+from src.backend.workers.celery_app import celery_app
+from src.backend.workers.tasks import extract_coa_pdf
 
 router = APIRouter()
 
@@ -121,15 +126,7 @@ async def import_chart_of_accounts_pdf(
     await ensure_company_access(db, current_user, company_id)
     company = await _get_company_or_404(db, company_id)
 
-    ext = Path(file.filename or "").suffix.lower()
-    if ext != ".pdf":
-        raise HTTPException(status_code=400, detail=f"Unsupported file type '{ext}'. Accepted: pdf")
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
-    if len(content) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
-
+    content = await _read_validated_pdf(file)
     stored = store_document_bytes(
         content=content,
         filename=file.filename,
@@ -153,6 +150,105 @@ async def import_chart_of_accounts_pdf(
         accounts=accounts,
         company_name_detected=company.name,
     )
+
+
+async def _read_validated_pdf(file: UploadFile) -> bytes:
+    ext = Path(file.filename or "").suffix.lower()
+    if ext != ".pdf":
+        raise HTTPException(status_code=400, detail=f"Unsupported file type '{ext}'. Accepted: pdf")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(content) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
+    return content
+
+
+@router.post(
+    "/v1/companies/{company_id}/coa/import-pdf-async",
+    response_model=CoaPdfAsyncStartResponse,
+    status_code=202,
+)
+async def start_coa_pdf_extraction(
+    company_id: uuid.UUID,
+    file: UploadFile = File(..., description="COA PDF"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CoaPdfAsyncStartResponse:
+    """Start COA PDF AI extraction as a background job and return a task id
+    immediately (W4-SIT-E2E-COA-ASYNC-10). The synchronous `/coa/import-pdf`
+    route exceeds the SIT nginx 120s proxy timeout on real files, so the
+    production UI polls `GET .../import-pdf-async/{task_id}` instead of
+    holding one long request open.
+    """
+    await ensure_company_access(db, current_user, company_id)
+    await _get_company_or_404(db, company_id)
+
+    content = await _read_validated_pdf(file)
+    stored = store_document_bytes(
+        content=content,
+        filename=file.filename,
+        company_id=str(company_id),
+        content_type=file.content_type,
+    )
+    # Local cache is a fast path for single-host runs; the worker re-downloads
+    # from object storage when (as on SIT) it does not share this volume.
+    materialize_local_cache(content=content, filename=file.filename, sha256=stored["sha256"])
+
+    task = extract_coa_pdf.delay(
+        company_id=str(company_id),
+        storage_key=stored["storage_key"],
+        sha256=stored["sha256"],
+        filename=file.filename,
+    )
+    return CoaPdfAsyncStartResponse(task_id=task.id, status="queued")
+
+
+@router.get(
+    "/v1/companies/{company_id}/coa/import-pdf-async/{task_id}",
+    response_model=CoaPdfAsyncStatusResponse,
+)
+async def get_coa_pdf_extraction_status(
+    company_id: uuid.UUID,
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CoaPdfAsyncStatusResponse:
+    """Poll a background COA PDF extraction job. On success the payload holds
+    the review-before-save account rows — nothing is persisted until the
+    client confirms them via `/coa/confirm`.
+    """
+    await ensure_company_access(db, current_user, company_id)
+    async_result = AsyncResult(task_id, app=celery_app)
+    state = async_result.state
+
+    if state == "SUCCESS":
+        result = async_result.result if isinstance(async_result.result, dict) else {}
+        # A task id is only readable through the company it was started for.
+        if str(result.get("company_id", "")) != str(company_id):
+            raise HTTPException(status_code=404, detail="Task not found for this company")
+        return CoaPdfAsyncStatusResponse(
+            task_id=task_id,
+            status="succeeded",
+            accounts=result.get("accounts", []),
+            company_name_detected=result.get("company_name_detected"),
+        )
+    if state in ("FAILURE", "REVOKED"):
+        return CoaPdfAsyncStatusResponse(
+            task_id=task_id,
+            status="failed",
+            error=str(async_result.result or "extraction failed"),
+        )
+    if state == "PROGRESS":
+        meta = async_result.info if isinstance(async_result.info, dict) else {}
+        return CoaPdfAsyncStatusResponse(
+            task_id=task_id, status="running", stage=str(meta.get("stage") or "")
+        )
+    if state in ("STARTED", "RETRY"):
+        return CoaPdfAsyncStatusResponse(task_id=task_id, status="running", stage="starting")
+    # PENDING/RECEIVED — Celery reports unknown ids as PENDING too; the client
+    # enforces its own overall deadline, so "queued" is the honest answer here.
+    return CoaPdfAsyncStatusResponse(task_id=task_id, status="queued")
 
 
 @router.post("/v1/companies/{company_id}/coa/confirm", response_model=CoaImportResult)

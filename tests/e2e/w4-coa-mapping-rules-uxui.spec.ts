@@ -153,7 +153,10 @@ test.describe("W4 SIT closure — Chart of Accounts + Mapping Rules real-click f
     expect(imported).toBe(true);
   });
 
-  test("COA PDF AI-extract flow shows an editable review table before saving anything", async ({ page }) => {
+  test("COA PDF AI-extract runs as an async job with visible progress, then an editable review table", async ({ page }) => {
+    // W4-SIT-E2E-COA-ASYNC-10: the UI must start a background task and poll
+    // for progress instead of holding one long request open (which died at
+    // the SIT nginx 120s proxy wall with HTTP 504 on the real sample PDF).
     await page.route("**/api/v1/companies/*/coa", (route) => {
       if (route.request().method() === "GET") {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
@@ -161,16 +164,39 @@ test.describe("W4 SIT closure — Chart of Accounts + Mapping Rules real-click f
       return route.continue();
     });
     let confirmCalled = false;
-    await page.route("**/api/v1/companies/*/coa/import-pdf", (route) =>
+    let syncEndpointCalled = false;
+    await page.route("**/api/v1/companies/*/coa/import-pdf", (route) => {
+      syncEndpointCalled = true;
+      return route.fulfill({ status: 504, contentType: "text/html", body: "<h1>504 Gateway Time-out</h1>" });
+    });
+    await page.route("**/api/v1/companies/*/coa/import-pdf-async", (route) =>
       route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ task_id: "task-e2e-1", status: "queued" }),
+      })
+    );
+    let statusPolls = 0;
+    await page.route("**/api/v1/companies/*/coa/import-pdf-async/*", (route) => {
+      statusPolls += 1;
+      if (statusPolls === 1) {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ task_id: "task-e2e-1", status: "running", stage: "ocr" }),
+        });
+      }
+      return route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
+          task_id: "task-e2e-1",
+          status: "succeeded",
           accounts: [{ code: "1100", name: "Cash (AI)", type: "asset", confidence: 88 }],
           company_name_detected: "Metro Electric Co Ltd",
         }),
-      })
-    );
+      });
+    });
     await page.route("**/api/v1/companies/*/coa/confirm", (route) => {
       confirmCalled = true;
       return route.fulfill({
@@ -192,13 +218,63 @@ test.describe("W4 SIT closure — Chart of Accounts + Mapping Rules real-click f
     });
     await page.click("#coaPdfExtractBtn");
 
-    // Review step shows the extracted row as an editable input, not yet saved.
-    await expect(page.locator("#coaPdfReviewStep")).toBeVisible();
+    // Progress state is visible while the background job runs (first poll → OCR stage).
+    await expect(page.locator("#coaPdfProgress")).toBeVisible();
+    await expect(page.locator("#coaPdfProgressStage")).toContainText("OCR");
+
+    // Second poll (~2.5s later) reports success → review step with editable rows, not yet saved.
+    await expect(page.locator("#coaPdfReviewStep")).toBeVisible({ timeout: 15_000 });
     await expect(page.locator("#coaPdfPreviewBody input").first()).toHaveValue("1100");
     expect(confirmCalled).toBe(false);
+    expect(statusPolls).toBeGreaterThanOrEqual(2);
+    expect(syncEndpointCalled).toBe(false); // the timeout-prone sync route is no longer used
 
     await page.click("#coaPdfConfirmBtn");
     expect(confirmCalled).toBe(true);
+  });
+
+  test("COA PDF async job failure shows a specific error and re-enables the extract button", async ({ page }) => {
+    await page.route("**/api/v1/companies/*/coa", (route) => {
+      if (route.request().method() === "GET") {
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
+      }
+      return route.continue();
+    });
+    await page.route("**/api/v1/companies/*/coa/import-pdf-async", (route) =>
+      route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ task_id: "task-e2e-fail", status: "queued" }),
+      })
+    );
+    await page.route("**/api/v1/companies/*/coa/import-pdf-async/*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          task_id: "task-e2e-fail",
+          status: "failed",
+          error: "COA PDF yielded no readable text.",
+        }),
+      })
+    );
+    mockEmptyMappingRules(page);
+    await loginWithMocks(page);
+    await openCompanyDetail(page);
+
+    await page.click("text=📄 นำเข้าจาก PDF (AI)");
+    await page.setInputFiles("#coaPdfFileInput", {
+      name: "coa.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-fake"),
+    });
+    await page.click("#coaPdfExtractBtn");
+
+    await expect(page.locator("#coaPdfExtractResult")).toBeVisible();
+    await expect(page.locator("#coaPdfExtractResult")).toContainText("no readable text");
+    await expect(page.locator("#coaPdfReviewStep")).not.toBeVisible();
+    await expect(page.locator("#coaPdfExtractBtn")).toBeEnabled();
+    await expect(page.locator("#coaPdfProgress")).not.toBeVisible();
   });
 
   test("Mapping Rules tab loads real data and manual add calls the real API", async ({ page }) => {

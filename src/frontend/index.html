@@ -2780,6 +2780,16 @@
         <label class="field-label">ไฟล์ COA PDF *</label>
         <input class="field-input" type="file" id="coaPdfFileInput" accept=".pdf" />
       </div>
+      <div id="coaPdfProgress" style="display:none;margin-bottom:0.85rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem;margin-bottom:0.35rem;">
+          <span id="coaPdfProgressStage">กำลังส่งไฟล์...</span>
+          <span id="coaPdfProgressElapsed" class="mono" style="color:var(--muted);"></span>
+        </div>
+        <div style="height:8px;background:var(--accent-soft);border-radius:4px;overflow:hidden;">
+          <div id="coaPdfProgressBar" style="height:100%;width:5%;background:var(--accent);border-radius:4px;transition:width 0.6s ease;"></div>
+        </div>
+        <div style="font-size:0.76rem;color:var(--muted);margin-top:0.35rem;">งาน OCR + AI ใช้เวลาประมาณ 2–5 นาที — ระบบประมวลผลเบื้องหลัง ปิดหน้าต่างนี้ได้โดยงานไม่ถูกยกเลิก</div>
+      </div>
       <div id="coaPdfExtractResult" style="display:none;font-size:0.82rem;margin-bottom:0.75rem;"></div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="closeModal('modal-import-coa-pdf')">ยกเลิก</button>
@@ -5208,9 +5218,13 @@
   }
 
   function openCoaPdfModal() {
+    stopCoaPdfPolling();
     getEl("coaPdfUploadStep").style.display = "block";
     getEl("coaPdfReviewStep").style.display = "none";
     getEl("coaPdfExtractResult").style.display = "none";
+    getEl("coaPdfProgress").style.display = "none";
+    var extractBtn = getEl("coaPdfExtractBtn");
+    if (extractBtn) { extractBtn.disabled = false; extractBtn.textContent = "วิเคราะห์ด้วย AI"; }
     var fileInput = getEl("coaPdfFileInput");
     if (fileInput) fileInput.value = "";
     state.coaPdfPreview = [];
@@ -5239,6 +5253,92 @@
     renderCoaPdfPreviewTable();
   }
 
+  /* COA PDF extraction runs as a background job (W4-SIT-E2E-COA-ASYNC-10):
+     the old single synchronous request died at the SIT nginx 120s proxy wall
+     (HTTP 504) while the backend kept working. The UI now starts a task,
+     shows staged progress, and polls until the review table is ready. */
+  var COA_PDF_POLL_INTERVAL_MS = 2500;
+  var COA_PDF_POLL_TIMEOUT_MS = 10 * 60 * 1000;
+  var COA_PDF_STAGES = {
+    queued: { label: "อยู่ในคิวประมวลผล...", percent: 12 },
+    starting: { label: "เริ่มประมวลผล...", percent: 20 },
+    fetching_file: { label: "กำลังเตรียมไฟล์...", percent: 30 },
+    ocr: { label: "กำลังอ่านเอกสาร (OCR)...", percent: 55 },
+    llm: { label: "กำลังวิเคราะห์ผังบัญชีด้วย AI...", percent: 82 },
+    done: { label: "วิเคราะห์เสร็จสิ้น ✓", percent: 100 }
+  };
+
+  function stopCoaPdfPolling() {
+    if (state.coaPdfPollTimer) { clearTimeout(state.coaPdfPollTimer); state.coaPdfPollTimer = null; }
+    state.coaPdfPollErrors = 0;
+  }
+
+  function setCoaPdfProgress(stageKey, startedAt) {
+    var stage = COA_PDF_STAGES[stageKey] || COA_PDF_STAGES.queued;
+    var progressEl = getEl("coaPdfProgress");
+    if (progressEl) progressEl.style.display = "block";
+    var stageEl = getEl("coaPdfProgressStage");
+    if (stageEl) stageEl.textContent = stage.label;
+    var barEl = getEl("coaPdfProgressBar");
+    if (barEl) barEl.style.width = stage.percent + "%";
+    var elapsedEl = getEl("coaPdfProgressElapsed");
+    if (elapsedEl && startedAt) {
+      var seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+      elapsedEl.textContent = seconds >= 60 ? Math.floor(seconds / 60) + " นาที " + (seconds % 60) + " วิ" : seconds + " วิ";
+    }
+  }
+
+  function failCoaPdfExtract(message) {
+    stopCoaPdfPolling();
+    var progressEl = getEl("coaPdfProgress");
+    if (progressEl) progressEl.style.display = "none";
+    var resultEl = getEl("coaPdfExtractResult");
+    if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "วิเคราะห์ไม่สำเร็จ: " + message; }
+    var extractBtn = getEl("coaPdfExtractBtn");
+    if (extractBtn) { extractBtn.disabled = false; extractBtn.textContent = "วิเคราะห์ด้วย AI"; }
+  }
+
+  function succeedCoaPdfExtract(accounts, startedAt) {
+    stopCoaPdfPolling();
+    setCoaPdfProgress("done", startedAt);
+    state.coaPdfPreview = accounts || [];
+    renderCoaPdfPreviewTable();
+    getEl("coaPdfUploadStep").style.display = "none";
+    getEl("coaPdfReviewStep").style.display = "block";
+    var extractBtn = getEl("coaPdfExtractBtn");
+    if (extractBtn) { extractBtn.disabled = false; extractBtn.textContent = "วิเคราะห์ด้วย AI"; }
+  }
+
+  async function pollCoaPdfTask(companyId, taskId, startedAt) {
+    var modal = getEl("modal-import-coa-pdf");
+    if (!modal || !modal.classList.contains("open")) { stopCoaPdfPolling(); return; }
+    if (Date.now() - startedAt > COA_PDF_POLL_TIMEOUT_MS) {
+      failCoaPdfExtract("หมดเวลารอผลวิเคราะห์ (10 นาที) — กรุณาลองใหม่อีกครั้ง");
+      return;
+    }
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/coa/import-pdf-async/" + encodeURIComponent(taskId))
+      );
+      if (!response.ok) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      var status = await response.json();
+      state.coaPdfPollErrors = 0;
+      if (status.status === "succeeded") { succeedCoaPdfExtract(status.accounts, startedAt); return; }
+      if (status.status === "failed") { failCoaPdfExtract(status.error || "การวิเคราะห์ล้มเหลว"); return; }
+      setCoaPdfProgress(status.stage || status.status, startedAt);
+    } catch (error) {
+      state.coaPdfPollErrors = (state.coaPdfPollErrors || 0) + 1;
+      if (state.coaPdfPollErrors >= 3) {
+        failCoaPdfExtract("ตรวจสอบสถานะไม่สำเร็จ: " + error.message);
+        return;
+      }
+    }
+    state.coaPdfPollTimer = setTimeout(function () { pollCoaPdfTask(companyId, taskId, startedAt); }, COA_PDF_POLL_INTERVAL_MS);
+  }
+
   async function extractCoaPdf() {
     var user = await requireLiveAuth();
     if (!user) return;
@@ -5252,26 +5352,25 @@
     }
     var form = new FormData();
     form.append("file", fileInput.files[0]);
+    stopCoaPdfPolling();
+    if (resultEl) resultEl.style.display = "none";
     var extractBtn = getEl("coaPdfExtractBtn");
     if (extractBtn) { extractBtn.disabled = true; extractBtn.textContent = "กำลังวิเคราะห์..."; }
+    var startedAt = Date.now();
+    setCoaPdfProgress("queued", startedAt);
     try {
       var response = await apiFetch(
-        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/coa/import-pdf"),
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/coa/import-pdf-async"),
         { method: "POST", body: form }
       );
       if (!response.ok) {
         var errorBody = await response.json().catch(function () { return {}; });
         throw new Error(errorBody.detail || ("HTTP " + response.status));
       }
-      var result = await response.json();
-      state.coaPdfPreview = result.accounts || [];
-      renderCoaPdfPreviewTable();
-      getEl("coaPdfUploadStep").style.display = "none";
-      getEl("coaPdfReviewStep").style.display = "block";
+      var startResult = await response.json();
+      pollCoaPdfTask(companyId, startResult.task_id, startedAt);
     } catch (error) {
-      if (resultEl) { resultEl.style.display = "block"; resultEl.style.color = "var(--danger)"; resultEl.textContent = "วิเคราะห์ไม่สำเร็จ: " + error.message; }
-    } finally {
-      if (extractBtn) { extractBtn.disabled = false; extractBtn.textContent = "วิเคราะห์ด้วย AI"; }
+      failCoaPdfExtract(error.message);
     }
   }
 
