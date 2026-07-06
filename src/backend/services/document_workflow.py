@@ -34,6 +34,20 @@ from src.backend.db.models import (
 )
 
 
+def _utcnow_naive() -> datetime:
+    """Current UTC time as a timezone-*naive* datetime.
+
+    The `scan_reviewed_at` / `confirmed_at` columns are `DateTime` (Postgres
+    `TIMESTAMP WITHOUT TIME ZONE`). asyncpg — the live SIT driver — rejects a
+    tz-aware datetime bound to such a column with a hard `DataError`, which
+    surfaced as the Review Scan approve/confirm 500s
+    (`W4-SIT-E2E-APPROVE-FIX-11`). SQLite (used by the in-memory tests) accepts
+    tz-aware values silently, which is why the happy-path tests missed it. This
+    matches the existing convention in `auth/router.py` (`last_login`).
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def _to_date(value: Any) -> date | None:
     if not value:
         return None
@@ -381,7 +395,7 @@ async def approve_document(repo: DocumentRepository, document: Document, user_id
     document.status = DocumentStatus.SCAN_APPROVED.value
     document.scan_status = "approved"
     document.scan_reviewed_by = user_id
-    document.scan_reviewed_at = datetime.now(timezone.utc)
+    document.scan_reviewed_at = _utcnow_naive()
     await repo.flush()
     return document
 
@@ -451,7 +465,7 @@ async def confirm_journal_voucher(
         raise ValueError("Voucher is not balanced — Dr and Cr totals must match before confirming")
     voucher.status = "confirmed"
     voucher.confirmed_by = user_id
-    voucher.confirmed_at = datetime.now(timezone.utc)
+    voucher.confirmed_at = _utcnow_naive()
     document.status = DocumentStatus.MAPPING_CONFIRMED.value
     await repo.flush()
     return voucher

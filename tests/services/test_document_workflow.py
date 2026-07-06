@@ -216,6 +216,10 @@ class TestApproveAndFlag(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.scan_status, "approved")
         self.assertEqual(result.scan_reviewed_by, user_id)
         self.assertIsNotNone(result.scan_reviewed_at)
+        # scan_reviewed_at is a naive TIMESTAMP column; asyncpg (live SIT)
+        # rejects tz-aware values with a DataError -> the approve 500s
+        # (W4-SIT-E2E-APPROVE-FIX-11). Guard the invariant directly.
+        self.assertIsNone(result.scan_reviewed_at.tzinfo)
 
     async def test_flag_document_creates_flag_and_sets_status(self) -> None:
         repo = InMemoryDocumentRepository()
@@ -311,6 +315,8 @@ class TestUpdateJournalLineAndConfirm(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, "confirmed")
         self.assertEqual(result.confirmed_by, user_id)
         self.assertEqual(document.status, DocumentStatus.MAPPING_CONFIRMED.value)
+        # Same naive-TIMESTAMP constraint as approve (confirmed_at column).
+        self.assertIsNone(result.confirmed_at.tzinfo)
 
     async def test_confirm_unbalanced_voucher_raises(self) -> None:
         repo = InMemoryDocumentRepository()
@@ -320,6 +326,54 @@ class TestUpdateJournalLineAndConfirm(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(ValueError):
             await confirm_journal_voucher(repo, voucher, document, uuid.uuid4())
+
+
+class _AsyncpgNaiveTimestampRepository(InMemoryDocumentRepository):
+    """Emulates the single asyncpg behavior the plain in-memory repo omits:
+    binding a tz-aware datetime to a naive `TIMESTAMP WITHOUT TIME ZONE`
+    column raises. On live SIT this is exactly where Review Scan approve /
+    Review Mapping confirm returned 500 (W4-SIT-E2E-APPROVE-FIX-11); the plain
+    happy-path repo (and the SQLite-backed tests) accept tz-aware datetimes,
+    so nothing caught it before. flush() here fails at the same seam.
+    """
+
+    async def flush(self) -> None:
+        for document in self.documents.values():
+            self._reject_aware(document.scan_reviewed_at, "documents.scan_reviewed_at")
+        for voucher in self.vouchers.values():
+            self._reject_aware(voucher.confirmed_at, "journal_vouchers.confirmed_at")
+
+    @staticmethod
+    def _reject_aware(value, column: str) -> None:
+        if value is not None and getattr(value, "tzinfo", None) is not None:
+            raise ValueError(
+                f"asyncpg DataError: can't bind tz-aware datetime to naive column {column}"
+            )
+
+
+class TestAsyncpgNaiveTimestampRegression(unittest.IsolatedAsyncioTestCase):
+    """Would have caught the live SIT approve/confirm 500s in-repo."""
+
+    async def test_approve_document_survives_asyncpg_naive_timestamp_flush(self) -> None:
+        repo = _AsyncpgNaiveTimestampRepository()
+        document = _make_document(uuid.uuid4())
+        document.status = DocumentStatus.REVIEW_SCAN.value
+        await repo.add_document(document)
+
+        # Pre-fix (tz-aware write) this flush raised, mirroring the live 500.
+        result = await approve_document(repo, document, uuid.uuid4())
+        self.assertEqual(result.status, DocumentStatus.SCAN_APPROVED.value)
+
+    async def test_confirm_voucher_survives_asyncpg_naive_timestamp_flush(self) -> None:
+        repo = _AsyncpgNaiveTimestampRepository()
+        document = _make_document(uuid.uuid4())
+        document.status = DocumentStatus.REVIEW_MAPPING.value
+        voucher = _make_voucher_with_lines(document.id)
+        await repo.add_document(document)
+        await repo.add_voucher(voucher)
+
+        result = await confirm_journal_voucher(repo, voucher, document, uuid.uuid4())
+        self.assertEqual(result.status, "confirmed")
 
 
 class TestUpdateDocumentFields(unittest.IsolatedAsyncioTestCase):
