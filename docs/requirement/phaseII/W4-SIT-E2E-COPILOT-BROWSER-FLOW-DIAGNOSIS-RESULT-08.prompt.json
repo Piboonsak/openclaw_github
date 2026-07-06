@@ -1,0 +1,211 @@
+{
+  "doc_id": "W4-SIT-E2E-COPILOT-BROWSER-FLOW-DIAGNOSIS-RESULT-08",
+  "tracking_tag": "W4-SIT-E2E-BROWSER-FLOW-08",
+  "source_handoff": "docs/requirement/phaseII/W4-SIT-E2E-COPILOT-BROWSER-FLOW-DIAGNOSIS-08.prompt.json",
+  "date": "2026-07-06",
+  "live_sha_confirmed": {
+    "sha": "30279bbf468e4aa2a61e5bd39dd7075d890e97ff",
+    "evidence": [
+      "Inherited runtime target from diagnosis result 07 and latest accepted SIT deploy record.",
+      "This browser pass reused the same live SIT runtime and confirmed current browser/API behavior directly on https://sit.yahwan.biz/phase2/prototype."
+    ]
+  },
+  "auth_session_used": {
+    "method": "read-only runtime token mint via backend code path, injected into browser localStorage as lf_token",
+    "reason": "Current app-login credentials in local .env.sit.local and documented admin/admin both returned 401 on the live runtime during this pass, so login-form flow would have added auth noise unrelated to the upload UI diagnosis.",
+    "token_subject_user_id": "fc987f0a-b3c2-4437-9dc6-7f25a0f6eb72",
+    "auth_me_probe": {
+      "status": 200,
+      "user": {
+        "email": "sit-admin@ledgerflow.local",
+        "display_name": "System Admin",
+        "role": "admin",
+        "must_change_password": false,
+        "company_ids": [
+          "7fef16e0-bb19-47fb-b9f6-0540993142a9",
+          "e9ee203e-2863-4842-aded-9d86e8fbc9a1",
+          "e346975d-179c-4c03-92e1-4d8210e264e0"
+        ]
+      }
+    }
+  },
+  "company_context_used": {
+    "company_id": "7fef16e0-bb19-47fb-b9f6-0540993142a9",
+    "company_name": "Acme Retail Demo Co., Ltd.",
+    "tax_id": "0105559123401",
+    "why_used": "This was the first known-good company context returned by the live Upload company selector on the served production-facing page. The target RRL company was not present in the current authenticated company's visible options during this pass.",
+    "note": "This keeps the diagnosis focused on browser flow mechanics, not company creation/setup drift."
+  },
+  "step_by_step_browser_trace": [
+    {
+      "step": 1,
+      "screen": "Dashboard",
+      "action": "Open /phase2/prototype with Basic Auth and injected auth token",
+      "result": "App shell rendered normally; login screen was bypassed successfully; no console errors observed.",
+      "evidence": [
+        "test-results/w4-browser-flow-diagnosis-08/01-dashboard-authenticated.png"
+      ]
+    },
+    {
+      "step": 2,
+      "screen": "Upload",
+      "action": "Navigate via sidebar to Upload and open company selector",
+      "result": "Served live page is the main W4 UI, not the older ux-ui-prototype upload flow. Real controls present: #uploadCompanySelect, #uploadFileInput, #uploadSubmitBtn.",
+      "evidence": [
+        "test-results/w4-browser-flow-diagnosis-08/02-upload-company-selected.png"
+      ]
+    },
+    {
+      "step": 3,
+      "screen": "Upload",
+      "action": "Select company 7fef16e0-bb19-47fb-b9f6-0540993142a9 and choose 2 real RRL PDF files",
+      "result": "Pending files appeared in UI state before upload click. File count became 2 and both filenames were visible. No upload POST fired yet.",
+      "evidence": [
+        "test-results/w4-browser-flow-diagnosis-08/03-upload-files-pending-before-click.png"
+      ]
+    },
+    {
+      "step": 4,
+      "screen": "Upload -> Processing",
+      "action": "Click 'อัปโหลด →'",
+      "result": "Exactly one POST /api/v1/companies/{id}/documents/upload fired and returned 200. UI navigated to Processing and listed the 2 new documents with status 'อัปโหลดแล้ว'.",
+      "evidence": [
+        "test-results/w4-browser-flow-diagnosis-08/04-processing-after-upload.png"
+      ]
+    },
+    {
+      "step": 5,
+      "screen": "Processing",
+      "action": "Click 'เริ่มประมวลผลเอกสารที่รออยู่'",
+      "result": "Two POST /api/v1/documents/{id}/process requests fired and both returned 200. UI advanced to Review Scan with 2 extracted documents visible.",
+      "evidence": [
+        "test-results/w4-browser-flow-diagnosis-08/05-review-scan-after-processing.png"
+      ]
+    },
+    {
+      "step": 6,
+      "screen": "Review Scan",
+      "action": "Click '✓ Approve All ที่เหลือ'",
+      "result": "UI action fired, but backend returned 500 on approve-all. Documents stayed in review_scan and Review Mapping remained empty.",
+      "evidence": [
+        "test-results/w4-browser-flow-diagnosis-08/06-review-scan-after-approve-all-500.png",
+        "test-results/w4-browser-flow-diagnosis-08/07-review-mapping-empty-after-approve-failure.png"
+      ]
+    },
+    {
+      "step": 7,
+      "screen": "Review Scan -> Review Mapping",
+      "action": "Select one document and click single Approve",
+      "result": "Single-document approve also returned 500. This confirms the first reproducible failing point after Processing is not upload UI wiring but the approve endpoints themselves.",
+      "evidence": []
+    }
+  ],
+  "network_evidence": {
+    "upload_phase": {
+      "pending_files_in_ui_before_click": true,
+      "requests_before_click": 0,
+      "requests_after_click": [
+        {
+          "method": "POST",
+          "url": "https://sit.yahwan.biz/api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/upload",
+          "status": 200,
+          "response_excerpt": "documents[0].id=f789d513-1090-491a-b7ea-6124814e15de, status=uploaded"
+        }
+      ],
+      "diagnosis": "The live Upload UI does not auto-upload on file selection. It waits for the explicit upload click, then fires the correct company-scoped POST endpoint."
+    },
+    "processing_phase": {
+      "list_after_upload": {
+        "method": "GET",
+        "url": "https://sit.yahwan.biz/api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents",
+        "status": 200
+      },
+      "process_calls": [
+        {
+          "method": "POST",
+          "url": "https://sit.yahwan.biz/api/v1/documents/f789d513-1090-491a-b7ea-6124814e15de/process",
+          "status": 200,
+          "response_excerpt": "status=review_scan, invoice_number=IVSK2603587"
+        },
+        {
+          "method": "POST",
+          "url": "https://sit.yahwan.biz/api/v1/documents/ec900015-4155-4f95-a3af-33c9eb67be4f/process",
+          "status": 200,
+          "response_excerpt": "status=review_scan, invoice_number=120856"
+        }
+      ]
+    },
+    "review_phase": {
+      "approve_all": {
+        "method": "POST",
+        "url": "https://sit.yahwan.biz/api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/approve-all",
+        "status": 500,
+        "response_excerpt": "Internal Server Error"
+      },
+      "approve_single": {
+        "method": "POST",
+        "url": "https://sit.yahwan.biz/api/v1/documents/f789d513-1090-491a-b7ea-6124814e15de/approve",
+        "status": 500,
+        "response_excerpt": "Internal Server Error"
+      },
+      "post_failure_state": {
+        "review_scan_count": 2,
+        "review_mapping_count": 0
+      }
+    }
+  },
+  "console_evidence": {
+    "upload_and_processing_trace": {
+      "console_errors": [],
+      "conclusion": "No browser console error or client-side JS exception blocked the upload or processing path during the successful trace."
+    },
+    "login_form_probe_note": {
+      "console_errors": [
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "conclusion": "This came from invalid app-login credential attempts during setup only, not from the token-authenticated browser flow used for the actual diagnosis."
+    }
+  },
+  "diagnosis_conclusion": {
+    "summary": "The routine browser flow on the live served W4 page is workable through Upload and Processing when executed on the correct screen with a selected company and an explicit upload click. The originally suspected 'UI never sends POST /documents/upload' condition is not reproducible on this path.",
+    "what_was_proven": [
+      "Pending files exist in UI state before clicking upload.",
+      "No upload POST is expected before the explicit upload click on the current live UI.",
+      "The click sends the correct company-scoped POST /api/v1/companies/{id}/documents/upload request and receives 200.",
+      "Processing sends real POST /api/v1/documents/{id}/process calls and receives 200.",
+      "Review Scan displays the newly processed documents afterward."
+    ],
+    "first_reproducible_failing_point": {
+      "stage": "Review Scan approval actions",
+      "endpoint": "POST /api/v1/companies/{id}/documents/approve-all and POST /api/v1/documents/{id}/approve",
+      "failure": "500 Internal Server Error",
+      "effect": "Documents remain in review_scan and never advance into Review Mapping."
+    },
+    "interpretation": "This is no longer a primary FRONTEND UX / WIRING issue for Upload -> Processing. The next narrow defect is a BACKEND CONTRACT/runtime failure on approve endpoints, with a secondary documentation/usage note that the live UI requires an explicit upload click and does not auto-upload on file selection."
+  },
+  "recommended_next_owner": [
+    {
+      "issue": "Review Scan approve-all returns 500",
+      "owner": "Claude code + Codex review",
+      "reason": "Reproducible backend/API failure after processing succeeds; not a browser-only issue."
+    },
+    {
+      "issue": "Review Scan single approve returns 500",
+      "owner": "Claude code + Codex review",
+      "reason": "Same backend defect family as approve-all; blocks Review Mapping transition."
+    },
+    {
+      "issue": "Operator click-path clarification",
+      "owner": "Copilot/runtime note only",
+      "reason": "Current live Upload screen requires explicit company selection and explicit upload click; lack of POST before click is expected behavior, not itself a bug."
+    }
+  ],
+  "repo_changes_made": [
+    "Created this diagnosis artifact: docs/requirement/phaseII/W4-SIT-E2E-COPILOT-BROWSER-FLOW-DIAGNOSIS-RESULT-08.prompt.json"
+  ],
+  "commit_push_proof": {
+    "status": "pending",
+    "note": "This pass adds only the result artifact and must be committed/pushed per handoff rule."
+  },
+  "final_status": "DIAGNOSED_WITH_PROOF"
+}
