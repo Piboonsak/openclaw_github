@@ -300,6 +300,12 @@
     }
     .topbar-company:hover { border-color: var(--accent-mid); }
     .topbar-company-caret { color: var(--muted); font-size: 0.65rem; }
+    .topbar-company-select {
+      border: none; background: transparent; color: var(--ink);
+      font-size: 0.82rem; font-family: inherit; cursor: pointer;
+      max-width: 240px; padding: 0; margin: 0; outline: none;
+    }
+    .topbar-company-select:disabled { color: var(--muted); cursor: default; }
     .topbar-user {
       width: 32px; height: 32px; border-radius: 50%;
       background: var(--accent); color: white;
@@ -540,11 +546,12 @@
 
     <div class="topbar-spacer"></div>
 
-    <button class="topbar-company" id="companyBtn">
+    <div class="topbar-company" id="companyBox">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span id="topbarCompany">บ. เมโทร อีเล็กทริค จำกัด</span>
-      <span class="topbar-company-caret">▾</span>
-    </button>
+      <select class="topbar-company-select" id="topbarCompanySelect" aria-label="เลือกบริษัท" onchange="onTopbarCompanyChange()">
+        <option value="">— เลือกบริษัท —</option>
+      </select>
+    </div>
 
     <button class="btn btn-ghost btn-sm" id="internalConsoleTopbarBtn" style="margin-left:0.5rem;display:none;" onclick="navigate('s-system-home')">Internal Console</button>
 
@@ -3038,19 +3045,11 @@
     setTimeout(() => toast.remove(), 3000);
   }
 
-  /* ── COMPANY SELECTOR ── */
-  const companies = [
-    'บ. เมโทร อีเล็กทริค จำกัด',
-    'ห้างหุ้นส่วนจำกัด ซันชายน์',
-    'บ. กรีน ซัพพลาย จำกัด',
-    'บ. ธนาสิน โฮลดิ้ง จำกัด',
-  ];
-  let companyIdx = 0;
-  document.getElementById('companyBtn').addEventListener('click', () => {
-    companyIdx = (companyIdx + 1) % companies.length;
-    document.getElementById('topbarCompany').textContent = companies[companyIdx];
-    showToast(`เปลี่ยนเป็น ${companies[companyIdx]}`, '');
-  });
+  /* ── COMPANY SELECTOR ──
+     Removed the legacy hardcoded company-name array + #companyBtn click-cycle
+     (W4-SIT-E2E-COMPANY-CONTEXT-13). The topbar company selector is now the
+     real API-backed #topbarCompanySelect, driven by the app IIFE below from
+     state.companies / state.currentCompanyId (one shared source of truth). */
 
   /* ── INIT: Show login if not logged in ── */
   // (Login screen is visible by default via CSS position:fixed)
@@ -3354,6 +3353,14 @@
     return String(user.company_ids[0] || "");
   }
 
+  function resolveSelectedCompanyId(user) {
+    var ids = (user && Array.isArray(user.company_ids)) ? user.company_ids.map(String) : [];
+    if (state.currentCompanyId && ids.indexOf(String(state.currentCompanyId)) !== -1) {
+      return String(state.currentCompanyId);
+    }
+    return getPrimaryCompanyId(user);
+  }
+
   function apiFetch(input, init) {
     if (auth && typeof auth.apiFetch === "function") {
       auth.installFetchAuth();
@@ -3430,7 +3437,12 @@
       var user = await auth.getCurrentUser(true);
       if (user) {
         state.currentUser = user;
-        state.currentCompanyId = getPrimaryCompanyId(user);
+        // Preserve a still-valid user-selected company across re-auth
+        // (requireLiveAuth runs getCurrentUser on every live action). Only
+        // (re)seed to the primary company when nothing valid is selected —
+        // otherwise the shared source of truth (W4-SIT-E2E-COMPANY-CONTEXT-13)
+        // would be silently reset to company_ids[0] on the next API action.
+        state.currentCompanyId = resolveSelectedCompanyId(user);
         updateTopbarUser(user);
         applyPostLoginVisibility(user);
         setBadge("liveApiAuthState", "JWT ready", "badge-ok");
@@ -4206,8 +4218,10 @@
 
   function onTemplatesCompanyChange() {
     var select = getEl("templatesCompanySelect");
-    state.currentCompanyId = select ? select.value : "";
-    refreshTemplates().catch(handleError);
+    // setCurrentCompany syncs the topbar/upload selectors and, since the
+    // Templates screen is active here, refreshActiveCompanyScopedScreen()
+    // already re-runs refreshTemplates() — so no separate refresh call.
+    setCurrentCompany(select ? select.value : "");
   }
 
   var _cloneTemplateSourceId = "";
@@ -4536,6 +4550,67 @@
     return (state.companies || []).find(function (c) { return c.id === id; }) || null;
   }
 
+  /* ── Selected-company source of truth (W4-SIT-E2E-COMPANY-CONTEXT-13) ──
+     One shared state.currentCompanyId drives the topbar selector, the Upload
+     and Templates selects, and every company-scoped API call. Every company
+     change (topbar / Upload / Templates) funnels through setCurrentCompany so
+     the selectors stay in lockstep and the active operational screen reloads
+     for the newly selected company. */
+
+  function populateTopbarCompanySelect() {
+    var select = getEl("topbarCompanySelect");
+    if (!select) return;
+    var companies = state.companies || [];
+    if (!companies.length) {
+      select.innerHTML = '<option value="">— ไม่มีบริษัท —</option>';
+      select.disabled = true;
+      return;
+    }
+    select.disabled = false;
+    select.innerHTML = '<option value="">— เลือกบริษัท —</option>';
+    companies.forEach(function (company) {
+      var option = document.createElement("option");
+      option.value = company.id;
+      option.textContent = company.name;
+      select.appendChild(option);
+    });
+    if (state.currentCompanyId && companies.some(function (c) { return c.id === state.currentCompanyId; })) {
+      select.value = state.currentCompanyId;
+    }
+  }
+
+  function syncCompanySelectors() {
+    ["topbarCompanySelect", "uploadCompanySelect", "templatesCompanySelect"].forEach(function (id) {
+      var select = getEl(id);
+      if (!select) return;
+      var hasOption = Array.prototype.some.call(select.options, function (o) {
+        return o.value === state.currentCompanyId;
+      });
+      if (hasOption) select.value = state.currentCompanyId;
+    });
+  }
+
+  function refreshActiveCompanyScopedScreen() {
+    var active = document.querySelector(".screen.active");
+    var screenId = active ? active.id : "";
+    if (screenId === "s-processing") { goToProcessing().catch(handleError); return; }
+    if (screenId === "s-review-scan") { goToReviewScan().catch(handleError); return; }
+    if (screenId === "s-review-mapping") { goToReviewMapping().catch(handleError); return; }
+    if (screenId === "s-upload") { populateUploadCompanySelect(); return; }
+    if (screenId === "s-templates") { refreshTemplates().catch(handleError); return; }
+  }
+
+  function setCurrentCompany(companyId) {
+    state.currentCompanyId = companyId || "";
+    syncCompanySelectors();
+    refreshActiveCompanyScopedScreen();
+  }
+
+  function onTopbarCompanyChange() {
+    var select = getEl("topbarCompanySelect");
+    setCurrentCompany(select ? select.value : "");
+  }
+
   async function loadCompanies() {
     var user = await requireLiveAuth();
     if (!user) return;
@@ -4548,6 +4623,8 @@
       populateUserCompanyCheckboxes(getCheckedUserCompanyIds());
       populateTemplatesCompanySelects();
       populateUploadCompanySelect();
+      populateTopbarCompanySelect();
+      syncCompanySelectors();
       if (statusEl) statusEl.textContent = "โหลดบริษัททั้งหมด " + state.companies.length + " แห่ง";
     } catch (error) {
       if (statusEl) statusEl.textContent = "โหลดรายชื่อบริษัทไม่สำเร็จ: " + error.message;
@@ -5639,7 +5716,7 @@
 
   function onUploadCompanyChange() {
     var select = getEl("uploadCompanySelect");
-    state.currentCompanyId = select ? select.value : "";
+    setCurrentCompany(select ? select.value : "");
   }
 
   function goToUpload() {
@@ -6186,6 +6263,7 @@
     window.updateMappingDocxPreviewField = updateMappingDocxPreviewField;
     window.searchProductMaster = searchProductMaster;
     window.importProductMasterFile = importProductMasterFile;
+    window.onTopbarCompanyChange = onTopbarCompanyChange;
     window.onTemplatesCompanyChange = onTemplatesCompanyChange;
     window.openCloneTemplateModal = openCloneTemplateModal;
     window.submitCloneTemplate = submitCloneTemplate;
@@ -6277,9 +6355,11 @@
         }
         state.currentUser = null;
         state.currentCompanyId = "";
+        state.companies = [];
         state.templates = [];
         state.selectedTemplateId = "";
         state.activeTemplate = null;
+        populateTopbarCompanySelect();
         setAppVisibility(false);
         setBadge("liveApiAuthState", "Login required", "badge-warn");
         getEl("liveTemplateStatus").textContent = "Log in to load templates.";
