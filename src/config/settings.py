@@ -1,3 +1,18 @@
+"""Legacy per-stage settings loader (config/environments/{stage}.env).
+
+Reviewed 2026-07-08 by Sonnet (AI review, W4 SIT upload/OCR config audit):
+nothing under `src/backend/**` imports this module or `get_settings()` —
+only `src/config/__init__.py` re-exports it, to no consumer. The live
+backend imports `config.settings` (repo-root config/settings.py) instead,
+which is populated at deploy time via `docker/.env.{stage}` through the
+`env_file:` directive in `docker/docker-compose.{stage}.yml`.
+
+Conclusion: this module currently appears unused/dead. Not deleted yet —
+pending a decision from the team on whether to remove it or revive it. See
+docs/requirement/phaseII/W4-SIT-E2E-COPILOT-CONFIG-SECRETS-AUDIT-HANDOFF-17.prompt.json
+for the full investigation this finding is part of.
+"""
+
 import os
 from typing import Optional
 
