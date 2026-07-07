@@ -19,6 +19,7 @@ Routes:
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 
@@ -55,6 +56,7 @@ from src.backend.services.document_workflow import (
 from src.backend.storage import get_storage_client, materialize_local_cache, store_document_bytes
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 _MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 _ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
@@ -167,32 +169,51 @@ async def upload_documents(
                 detail=f"Unsupported file type '{ext}' for '{upload.filename}'. "
                 f"Accepted: pdf, jpg, jpeg, png",
             )
-        content = await upload.read()
-        if not content:
-            raise HTTPException(status_code=400, detail=f"'{upload.filename}' is empty")
-        if len(content) > _MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail=f"'{upload.filename}' exceeds 20 MB")
 
-        stored = store_document_bytes(
-            content=content,
-            filename=upload.filename,
-            company_id=str(company_id),
-            content_type=upload.content_type,
-        )
-        materialize_local_cache(content=content, filename=upload.filename, sha256=stored["sha256"])
+        try:
+            content = await upload.read()
+            if not content:
+                raise HTTPException(status_code=400, detail=f"'{upload.filename}' is empty")
+            if len(content) > _MAX_UPLOAD_BYTES:
+                raise HTTPException(status_code=413, detail=f"'{upload.filename}' exceeds 20 MB")
 
-        document = await create_document(
-            repo,
-            company_id,
-            filename=upload.filename or stored["sha256"],
-            original_filename=upload.filename,
-            storage_key=stored["storage_key"],
-            sha256=stored["sha256"],
-            file_size_bytes=len(content),
-            content_type=upload.content_type,
-            uploaded_by=current_user.id,
-        )
-        created.append(document)
+            stored = store_document_bytes(
+                content=content,
+                filename=upload.filename,
+                company_id=str(company_id),
+                content_type=upload.content_type,
+            )
+            materialize_local_cache(
+                content=content,
+                filename=upload.filename,
+                sha256=stored["sha256"],
+            )
+
+            document = await create_document(
+                repo,
+                company_id,
+                filename=upload.filename or stored["sha256"],
+                original_filename=upload.filename,
+                storage_key=stored["storage_key"],
+                sha256=stored["sha256"],
+                file_size_bytes=len(content),
+                content_type=upload.content_type,
+                uploaded_by=current_user.id,
+            )
+            created.append(document)
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception(
+                "Document upload failed company_id=%s user_id=%s filename=%s content_type=%s storage_provider=%s upload_root=%s",
+                company_id,
+                current_user.id,
+                upload.filename,
+                upload.content_type,
+                settings.STORAGE_PROVIDER,
+                settings.UPLOAD_ROOT,
+            )
+            raise
 
     return DocumentUploadResult(documents=[_document_to_response(d) for d in created])
 
@@ -245,17 +266,37 @@ async def process_document_now(
     ext = Path(document.filename or "").suffix.lower() or ".bin"
     local_path = settings.UPLOAD_ROOT / f"{document.sha256}{ext}"
     if not local_path.exists():
+        logger.warning(
+            "Document process blocked missing local cache document_id=%s company_id=%s local_path=%s storage_provider=%s",
+            document.id,
+            document.company_id,
+            local_path,
+            settings.STORAGE_PROVIDER,
+        )
         raise HTTPException(status_code=409, detail="Source file is no longer available for processing")
 
     document.status = "processing"
     await repo.flush()
 
-    ctx = await run_pipeline(
-        str(local_path),
-        company_id=str(document.company_id),
-        company_tax_id=company.tax_id if company else None,
-    )
-    await apply_pipeline_result(repo, document, ctx)
+    try:
+        ctx = await run_pipeline(
+            str(local_path),
+            company_id=str(document.company_id),
+            company_tax_id=company.tax_id if company else None,
+        )
+        await apply_pipeline_result(repo, document, ctx)
+    except Exception:
+        logger.exception(
+            "Document process failed document_id=%s company_id=%s local_path=%s ocr_engine=%s stage_c_provider=%s openrouter_key_present=%s",
+            document.id,
+            document.company_id,
+            local_path,
+            settings.OCR_ENGINE,
+            settings.STAGE_C_PROVIDER,
+            bool(settings.OPENROUTER_API_KEY),
+        )
+        raise
+
     document = await _get_document_or_404(repo, document_id)
     return _document_to_detail_response(document)
 
