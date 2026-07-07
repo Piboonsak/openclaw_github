@@ -129,6 +129,29 @@ async function login(page: Page) {
 }
 
 test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Review Mapping (Pack B)", () => {
+  test("Upload dropzone is genuinely clickable and opens the native file picker", async ({ page }) => {
+    await baseMocks(page);
+    await page.route("**/api/v1/companies/*/documents", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+    );
+    await login(page);
+
+    await page.click("[data-screen='s-upload']");
+    await page.selectOption("#uploadCompanySelect", COMPANY_A.id);
+
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await page.click("#uploadDropzone");
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles({
+      name: "INV-clickable.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 clickable picker"),
+    });
+
+    await expect(page.locator("#uploadFileCount")).toHaveText("1");
+    await expect(page.locator("#uploadFileListBody")).toContainText("INV-clickable.pdf");
+  });
+
   test("Upload screen lists real companies and calls the real upload API", async ({ page }) => {
     await baseMocks(page);
     let uploadCalled = false;

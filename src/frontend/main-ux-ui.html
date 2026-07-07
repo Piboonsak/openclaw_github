@@ -210,6 +210,17 @@
       cursor: pointer; transition: border-color 0.15s, background 0.15s;
     }
     .dropzone:hover { border-color: var(--accent-mid); background: var(--accent-soft); }
+    .file-input-native {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
 
     /* Heading helpers */
     .section-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; }
@@ -722,12 +733,12 @@
       </select>
     </div>
 
-    <div class="dropzone" style="margin-bottom:1.25rem;cursor:pointer;" onclick="getEl('uploadFileInput').click()">
-      <input type="file" id="uploadFileInput" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="handleUploadFilesSelected(event)" />
+    <label class="dropzone" id="uploadDropzone" for="uploadFileInput" style="display:block;margin-bottom:1.25rem;cursor:pointer;">
+      <input type="file" id="uploadFileInput" class="file-input-native" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleUploadFilesSelected(event)" />
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-mid)" stroke-width="1.5" style="margin:0 auto 0.75rem;display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <p style="font-weight:600;color:var(--ink);margin-bottom:0.3rem;">ลาก PDF, JPG, PNG มาวางที่นี่ หรือคลิกเพื่อเลือก</p>
       <p style="font-size:0.8rem;color:var(--muted);">ขนาดไฟล์สูงสุด 20 MB ต่อไฟล์</p>
-    </div>
+    </label>
 
     <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.04em;">ไฟล์ที่เลือก (<span id="uploadFileCount">0</span>)</div>
     <div id="uploadFileListBody" style="display:flex;flex-direction:column;gap:0.45rem;margin-bottom:1.5rem;">
@@ -5817,6 +5828,8 @@
       var result = await response.json();
       showToast("อัปโหลดสำเร็จ " + result.documents.length + " ไฟล์ ✓", "ok");
       state.pendingUploadFiles = [];
+      var input = getEl("uploadFileInput");
+      if (input) input.value = "";
       renderUploadFileList();
       if (statusEl) statusEl.textContent = "";
       await goToProcessing();
