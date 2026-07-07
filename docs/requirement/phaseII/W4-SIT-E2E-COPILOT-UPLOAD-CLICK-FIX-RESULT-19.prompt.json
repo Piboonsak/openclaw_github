@@ -1,0 +1,61 @@
+{
+  "Doc ID": "W4-SIT-E2E-COPILOT-UPLOAD-CLICK-FIX-RESULT-19",
+  "Deploy proof": {
+    "workflow_run": "https://github.com/Piboonsak/Openclaw/actions/runs/28895219576",
+    "conclusion": "success",
+    "note": "Same deploy run used for task 18's env-merge verification also carried commit 52b0544 to the SIT runtime."
+  },
+  "Runtime commit": {
+    "deploy_log_evidence": "HEAD is now at 52b0544 fix(ui): make upload dropzone open native file picker",
+    "meets_minimum_commit": true
+  },
+  "Browser click proof": {
+    "artifact_dir": "test-results/w4-upload-click-fix-19/2026-07-07T20-12-29-171Z",
+    "steps_executed": [
+      "Opened SIT with Basic Auth, logged in as sit-admin@ledgerflow.local",
+      "Navigated to Upload",
+      "Clicked the visible #uploadDropzone element",
+      "Captured the real Playwright 'filechooser' event (native file picker) instead of clicking a hidden input directly",
+      "Selected one real sample PDF via the file chooser",
+      "Confirmed #uploadFileCount changed to '1' and #uploadFileListBody shows the selected filename",
+      "Clicked the Upload button",
+      "Confirmed navigation to Processing screen after upload"
+    ],
+    "dropzone_click_filechooser": {
+      "opened": true,
+      "error": null
+    },
+    "file_list_state": {
+      "uploadFileCount": "1",
+      "uploadFileListBodyContainsFile": true
+    }
+  },
+  "Network proof": {
+    "upload_post": {
+      "fired": true,
+      "status": 200,
+      "url": "https://sit.yahwan.biz/api/v1/companies/7fef16e0-bb19-47fb-b9f6-0540993142a9/documents/upload",
+      "document_id": "e807db6e-3417-496e-868d-31f97064ce0f"
+    },
+    "navigated_to_processing": true
+  },
+  "Screenshots/artifacts": [
+    "test-results/w4-upload-click-fix-19/2026-07-07T20-12-29-171Z/01-upload-screen-before-click.png",
+    "test-results/w4-upload-click-fix-19/2026-07-07T20-12-29-171Z/02-upload-screen-after-file-selected.png",
+    "test-results/w4-upload-click-fix-19/2026-07-07T20-12-29-171Z/03-after-upload-submit.png",
+    "test-results/w4-upload-click-fix-19/2026-07-07T20-12-29-171Z/summary.json",
+    "test-results/w4-upload-click-fix-19/2026-07-07T20-12-29-171Z/network-events.json"
+  ],
+  "Pass/fail by acceptance criterion": {
+    "Runtime deploy is at 52b0544 or newer": "PASS",
+    "Clicking the visible dropzone opens the native file picker or Playwright filechooser event": "PASS",
+    "Selecting a file through the picker updates the visible selected-file list": "PASS",
+    "Upload button sends the expected POST /api/v1/companies/{id}/documents/upload request": "PASS",
+    "First failing UI boundary identification if any step fails": "N/A - no failure observed, first_failing_boundary=none"
+  },
+  "Next recommendation": [
+    "Task 19 is closed: the user-visible click path (dropzone -> native file picker -> file list -> upload POST -> Processing navigation) works on live SIT at commit 52b0544.",
+    "Combined with task 18's env-merge fix, both the deploy-config hygiene gap and the upload UI click gap identified in this investigation chain (15 -> 16 -> 17 -> 18 -> 19) are now closed and proven on live SIT.",
+    "Recommended follow-up (not yet done, flagged in 18): extend the same deterministic env-merge pattern to UAT/PROD before their first real deploy."
+  ]
+}

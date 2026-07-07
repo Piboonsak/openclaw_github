@@ -1,0 +1,97 @@
+{
+  "Doc ID": "W4-SIT-E2E-COPILOT-DEPLOY-ENV-MERGE-FIX-RESULT-18",
+  "Files changed": {
+    "Piboonsak/Openclaw": [
+      ".github/workflows/deploy-ai-accounting-copilot-sit.yml (commit fa528a5) - replaced the first-create-only sed/python block with a single deterministic Python env-merge script; added a new 'Verify required runtime config presence' step."
+    ],
+    "YAHWAN-SHOP/ai-accounting-copilot": [
+      "docs/requirement/phaseII/W4-SIT-E2E-COPILOT-DEPLOY-ENV-MERGE-FIX-RESULT-18.prompt.json (this report)"
+    ]
+  },
+  "Codex decisions implemented": {
+    "do_not_delete_src_config_settings_py_now": "Respected - not touched in this pass.",
+    "fix_openclaw_deploy_env_merge": "Implemented - see 'SIT env merge behavior before vs after' below.",
+    "fix_change_me_substring_collision": "Implemented - see 'CHANGE_ME collision fix' below.",
+    "audit_uat_prod_before_first_deploy": "Completed - see 'UAT/PROD workflow audit' below."
+  },
+  "SIT env merge behavior before vs after": {
+    "before": [
+      "docker/.env.sit was only ever created from docker/.env.sit.example when the file did not already exist on the VPS (`if [ ! -f docker/.env.sit ]`).",
+      "Keys added later to docker/.env.sit.example never reached an already-existing docker/.env.sit.",
+      "Only 7 keys (MINIO_ENDPOINT, STORAGE_ENDPOINT, BWCACC_OPENROUTER_API_KEY, OPENROUTER_API_KEY, OPENAI_API_KEY, ADMIN_USERNAME, ADMIN_PASSWORD) were refreshed every deploy from GitHub Actions secrets/defaults.",
+      "OCR_ENGINE and all STAGE_C_* keys were confirmed (diagnosis-16) to be MISSING_OR_EMPTY as raw env vars on the live container, working only by coincidence via config/settings.py code defaults."
+    ],
+    "after": [
+      "A single Python script now runs on every deploy: it creates docker/.env.sit from the template only if missing, then merges any template key missing from an existing file into that file (fixing the stale-template problem for good).",
+      "Verified live on this deploy run: first invocation (run 28894879108) merged exactly the 12 previously-missing keys (DEFAULT_LOCALE, OCR_ENGINE, OPENROUTER_BASE_URL, STAGE_C_BACKUP_MODELS, STAGE_C_DEFAULT_MODEL, STAGE_C_ESCALATION_MODEL, STAGE_C_FREE_CONF_THRESHOLD, STAGE_C_FREE_DAILY_USD_CAP, STAGE_C_FREE_MODELS, STAGE_C_PAID_DAILY_USD_CAP, STAGE_C_PROVIDER, STAGE_C_USE_IMAGE_INPUT) into the already-existing docker/.env.sit, printing only key names (`keys_changed_count=12`, `keys_changed_names=...`), never values.",
+      "Second invocation (run 28895219576, the successful completed run) shows `keys_changed_count=0` - confirms the merge is idempotent once applied.",
+      "The new 'Verify required runtime config presence' step confirms all 21 required keys are now present_non_empty as real env vars on the backend container (see 'Verification run' below)."
+    ]
+  },
+  "CHANGE_ME collision fix": {
+    "problem": "The old `sed -i \"s/CHANGE_ME/sk-ant-local-sit/g\"` blanket substring replace would also match the `CHANGE_ME` substring inside `ANTHROPIC_API_KEY=sk-ant-CHANGE_ME`, corrupting it into `sk-ant-sk-ant-local-sit` on any fresh docker/.env.sit creation.",
+    "fix": "The new Python script resolves placeholder secrets by exact whole-value match only (value == 'CHANGE_ME', not substring-contains). A value of 'sk-ant-CHANGE_ME' does not exactly equal 'CHANGE_ME' and is left untouched instead of corrupted.",
+    "additional_fix": "DATABASE_URL (a composite value that embeds POSTGRES_PASSWORD as a substring) is no longer touched by any placeholder/substring logic at all - it is deterministically rebuilt from its resolved POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB parts after those are resolved, eliminating the substring-surgery risk entirely for that key.",
+    "local_verification": "Simulated the new logic locally with representative template values (POSTGRES_PASSWORD=CHANGE_ME, ANTHROPIC_API_KEY=sk-ant-CHANGE_ME, OPENROUTER_API_KEY=CHANGE_ME, DATABASE_URL with embedded CHANGE_ME) before pushing: confirmed ANTHROPIC_API_KEY stayed exactly 'sk-ant-CHANGE_ME' (no corruption), OPENROUTER_API_KEY resolved to a real random 32-char hex value, and DATABASE_URL was correctly rebuilt with the new random password substituted in place."
+  },
+  "UAT/PROD workflow audit": {
+    "openclaw_control_plane": "No deploy-ai-accounting-copilot-uat.yml or deploy-ai-accounting-copilot-prod.yml exists in Piboonsak/Openclaw/.github/workflows/ today.",
+    "execution_plane_mirrors_found": [
+      "YAHWAN-SHOP/ai-accounting-copilot/.github/workflows/bwcacc-deploy-uat.yml - explicitly labeled 'execution-plane mirror / break-glass path only' in its own header comment; canonical dispatch is meant to come from Openclaw.",
+      "YAHWAN-SHOP/ai-accounting-copilot/.github/workflows/bwcacc-deploy-prod.yml - same pattern, triggered on push to main."
+    ],
+    "gap_found": "Neither bwcacc-deploy-uat.yml nor bwcacc-deploy-prod.yml contains ANY docker/.env.{uat,prod} creation or merge logic at all. They assume docker/.env.uat / docker/.env.prod already exist on their respective target VPS with no bootstrap step. This is a larger gap than SIT had (SIT at least had a first-create bootstrap; UAT/PROD have none in their execution-plane mirror workflows).",
+    "conclusion": "requires separate prompt before first deploy. Recommend: before any real first UAT or PROD deploy, either (a) add an equivalent create+merge Python step (reusing the same logic now in deploy-ai-accounting-copilot-sit.yml) to a proper Openclaw control-plane workflow for UAT/PROD, or (b) manually verify and hand-provision docker/.env.uat / docker/.env.prod on their target VPS before the first run of the existing mirror workflows. Do not rely on the existing bwcacc-deploy-uat.yml / bwcacc-deploy-prod.yml as-is for a first-time environment bootstrap."
+  },
+  "Verification run": {
+    "workflow_runs": [
+      "https://github.com/Piboonsak/Openclaw/actions/runs/28894651385 (failed - transient git fetch network timeout to github.com from the runner->VPS SSH session, unrelated to the code change, occurred before the new script ran)",
+      "https://github.com/Piboonsak/Openclaw/actions/runs/28894879108 (failed - transient git fetch timeout inside scripts/deploy/deploy-sit.sh's own internal git operation, occurred AFTER the new env-merge script already ran successfully and printed keys_changed_count=12; VPS-to-github.com connectivity independently confirmed healthy via direct SSH curl test between attempts)",
+      "https://github.com/Piboonsak/Openclaw/actions/runs/28895219576 (success - full deploy completed)"
+    ],
+    "runtime_commit_confirmed": "HEAD is now at 52b0544 fix(ui): make upload dropzone open native file picker",
+    "config_presence_proof_no_values_exposed": {
+      "STORAGE_PROVIDER": "present_non_empty",
+      "MINIO_ENDPOINT": "present_non_empty",
+      "MINIO_BUCKET": "present_non_empty",
+      "MINIO_ACCESS_KEY": "present_non_empty",
+      "MINIO_SECRET_KEY": "present_non_empty",
+      "OPENROUTER_API_KEY": "present_non_empty",
+      "BWCACC_OPENROUTER_API_KEY": "present_non_empty",
+      "OPENAI_API_KEY": "present_non_empty",
+      "OCR_ENGINE": "present_non_empty",
+      "DEFAULT_LOCALE": "present_non_empty",
+      "STAGE_C_PROVIDER": "present_non_empty",
+      "STAGE_C_DEFAULT_MODEL": "present_non_empty",
+      "STAGE_C_BACKUP_MODELS": "present_non_empty",
+      "STAGE_C_ESCALATION_MODEL": "present_non_empty",
+      "STAGE_C_FREE_MODELS": "present_non_empty",
+      "STAGE_C_FREE_CONF_THRESHOLD": "present_non_empty",
+      "STAGE_C_FREE_DAILY_USD_CAP": "present_non_empty",
+      "STAGE_C_PAID_DAILY_USD_CAP": "present_non_empty",
+      "STAGE_C_USE_IMAGE_INPUT": "present_non_empty",
+      "DATABASE_URL": "present_non_empty",
+      "REDIS_URL": "present_non_empty",
+      "JWT_SECRET_KEY": "present_non_empty"
+    }
+  },
+  "Secret-safety notes": [
+    "No secret values were printed at any point in the workflow logs, this report, or the verification commands. Only presence/absence (present_non_empty / MISSING_OR_EMPTY) and changed key NAMES were logged.",
+    "The env-merge script continues to source real secrets (OPENROUTER_API_KEY, OPENAI_API_KEY) from GitHub Actions secrets, not from the committed .example templates."
+  ],
+  "Commit and push proof": {
+    "Piboonsak/Openclaw": {
+      "commit": "fa528a5ea2a0b7da7aa1efee340f168662a3ae5e",
+      "branch": "main",
+      "message": "fix(cicd): deterministic docker/.env.sit merge, fix CHANGE_ME substring collision, add config-presence proof"
+    },
+    "YAHWAN-SHOP/ai-accounting-copilot": {
+      "note": "This result report file is committed to dev; see repository history for exact SHA at push time."
+    }
+  },
+  "Next recommendation": [
+    "Apply the same deterministic env-merge pattern to a proper Openclaw control-plane workflow before any real first UAT/PROD deploy (UAT/PROD currently have no bootstrap logic at all).",
+    "Consider adding a lightweight retry wrapper around the VPS's outbound git fetch calls in scripts/deploy/deploy-sit.sh and the SSH-driven git fetch in the Openclaw workflow, since this pass hit two transient GitHub connectivity timeouts in a row before a clean third run succeeded.",
+    "Proceed to task 19 (upload dropzone click fix) live browser proof now that runtime is confirmed at 52b0544."
+  ]
+}
