@@ -67,7 +67,9 @@ def _resolve_local_path(document: Document) -> Path:
     return settings.UPLOAD_ROOT / f"{document.sha256}{ext}"
 
 
-def _run_and_persist_pipeline(document_id: str) -> dict[str, Any]:
+def _run_and_persist_pipeline(
+    document_id: str, progress_callback: Any | None = None
+) -> dict[str, Any]:
     """Run the real OCR/extraction/journal-routing pipeline for `document_id`
     and persist the result via a sync SQLAlchemy session, using the same
     `build_pipeline_persistence_plan` the async API path uses. Returns a
@@ -88,6 +90,7 @@ def _run_and_persist_pipeline(document_id: str) -> dict[str, Any]:
                 str(local_path),
                 company_id=str(document.company_id),
                 company_tax_id=company.tax_id if company else None,
+                progress_callback=progress_callback,
             )
         )
 
@@ -193,11 +196,20 @@ def extract_coa_pdf(
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def process_document(self, document_id: str) -> dict[str, Any]:
-    """Run document processing asynchronously with persistent task state."""
+    """Run document processing asynchronously with persistent task state.
+
+    Reports "ocr" / "extract" / "mapping" progress stages (W4 Processing UX
+    fix) so the frontend can poll `GET /api/v1/tasks/{task_id}` and show real
+    pipeline progress instead of an opaque spinner.
+    """
     _set_document_status(document_id, DocumentStatus.PROCESSING.value)
+    _report_progress(self, "queued")
 
     try:
-        result = _run_and_persist_pipeline(document_id)
+        result = _run_and_persist_pipeline(
+            document_id,
+            progress_callback=lambda stage: _report_progress(self, stage),
+        )
         return {
             "task_id": self.request.id,
             "document_id": document_id,

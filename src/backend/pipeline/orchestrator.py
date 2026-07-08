@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any
+from typing import Any, Callable
 
 from config.settings import settings
 from src.backend.ml.amount_reconciler import apply_amount_confidence, reconcile_amounts
@@ -308,14 +308,33 @@ async def run_pipeline(
     company_id: str | None = None,
     company_tax_id: str | None = None,
     force_refresh: bool = False,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> PipelineContext:
-    """Run OCR -> extraction -> Stage C cascade repair -> journal routing."""
+    """Run OCR -> extraction -> Stage C cascade repair -> journal routing.
+
+    `progress_callback`, when provided, is invoked with a short stage name at
+    each key boundary ("ocr", "extract", "mapping") so async callers (the
+    Celery `process_document` task) can surface real progress instead of a
+    single opaque "processing" state. It is a best-effort UI signal only and
+    must never affect pipeline behavior if it raises.
+    """
+
+    def _emit(stage: str) -> None:
+        if progress_callback is None:
+            return
+        try:
+            progress_callback(stage)
+        except Exception:
+            pass
+
     settings.reload()
     ctx = PipelineContext(source_file=image_path, company_id=company_id)
     try:
+        _emit("ocr")
         ctx.ocr_output = run_ocr(
             image_path, cache_root=settings.CACHE_ROOT, force_refresh=force_refresh
         )
+        _emit("extract")
         ctx.extraction_output = run_extraction(
             ctx.ocr_output, cache_root=settings.CACHE_ROOT, force_refresh=force_refresh
         )
@@ -470,6 +489,7 @@ async def run_pipeline(
         ctx.overall_confidence = overall
         ctx.extraction_output["overall_confidence"] = overall
 
+        _emit("mapping")
         ctx.journal_output = run_journal_router(
             ctx.extraction_output,
             company_id=company_id,

@@ -66,6 +66,7 @@ _TASK_STATUS_MAP = {
     "RECEIVED": "pending",
     "RETRY": "started",
     "STARTED": "started",
+    "PROGRESS": "started",
     "SUCCESS": "success",
     "FAILURE": "failure",
 }
@@ -171,19 +172,29 @@ async def get_task_status(
     task_id: str,
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
-    """Return Celery task execution status and latest result payload."""
+    """Return Celery task execution status, pipeline stage, and latest result
+    payload. `stage` (e.g. "queued" / "ocr" / "extract" / "mapping") lets the
+    Processing screen show real pipeline progress instead of an opaque
+    spinner (W4 Processing UX fix) - it is only meaningful while status is
+    "started".
+    """
     async_result = AsyncResult(task_id, app=celery_app)
     normalized_status = _TASK_STATUS_MAP.get(async_result.state, "pending")
 
+    stage: str | None = None
     result_payload: Any = None
     if async_result.successful():
         result_payload = async_result.result
     elif async_result.failed():
         result_payload = str(async_result.result)
+    elif async_result.state == "PROGRESS":
+        meta = async_result.info if isinstance(async_result.info, dict) else {}
+        stage = str(meta.get("stage") or "") or None
 
     return {
         "task_id": task_id,
         "status": normalized_status,
+        "stage": stage,
         "result": result_payload,
     }
 

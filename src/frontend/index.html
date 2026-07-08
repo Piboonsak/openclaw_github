@@ -759,7 +759,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
     <strong style="color:var(--accent);">หมายเหตุ:</strong>
-    <span>ประมวลผลแบบ synchronous ต่อเอกสาร (ไม่ผ่าน Celery background queue ในหน้านี้) — สถานะที่แสดงคือสถานะจริงจาก backend ไม่ใช่ข้อมูลตัวอย่าง</span>
+    <span>ประมวลผลผ่าน Celery background queue จริง (สูงสุด 5 เอกสารพร้อมกัน) — สถานะและ % ที่แสดงคือสถานะจริงจาก backend ไม่ใช่ข้อมูลตัวอย่าง</span>
   </div>
 
   <div class="card" style="margin-bottom:1rem;">
@@ -779,10 +779,10 @@
     <div class="table-wrap">
       <table class="data-table" style="min-width:520px;">
         <thead>
-          <tr><th>ไฟล์</th><th>สถานะ</th><th style="width:120px;"></th></tr>
+          <tr><th>ไฟล์</th><th>อัปโหลดเมื่อ</th><th>สถานะ</th><th style="width:120px;"></th></tr>
         </thead>
         <tbody id="processingTableBody">
-          <tr><td colspan="3" style="color:#6b7280;font-size:.85rem;">ยังไม่มีเอกสาร — ไปที่ Upload ก่อน</td></tr>
+          <tr><td colspan="4" style="color:#6b7280;font-size:.85rem;">ยังไม่มีเอกสาร — ไปที่ Upload ก่อน</td></tr>
         </tbody>
       </table>
     </div>
@@ -805,33 +805,33 @@
     <span style="font-size:0.85rem;font-weight:600;" id="reviewScanSummaryText">โหลด...</span>
   </div>
 
-  <div style="display:grid;grid-template-columns:260px 1fr;gap:1rem;align-items:start;">
+  <div style="display:grid;grid-template-columns:260px 1fr;gap:1rem;align-items:stretch;height:calc(100vh - 260px);min-height:560px;">
     <!-- Doc list -->
-    <div class="card" style="padding:0;overflow:hidden;">
+    <div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;height:100%;">
       <div style="padding:0.7rem 1rem;border-bottom:1px solid var(--line);font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">เอกสาร (<span id="reviewScanCount">0</span>)</div>
-      <ul style="margin:0;" id="reviewScanListBody">
+      <ul style="margin:0;flex:1;overflow-y:auto;" id="reviewScanListBody">
         <li style="padding:0.75rem 1rem;color:#6b7280;font-size:.82rem;">ไม่มีเอกสารที่รอตรวจสอบ</li>
       </ul>
     </div>
 
     <!-- Right: real file preview/download + real editable extraction form -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;height:100%;">
       <!-- Real file preview: fetched as a blob via apiFetch (so the auth header attaches) and
            rendered inline for PDF/image, with a real download link for everything else. -->
-      <div class="card" style="padding:0;overflow:hidden;">
+      <div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;height:100%;">
         <div style="background:var(--surface);border-bottom:1px solid var(--line);padding:0.6rem 0.85rem;display:flex;align-items:center;justify-content:space-between;">
           <span class="mono" style="font-size:0.8rem;font-weight:600;" id="reviewScanDocFilename">—</span>
           <a href="#" id="reviewScanDownloadLink" download style="font-size:0.75rem;color:var(--accent);display:none;">⬇ ดาวน์โหลด</a>
         </div>
-        <div id="reviewScanPreviewBody" style="height:320px;background:var(--surface-2,oklch(93% 0.008 250));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.75rem;">
+        <div id="reviewScanPreviewBody" style="flex:1;min-height:0;background:var(--surface-2,oklch(93% 0.008 250));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.75rem;">
           <span style="font-size:0.8rem;color:var(--muted);">เลือกเอกสารทางซ้ายเพื่อดูไฟล์</span>
         </div>
       </div>
 
       <!-- Field form: real extraction fields, editable and persisted via PUT /v1/documents/{id}/fields -->
-      <div class="card">
+      <div class="card" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.85rem;" id="reviewScanBadges"></div>
-        <div style="display:flex;flex-direction:column;gap:0.65rem;margin-bottom:1rem;" id="reviewScanFields">
+        <div style="display:flex;flex-direction:column;gap:0.65rem;margin-bottom:1rem;flex:1;overflow-y:auto;min-height:0;" id="reviewScanFields">
           <p style="color:#6b7280;font-size:.85rem;">เลือกเอกสารทางซ้ายเพื่อดูรายละเอียด</p>
         </div>
         <div style="background:var(--surface);border-radius:8px;padding:0.85rem;margin-bottom:1rem;">
@@ -3092,6 +3092,8 @@
     selectedCompanyDetailId: "",
     pendingUploadFiles: [],
     workflowDocuments: [],
+    currentProcessingBatchIds: [],
+    processingStage: {},
     reviewScanSelectedId: "",
     reviewMappingSelectedId: "",
   };
@@ -5780,6 +5782,16 @@
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
+  function formatDateTime(isoString) {
+    if (!isoString) return "—";
+    var d = new Date(isoString);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString("th-TH", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  }
+
   function renderUploadFileList() {
     var files = state.pendingUploadFiles || [];
     var countEl = getEl("uploadFileCount");
@@ -5828,6 +5840,7 @@
       var result = await response.json();
       showToast("อัปโหลดสำเร็จ " + result.documents.length + " ไฟล์ ✓", "ok");
       state.pendingUploadFiles = [];
+      state.currentProcessingBatchIds = (result.documents || []).map(function (d) { return d.id; });
       var input = getEl("uploadFileInput");
       if (input) input.value = "";
       renderUploadFileList();
@@ -5864,6 +5877,29 @@
     renderProcessingTable();
   }
 
+  var PROCESSING_STAGE_LABELS = {
+    queued: "รอคิว...",
+    ocr: "กำลังรัน OCR...",
+    extract: "กำลังสกัดข้อมูล...",
+    mapping: "กำลังจัดสมุดบัญชี...",
+  };
+
+  var MAX_CONCURRENT_PROCESSING = 5; // parallel Celery tasks (W4 Processing UX fix: 4-10 requested)
+
+  function getProcessingBatchDocs(docs) {
+    if (state.currentProcessingBatchIds && state.currentProcessingBatchIds.length) {
+      var idSet = {};
+      state.currentProcessingBatchIds.forEach(function (id) { idSet[id] = true; });
+      return docs.filter(function (d) { return idSet[d.id]; });
+    }
+    // No explicit batch tracked yet (e.g. page reload) — auto-scope progress to
+    // whatever is still pending, so already-completed historical documents
+    // from earlier sessions never inflate/deflate this session's percent.
+    return docs.filter(function (d) {
+      return d.status === "uploaded" || d.status === "processing" || d.status === "failed";
+    });
+  }
+
   function renderProcessingTable() {
     var docs = state.workflowDocuments || [];
     var body = getEl("processingTableBody");
@@ -5871,15 +5907,19 @@
     var percentEl = getEl("processingPercentText");
     var fillEl = getEl("processingProgressFill");
     if (!docs.length) {
-      if (body) body.innerHTML = '<tr><td colspan="3" style="color:#6b7280;font-size:.85rem;">ยังไม่มีเอกสาร — ไปที่ Upload ก่อน</td></tr>';
+      if (body) body.innerHTML = '<tr><td colspan="4" style="color:#6b7280;font-size:.85rem;">ยังไม่มีเอกสาร — ไปที่ Upload ก่อน</td></tr>';
       if (summaryEl) summaryEl.textContent = "ยังไม่มีเอกสารที่ต้องประมวลผล";
       if (percentEl) percentEl.textContent = "0%";
       if (fillEl) fillEl.style.width = "0%";
       return;
     }
-    var done = docs.filter(function (d) { return d.status !== "uploaded" && d.status !== "processing"; }).length;
-    var percent = Math.round((done / docs.length) * 100);
-    if (summaryEl) summaryEl.textContent = "ประมวลผลแล้ว " + done + " / " + docs.length + " เอกสาร";
+    var batchDocs = getProcessingBatchDocs(docs);
+    var done = batchDocs.filter(function (d) { return d.status !== "uploaded" && d.status !== "processing"; }).length;
+    var percent = batchDocs.length ? Math.round((done / batchDocs.length) * 100) : 0;
+    var scopeNote = batchDocs.length !== docs.length
+      ? " (จากทั้งหมด " + docs.length + " เอกสารในบริษัทนี้ รวมของเดิม)"
+      : "";
+    if (summaryEl) summaryEl.textContent = "ประมวลผลแล้ว " + done + " / " + batchDocs.length + " เอกสาร" + scopeNote;
     if (percentEl) percentEl.textContent = percent + "%";
     if (fillEl) fillEl.style.width = percent + "%";
     if (body) {
@@ -5887,35 +5927,66 @@
         var badgeClass = doc.status === "failed" ? "badge-danger"
           : (doc.status === "uploaded" || doc.status === "processing") ? "badge-muted"
           : "badge-ok";
-        var label = DOCUMENT_STATUS_LABELS[doc.status] || doc.status;
+        var stage = state.processingStage[doc.id];
+        var label = stage ? (PROCESSING_STAGE_LABELS[stage] || stage) : (DOCUMENT_STATUS_LABELS[doc.status] || doc.status);
         var errorNote = doc.processing_error
           ? '<div style="font-size:.72rem;color:var(--danger);margin-top:.2rem;">' + escapeHtml(doc.processing_error) + '</div>'
           : "";
-        var actionCell = doc.status === "uploaded" || doc.status === "failed"
+        var actionCell = (doc.status === "uploaded" || doc.status === "failed") && !stage
           ? '<button class="btn btn-ghost btn-sm" onclick="processOneDocument(\'' + doc.id + '\')">▶ ประมวลผล</button>'
           : "";
         return "<tr><td class=\"mono\" style=\"font-size:0.82rem;\">" + escapeHtml(doc.filename) + errorNote + "</td>" +
+          "<td class=\"mono\" style=\"font-size:0.75rem;color:var(--muted);\">" + formatDateTime(doc.created_at) + "</td>" +
           "<td><span class=\"badge " + badgeClass + "\">" + escapeHtml(label) + "</span></td>" +
           "<td>" + actionCell + "</td></tr>";
       }).join("");
     }
   }
 
+  async function pollTaskUntilDone(taskId, onStage) {
+    while (true) {
+      var resp = await apiFetch(auth.apiUrl("/api/v1/tasks/" + encodeURIComponent(taskId)));
+      if (!resp.ok) throw new Error("Task status HTTP " + resp.status);
+      var body = await resp.json();
+      if (onStage) onStage(body.stage || null);
+      if (body.status === "success" || body.status === "failure") return body;
+      await new Promise(function (resolve) { setTimeout(resolve, 1200); });
+    }
+  }
+
+  async function refreshOneWorkflowDocument(documentId) {
+    var resp = await apiFetch(auth.apiUrl("/api/v1/documents/" + encodeURIComponent(documentId)));
+    if (!resp.ok) return null;
+    var updated = await resp.json();
+    var index = (state.workflowDocuments || []).findIndex(function (d) { return d.id === documentId; });
+    if (index >= 0) state.workflowDocuments[index] = updated;
+    return updated;
+  }
+
   async function processOneDocument(documentId) {
+    state.processingStage[documentId] = "queued";
+    renderProcessingTable();
     try {
-      var response = await apiFetch(auth.apiUrl("/api/v1/documents/" + encodeURIComponent(documentId) + "/process"), {
-        method: "POST",
-      });
-      if (!response.ok) {
-        var errorBody = await response.json().catch(function () { return {}; });
-        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      var startResp = await apiFetch(
+        auth.apiUrl("/api/v1/tasks/process-document/" + encodeURIComponent(documentId)),
+        { method: "POST" }
+      );
+      if (!startResp.ok) {
+        var errorBody = await startResp.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + startResp.status));
       }
-      var updated = await response.json();
-      var index = state.workflowDocuments.findIndex(function (d) { return d.id === documentId; });
-      if (index >= 0) state.workflowDocuments[index] = updated;
+      var startBody = await startResp.json();
+      await pollTaskUntilDone(startBody.task_id, function (stage) {
+        state.processingStage[documentId] = stage || "queued";
+        renderProcessingTable();
+      });
+      var updated = await refreshOneWorkflowDocument(documentId);
+      delete state.processingStage[documentId];
       renderProcessingTable();
       return updated;
     } catch (error) {
+      delete state.processingStage[documentId];
+      renderProcessingTable();
       showToast("ประมวลผลไม่สำเร็จ: " + error.message, "warn");
       return null;
     }
@@ -5927,11 +5998,26 @@
       showToast("ไม่มีเอกสารที่รอประมวลผล", "");
       return;
     }
+    if (!state.currentProcessingBatchIds || !state.currentProcessingBatchIds.length) {
+      state.currentProcessingBatchIds = pending.map(function (d) { return d.id; });
+    }
     var startBtn = getEl("processingStartBtn");
     if (startBtn) startBtn.disabled = true;
-    for (var i = 0; i < pending.length; i++) {
-      await processOneDocument(pending[i].id);
+    renderProcessingTable();
+
+    var queue = pending.slice();
+    var concurrency = Math.min(MAX_CONCURRENT_PROCESSING, queue.length);
+    var workers = [];
+    for (var w = 0; w < concurrency; w++) {
+      workers.push((async function runWorker() {
+        while (queue.length) {
+          var doc = queue.shift();
+          await processOneDocument(doc.id);
+        }
+      })());
     }
+    await Promise.all(workers);
+
     if (startBtn) startBtn.disabled = false;
     showToast("ประมวลผลเสร็จสิ้น " + pending.length + " เอกสาร", "ok");
     await goToReviewScan();
@@ -5973,7 +6059,10 @@
       var confidence = (doc.overall_confidence != null) ? Math.round(doc.overall_confidence * 100) + "%" : "—";
       return '<li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;' +
         (isSelected ? "background:var(--accent-soft);border-left:3px solid var(--accent);" : "") + '" onclick="selectReviewScanDocument(\'' + doc.id + '\')">' +
-        '<span class="mono" style="font-size:0.8rem;flex:1;">' + escapeHtml(doc.invoice_number || doc.filename) + '</span>' +
+        '<span style="flex:1;min-width:0;">' +
+          '<span class="mono" style="font-size:0.8rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(doc.filename) + '</span>' +
+          '<span class="mono" style="font-size:0.68rem;color:var(--muted);">' + formatDateTime(doc.created_at) + '</span>' +
+        '</span>' +
         badge + '<span class="mono" style="font-size:0.72rem;color:var(--muted);">' + confidence + '</span></li>';
     }).join("");
   }

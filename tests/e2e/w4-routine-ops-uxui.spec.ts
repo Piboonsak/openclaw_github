@@ -194,14 +194,31 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
       return route.continue();
     });
     let processCalled = false;
-    await page.route("**/api/v1/documents/*/process", (route) => {
+    // W4 Processing UX fix: the frontend now dispatches to Celery via
+    // /api/v1/tasks/process-document/{id} and polls /api/v1/tasks/{task_id}
+    // instead of calling the old synchronous /documents/{id}/process route.
+    await page.route("**/api/v1/tasks/process-document/*", (route) => {
       processCalled = true;
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ...DOC_REVIEW_SCAN, id: DOC_UPLOADED.id }),
+        body: JSON.stringify({ task_id: "task-doc-1", status: "pending", document_id: DOC_UPLOADED.id }),
       });
     });
+    await page.route("**/api/v1/tasks/task-doc-1", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ task_id: "task-doc-1", status: "success", stage: null, result: { status: "review_scan" } }),
+      })
+    );
+    await page.route("**/api/v1/documents/doc-1", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...DOC_REVIEW_SCAN, id: DOC_UPLOADED.id }),
+      })
+    );
     await login(page);
 
     await page.click("[data-screen='s-processing']");
