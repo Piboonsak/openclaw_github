@@ -103,7 +103,7 @@ async function main() {
     );
     result.steps.distinct_concurrent_task_ids_seen = Array.from(distinctTaskIds);
 
-    await page.waitForSelector("#s-review-scan", { state: "visible", timeout: 90000 });
+    await page.waitForSelector("#s-review-scan", { state: "visible", timeout: 180000 });
     await page.waitForTimeout(1500);
     await page.screenshot({ path: path.join(outDir, "03-review-scan-after-processing.png"), fullPage: true });
 

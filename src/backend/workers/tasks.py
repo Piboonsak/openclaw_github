@@ -213,13 +213,16 @@ def extract_coa_pdf(
     }
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, time_limit=600, soft_time_limit=540)
 def process_document(self, document_id: str) -> dict[str, Any]:
     """Run document processing asynchronously with persistent task state.
 
     Reports "ocr" / "extract" / "mapping" progress stages (W4 Processing UX
     fix) so the frontend can poll `GET /api/v1/tasks/{task_id}` and show real
-    pipeline progress instead of an opaque spinner.
+    pipeline progress instead of an opaque spinner. Carries the same longer
+    time budget as `extract_coa_pdf` (real OCR + Stage C LLM escalation can
+    exceed the app-wide 120s/180s defaults; without this override tasks were
+    observed hitting SoftTimeLimitExceeded at exactly 120s on SIT).
     """
     _set_document_status(document_id, DocumentStatus.PROCESSING.value)
     _report_progress(self, "queued")
