@@ -63,8 +63,27 @@ def _set_document_status(
 
 
 def _resolve_local_path(document: Document) -> Path:
+    """Return a local path to the uploaded document inside *this* container.
+
+    The backend and celery-worker containers do not share an upload volume
+    (docker/docker-compose.sit.yml mounts none), so the local cache written
+    by the API process during upload is normally absent here — fall back to
+    downloading the bytes from object storage (MinIO on SIT) by storage key,
+    same pattern already used by `_materialize_coa_source` for the COA async
+    job. Without this fallback every `process_document` task retries 3 times
+    (60s apart) and then fails with FileNotFoundError, even though the file
+    genuinely exists in object storage.
+    """
     ext = Path(document.filename or "").suffix.lower() or ".bin"
-    return settings.UPLOAD_ROOT / f"{document.sha256}{ext}"
+    local_path = settings.UPLOAD_ROOT / f"{document.sha256}{ext}"
+    if local_path.exists():
+        return local_path
+    if not document.storage_key:
+        return local_path
+    content = get_storage_client().download_bytes(document.storage_key)
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(content)
+    return local_path
 
 
 def _run_and_persist_pipeline(
