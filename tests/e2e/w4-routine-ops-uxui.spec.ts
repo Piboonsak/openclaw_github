@@ -6,7 +6,10 @@ async function gotoWithRetry(page: Page, path: string) {
   let lastError: unknown;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      await page.goto(LOCAL_BASE + path, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.goto(LOCAL_BASE + path, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      });
       return;
     } catch (error) {
       lastError = error;
@@ -96,24 +99,56 @@ const VOUCHER = {
   total_credit: 1070.0,
   flags: [],
   lines: [
-    { id: "line-1", line_order: 1, account_code: "5040", account_name: "ค่าใช้จ่าย", is_debit: true, amount: 1000.0, description: null },
-    { id: "line-2", line_order: 2, account_code: "1154", account_name: "ภาษีซื้อ", is_debit: true, amount: 70.0, description: null },
-    { id: "line-3", line_order: 3, account_code: "2195", account_name: "เจ้าหนี้การค้า", is_debit: false, amount: 1070.0, description: null },
+    {
+      id: "line-1",
+      line_order: 1,
+      account_code: "5040",
+      account_name: "ค่าใช้จ่าย",
+      is_debit: true,
+      amount: 1000.0,
+      description: null,
+    },
+    {
+      id: "line-2",
+      line_order: 2,
+      account_code: "1154",
+      account_name: "ภาษีซื้อ",
+      is_debit: true,
+      amount: 70.0,
+      description: null,
+    },
+    {
+      id: "line-3",
+      line_order: 3,
+      account_code: "2195",
+      account_name: "เจ้าหนี้การค้า",
+      is_debit: false,
+      amount: 1070.0,
+      description: null,
+    },
   ],
 };
 
 async function baseMocks(page: Page) {
   await page.route("**/api/v1/auth/me", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(FAKE_USER) })
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(FAKE_USER),
+    }),
   );
   await page.route("**/api/v1/admin/companies", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([COMPANY_A]) })
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([COMPANY_A]),
+    }),
   );
   await page.route("**/api/v1/admin/users", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
   await page.route("**/api/v1/templates**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
 }
 
@@ -129,10 +164,16 @@ async function login(page: Page) {
 }
 
 test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Review Mapping (Pack B)", () => {
-  test("Upload dropzone is genuinely clickable and opens the native file picker", async ({ page }) => {
+  test("Upload dropzone is genuinely clickable and opens the native file picker", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "[]",
+      }),
     );
     await login(page);
 
@@ -149,10 +190,14 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     });
 
     await expect(page.locator("#uploadFileCount")).toHaveText("1");
-    await expect(page.locator("#uploadFileListBody")).toContainText("INV-clickable.pdf");
+    await expect(page.locator("#uploadFileListBody")).toContainText(
+      "INV-clickable.pdf",
+    );
   });
 
-  test("Upload screen lists real companies and calls the real upload API", async ({ page }) => {
+  test("Upload screen lists real companies and calls the real upload API", async ({
+    page,
+  }) => {
     await baseMocks(page);
     let uploadCalled = false;
     await page.route("**/api/v1/companies/*/documents/upload", (route) => {
@@ -164,7 +209,11 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
       });
     });
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "[]",
+      }),
     );
     await login(page);
 
@@ -178,18 +227,26 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
       buffer: Buffer.from("%PDF-1.4 fake content"),
     });
     await expect(page.locator("#uploadFileCount")).toHaveText("1");
-    await expect(page.locator("#uploadFileListBody")).toContainText("INV-001.pdf");
+    await expect(page.locator("#uploadFileListBody")).toContainText(
+      "INV-001.pdf",
+    );
 
     await page.click("#uploadSubmitBtn");
     await expect(page.locator("#s-processing")).toBeVisible();
     expect(uploadCalled).toBe(true);
   });
 
-  test("Processing screen shows real per-document status and processes pending documents", async ({ page }) => {
+  test("Processing screen shows real per-document status and processes pending documents", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) => {
       if (route.request().method() === "GET") {
-        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_UPLOADED]) });
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([DOC_UPLOADED]),
+        });
       }
       return route.continue();
     });
@@ -202,79 +259,195 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ task_id: "task-doc-1", status: "pending", document_id: DOC_UPLOADED.id }),
+        body: JSON.stringify({
+          task_id: "task-doc-1",
+          status: "pending",
+          document_id: DOC_UPLOADED.id,
+        }),
       });
     });
     await page.route("**/api/v1/tasks/task-doc-1", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ task_id: "task-doc-1", status: "success", stage: null, result: { status: "review_scan" } }),
-      })
+        body: JSON.stringify({
+          task_id: "task-doc-1",
+          status: "success",
+          stage: null,
+          result: { status: "review_scan" },
+        }),
+      }),
     );
     await page.route("**/api/v1/documents/doc-1", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ ...DOC_REVIEW_SCAN, id: DOC_UPLOADED.id }),
-      })
+      }),
     );
     await login(page);
 
     await page.click("[data-screen='s-processing']");
-    await expect(page.locator("#processingTableBody")).toContainText("INV-001.pdf");
-    await expect(page.locator("#processingTableBody")).toContainText("อัปโหลดแล้ว");
+    await expect(page.locator("#processingTableBody")).toContainText(
+      "INV-001.pdf",
+    );
+    await expect(page.locator("#processingTableBody")).toContainText(
+      "อัปโหลดแล้ว",
+    );
 
     await page.click("#processingStartBtn");
-    await expect(page.locator("#s-review-scan")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("#s-review-scan")).toBeVisible({
+      timeout: 10_000,
+    });
     expect(processCalled).toBe(true);
   });
 
-  test("Review Scan loads real extraction data and Approve calls the real API", async ({ page }) => {
+  test("Processing percent/summary only counts the current upload batch, not historical documents (HR-10/HR-12 regression)", async ({
+    page,
+  }) => {
+    await baseMocks(page);
+    await page.route("**/api/v1/companies/*/documents/upload", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ documents: [DOC_UPLOADED] }),
+      }),
+    );
+    // Company already has one older, fully-processed document from an
+    // earlier session (DOC_SCAN_APPROVED) alongside the just-uploaded one.
+    await page.route("**/api/v1/companies/*/documents", (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_UPLOADED, DOC_SCAN_APPROVED]),
+      });
+    });
+    await login(page);
+
+    await page.click("[data-screen='s-upload']");
+    await page.selectOption("#uploadCompanySelect", COMPANY_A.id);
+    await page.setInputFiles("#uploadFileInput", {
+      name: "INV-001.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 fake content"),
+    });
+    await page.click("#uploadSubmitBtn");
+
+    await expect(page.locator("#s-processing")).toBeVisible();
+    // Both the new and the historical document remain visible in the table...
+    await expect(page.locator("#processingTableBody")).toContainText(
+      "INV-001.pdf",
+    );
+    await expect(page.locator("#processingTableBody")).toContainText(
+      DOC_SCAN_APPROVED.filename,
+    );
+    // ...but the summary/percent must reflect only the 1-document batch just
+    // uploaded, not "1 / 2" from the combined company history.
+    await expect(page.locator("#processingSummaryText")).toContainText(
+      "0 / 1 เอกสาร",
+    );
+    await expect(page.locator("#processingSummaryText")).toContainText(
+      "จากทั้งหมด 2 เอกสารในบริษัทนี้",
+    );
+  });
+
+  test("Review Scan loads real extraction data and Approve calls the real API", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_REVIEW_SCAN]) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_REVIEW_SCAN]),
+      }),
     );
     await page.route("**/api/v1/documents/doc-2", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...DOC_REVIEW_SCAN, extraction_fields: {}, confidence_per_field: {}, critical_flags: {}, voucher: null }) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...DOC_REVIEW_SCAN,
+          extraction_fields: {},
+          confidence_per_field: {},
+          critical_flags: {},
+          voucher: null,
+        }),
+      }),
     );
     let approveCalled = false;
     await page.route("**/api/v1/documents/doc-2/approve", (route) => {
       approveCalled = true;
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...DOC_REVIEW_SCAN, status: "scan_approved" }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...DOC_REVIEW_SCAN, status: "scan_approved" }),
+      });
     });
     await login(page);
 
     await page.click("[data-screen='s-review-scan']");
     await expect(page.locator("#reviewScanListBody")).toContainText("INV-002");
     await page.click("#reviewScanListBody li");
-    await expect(page.locator("#reviewScanFields input[value='INV-002']")).toHaveCount(1);
+    await expect(
+      page.locator("#reviewScanFields input[value='INV-002']"),
+    ).toHaveCount(1);
     await expect(page.locator("#reviewScanApproveBtn")).toBeEnabled();
 
     // Register the response listener BEFORE clicking — the mocked response can
     // resolve in the microtask gap after click() and be missed forever otherwise.
-    const approveResponse = page.waitForResponse((r) => r.url().includes("/documents/doc-2/approve"));
+    const approveResponse = page.waitForResponse((r) =>
+      r.url().includes("/documents/doc-2/approve"),
+    );
     await page.click("#reviewScanApproveBtn");
     await approveResponse;
     expect(approveCalled).toBe(true);
   });
 
-  test("Review Scan field edits are saved via the real PUT /fields API (TC-RWG03-04)", async ({ page }) => {
+  test("Review Scan field edits are saved via the real PUT /fields API (TC-RWG03-04)", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_REVIEW_SCAN]) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_REVIEW_SCAN]),
+      }),
     );
     await page.route("**/api/v1/documents/doc-2", (route) => {
       if (route.request().method() !== "GET") return route.continue();
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...DOC_REVIEW_SCAN, extraction_fields: {}, confidence_per_field: {}, critical_flags: {}, voucher: null }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...DOC_REVIEW_SCAN,
+          extraction_fields: {},
+          confidence_per_field: {},
+          critical_flags: {},
+          voucher: null,
+        }),
+      });
     });
     await page.route("**/api/v1/documents/doc-2/file", (route) =>
-      route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "not found" }) })
+      route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "not found" }),
+      }),
     );
     let putBody: any = null;
     await page.route("**/api/v1/documents/doc-2/fields", (route) => {
       putBody = route.request().postDataJSON();
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...DOC_REVIEW_SCAN, invoice_number: "INV-002-CORRECTED" }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...DOC_REVIEW_SCAN,
+          invoice_number: "INV-002-CORRECTED",
+        }),
+      });
     });
     await login(page);
 
@@ -283,26 +456,48 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     await expect(page.locator("#reviewScanSaveBtn")).toBeEnabled();
 
     await page.fill("#reviewScanFieldInvoiceNumber", "INV-002-CORRECTED");
-    const fieldsResponse = page.waitForResponse((r) => r.url().includes("/documents/doc-2/fields"));
+    const fieldsResponse = page.waitForResponse((r) =>
+      r.url().includes("/documents/doc-2/fields"),
+    );
     await page.click("#reviewScanSaveBtn");
 
     await fieldsResponse;
     expect(putBody.invoice_number).toBe("INV-002-CORRECTED");
   });
 
-  test("Review Scan shows a real in-page file preview fetched from the file API, not a placeholder", async ({ page }) => {
+  test("Review Scan shows a real in-page file preview fetched from the file API, not a placeholder", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_REVIEW_SCAN]) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_REVIEW_SCAN]),
+      }),
     );
     await page.route("**/api/v1/documents/doc-2", (route) => {
       if (route.request().method() !== "GET") return route.continue();
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...DOC_REVIEW_SCAN, extraction_fields: {}, confidence_per_field: {}, critical_flags: {}, voucher: null }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...DOC_REVIEW_SCAN,
+          extraction_fields: {},
+          confidence_per_field: {},
+          critical_flags: {},
+          voucher: null,
+        }),
+      });
     });
     let fileRequested = false;
     await page.route("**/api/v1/documents/doc-2/file", (route) => {
       fileRequested = true;
-      return route.fulfill({ status: 200, contentType: "application/pdf", body: Buffer.from("%PDF-1.4 fake pdf bytes") });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/pdf",
+        body: Buffer.from("%PDF-1.4 fake pdf bytes"),
+      });
     });
     await login(page);
 
@@ -314,18 +509,38 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     expect(fileRequested).toBe(true);
   });
 
-  test("Review Scan Flag modal submits the real flag API with reason and comment", async ({ page }) => {
+  test("Review Scan Flag modal submits the real flag API with reason and comment", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_REVIEW_SCAN]) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_REVIEW_SCAN]),
+      }),
     );
     await page.route("**/api/v1/documents/doc-2", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...DOC_REVIEW_SCAN, extraction_fields: {}, confidence_per_field: {}, critical_flags: {}, voucher: null }) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...DOC_REVIEW_SCAN,
+          extraction_fields: {},
+          confidence_per_field: {},
+          critical_flags: {},
+          voucher: null,
+        }),
+      }),
     );
     let flagBody: any = null;
     await page.route("**/api/v1/documents/doc-2/flag", (route) => {
       flagBody = route.request().postDataJSON();
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...DOC_REVIEW_SCAN, status: "scan_flagged" }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...DOC_REVIEW_SCAN, status: "scan_flagged" }),
+      });
     });
     await login(page);
 
@@ -338,91 +553,165 @@ test.describe("W4 SIT closure — real routine Upload/Processing/Review Scan/Rev
     await page.click("text=บันทึก Flag");
 
     await expect(page.locator("#modal-flag")).not.toHaveClass(/open/);
-    expect(flagBody).toEqual({ reason: "เลขภาษีไม่ตรง", comment: "buyer tax id mismatch" });
+    expect(flagBody).toEqual({
+      reason: "เลขภาษีไม่ตรง",
+      comment: "buyer tax id mismatch",
+    });
   });
 
-  test("Review Mapping shows real Dr/Cr lines and Confirm calls the real API", async ({ page }) => {
+  test("Review Mapping shows real Dr/Cr lines and Confirm calls the real API", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_SCAN_APPROVED]) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_SCAN_APPROVED]),
+      }),
     );
     await page.route("**/api/v1/documents/doc-3", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ...DOC_SCAN_APPROVED, extraction_fields: {}, confidence_per_field: {}, critical_flags: {}, voucher: VOUCHER }),
-      })
+        body: JSON.stringify({
+          ...DOC_SCAN_APPROVED,
+          extraction_fields: {},
+          confidence_per_field: {},
+          critical_flags: {},
+          voucher: VOUCHER,
+        }),
+      }),
     );
     let confirmCalled = false;
-    await page.route("**/api/v1/journal-vouchers/voucher-1/confirm", (route) => {
-      confirmCalled = true;
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...VOUCHER, status: "confirmed" }) });
-    });
+    await page.route(
+      "**/api/v1/journal-vouchers/voucher-1/confirm",
+      (route) => {
+        confirmCalled = true;
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ...VOUCHER, status: "confirmed" }),
+        });
+      },
+    );
     await login(page);
 
     await page.click("[data-screen='s-review-mapping']");
-    await expect(page.locator("#reviewMappingListBody")).toContainText("INV-003");
+    await expect(page.locator("#reviewMappingListBody")).toContainText(
+      "INV-003",
+    );
     await page.click("#reviewMappingListBody li");
-    await expect(page.locator("#reviewMappingDetail")).toContainText("✓ Balance");
-    await expect(page.locator("#reviewMappingDetail input[value='5040']")).toHaveCount(1);
+    await expect(page.locator("#reviewMappingDetail")).toContainText(
+      "✓ Balance",
+    );
+    await expect(
+      page.locator("#reviewMappingDetail input[value='5040']"),
+    ).toHaveCount(1);
 
     // Register the response listener BEFORE clicking — the mocked response can
     // resolve in the microtask gap after click() and be missed forever otherwise.
-    const confirmResponse = page.waitForResponse((r) => r.url().includes("/journal-vouchers/voucher-1/confirm"));
+    const confirmResponse = page.waitForResponse((r) =>
+      r.url().includes("/journal-vouchers/voucher-1/confirm"),
+    );
     await page.click("#confirmMappingBtn");
     await confirmResponse;
     expect(confirmCalled).toBe(true);
   });
 
-  test("Review Mapping blocks Confirm when the voucher is unbalanced", async ({ page }) => {
+  test("Review Mapping blocks Confirm when the voucher is unbalanced", async ({
+    page,
+  }) => {
     await baseMocks(page);
-    const unbalancedVoucher = { ...VOUCHER, is_balanced: false, total_debit: 500, total_credit: 1070 };
+    const unbalancedVoucher = {
+      ...VOUCHER,
+      is_balanced: false,
+      total_debit: 500,
+      total_credit: 1070,
+    };
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_SCAN_APPROVED]) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_SCAN_APPROVED]),
+      }),
     );
     await page.route("**/api/v1/documents/doc-3", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ...DOC_SCAN_APPROVED, extraction_fields: {}, confidence_per_field: {}, critical_flags: {}, voucher: unbalancedVoucher }),
-      })
+        body: JSON.stringify({
+          ...DOC_SCAN_APPROVED,
+          extraction_fields: {},
+          confidence_per_field: {},
+          critical_flags: {},
+          voucher: unbalancedVoucher,
+        }),
+      }),
     );
     await login(page);
 
     await page.click("[data-screen='s-review-mapping']");
     await page.click("#reviewMappingListBody li");
-    await expect(page.locator("#reviewMappingDetail")).toContainText("✗ Unbalanced");
+    await expect(page.locator("#reviewMappingDetail")).toContainText(
+      "✗ Unbalanced",
+    );
     await expect(page.locator("#confirmMappingBtn")).toBeDisabled();
   });
 
-  test("Review Mapping account-code edit calls the real PUT API", async ({ page }) => {
+  test("Review Mapping account-code edit calls the real PUT API", async ({
+    page,
+  }) => {
     await baseMocks(page);
     await page.route("**/api/v1/companies/*/documents", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([DOC_SCAN_APPROVED]) })
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([DOC_SCAN_APPROVED]),
+      }),
     );
     await page.route("**/api/v1/documents/doc-3", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ...DOC_SCAN_APPROVED, extraction_fields: {}, confidence_per_field: {}, critical_flags: {}, voucher: VOUCHER }),
-      })
+        body: JSON.stringify({
+          ...DOC_SCAN_APPROVED,
+          extraction_fields: {},
+          confidence_per_field: {},
+          critical_flags: {},
+          voucher: VOUCHER,
+        }),
+      }),
     );
     let putBody: any = null;
-    await page.route("**/api/v1/journal-vouchers/voucher-1/lines/line-1", (route) => {
-      putBody = route.request().postDataJSON();
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ ...VOUCHER, lines: [{ ...VOUCHER.lines[0], account_code: "5099" }, ...VOUCHER.lines.slice(1)] }),
-      });
-    });
+    await page.route(
+      "**/api/v1/journal-vouchers/voucher-1/lines/line-1",
+      (route) => {
+        putBody = route.request().postDataJSON();
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ...VOUCHER,
+            lines: [
+              { ...VOUCHER.lines[0], account_code: "5099" },
+              ...VOUCHER.lines.slice(1),
+            ],
+          }),
+        });
+      },
+    );
     await login(page);
 
     await page.click("[data-screen='s-review-mapping']");
     await page.click("#reviewMappingListBody li");
-    const firstLineInput = page.locator("#reviewMappingDetail table.data-table input.mono").first();
+    const firstLineInput = page
+      .locator("#reviewMappingDetail table.data-table input.mono")
+      .first();
     await firstLineInput.fill("5099");
-    const lineResponse = page.waitForResponse((r) => r.url().includes("/journal-vouchers/voucher-1/lines/line-1"));
+    const lineResponse = page.waitForResponse((r) =>
+      r.url().includes("/journal-vouchers/voucher-1/lines/line-1"),
+    );
     await firstLineInput.dispatchEvent("change");
 
     await lineResponse;

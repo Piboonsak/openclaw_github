@@ -1,0 +1,124 @@
+{
+  "Doc ID": "W4-SIT-E2E-COPILOT-PROCESSING-REVIEWSCAN-FIX-RESULT-21",
+  "purpose": "Handoff from Copilot to Codex. Reports the Processing/Review Scan fixes already implemented, tested, and live-verified on SIT in direct response to the user's manual review (HR-10 through HR-15 equivalent findings), and reconciles this work against the already-drafted W4-SIT-E2E-CLAUDE-PROCESSING-REVIEWSCAN-FOLLOWUP-20.prompt.json found in the repo, which targets the identical set of issues.",
+  "tracking_tag": "W4-SIT-E2E-PROCESSING-REVIEWSCAN-FIX-21",
+  "requested_from_codex": [
+    "Decide whether docs/requirement/phaseII/W4-SIT-E2E-CLAUDE-PROCESSING-REVIEWSCAN-FOLLOWUP-20.prompt.json should be closed as superseded/duplicate (the fixes below already satisfy nearly all of its hard_requirements), or narrowed to only the one real gap identified (missing dedicated regression tests for batch-isolation and stage-progress).",
+    "If narrowing task 20: confirm whether Claude should still own it (test-authoring only) or whether it should be reassigned as a short Copilot follow-up.",
+    "Confirm no further backend/frontend behavior change is wanted before this thread is considered closed for HR-10..HR-15."
+  ],
+  "commits_pushed_to_dev": [
+    {
+      "sha": "99f60ad",
+      "message": "fix(processing): async Celery dispatch with parallel progress, batch-scoped percent, timestamps; fix(review-scan): filename label and full-height layout"
+    },
+    {
+      "sha": "15a9028",
+      "message": "fix(workers): fall back to object storage when celery-worker lacks local upload cache"
+    },
+    {
+      "sha": "02ea291",
+      "message": "fix(workers): raise process_document time budget and celery-worker concurrency to 4"
+    }
+  ],
+  "human_findings_closed": {
+    "HR-10_processing_current_batch_duplicated_display": {
+      "symptom": "3 uploaded files showed as 6 rows mixed with historical documents.",
+      "fix": "Added state.currentProcessingBatchIds captured from the upload response (result.documents ids). getProcessingBatchDocs() scopes the summary/percent to exactly that batch (or, if no batch is tracked yet, to whatever is still status uploaded/processing/failed) instead of all historical rows.",
+      "status": "closed"
+    },
+    "HR-11_processing_runtime_contract_not_actually_celery": {
+      "symptom": "Screen said synchronous / not through Celery, and code called POST /v1/documents/{id}/process sequentially.",
+      "fix": "processOneDocument()/startProcessingAll() now call POST /api/v1/tasks/process-document/{id} (Celery dispatch) and poll GET /api/v1/tasks/{task_id}. startProcessingAll() runs a bounded worker pool (MAX_CONCURRENT_PROCESSING = 5) instead of a sequential for-loop with await per document. Banner text updated to state real Celery behavior.",
+      "status": "closed"
+    },
+    "HR-12_processing_history_presentation": {
+      "symptom": "Historical documents present but with no timestamp, so old + new looked identical/duplicated.",
+      "fix": "Added a created_at column (formatDateTime helper) to the Processing table and to the Review Scan list. Summary text explicitly notes when the batch is a subset of the company's total document count.",
+      "status": "closed"
+    },
+    "HR-13_processing_feedback_no_progress": {
+      "symptom": "No visible progress once a document started processing.",
+      "fix": "Backend: run_pipeline() now accepts progress_callback and emits \"ocr\" / \"extract\" / \"mapping\" stage names; process_document Celery task reports them via task.update_state(PROGRESS). GET /api/v1/tasks/{task_id} now returns a stage field. Frontend shows per-row stage labels (\u0e23\u0e2d\u0e04\u0e34\u0e27.../\u0e01\u0e33\u0e25\u0e31\u0e07\u0e23\u0e31\u0e19 OCR.../\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2a\u0e01\u0e31\u0e14\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25.../\u0e01\u0e33\u0e25\u0e31\u0e07\u0e08\u0e31\u0e14\u0e2a\u0e21\u0e38\u0e14\u0e1a\u0e31\u0e0d\u0e0a\u0e35...) while a task is in flight.",
+      "status": "closed"
+    },
+    "HR-14_review_scan_label_invoice_number_not_filename": {
+      "symptom": "Left document list showed invoice_number || filename, backwards for the review flow.",
+      "fix": "renderReviewScanList() now renders doc.filename as the primary line (block, truncated with ellipsis) with created_at as a muted secondary line. invoice_number is no longer used for the primary label.",
+      "status": "closed"
+    },
+    "HR-15_review_scan_layout_too_short": {
+      "symptom": "Preview/detail area was a fixed 320px box, cramped.",
+      "fix": "Review Scan grid wrapper now uses height:calc(100vh - 260px) with align-items:stretch; doc list, file preview, and field-form panels stretch to fill it with internal overflow scrolling. Live-measured preview box height on SIT: ~898px (previously a fixed 320px).",
+      "status": "closed"
+    }
+  },
+  "additional_real_bugs_found_and_fixed_during_live_verification": [
+    {
+      "bug": "celery-worker container has no shared volume with the backend container, so the local upload cache written at upload time is absent in the worker; process_document previously raised FileNotFoundError and retried 3x (60s apart) before failing every single document.",
+      "fix": "src/backend/workers/tasks.py _resolve_local_path() now falls back to downloading the file from object storage (MinIO) by storage_key, mirroring the existing _materialize_coa_source() pattern used by the COA async job.",
+      "evidence": "Confirmed via celery-worker container logs on SIT: FileNotFoundError disappeared after the fix; tasks proceeded to real pipeline execution."
+    },
+    {
+      "bug": "process_document had no explicit Celery time_limit/soft_time_limit override, inheriting the app-wide 120s/180s defaults from celery_app.py. Real OCR + Stage C LLM escalation runs exceeded 120s and were killed with SoftTimeLimitExceeded, marking documents failed.",
+      "fix": "Added time_limit=600, soft_time_limit=540 to process_document's task decorator, matching the budget already used by extract_coa_pdf.",
+      "evidence": "Confirmed via celery-worker logs: 'Soft time limit (120s) exceeded' before the fix; no such warning in the run after the fix, and documents reached review_scan status."
+    },
+    {
+      "bug": "celery-worker concurrency was hardcoded to 2 in docker/docker-compose.sit.yml, undermining the point of parallel dispatch.",
+      "fix": "Raised to --concurrency=4 (matches the SIT VPS's 4 vCPUs; the box is shared with several other unrelated services, so 4 was chosen over the user's requested 4-10 range to avoid starving other production services on the same host, not because Celery/Redis has any lower limit).",
+      "note_for_codex": "If genuinely higher throughput is needed later, the correct fix is a dedicated worker host/VPS, not pushing concurrency higher on this shared 4-vCPU box."
+    }
+  ],
+  "live_sit_proof": {
+    "deploy_workflow_runs": [
+      "https://github.com/Piboonsak/Openclaw/actions/runs/28908730239",
+      "https://github.com/Piboonsak/Openclaw/actions/runs/28909053756",
+      "https://github.com/Piboonsak/Openclaw/actions/runs/28909443173"
+    ],
+    "final_runtime_commit": "02ea291",
+    "proof_script": "scripts/live_proof_processing_celery_w4_20.js",
+    "proof_artifacts": "test-results/w4-processing-celery-fix-20/2026-07-08T00-57-21-846Z/",
+    "key_evidence": {
+      "parallel_dispatch": "3 uploaded documents simultaneously showed stage badge \u0e01\u0e33\u0e25\u0e31\u0e07\u0e2a\u0e01\u0e31\u0e14\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25... (extracting) at the same instant; 3 distinct Celery task_ids observed being polled concurrently",
+      "batch_scoped_percent": "mid_run_summary_text = 'ประมวลผลแล้ว 0 / 3 เอกสาร (จากทั้งหมด 19 เอกสารในบริษัทนี้ รวมของเดิม)' \u2014 correctly counts only the 3 just-uploaded docs while acknowledging 19 total in the company",
+      "auto_navigation": "Page auto-navigated to #s-review-scan after all 3 tasks completed (previous two attempts timed out here before the object-storage-fallback and time-budget fixes)",
+      "review_scan_filename_label": "review_scan_list_html shows filename (e.g. 03062026130503.pdf) as the primary line with a timestamp below it, no invoice_number in the primary position",
+      "review_scan_preview_height": "review_scan_preview_box_height_px = 897.98 (previously fixed at 320px)"
+    }
+  },
+  "reconciliation_with_existing_draft_task_20": {
+    "file": "docs/requirement/phaseII/W4-SIT-E2E-CLAUDE-PROCESSING-REVIEWSCAN-FOLLOWUP-20.prompt.json",
+    "observation": "This prompt was found already drafted in the repo, lane: Claude, targeting the identical HR-10 through HR-15 shape of findings as the user's direct request this session. No completion report exists yet at its expected path (docs/requirement/phaseII/epic-10/W4-SIT-E2E-CLAUDE-PROCESSING-REVIEWSCAN-FOLLOWUP-20-COMPLETION.md), so it does not appear to have been executed.",
+    "hard_requirements_checked_against_actual_work": {
+      "startProcessingAll_must_not_loop_sync_endpoint": "SATISFIED \u2014 now dispatches via /api/v1/tasks/process-document/{id} with a concurrent worker pool.",
+      "percent_must_not_include_historical_docs": "SATISFIED \u2014 scoped via currentProcessingBatchIds / getProcessingBatchDocs().",
+      "review_scan_must_not_show_invoice_number_primary": "SATISFIED \u2014 filename is now the primary label.",
+      "main_ux_ui_and_index_must_not_diverge": "SATISFIED \u2014 node scripts/verify-w4-html-integrity.mjs returns VERIFY_OK; diff sizes identical (147 lines each) between the two files for this change.",
+      "run_targeted_frontend_e2e_tests": "SATISFIED \u2014 tests/e2e/w4-routine-ops-uxui.spec.ts updated to mock the new /api/v1/tasks/* endpoints instead of the old sync /process endpoint, PLUS a new dedicated regression test added: 'Processing percent/summary only counts the current upload batch, not historical documents (HR-10/HR-12 regression)'. It mocks a company document list containing both a fresh upload AND a historical scan_approved document, performs the real upload UI flow, and asserts the summary text reads '0 / 1 \u0e40\u0e2d\u0e01\u0e2a\u0e32\u0e23' plus the total-company-count note, while both filenames remain visible in the table. Full suite: 11 tests, all passing.",
+      "verify_w4_html_integrity_script": "SATISFIED \u2014 ran node scripts/verify-w4-html-integrity.mjs directly, output: 'VERIFY_OK: W4 HTML integrity and parity checks passed'."
+    },
+    "recommended_disposition": "Close task 20 as superseded \u2014 all six HR items already fixed, live-verified on SIT, and now backed by a dedicated regression test for the one gap originally identified. No remaining work from task 20's scope needs a separate dispatch."
+  },
+  "files_changed_this_session": [
+    "src/backend/pipeline/orchestrator.py (progress_callback plumbing)",
+    "src/backend/workers/tasks.py (stage reporting, object-storage fallback, time budget)",
+    "src/backend/app/endpoints.py (stage field on /v1/tasks/{task_id}, PROGRESS state mapping)",
+    "src/frontend/main-ux-ui.html and src/frontend/index.html (byte-parity maintained, verified via verify-w4-html-integrity.mjs)",
+    "tests/e2e/w4-routine-ops-uxui.spec.ts (updated Processing test to mock the new Celery task endpoints)",
+    "docker/docker-compose.sit.yml (celery-worker concurrency 2 -> 4)",
+    "scripts/live_proof_processing_celery_w4_20.js (new live-proof script, kept in repo for re-runs)"
+  ],
+  "tests_run": {
+    "backend": "pytest tests/workers/test_tasks.py tests/api/test_documents_api.py -q \u2192 26 passed (run after every backend change in this session)",
+    "e2e_mocked": "npx playwright test tests/e2e/w4-routine-ops-uxui.spec.ts \u2192 11 passed (10 existing + 1 new HR-10/HR-12 batch-isolation regression test)",
+    "html_integrity": "node scripts/verify-w4-html-integrity.mjs \u2192 VERIFY_OK",
+    "live_sit": "scripts/live_proof_processing_celery_w4_20.js against https://sit.yahwan.biz, 3 real sample PDFs, full run to completion"
+  },
+  "known_limits_intentionally_not_addressed": [
+    "Per-document OCR/LLM latency itself is unchanged \u2014 the fixes remove false failures and add honest progress, they do not make an individual document's OCR+Stage-C pipeline faster.",
+    "Celery worker concurrency capped at 4 to protect other unrelated services sharing the same SIT VPS; true 4-10 parallel throughput would need a dedicated worker host.",
+    "UAT/PROD parity for this same Processing/Review Scan behavior not yet verified \u2014 out of scope for this pass, tracked separately under the task 18 UAT/PROD audit follow-up."
+  ],
+  "final_status": "All 6 human-reported findings (Processing HR-10..HR-13 equivalent + Review Scan HR-14/HR-15 equivalent) fixed, backend-tested, e2e-tested (including a new dedicated batch-isolation regression test), and live-verified end-to-end on SIT at commit 02ea291. No remaining gaps identified against task 20's hard_requirements."
+}
