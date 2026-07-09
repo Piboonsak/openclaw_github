@@ -49,6 +49,7 @@ def _company_to_response(company: Company) -> CompanyResponse:
         address=company.address,
         business_type=company.business_type,
         is_active=company.is_active,
+        settings=company.settings or {},
     )
 
 
@@ -95,6 +96,7 @@ async def create_company(
         branch_code=body.branch_code,
         address=body.address,
         business_type=body.business_type,
+        settings=body.settings or {},
         is_active=True,
     )
     db.add(company)
@@ -131,6 +133,10 @@ async def update_company(
         company.business_type = body.business_type
     if body.is_active is not None:
         company.is_active = body.is_active
+    if body.settings is not None:
+        # Merge so a partial settings update (e.g. just enable_stock) does not
+        # drop other keys already stored on the company.
+        company.settings = {**(company.settings or {}), **body.settings}
     try:
         await db.flush()
     except IntegrityError as exc:

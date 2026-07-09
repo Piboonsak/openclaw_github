@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -17,6 +17,9 @@ class CompanyCreate(BaseModel):
     branch_code: str = Field("00000", max_length=32)
     address: Optional[str] = None
     business_type: Optional[str] = Field(None, max_length=50)
+    # Company-level operational config. `enable_stock` toggles the line-item /
+    # stock-report scan behavior (distinct from product/price-list master data).
+    settings: Optional[dict[str, Any]] = None
 
     @field_validator("tax_id")
     @classmethod
@@ -40,6 +43,7 @@ class CompanyUpdate(BaseModel):
     address: Optional[str] = None
     business_type: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
+    settings: Optional[dict[str, Any]] = None
 
     @field_validator("tax_id")
     @classmethod
@@ -68,3 +72,4 @@ class CompanyResponse(BaseModel):
     address: Optional[str] = None
     business_type: Optional[str] = None
     is_active: bool
+    settings: dict[str, Any] = Field(default_factory=dict)

@@ -72,6 +72,7 @@ class FakeCompany:
         self.branch_code = kwargs.get("branch_code", "00000")
         self.address = kwargs.get("address")
         self.business_type = kwargs.get("business_type")
+        self.settings = kwargs.get("settings") or {}
         self.is_active = kwargs.get("is_active", True)
 
 
@@ -274,6 +275,35 @@ class TestCreateCompany(unittest.TestCase):
         self.assertTrue(body["is_active"])
         self.assertEqual(len(session.added), 1)
 
+    def test_create_persists_enable_stock_setting(self):
+        """HR-18 (FOLLOWUP-22): the company-level line-item/stock toggle must
+        round-trip through Company.settings, not be a UI-only value."""
+        app = FastAPI()
+        from src.backend.api import companies_admin as module
+
+        app.include_router(module.router)
+        client = TestClient(app)
+        session = FakeAsyncSession(companies=[])
+
+        async def fake_get_db():
+            yield session
+
+        app.dependency_overrides[get_db] = fake_get_db
+        app.dependency_overrides[require_sys_admin] = lambda: _sys_admin_user()
+
+        response = client.post(
+            "/v1/admin/companies",
+            json={
+                "name": "Stock Co",
+                "tax_id": "0107561234567",
+                "settings": {"enable_stock": True},
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["settings"], {"enable_stock": True})
+        self.assertEqual(session.added[0].settings, {"enable_stock": True})
+
     def test_duplicate_tax_id_returns_409_not_fake_success(self):
         app = FastAPI()
         from src.backend.api import companies_admin as module
@@ -401,6 +431,33 @@ class TestUpdateCompany(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["name"], "Renamed Co")
         self.assertEqual(existing.name, "Renamed Co")
+
+    def test_update_merges_settings_without_dropping_existing_keys(self):
+        """HR-18 (FOLLOWUP-22): toggling enable_stock via PUT must not wipe
+        other keys already stored in Company.settings."""
+        app = _build_app()
+        client = TestClient(app)
+        existing = FakeCompany(
+            name="Metro", tax_id="0105560123456", settings={"other_flag": True}
+        )
+        session = FakeAsyncSession(companies=[existing])
+
+        async def fake_get_db():
+            yield session
+
+        app.dependency_overrides[get_db] = fake_get_db
+        app.dependency_overrides[require_admin] = lambda: _admin_user()
+
+        response = client.put(
+            f"/v1/admin/companies/{existing.id}",
+            json={"settings": {"enable_stock": True}},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["settings"], {"other_flag": True, "enable_stock": True}
+        )
+        self.assertEqual(existing.settings, {"other_flag": True, "enable_stock": True})
 
     def test_missing_company_returns_404(self):
         app = _build_app()

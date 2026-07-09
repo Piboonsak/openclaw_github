@@ -49,6 +49,7 @@ def test_task_status_queryable_success(monkeypatch) -> None:
     assert response.json() == {
         "task_id": "task-123",
         "status": "success",
+        "stage": None,  # stage is only populated while a task is in PROGRESS
         "result": {"ok": True},
     }
 
@@ -69,6 +70,7 @@ def test_task_status_queryable_failure(monkeypatch) -> None:
     assert response.json() == {
         "task_id": "task-456",
         "status": "failure",
+        "stage": None,  # stage is only populated while a task is in PROGRESS
         "result": "boom",
     }
 

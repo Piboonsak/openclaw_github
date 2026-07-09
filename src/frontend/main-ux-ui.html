@@ -613,8 +613,11 @@
         <button class="nav-item" id="usersNavItem" data-screen="s-users" onclick="navigate('s-users')" style="display:none;">
           <span class="nav-icon">👥</span> Users
         </button>
+        <button class="nav-item" id="internalConsoleNavItem" data-screen="s-system-home" onclick="navigate('s-system-home')" style="display:none;">
+          <span class="nav-icon">🛠️</span> Internal Console
+        </button>
         <div id="internalConsoleNavNote" style="display:none;margin-top:0.5rem;padding:0.75rem;border:1px dashed var(--line);border-radius:10px;background:var(--surface);font-size:0.78rem;color:var(--muted);line-height:1.5;">
-          Internal tools moved to <strong style="color:var(--text);">Internal Console</strong> for LedgerFlow system admin.
+          Internal tools (Cost Control · Audit Log · Settings) อยู่ใน <strong style="color:var(--text);">Internal Console</strong> สำหรับ LedgerFlow system admin เท่านั้น
         </div>
       </div>
     </nav>
@@ -625,11 +628,11 @@
 <section id="s-dashboard" class="screen active">
   <div class="page-header">
     <h1>Dashboard</h1>
-    <p class="subtitle">ภาพรวมระบบ — บริษัท เมโทร อีเล็กทริค จำกัด</p>
+    <p class="subtitle" id="dashboardCompanySubtitle">ภาพรวมระบบ</p>
   </div>
-  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
-    <strong style="color:var(--accent);">Demo data:</strong>
-    <span>KPI และกิจกรรมล่าสุดด้านล่างเป็นข้อมูลตัวอย่าง (fixture) ยังไม่เชื่อมต่อ backend จริง</span>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;color:var(--warn);">
+    <strong>ยังไม่เชื่อมข้อมูลจริง:</strong>
+    <span>KPI และกิจกรรมล่าสุดด้านล่างเป็นข้อมูลตัวอย่าง (fixture) — Dashboard analytics ยังไม่รวมในรอบนี้ (ใช้หน้าจริงที่ Upload/Processing/Review/Export)</span>
   </div>
 
   <div class="kpi-row">
@@ -761,6 +764,10 @@
     <strong style="color:var(--accent);">หมายเหตุ:</strong>
     <span>ประมวลผลผ่าน Celery background queue จริง (สูงสุด 5 เอกสารพร้อมกัน) — สถานะและ % ที่แสดงคือสถานะจริงจาก backend ไม่ใช่ข้อมูลตัวอย่าง</span>
   </div>
+  <div id="processingLineItemNotice" style="display:none;align-items:flex-start;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;color:var(--warn);">
+    <strong>โหมดสแกนรายการสินค้า (line-item) เปิดอยู่สำหรับบริษัทนี้:</strong>
+    <span>Processing ปัจจุบันสกัดและให้ยืนยัน<strong>ข้อมูลส่วนหัว (header)</strong>ได้เต็มรูปแบบแล้ว ส่วนการสกัด/ยืนยันรายการสินค้าราย line-item (Epic 9) <strong>ยังไม่เปิดใช้งานปลายทาง</strong> — เอกสารจะผ่าน header-only ตามปกติ และจะต้องยืนยัน line-item เพิ่มเมื่อ backend line-item extraction พร้อม (ยังไม่รวมในรอบนี้)</span>
+  </div>
 
   <div class="card" style="margin-bottom:1rem;">
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.6rem;">
@@ -891,31 +898,16 @@
   </div>
 
   <div class="card" style="padding:0;margin-bottom:1rem;">
-    <div style="padding:0.9rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:0.75rem;">
+    <div style="padding:0.9rem 1.25rem;border-bottom:1px solid var(--line);">
       <span style="font-size:0.88rem;font-weight:600;">① เลือกเอกสารที่ต้องการ Export</span>
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;cursor:pointer;margin-left:auto;"><input type="checkbox" checked />เลือกทั้งหมด 11 เอกสาร</label>
     </div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th style="width:36px;"></th><th>ชื่อไฟล์</th><th>Voucher No</th><th>บริษัท</th><th style="text-align:right;">ยอดรวม (฿)</th><th>สถานะ</th></tr></thead>
-        <tbody>
-          <tr><td><input type="checkbox" checked /></td><td class="mono" style="font-size:0.8rem;">INV-2605-001</td><td class="mono" style="font-size:0.8rem;">PV-260501-001</td><td>บ. เมโทร อีเล็กทริค</td><td class="mono" style="text-align:right;">24,605.00</td><td><span class="badge badge-ok">✓ Balanced</span></td></tr>
-          <tr><td><input type="checkbox" checked /></td><td class="mono" style="font-size:0.8rem;">INV-2605-002</td><td class="mono" style="font-size:0.8rem;">PV-260501-002</td><td>บ. เมโทร อีเล็กทริค</td><td class="mono" style="text-align:right;">8,020.50</td><td><span class="badge badge-ok">✓ Balanced</span></td></tr>
-          <tr><td><input type="checkbox" checked /></td><td class="mono" style="font-size:0.8rem;">INV-2605-003</td><td class="mono" style="font-size:0.8rem;">PV-260502-001</td><td>ห้างหุ้นส่วนฯ ซันชายน์</td><td class="mono" style="text-align:right;">15,900.00</td><td><span class="badge badge-ok">✓ Balanced</span></td></tr>
-          <tr><td><input type="checkbox" checked /></td><td class="mono" style="font-size:0.8rem;">INV-2605-004</td><td class="mono" style="font-size:0.8rem;">PV-260504-001</td><td>บ. ออฟฟิศแมท</td><td class="mono" style="text-align:right;">12,839.64</td><td><span class="badge badge-ok">✓ Balanced</span></td></tr>
-          <tr style="background:var(--warn-soft);"><td><input type="checkbox" checked /></td><td class="mono" style="font-size:0.8rem;">INV-2605-005</td><td class="mono" style="font-size:0.8rem;">PV-260504-002</td><td>บ. กรีน ซัพพลาย</td><td class="mono" style="text-align:right;color:var(--warn);">7,312.00</td><td><span class="badge badge-warn">⚠ Unbalanced</span></td></tr>
-          <tr><td><input type="checkbox" checked /></td><td class="mono" style="font-size:0.8rem;">INV-2605-006</td><td class="mono" style="font-size:0.8rem;">PV-260505-001</td><td>บ. เมโทร อีเล็กทริค</td><td class="mono" style="text-align:right;">33,450.00</td><td><span class="badge badge-ok">✓ Balanced</span></td></tr>
-        </tbody>
-      </table>
+    <div style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.9rem 1.25rem;font-size:0.82rem;color:var(--muted);line-height:1.6;">
+      <span>
+        <strong>การเลือกเอกสารรายตัวยังไม่เชื่อมข้อมูลจริงในรอบนี้</strong> — ปัจจุบัน Export ทำงานตาม
+        <strong>template + บริษัทที่เลือก (ด้านล่าง)</strong> ผ่าน API จริง เอกสารที่ผ่าน Confirm Mapping แล้วของบริษัทนั้นจะถูกรวมในไฟล์ที่ดาวน์โหลด
+        (การเลือก/ตัดเอกสารรายตัวก่อน export จะเพิ่มในรอบถัดไป — ไม่แสดงข้อมูลตัวอย่างปลอมแทน)
+      </span>
     </div>
-  </div>
-
-  <div style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1.25rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.85rem;">
-    <span style="color:var(--ok);font-weight:700;">✓ 10 เอกสาร Balance</span>
-    <span style="color:var(--muted);">|</span>
-    <span style="color:var(--warn);font-weight:600;">⚠ 1 เอกสาร ไม่ Balance (INV-2605-005)</span>
-    <span style="color:var(--muted);">|</span>
-    <span style="color:var(--warn);font-weight:600;">⚠ 1 ผู้จำหน่ายยังไม่มีรหัส ต้องอัปเดตก่อนส่งออก</span>
   </div>
 
   <!-- Step ②: Export mode picker — Quick Export (no template) vs Template Export -->
@@ -1948,7 +1940,7 @@
     <div class="card">
       <h3 class="section-title" style="margin-top:0;">Settings</h3>
       <p style="font-size:0.84rem;color:var(--muted);line-height:1.6;">กำหนด model routing, system status และ internal operational settings</p>
-      <button class="btn btn-primary btn-sm" onclick="navigate('s-settings')">เปิด Settings</button>
+      <button class="btn btn-primary btn-sm" onclick="navigate('s-settings');loadLlmRouting()">เปิด Settings</button>
     </div>
   </div>
 </div><!-- /#s-system-home -->
@@ -2293,9 +2285,9 @@
     <h1 style="margin:0 0 .25rem;">Settings</h1>
     <span style="color:#6b7280;font-size:.9rem;">ตั้งค่าระบบ <span class="badge badge-danger" style="font-size:.72rem;vertical-align:middle;">Admin only</span></span>
   </div>
-  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
-    <strong style="color:var(--accent);">Demo data:</strong>
-    <span>Model Router/API Keys/System Status ด้านล่างเป็นตัวอย่าง (fixture) — ยังไม่เชื่อมต่อ config API จริง (routing จริงอ่านจาก env/settings.py)</span>
+  <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.9rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;">
+    <strong>หมายเหตุ:</strong>
+    <span>Model Router — <strong style="color:var(--ok);">Live routing</strong> ด้านล่างอ่านจาก API จริง (<span class="mono">GET /v1/llm/routing</span>). ส่วน API Keys/System Status ยังเป็นตัวอย่าง (fixture) — การแก้ค่ายังทำผ่าน env/settings.py เท่านั้น (ยังไม่มี config write API)</span>
   </div>
 
   <div class="tab-bar" style="margin-bottom:1rem;">
@@ -2308,9 +2300,18 @@
   <!-- Tab: Model Router -->
   <div id="set-model">
 
+    <!-- Live routing from GET /v1/llm/routing (real, not fixture) -->
+    <div class="card" style="padding:1rem;margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+        <h3 class="section-title" style="margin:0;font-size:.9rem;">Live Routing <span class="badge badge-ok" style="font-size:.7rem;">real API</span></h3>
+        <button class="btn btn-ghost btn-sm" onclick="loadLlmRouting()">รีเฟรช</button>
+      </div>
+      <div id="llmRoutingLive" style="font-size:0.82rem;color:var(--muted);">กำลังโหลด routing จริง...</div>
+    </div>
+
     <!-- Model Routing Policy -->
     <div class="card" style="padding:1rem;margin-bottom:1rem;">
-      <h3 class="section-title" style="margin:0 0 .875rem;font-size:.9rem;">Model Routing Policy</h3>
+      <h3 class="section-title" style="margin:0 0 .875rem;font-size:.9rem;">Model Routing Policy <span class="badge badge-muted" style="font-size:.7rem;">reference defaults</span></h3>
       <div class="table-wrap" style="overflow-x:auto;">
         <table class="data-table" style="font-size:.82rem;width:100%;">
           <thead>
@@ -2634,6 +2635,15 @@
     <div class="field-group"><label class="field-label">รหัสสาขา</label><input class="field-input mono" type="text" id="companyBranchCodeInput" placeholder="00000 (สำนักงานใหญ่)" /></div>
     <div class="field-group"><label class="field-label">ที่อยู่</label><textarea class="field-input" id="companyAddressInput" rows="3" style="resize:vertical;"></textarea></div>
     <div class="field-group"><label class="field-label">ประเภทธุรกิจ</label><input class="field-input" type="text" id="companyBusinessTypeInput" placeholder="ค้าปลีก / บริการ / ผลิต..." /></div>
+    <div class="field-group" style="border:1px solid var(--line);border-radius:8px;padding:0.75rem 0.85rem;background:var(--surface);">
+      <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;margin:0;">
+        <input type="checkbox" id="companyEnableStockInput" style="margin-top:0.2rem;" />
+        <span>
+          <span style="font-weight:600;font-size:0.86rem;display:block;">สแกนรายการสินค้า (line-item) / รายงานสต็อก</span>
+          <span style="font-size:0.76rem;color:var(--muted);line-height:1.5;">เมื่อเปิด: Processing จะสกัดและให้ยืนยันรายการสินค้าราย line-item ด้วย · เมื่อปิด: ตรวจเฉพาะข้อมูลส่วนหัว (header-only) · <strong>คนละส่วน</strong>กับ Product/Price-List master</span>
+        </span>
+      </label>
+    </div>
     <div style="display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1.5rem;">
       <button class="btn btn-ghost" onclick="closeDrawer('drawer-company')">ยกเลิก</button>
       <button class="btn btn-primary" id="companyDrawerSaveBtn" onclick="saveCompanyDrawer()">บันทึก</button>
@@ -3351,6 +3361,8 @@
     if (usersNav) usersNav.style.display = isAdminOrAbove ? "" : "none";
     var consoleBtn = getEl("internalConsoleTopbarBtn");
     if (consoleBtn) consoleBtn.style.display = isSysAdmin ? "" : "none";
+    var consoleNav = getEl("internalConsoleNavItem");
+    if (consoleNav) consoleNav.style.display = isSysAdmin ? "" : "none";
     var consoleNote = getEl("internalConsoleNavNote");
     if (consoleNote) consoleNote.style.display = isSysAdmin ? "" : "none";
     var createCompanyBtn = getEl("createCompanyBtn");
@@ -4621,6 +4633,13 @@
       });
       if (hasOption) select.value = state.currentCompanyId;
     });
+    // Reflect the real selected company (not a hardcoded demo name) in the
+    // Dashboard subtitle (HR-16).
+    var subtitle = getEl("dashboardCompanySubtitle");
+    if (subtitle) {
+      var company = findCompanyById(state.currentCompanyId);
+      subtitle.textContent = company ? "ภาพรวมระบบ — " + company.name : "ภาพรวมระบบ";
+    }
   }
 
   function refreshActiveCompanyScopedScreen() {
@@ -4678,10 +4697,17 @@
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem;">ยังไม่มีบริษัท — กด "+ เพิ่มบริษัท" เพื่อเริ่มต้น</td></tr>';
       return;
     }
+    // Delete is a sys_admin-only soft-delete per the backend contract
+    // (DELETE /v1/admin/companies/{id} = require_sys_admin), so only render the
+    // control for that role — same fail-closed rule as the create button.
+    var canDelete = state.currentUser && state.currentUser.role === "sys_admin";
     tbody.innerHTML = state.companies.map(function (company) {
       var statusBadge = company.is_active
         ? '<span class="badge badge-ok">Active ✓</span>'
         : '<span class="badge badge-muted">Inactive</span>';
+      var deleteBtn = canDelete
+        ? '<button class="btn btn-danger btn-sm" onclick="deleteCompanyPrompt(\'' + company.id + '\',\'' + escapeHtml(company.name).replace(/'/g, "&#39;") + '\')">ลบ</button>'
+        : "";
       return "<tr>" +
         '<td style="font-weight:500;">' + escapeHtml(company.name) + "</td>" +
         '<td class="mono" style="font-size:0.8rem;">' + escapeHtml(company.tax_id) + "</td>" +
@@ -4690,9 +4716,58 @@
         '<td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;">' +
           '<button class="btn btn-ghost btn-sm" onclick="openCompanyDrawerForEdit(\'' + company.id + '\')">แก้ไข</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="openCompanyDetailScreen(\'' + company.id + '\')">⚙️ ตั้งค่า</button>' +
+          deleteBtn +
         "</div></td>" +
       "</tr>";
     }).join("");
+  }
+
+  async function loadLlmRouting() {
+    var el = getEl("llmRoutingLive");
+    if (!el) return;
+    el.textContent = "กำลังโหลด routing จริง...";
+    try {
+      var response = await apiFetch(auth.apiUrl("/api/v1/llm/routing"));
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var data = await response.json();
+      var r = data.routing || {};
+      function row(label, value) {
+        return '<div style="display:flex;gap:0.75rem;padding:0.3rem 0;border-bottom:1px solid var(--line);">' +
+          '<span style="min-width:180px;color:var(--muted);">' + escapeHtml(label) + '</span>' +
+          '<span class="mono" style="color:var(--text);">' + escapeHtml(value == null ? "—" : String(value)) + '</span></div>';
+      }
+      var costCount = (data.recent_cost_events || []).length;
+      el.innerHTML =
+        row("Provider preference", r.provider_preference) +
+        row("Default model", r.default_model) +
+        row("Escalation model", r.escalation_model) +
+        row("Free models", (r.free_models || []).join(", ")) +
+        row("Backup models", (r.backup_models || []).join(", ")) +
+        row("Free conf threshold", r.free_conf_threshold) +
+        '<div style="margin-top:0.5rem;font-size:0.76rem;color:var(--muted);">Recent cost events: ' + costCount + '</div>';
+    } catch (error) {
+      el.innerHTML = '<span style="color:var(--danger);">โหลด routing ไม่สำเร็จ: ' + escapeHtml(error.message) + '</span>';
+    }
+  }
+
+  async function deleteCompanyPrompt(id, name) {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    if (!window.confirm('ยืนยันการลบบริษัท "' + name + '"? บริษัทจะถูกปิดใช้งาน (soft-delete)')) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/admin/companies/" + encodeURIComponent(id)),
+        { method: "DELETE" }
+      );
+      if (!response.ok && response.status !== 204) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw new Error(errorBody.detail || ("HTTP " + response.status));
+      }
+      showToast("ลบบริษัทแล้ว ✓", "ok");
+      await loadCompanies();
+    } catch (error) {
+      showToast("ลบไม่สำเร็จ: " + error.message, "warn");
+    }
   }
 
   function setCompanyDrawerError(message) {
@@ -4713,6 +4788,7 @@
     getEl("companyBranchCodeInput").value = "";
     getEl("companyAddressInput").value = "";
     getEl("companyBusinessTypeInput").value = "";
+    getEl("companyEnableStockInput").checked = false;
     setCompanyDrawerError("");
     openDrawer("drawer-company");
   }
@@ -4729,6 +4805,7 @@
     getEl("companyBranchCodeInput").value = company.branch_code;
     getEl("companyAddressInput").value = company.address || "";
     getEl("companyBusinessTypeInput").value = company.business_type || "";
+    getEl("companyEnableStockInput").checked = !!(company.settings && company.settings.enable_stock);
     setCompanyDrawerError("");
     openDrawer("drawer-company");
   }
@@ -4747,7 +4824,8 @@
       tax_id: taxId,
       branch_code: getEl("companyBranchCodeInput").value.trim() || "00000",
       address: getEl("companyAddressInput").value.trim() || null,
-      business_type: getEl("companyBusinessTypeInput").value.trim() || null
+      business_type: getEl("companyBusinessTypeInput").value.trim() || null,
+      settings: { enable_stock: getEl("companyEnableStockInput").checked }
     };
     var isEdit = state.companyDrawerMode === "edit";
     var url = isEdit
@@ -5864,8 +5942,23 @@
     state.workflowDocuments = await response.json();
   }
 
+  // HR-19: routine processing branches on the company's line-item/stock config
+  // (Company.settings.enable_stock). Header-only mode is fully wired; the
+  // line-item extraction/review branch (Epic 9) is surfaced honestly rather
+  // than faked when the toggle is on — see updateProcessingLineItemNotice().
+  function currentCompanyLineItemEnabled() {
+    var company = findCompanyById(state.currentCompanyId);
+    return !!(company && company.settings && company.settings.enable_stock);
+  }
+
+  function updateProcessingLineItemNotice() {
+    var notice = getEl("processingLineItemNotice");
+    if (notice) notice.style.display = currentCompanyLineItemEnabled() ? "flex" : "none";
+  }
+
   async function goToProcessing() {
     navigate("s-processing");
+    updateProcessingLineItemNotice();
     var user = await requireLiveAuth();
     if (!user) return;
     try {
@@ -6266,9 +6359,17 @@
       var badge = doc.status === "mapping_confirmed"
         ? '<span class="badge badge-ok" style="font-size:0.65rem;">Confirmed</span>'
         : '<span class="badge badge-accent" style="font-size:0.65rem;">รอ Confirm</span>';
+      // Filename-first, matching Review Scan after task 21 (HR-17): the
+      // uploaded filename is the primary identity; invoice number is secondary.
+      var secondary = doc.invoice_number
+        ? escapeHtml(doc.invoice_number)
+        : formatDateTime(doc.created_at);
       return '<li style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-bottom:1px solid var(--line);cursor:pointer;' +
         (isSelected ? "background:var(--accent-soft);border-left:3px solid var(--accent);" : "") + '" onclick="selectReviewMappingDocument(\'' + doc.id + '\')">' +
-        '<span class="mono" style="font-size:0.78rem;flex:1;">' + escapeHtml(doc.invoice_number || doc.filename) + '</span>' + badge + '</li>';
+        '<span style="flex:1;min-width:0;">' +
+          '<span class="mono" style="font-size:0.78rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(doc.filename) + '</span>' +
+          '<span class="mono" style="font-size:0.68rem;color:var(--muted);">' + secondary + '</span>' +
+        '</span>' + badge + '</li>';
     }).join("");
   }
 
@@ -6313,7 +6414,11 @@
     var confirmDisabled = voucher.status === "confirmed" || !voucher.is_balanced;
     container.innerHTML =
       '<div class="card" style="margin-bottom:0.75rem;padding:1rem;">' +
-        '<h3 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;">' + escapeHtml(doc.invoice_number || doc.filename) + (doc.seller_name ? " — " + escapeHtml(doc.seller_name) : "") + '</h3>' +
+        '<h3 style="font-size:1rem;font-weight:700;margin-bottom:0.25rem;">' + escapeHtml(doc.filename) + '</h3>' +
+        '<div style="font-size:0.76rem;color:var(--muted);margin-bottom:0.5rem;">' +
+          (doc.invoice_number ? "เลขที่เอกสาร " + escapeHtml(doc.invoice_number) : "") +
+          (doc.seller_name ? (doc.invoice_number ? " · " : "") + escapeHtml(doc.seller_name) : "") +
+        '</div>' +
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;">' +
           '<div class="field-group" style="margin:0;"><label class="field-label">Voucher No</label><input class="field-input mono" style="background:var(--surface);" value="' + escapeHtml(voucher.voucher_no || "—") + '" readonly /></div>' +
           '<div class="field-group" style="margin:0;"><label class="field-label">Date</label><input class="field-input mono" style="background:var(--surface);" value="' + escapeHtml(voucher.voucher_date || "") + '" readonly /></div>' +
@@ -6369,6 +6474,8 @@
     window.openCompanyDrawerForCreate = openCompanyDrawerForCreate;
     window.openCompanyDrawerForEdit = openCompanyDrawerForEdit;
     window.saveCompanyDrawer = saveCompanyDrawer;
+    window.deleteCompanyPrompt = deleteCompanyPrompt;
+    window.loadLlmRouting = loadLlmRouting;
     window.openCompanyDetailScreen = openCompanyDetailScreen;
     window.openUserDrawerForCreate = openUserDrawerForCreate;
     window.openUserDrawerForEdit = openUserDrawerForEdit;
