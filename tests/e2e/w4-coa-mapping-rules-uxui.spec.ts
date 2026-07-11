@@ -11,6 +11,9 @@ const LOCAL_BASE = "http://127.0.0.1:8765";
 
 async function gotoWithRetry(page: Page, path: string) {
   let lastError: unknown;
+  await page.route("**/static/auth.js**", (route) =>
+    route.fulfill({ path: "src/frontend/auth.js", contentType: "application/javascript" })
+  );
   for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
     try {
       await page.goto(LOCAL_BASE + path, { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -316,23 +319,26 @@ test.describe("W4 SIT closure — Chart of Accounts + Mapping Rules real-click f
       }
       return route.continue();
     });
-    let confirmCalled = false;
+    let confirmedRules: unknown[] | null = null;
     await page.route("**/api/v1/companies/*/mapping-rules/import-docx", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          rules: [{ vendor_name: "OfficeMate", document_type: "Invoice", recommended_debit_code: "5100", recommended_account_name: "Office Supplies" }],
+          rules: [
+            { vendor_name: "OfficeMate", document_type: "Invoice", recommended_debit_code: "5100", recommended_account_name: "Office Supplies" },
+            { vendor_name: "Duplicate Vendor", document_type: "Invoice", recommended_debit_code: "5100", recommended_account_name: "Duplicate" },
+          ],
           source_text_preview: "extracted text",
         }),
       })
     );
     await page.route("**/api/v1/companies/*/mapping-rules/confirm", (route) => {
-      confirmCalled = true;
+      confirmedRules = JSON.parse(route.request().postData() || "{}").rules;
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ imported: 1, updated: 0, errors: [] }),
+        body: JSON.stringify({ imported: confirmedRules?.length || 0, updated: 0, errors: [] }),
       });
     });
     mockEmptyCoa(page);
@@ -351,9 +357,16 @@ test.describe("W4 SIT closure — Chart of Accounts + Mapping Rules real-click f
 
     await expect(page.locator("#mappingDocxReviewStep")).toBeVisible();
     await expect(page.locator("#mappingDocxPreviewBody input").first()).toHaveValue("OfficeMate");
-    expect(confirmCalled).toBe(false);
+    await expect(page.locator("#mappingDocxPreviewBody tr")).toHaveCount(2);
+    expect(confirmedRules).toBeNull();
+
+    await page.click("#mappingDocxPreviewBody tr:first-child button:has-text('ลบ')");
+    await expect(page.locator("#mappingDocxPreviewBody")).not.toContainText("OfficeMate");
+    await expect(page.locator("#mappingDocxPreviewBody tr")).toHaveCount(1);
 
     await page.click("#mappingDocxConfirmBtn");
-    expect(confirmCalled).toBe(true);
+    expect(confirmedRules).toEqual([
+      { vendor_name: "Duplicate Vendor", document_type: "Invoice", recommended_debit_code: "5100", recommended_account_name: "Duplicate" },
+    ]);
   });
 });

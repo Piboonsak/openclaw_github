@@ -1,12 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const RETRY_ATTEMPTS = 3;
+const LOCAL_BASE = "http://127.0.0.1:8765";
 
 async function gotoWithRetry(page: Page, path: string) {
   let lastError: unknown;
+  await page.route("**/static/auth.js**", (route) =>
+    route.fulfill({ path: "src/frontend/auth.js", contentType: "application/javascript" })
+  );
   for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
     try {
-      await page.goto(path, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.goto(LOCAL_BASE + path, { waitUntil: "domcontentloaded", timeout: 60_000 });
       return;
     } catch (error) {
       lastError = error;
@@ -29,14 +33,14 @@ async function gotoWithRetry(page: Page, path: string) {
 // require a real session.
 test.describe("W4 Export + Configurator UX corrections", () => {
   test("Export screen has a Quick/Template mode picker, not a modal-first popup", async ({ page }) => {
-    await gotoWithRetry(page, "/prototype");
+    await gotoWithRetry(page, "/main-ux-ui.html");
     await expect(page.locator("#exportModeQuickCard")).toHaveCount(1);
     await expect(page.locator("#exportModeTemplateCard")).toHaveCount(1);
     await expect(page.locator("#modal-export-preview")).toHaveCount(0);
   });
 
   test("Export screen has an inline Adjust Columns panel with reorder/rename/transform/visibility controls", async ({ page }) => {
-    await gotoWithRetry(page, "/prototype");
+    await gotoWithRetry(page, "/main-ux-ui.html");
     await expect(page.locator("#exportColumnsBody")).toHaveCount(1);
     await expect(page.locator("#exportAddColumnSelect")).toHaveCount(1);
     await expect(page.locator("#exportPreviewInline")).toHaveCount(1);
@@ -75,14 +79,14 @@ test.describe("W4 Export + Configurator UX corrections", () => {
         ]),
       })
     );
-    await gotoWithRetry(page, "/prototype");
+    await gotoWithRetry(page, "/main-ux-ui.html");
     await expect(page.locator("#companiesTableBody")).toContainText("Metro Electric");
     await expect(page.locator("#s-companies button", { hasText: /^COA$/ })).toHaveCount(0);
     await expect(page.locator("#s-companies button", { hasText: "ตั้งค่า" }).first()).toHaveCount(1);
   });
 
   test("Company detail separates AP (vendors) and AR (customers) into distinct tabs", async ({ page }) => {
-    await gotoWithRetry(page, "/prototype");
+    await gotoWithRetry(page, "/main-ux-ui.html");
     await expect(page.locator("#s-company-detail button", { hasText: /AP.*ผู้จำหน่าย/ })).toHaveCount(1);
     await expect(page.locator("#s-company-detail button", { hasText: /AR.*ลูกค้า/ })).toHaveCount(1);
     await expect(page.locator("#company-ar")).toContainText("Customer Code");
@@ -95,14 +99,14 @@ test.describe("W4 Export + Configurator UX corrections", () => {
     // Without a logged-in session this container stays empty/loading — real
     // data coverage lives in w4-templates-real-uxui.spec.ts. Here we only
     // assert the dynamic scaffold exists and no fixture content leaked back in.
-    await gotoWithRetry(page, "/prototype");
+    await gotoWithRetry(page, "/main-ux-ui.html");
     await expect(page.locator("#tmplMasterCardsBody")).toHaveCount(1);
     await expect(page.locator("#tmplMasterCount")).toHaveCount(1);
     await expect(page.locator("#tmpl-master")).not.toContainText("Express ซื้อสด (Book 12)");
   });
 
   test("Template Configurator is structured as a 3-tab persistent setup surface", async ({ page }) => {
-    await gotoWithRetry(page, "/prototype");
+    await gotoWithRetry(page, "/main-ux-ui.html");
     await expect(page.locator("#configTabBtn-upload")).toHaveCount(1);
     await expect(page.locator("#configTabBtn-configure")).toHaveCount(1);
     await expect(page.locator("#configTabBtn-test")).toHaveCount(1);
@@ -121,7 +125,7 @@ test.describe("W4 Export + Configurator UX corrections", () => {
 // scope, so every tab button and several actions threw "ReferenceError" and did nothing
 // on a real click despite passing pure DOM-presence assertions. These tests click for real.
 async function bypassLogin(page: Page) {
-  await gotoWithRetry(page, "/prototype");
+  await gotoWithRetry(page, "/main-ux-ui.html");
   await page.evaluate(() => {
     const loginScreen = document.getElementById("login-screen");
     const app = document.getElementById("app");
@@ -174,6 +178,18 @@ test.describe("W4 Export + Configurator interaction wiring", () => {
     await page.evaluate(() => (window as unknown as { navigate: (id: string) => void }).navigate("s-export"));
     const exportFirstValue = await page.locator("#exportColumnsBody tr").nth(0).locator("input.field-input").inputValue();
     expect(exportFirstValue).toBe("Renamed From Configurator");
+  });
+
+  test("Create Template starts a manual blank configurator path without forcing sample upload first", async ({ page }) => {
+    await bypassLogin(page);
+    await page.evaluate(() => (window as unknown as { navigate: (id: string) => void }).navigate("s-templates"));
+
+    await page.click("button:has-text('สร้าง Template ใหม่')");
+
+    await expect(page.locator("#s-template-configurator")).toHaveClass(/active/);
+    await expect(page.locator("#configuratorTab-configure")).toBeVisible();
+    await expect(page.locator("#configuratorTab-upload")).toBeHidden();
+    await expect(page.locator("#configConfigureLiveColumns")).toContainText("ยังไม่มี runtime columns");
   });
 
   test("Orphaned client-side Quick Export helpers were removed", async ({ page }) => {

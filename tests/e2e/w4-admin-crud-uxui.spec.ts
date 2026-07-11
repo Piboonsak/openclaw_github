@@ -1,12 +1,16 @@
-import { expect, test, type Page } from "@playwright/test";
+﻿import { expect, test, type Page } from "@playwright/test";
 
 const RETRY_ATTEMPTS = 3;
+const LOCAL_BASE = "http://127.0.0.1:8765";
 
 async function gotoWithRetry(page: Page, path: string) {
   let lastError: unknown;
+  await page.route("**/static/auth.js**", (route) =>
+    route.fulfill({ path: "src/frontend/auth.js", contentType: "application/javascript" })
+  );
   for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
     try {
-      await page.goto(path, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.goto(LOCAL_BASE + path, { waitUntil: "domcontentloaded", timeout: 60_000 });
       return;
     } catch (error) {
       lastError = error;
@@ -110,6 +114,31 @@ async function mockAdminApis(page: Page, options?: { companies?: unknown[] }) {
     return route.continue();
   });
 
+  await page.route("**/api/v1/admin/users/*", (route) => {
+    const request = route.request();
+    if (request.method() === "PUT") {
+      const body = JSON.parse(request.postData() || "{}");
+      const userId = request.url().split("/").pop();
+      let updated: unknown | null = null;
+      users = users.map((user) => {
+        const typed = user as { id: string };
+        if (typed.id !== userId) return user;
+        updated = { ...typed, ...body };
+        return updated;
+      });
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(updated) });
+    }
+    if (request.method() === "POST" && request.url().endsWith("/reset-password")) {
+      const userId = request.url().split("/").slice(-2)[0];
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ id: userId, temp_password: "LfReset12345" }),
+      });
+    }
+    return route.continue();
+  });
+
   await page.route("**/api/v1/companies/*/vendor-master", (route) =>
     route.fulfill({
       status: 200,
@@ -159,7 +188,7 @@ async function loginWithMocks(page: Page, options?: { role?: string }) {
   } else {
     await mockAdminApis(page);
   }
-  await gotoWithRetry(page, "/prototype");
+  await gotoWithRetry(page, "/main-ux-ui.html");
   await page.waitForFunction(() => {
     const el = document.getElementById("companiesStatus");
     return !!el && el.textContent !== "กำลังโหลดรายชื่อบริษัท...";
@@ -220,6 +249,27 @@ test.describe("W4 SIT closure — Company/User admin CRUD real-click flows", () 
     await page.click("#userDrawerSaveBtn");
 
     await expect(page.locator("#usersTableBody")).toContainText("newstaff@example.com");
+  });
+
+  test("Users screen deactivates users and resolves company names without raw UUID leakage", async ({ page }) => {
+    await loginWithMocks(page, { role: "sys_admin" });
+    await page.click("[data-screen='s-users']");
+    await page.click("button[onclick='openUserDrawerForCreate()']");
+    await page.fill("#userEmailInput", "newadmin@example.com");
+    await page.fill("#userUsernameInput", "newadmin");
+    await page.selectOption("#userRoleSelect", "sys_admin");
+    await page.check(".user-company-checkbox");
+    await page.click("#userDrawerSaveBtn");
+
+    await expect(page.locator("#usersTableBody")).toContainText("Metro Electric Co Ltd");
+    await expect(page.locator("#usersTableBody")).not.toContainText("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    await expect(page.locator("#usersTableBody")).toContainText("SysAdmin");
+
+    await page.click("#drawer-user .modal-close");
+    await page.click("#usersTableBody button[onclick^='deactivateUserPrompt']");
+    await expect(page.locator("#modal-confirm")).toHaveClass(/open/);
+    await page.click("#confirmOkBtn");
+    await expect(page.locator("#usersTableBody")).toContainText("Inactive");
   });
 
   test("Company detail settings gear loads real AP and AR master data for that company", async ({ page }) => {

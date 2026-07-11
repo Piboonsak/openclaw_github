@@ -1252,7 +1252,7 @@
       </div>
       <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
         <table class="data-table">
-          <thead><tr><th>Vendor / Keyword</th><th style="width:130px;">Document Type</th><th style="width:110px;">Debit Code</th><th>Account Name</th></tr></thead>
+          <thead><tr><th>Vendor / Keyword</th><th style="width:130px;">Document Type</th><th style="width:110px;">Debit Code</th><th>Account Name</th><th style="width:72px;text-align:center;">Remove</th></tr></thead>
           <tbody id="mappingDocxPreviewBody"></tbody>
         </table>
       </div>
@@ -4351,8 +4351,12 @@
     state.selectedTemplateId = "";
     state.activeTemplate = null;
     state.exportColumns = [];
-    navigate('s-schema-analyzer');
-    showToast('สร้าง Template ใหม่เริ่มจากการอัปโหลดไฟล์ตัวอย่างเพื่อวิเคราะห์คอลัมน์ก่อน', '');
+    navigate('s-template-configurator');
+    if (typeof setConfiguratorTab === "function") setConfiguratorTab('configure');
+    renderExportColumnsPanel();
+    renderExportAddColumnOptions();
+    refreshConfiguratorTestTab();
+    showToast('เริ่ม Template เปล่าแล้ว — เพิ่มคอลัมน์เอง หรือใช้ Auto-detect จาก Sample File เป็นตัวช่วยได้', '');
   }
 
   function confirmTemplateDelete(templateId, templateName) {
@@ -4895,7 +4899,7 @@
     if (!ids || !ids.length) return "—";
     return ids.map(function (id) {
       var company = findCompanyById(id);
-      return company ? company.name : id;
+      return company ? company.name : "บริษัทที่ไม่พบ";
     }).join(", ");
   }
 
@@ -4923,9 +4927,11 @@
       return;
     }
     tbody.innerHTML = state.users.map(function (u) {
-      var roleBadge = u.role === "admin"
-        ? '<span class="badge badge-purple">Admin</span>'
-        : '<span class="badge badge-accent">Staff</span>';
+      var roleBadge = u.role === "sys_admin"
+        ? '<span class="badge badge-danger">SysAdmin</span>'
+        : (u.role === "admin"
+          ? '<span class="badge badge-purple">Admin</span>'
+          : '<span class="badge badge-accent">Staff</span>');
       var statusBadge = u.is_active
         ? '<span class="badge badge-ok">Active</span>'
         : '<span class="badge badge-muted">Inactive</span>';
@@ -4940,6 +4946,7 @@
         '<td style="text-align:center;"><div style="display:flex;gap:0.4rem;justify-content:center;">' +
           '<button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="openUserDrawerForEdit(\'' + u.id + '\')">แก้ไข</button>' +
           '<button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="resetUserPasswordPrompt(\'' + u.id + '\')">Reset PW</button>' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="deactivateUserPrompt(\'' + u.id + '\')" ' + (!u.is_active ? "disabled" : "") + '>ปิดใช้งาน</button>' +
         "</div></td>" +
       "</tr>";
     }).join("");
@@ -5106,6 +5113,36 @@
     }
     var result = await response.json();
     showToast("สร้างรหัสผ่านชั่วคราวใหม่แล้ว: " + result.temp_password, "ok");
+    await loadUsers();
+  }
+
+  function deactivateUserPrompt(id) {
+    var u = findUserById(id);
+    if (!u) { showToast("ไม่พบผู้ใช้นี้", "warn"); return; }
+    if (!u.is_active) { showToast("ผู้ใช้นี้ถูกปิดใช้งานแล้ว", "warn"); return; }
+    getEl("confirmTitle").textContent = "ปิดใช้งานผู้ใช้";
+    getEl("confirmBody").textContent = "ยืนยันการปิดใช้งาน " + (u.display_name || u.username) + "? ผู้ใช้นี้จะ login ไม่ได้ แต่ประวัติเดิมยังคงอยู่";
+    var okBtn = getEl("confirmOkBtn");
+    okBtn.onclick = function () {
+      closeModal("modal-confirm");
+      performDeactivateUser(id).catch(handleError);
+    };
+    openModal("modal-confirm");
+  }
+
+  async function performDeactivateUser(id) {
+    var user = await requireLiveAuth();
+    if (!user) return;
+    var response = await apiFetch(auth.apiUrl("/api/v1/admin/users/" + encodeURIComponent(id)), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: false })
+    });
+    if (!response.ok) {
+      var errorBody = await response.json().catch(function () { return {}; });
+      throw new Error(errorBody.detail || ("Deactivate user failed: HTTP " + response.status));
+    }
+    showToast("ปิดใช้งานผู้ใช้แล้ว ✓", "ok");
     await loadUsers();
   }
 
@@ -5734,18 +5771,29 @@
   function renderMappingDocxPreviewTable() {
     var tbody = getEl("mappingDocxPreviewBody");
     if (!tbody) return;
+    if (!state.mappingRulesDocxPreview.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1rem;">ไม่มีแถวให้บันทึก — ลบออกหมดแล้วหรือ AI ไม่พบ rule</td></tr>';
+      return;
+    }
     tbody.innerHTML = state.mappingRulesDocxPreview.map(function (r, i) {
       return "<tr>" +
         '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.vendor_name || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'vendor_name\',this.value)" /></td>' +
         '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.document_type || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'document_type\',this.value)" /></td>' +
         '<td><input class="field-input mono" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.recommended_debit_code || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'recommended_debit_code\',this.value)" /></td>' +
         '<td><input class="field-input" style="padding:0.3rem 0.5rem;" value="' + escapeHtml(r.recommended_account_name || "") + '" onchange="updateMappingDocxPreviewField(' + i + ',\'recommended_account_name\',this.value)" /></td>' +
+        '<td style="text-align:center;"><button class="btn btn-ghost btn-sm" style="padding:0.2rem 0.45rem;" onclick="removeMappingDocxPreviewRow(' + i + ')">ลบ</button></td>' +
       "</tr>";
     }).join("");
   }
 
   function updateMappingDocxPreviewField(index, field, value) {
     if (state.mappingRulesDocxPreview[index]) state.mappingRulesDocxPreview[index][field] = value;
+  }
+
+  function removeMappingDocxPreviewRow(index) {
+    if (!state.mappingRulesDocxPreview[index]) return;
+    state.mappingRulesDocxPreview.splice(index, 1);
+    renderMappingDocxPreviewTable();
   }
 
   async function extractMappingRulesDocx() {
@@ -5787,6 +5835,10 @@
   async function confirmMappingRulesDocxImport() {
     var companyId = state.selectedCompanyDetailId;
     if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    if (!state.mappingRulesDocxPreview.length) {
+      showToast("ไม่มี mapping rule ให้บันทึก", "warn");
+      return;
+    }
     try {
       var response = await apiFetch(
         auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/mapping-rules/confirm"),
@@ -6641,6 +6693,7 @@
     window.openUserDrawerForEdit = openUserDrawerForEdit;
     window.saveUserDrawer = saveUserDrawer;
     window.resetUserPasswordPrompt = resetUserPasswordPrompt;
+    window.deactivateUserPrompt = deactivateUserPrompt;
     window.importVendorMasterFile = importVendorMasterFile;
     window.importCustomerMasterFile = importCustomerMasterFile;
     window.renderCoaTable = renderCoaTable;
@@ -6656,6 +6709,7 @@
     window.extractMappingRulesDocx = extractMappingRulesDocx;
     window.confirmMappingRulesDocxImport = confirmMappingRulesDocxImport;
     window.updateMappingDocxPreviewField = updateMappingDocxPreviewField;
+    window.removeMappingDocxPreviewRow = removeMappingDocxPreviewRow;
     window.searchProductMaster = searchProductMaster;
     window.importProductMasterFile = importProductMasterFile;
     window.onTopbarCompanyChange = onTopbarCompanyChange;
