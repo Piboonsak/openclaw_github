@@ -1,0 +1,168 @@
+{
+  "_doc_id": "W5-CLAUDE-EXPORT-LINEITEM-REALDATA-04",
+  "_version": "2026-07-11",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_branch": "dev",
+  "_tracking_tag": "W5-EXPORT-LINEITEM-REALDATA-04",
+  "task_id": "TASK-W5-CLAUDE-EXPORT-LINEITEM-REALDATA-04",
+  "title": "Close W5-12 by wiring real reviewed-document export data and line-item flow for enable_stock=true companies",
+  "lane": "Claude",
+  "recommended_model": "Claude Opus 4.6",
+  "fallback_model": "Claude Sonnet only if the implementation stays tightly scoped and still closes the full acceptance below",
+  "objective": "Implement the real W5-12 production path that is still open after SIT proof: export must use real reviewed/mapped documents instead of demo or caller-supplied sample rows, and companies with enable_stock=true must run a non-blocking line-item extraction path that persists rows, exposes them for human confirmation, and includes confirmed line rows in export output.",
+  "must_read_first": [
+    "docs/requirement/phaseII/W5-TASK-BOARD.md",
+    "docs/requirement/phaseII/W5-SIT-E2E-ACCEPTANCE-MATRIX-01.md",
+    "test-results/w5-copilot-batch-deploy-sit-proof-03/2026-07-11T10-35-52-413Z/summary.json",
+    "docs/requirement/phaseII/W5-CLAUDE-PROCESSING-POC-PARITY-01-CODEX-HANDOFF.md",
+    "docs/requirement/phaseII/epic-9/TASK-906-LINE-ITEM-POC-PLAN.md",
+    "docs/requirement/phaseII/epic-14/EPIC-14-TASKS-DETAIL.md",
+    "src/backend/pipeline/orchestrator.py",
+    "src/backend/workers/tasks.py",
+    "src/backend/services/document_workflow.py",
+    "src/backend/db/models.py",
+    "src/backend/api/documents.py",
+    "src/backend/api/export_preview.py",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html",
+    "tests/e2e/w5-processing-poc-parity-uxui.spec.ts",
+    "tests/e2e/w4-routine-ops-uxui.spec.ts",
+    "tests/api/test_export_api.py",
+    "tests/api/test_documents_api.py",
+    "tests/services/test_document_workflow.py",
+    "tests/workers/test_tasks.py"
+  ],
+  "current_truth_from_live_sit": [
+    "W5-02 Processing UX is live and honest on SIT.",
+    "W5-03 user fixes are mostly live-proven.",
+    "W5-04 Mapping Rules DOCX row delete is live-proven; COA Thai glyph repair is still separate and open.",
+    "W5-06 blank Template Configurator path is live-proven, but full export continuity is still open.",
+    "W5-12 is NOT closed: live SIT still shows only the honest line-item notice for enable_stock=true companies; summary.json records real_line_item_rows_confirmed=false and real_line_item_export_confirmed=false.",
+    "Current export endpoint still fundamentally renders from request sample_data/column_overrides, which is acceptable for template preview/designer use but not as the primary live reviewed-document export path."
+  ],
+  "hard_decisions_from_codex": [
+    "Use a proper document_line_items table in the database for this pass. Do not hide production line items only inside a JSON blob unless you need a temporary mirror for compatibility.",
+    "Use Review Scan as the primary human confirmation/edit surface for line items, because that is where the user still thinks in terms of extracted document content. Review Mapping may show a compact read-only summary or handoff cue, but line-item editing should not live only there.",
+    "ProductMaster matching is best-effort only in this task: suggest matches and mark low-confidence rows for review, but do not block the workflow on perfect matching or dedupe.",
+    "Keep W5-12 as one implementation task and one commit/tag family: real-data export path plus line-item extraction/review/export. You may phase the code internally, but do not split this prompt into separate pseudo-completions."
+  ],
+  "human_findings_to_close": [
+    {
+      "id": "W5-LINEITEM-01",
+      "severity": "P0",
+      "symptom": "enable_stock=true companies still only show an honest banner; no real line-item rows are extracted, persisted, reviewed, or exported."
+    },
+    {
+      "id": "W5-LINEITEM-02",
+      "severity": "P0",
+      "symptom": "Export still depends on demo/static/runtime sample rows instead of a backend-built dataset from reviewed documents."
+    },
+    {
+      "id": "W5-LINEITEM-03",
+      "severity": "P0",
+      "symptom": "Customer-critical line-item companies cannot yet produce confirmable/exportable scanned line rows on the live product path."
+    }
+  ],
+  "implementation_scope": [
+    "1. Add persistent storage for extracted document line items.",
+    "2. Branch the processing path by company.settings.enable_stock: false stays header-only, true adds a non-blocking line-item extraction sub-stage after header extraction.",
+    "3. Reuse the TASK-906 PoC extractor logic where practical instead of inventing a second line-item extraction approach.",
+    "4. Persist extracted line items with confidence/status fields and enough structure for review + export.",
+    "5. Add Review Scan line-item review/edit/confirm behavior for documents that have extracted rows.",
+    "6. Build a backend-driven live export dataset path from real reviewed/mapped documents; sample_data remains allowed only for preview/designer workflows.",
+    "7. Include confirmed line-item rows in export output for enable_stock=true companies when such rows exist."
+  ],
+  "data_model_expectation": {
+    "preferred_table": "document_line_items",
+    "minimum_columns": [
+      "id",
+      "document_id",
+      "company_id",
+      "line_no",
+      "product_name",
+      "qty",
+      "unit",
+      "unit_price",
+      "line_amount",
+      "line_type",
+      "confidence",
+      "match_status",
+      "matched_product_master_id",
+      "review_status",
+      "reviewed_by",
+      "reviewed_at",
+      "raw_extraction_json",
+      "created_at",
+      "updated_at"
+    ],
+    "behavior_rule": "Header extraction must still complete even if line-item extraction fails. A line-item failure should mark the line-item sub-stage/error honestly, not kill the whole document if header extraction already succeeded."
+  },
+  "review_surface_expectation": [
+    "Review Scan should show extracted line-item rows below or alongside header extraction for documents that have line items.",
+    "Rows should be editable enough for MVP confirmation: product_name, qty, unit, unit_price, line_amount, line_type, optional match/notes.",
+    "There must be an explicit confirm/review status per line or per document-line-item set so export can exclude unconfirmed rows if needed.",
+    "If you add a compact Review Mapping summary, keep it secondary; do not move the main edit workflow away from Review Scan in this task."
+  ],
+  "export_path_expectation": [
+    "Do not let live export continue to rely primarily on caller-supplied sample_data for real document output.",
+    "Introduce a backend-built dataset path using company/document context from real reviewed/mapped documents.",
+    "Template preview can still use sample_data/column_overrides; live export should prefer real rows when the caller selects reviewed documents/company context.",
+    "When enable_stock=true and confirmed line items exist, export must include line-level rows built from those persisted line items.",
+    "When enable_stock=false, export must continue to work for header-only companies without line-item blocking."
+  ],
+  "hard_requirements": [
+    "Keep src/frontend/main-ux-ui.html and src/frontend/index.html aligned.",
+    "Do not remove the existing honest banner for enable_stock=true until the real line-item path is truly working; replace or narrow the banner only when the backend behavior changes accordingly.",
+    "Do not fake line-item success from placeholder/demo/sample rows.",
+    "Do not regress the existing W5-02 Processing tracker or W5-03 user fixes.",
+    "If you extend Processing stages, integrate line-item progress into the existing stage tracker rather than creating a disconnected second status model.",
+    "Use apply_patch edits only; keep changes scoped to the real W5-12 path.",
+    "Add focused backend/unit/e2e tests that prove the new live-data behavior.",
+    "Commit and push finished work to origin/dev with tracking tag W5-EXPORT-LINEITEM-REALDATA-04 in the completion report."
+  ],
+  "acceptance_criteria": [
+    "A reviewed/mapped document can be exported through a backend-built dataset path without relying on caller-provided sample_data as the primary live source.",
+    "For enable_stock=true companies, processing produces persisted line-item rows on supported documents.",
+    "Header-only companies still process/export normally with no line-item requirement.",
+    "Review Scan exposes line-item rows for human confirmation/edit instead of only showing a banner.",
+    "Confirmed line-item rows can flow into export output.",
+    "Focused tests cover persistence, status branching, review/update behavior, and export output shape."
+  ],
+  "suggested_files_to_modify": [
+    "src/backend/db/models.py",
+    "alembic/versions/*_add_document_line_items.py",
+    "src/backend/pipeline/orchestrator.py",
+    "src/backend/workers/tasks.py",
+    "src/backend/services/document_workflow.py",
+    "src/backend/api/documents.py",
+    "src/backend/api/export_preview.py",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html",
+    "tests/workers/test_tasks.py",
+    "tests/api/test_documents_api.py",
+    "tests/api/test_export_api.py",
+    "tests/services/test_document_workflow.py",
+    "tests/e2e/*.spec.ts"
+  ],
+  "verification_expectation": [
+    "Run focused pytest coverage for any new model/workflow/export logic.",
+    "Run focused Playwright coverage for the line-item/review/export path where practical.",
+    "If local static-server E2E is used, remember the /static/auth.js requirement already documented in the W5 processing tests."
+  ],
+  "deliverables": {
+    "completion_report": "docs/requirement/phaseII/epic-10/W5-CLAUDE-EXPORT-LINEITEM-REALDATA-04-COMPLETION.md",
+    "report_sections": [
+      "Doc ID",
+      "Commit SHA",
+      "What changed",
+      "Data model added",
+      "Processing branch behavior",
+      "Review Scan line-item workflow",
+      "Live export data path",
+      "Tests run",
+      "Residual risks",
+      "Next Copilot proof required"
+    ]
+  },
+  "final_instruction_to_claude": "Finish the real W5-12 path. Do not stop at a review or a plan, and do not return only a banner refinement. The task is only complete when reviewed-document export no longer depends on demo/runtime sample rows and enable_stock=true companies can produce persisted, confirmable, exportable line-item rows on the real product path."
+}
