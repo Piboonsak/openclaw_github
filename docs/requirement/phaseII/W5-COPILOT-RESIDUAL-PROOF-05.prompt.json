@@ -1,0 +1,88 @@
+{
+  "_doc_id": "W5-COPILOT-RESIDUAL-PROOF-05",
+  "_version": "2026-07-11",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+  "_tracking_tag": "W5-COPILOT-RESIDUAL-PROOF-05",
+  "task_id": "TASK-W5-COPILOT-RESIDUAL-PROOF-05",
+  "title": "Close the remaining live-proof gaps from Sprint 5 without overlapping W5-12 or slowdown investigation lanes",
+  "risk_tier": "MEDIUM",
+  "lane": "Copilot - live proof / runtime verification",
+  "objective": "Run a focused residual SIT proof round for the specific W5 gaps that remained open after the main batch proof: W5-01 full real processed-row round trip, W5-03 first-login / credential-flow proof, and W5-05 Review Mapping filename-first proof with a real processed document row.",
+  "must_read_first": [
+    "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "D:/01_gitrepo/Openclaw/docs/governance/federated-hybrid-cicd.md",
+    "docs/requirement/phaseII/W5-TASK-BOARD.md",
+    "docs/requirement/phaseII/W5-SIT-E2E-ACCEPTANCE-MATRIX-01.md",
+    "test-results/w5-copilot-batch-deploy-sit-proof-03/2026-07-11T10-35-52-413Z/summary.json",
+    "docs/requirement/phaseII/W5-COPILOT-BATCH-DEPLOY-SIT-PROOF-03.prompt.json",
+    "docs/requirement/phaseII/W5-COPILOT-PROCESSING-SLOWDOWN-INVESTIGATION-04.prompt.json",
+    "docs/requirement/phaseII/W5-CLAUDE-EXPORT-LINEITEM-REALDATA-04.prompt.json"
+  ],
+  "why_this_exists": [
+    "The first W5 SIT proof round was good enough to close many items, but the board still correctly marks W5-01 as only partial, W5-03 first-login behavior as still open, and W5-05 filename-first proof as not yet exercised with a real processed row.",
+    "These are proof gaps, not necessarily new implementation work. They deserve a clean, isolated follow-up prompt so they do not get lost inside W5-12 or the processing-slowdown investigation."
+  ],
+  "hard_scope_boundary": {
+    "allowed_scope": [
+      "Use the existing deployed dev/SIT runtime or redeploy via approved Openclaw workflow only if needed",
+      "Live browser proof, route checks, runtime verification, and screenshot/network evidence",
+      "Small proof-oriented scripts or docs artifacts"
+    ],
+    "forbidden_scope": [
+      "Do not implement W5-12 line-item/export-realdata product changes",
+      "Do not turn this into the slowdown investigation lane",
+      "Do not widen scope into COA glyph repair, dashboard redesign, or unrelated app-code refactors",
+      "Do not claim W5-12 closed from this proof round"
+    ]
+  },
+  "residual_items_to_close": [
+    {
+      "id": "W5-01",
+      "goal": "Prove one full real processed-row Upload -> Processing -> Review Scan -> Review Mapping -> Export round trip on SIT",
+      "why_open": "Previous proof showed upload + task start + review screens opening, but still had 0 rows in Review Scan / Review Mapping."
+    },
+    {
+      "id": "W5-03A",
+      "goal": "Prove the actual first-login / temp-password / must-change-password flow for an admin/sys_admin path",
+      "why_open": "Previous proof closed create/badge/company-name/deactivate, but did not explicitly prove the login/first-login behavior."
+    },
+    {
+      "id": "W5-05",
+      "goal": "Prove Review Mapping is filename-first with a real processed document row",
+      "why_open": "Previous proof had no processed row in Review Mapping, so the filename-first rendering was not exercised live."
+    }
+  ],
+  "what_to_do": [
+    "1. Use the current SIT deployment if it still matches the required code, or redeploy via Openclaw workflow only if necessary.",
+    "2. Run one processing proof with a real sample file and wait long enough for an actual document row to reach Review Scan and Review Mapping.",
+    "3. Capture proof that the document row in Review Mapping uses the uploaded filename as the primary label, with invoice number only secondary if present.",
+    "4. Create a fresh user that receives a temp password / must-change-password path, then prove the first-login behavior end to end: first login, password change if required, and stable subsequent access behavior.",
+    "5. From the same real processed document path, complete the minimal round trip through Export so W5-01 is not left at screen-navigation level only.",
+    "6. Return a concise pass/partial/fail result for W5-01, W5-03A, and W5-05 with screenshots and network/runtime evidence."
+  ],
+  "acceptance_criteria": [
+    "W5-01 is only PASS if at least one real processed document row is observed moving through Review Scan and Review Mapping before Export.",
+    "W5-03A is only PASS if first-login / temp-password behavior is explicitly exercised, not inferred.",
+    "W5-05 is only PASS if Review Mapping shows a real document row whose primary visible label is the uploaded filename.",
+    "The report clearly states whether any remaining gap is a proof limitation, a runtime issue, or an app-code issue.",
+    "The report explicitly states that W5-12 and slowdown investigation were out of scope for this prompt."
+  ],
+  "deliverable_format": {
+    "report_path": "docs/requirement/phaseII/W5-COPILOT-RESIDUAL-PROOF-05-RESULT.md",
+    "report_sections": [
+      "Runtime used",
+      "Workflow run used if redeployed",
+      "W5-01 round-trip proof",
+      "W5-03A first-login proof",
+      "W5-05 filename-first proof",
+      "Screenshots and artifacts",
+      "Pass/partial/fail summary",
+      "Remaining blockers if any"
+    ]
+  },
+  "final_instruction_to_copilot": "Close the residual proof gaps only. Do not drift into W5-12 implementation or the processing slowdown investigation. This prompt succeeds by proving or disproving the remaining live behavior, not by broadening scope."
+}
