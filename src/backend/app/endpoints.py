@@ -11,17 +11,6 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from src.backend.api.master_import import router as _master_import_router
-from src.backend.api.schema_analyze import router as _schema_analyze_router
-from src.backend.api.export_preview import router as _export_preview_router
-from src.backend.api.templates import router as _templates_router
-from src.backend.api.companies_admin import router as _companies_admin_router
-from src.backend.api.users_admin import router as _users_admin_router
-from src.backend.api.coa import router as _coa_router
-from src.backend.api.documents import router as _documents_router
-from src.backend.api.mapping_rules import router as _mapping_rules_router
-from src.backend.api.product_master import router as _product_master_router
-
 from celery.result import AsyncResult
 from fastapi import (
     APIRouter,
@@ -37,8 +26,21 @@ from fastapi import (
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from config.settings import settings
+from src.backend.api.coa import router as _coa_router
+from src.backend.api.companies_admin import router as _companies_admin_router
+from src.backend.api.documents import router as _documents_router
+from src.backend.api.export_preview import router as _export_preview_router
+from src.backend.api.mapping_rules import router as _mapping_rules_router
+from src.backend.api.master_import import router as _master_import_router
+from src.backend.api.product_master import router as _product_master_router
+from src.backend.api.schema_analyze import router as _schema_analyze_router
+from src.backend.api.templates import router as _templates_router
+from src.backend.api.users_admin import router as _users_admin_router
 from src.backend.app.health import collect_service_health, get_uptime_seconds
-from src.backend.auth.dependencies import get_current_active_user, require_password_finalized
+from src.backend.auth.dependencies import (
+    get_current_active_user,
+    require_password_finalized,
+)
 from src.backend.db.models import User
 from src.backend.ml.llm_router import get_routing_diagnostics, read_cost_log_tail
 from src.backend.pipeline.orchestrator import run_pipeline, select_model
@@ -389,9 +391,11 @@ async def export_purchase_tax_report_legacy(request: Request) -> Response:
     """307 redirect — use POST /v1/export-purchase-tax-report instead."""
     return Response(
         status_code=307,
-        headers={"Location": str(request.url).replace(
-            "/export-purchase-tax-report", "/v1/export-purchase-tax-report", 1
-        )},
+        headers={
+            "Location": str(request.url).replace(
+                "/export-purchase-tax-report", "/v1/export-purchase-tax-report", 1
+            )
+        },
     )
 
 

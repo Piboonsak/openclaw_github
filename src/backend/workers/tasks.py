@@ -20,7 +20,13 @@ from typing import Any
 from config.settings import settings
 from src.backend.db.base import get_sync_session_factory
 from src.backend.db.enums import DocumentStatus
-from src.backend.db.models import Company, Document, Extraction, JournalLine, JournalVoucher
+from src.backend.db.models import (
+    Company,
+    Document,
+    Extraction,
+    JournalLine,
+    JournalVoucher,
+)
 from src.backend.pipeline.orchestrator import run_pipeline
 from src.backend.services.coa_import import ocr_pdf_to_text
 from src.backend.services.document_workflow import build_pipeline_persistence_plan
@@ -148,7 +154,9 @@ def _report_progress(task, stage: str) -> None:
         pass
 
 
-def _materialize_coa_source(storage_key: str, sha256: str, filename: str | None) -> Path:
+def _materialize_coa_source(
+    storage_key: str, sha256: str, filename: str | None
+) -> Path:
     """Return a local path to the uploaded COA PDF inside *this* container.
 
     The backend and celery-worker containers do not share an upload volume
@@ -213,7 +221,13 @@ def extract_coa_pdf(
     }
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, time_limit=600, soft_time_limit=540)
+@celery_app.task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    time_limit=600,
+    soft_time_limit=540,
+)
 def process_document(self, document_id: str) -> dict[str, Any]:
     """Run document processing asynchronously with persistent task state.
 
@@ -240,6 +254,8 @@ def process_document(self, document_id: str) -> dict[str, Any]:
         }
     except Exception as exc:
         _set_document_status(document_id, _error_status_value(), str(exc))
-        if (not celery_app.conf.task_always_eager) and self.request.retries < self.max_retries:
+        if (
+            not celery_app.conf.task_always_eager
+        ) and self.request.retries < self.max_retries:
             raise self.retry(exc=exc)
         raise

@@ -45,15 +45,19 @@ from src.backend.db.session import get_db
 from src.backend.pipeline.orchestrator import run_pipeline
 from src.backend.services.document_workflow import (
     SqlAlchemyDocumentRepository,
-    approve_document,
     apply_pipeline_result,
+    approve_document,
     confirm_journal_voucher,
     create_document,
     flag_document,
     update_document_fields,
     update_journal_line,
 )
-from src.backend.storage import get_storage_client, materialize_local_cache, store_document_bytes
+from src.backend.storage import (
+    get_storage_client,
+    materialize_local_cache,
+    store_document_bytes,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -72,16 +76,28 @@ def _document_to_response(document: Document) -> DocumentResponse:
         content_type=document.content_type,
         file_size_bytes=document.file_size_bytes,
         invoice_number=document.invoice_number,
-        invoice_date=document.invoice_date.isoformat() if document.invoice_date else None,
+        invoice_date=document.invoice_date.isoformat()
+        if document.invoice_date
+        else None,
         seller_name=document.seller_name,
         buyer_tax_id=document.buyer_tax_id,
         taxid_match=document.taxid_match,
-        net_amount=float(document.net_amount) if document.net_amount is not None else None,
-        vat_amount=float(document.vat_amount) if document.vat_amount is not None else None,
-        wht_amount=float(document.wht_amount) if document.wht_amount is not None else None,
-        total_amount=float(document.total_amount) if document.total_amount is not None else None,
+        net_amount=float(document.net_amount)
+        if document.net_amount is not None
+        else None,
+        vat_amount=float(document.vat_amount)
+        if document.vat_amount is not None
+        else None,
+        wht_amount=float(document.wht_amount)
+        if document.wht_amount is not None
+        else None,
+        total_amount=float(document.total_amount)
+        if document.total_amount is not None
+        else None,
         overall_confidence=(
-            float(document.overall_confidence) if document.overall_confidence is not None else None
+            float(document.overall_confidence)
+            if document.overall_confidence is not None
+            else None
         ),
         processing_error=document.processing_error,
         created_at=document.created_at.isoformat() if document.created_at else "",
@@ -97,8 +113,12 @@ def _voucher_to_response(voucher: JournalVoucher) -> JournalVoucherResponse:
         rule_id=voucher.rule_id,
         status=voucher.status,
         is_balanced=voucher.is_balanced,
-        total_debit=float(voucher.total_debit) if voucher.total_debit is not None else None,
-        total_credit=float(voucher.total_credit) if voucher.total_credit is not None else None,
+        total_debit=float(voucher.total_debit)
+        if voucher.total_debit is not None
+        else None,
+        total_credit=float(voucher.total_credit)
+        if voucher.total_credit is not None
+        else None,
         flags=(voucher.flags or {}).get("flags", []),
         lines=[
             JournalLineResponse(
@@ -122,15 +142,23 @@ def _document_to_detail_response(document: Document) -> DocumentDetailResponse:
     return DocumentDetailResponse(
         **base,
         extraction_fields=(
-            (latest_extraction.extraction_json or {}).get("fields", {}) if latest_extraction else {}
+            (latest_extraction.extraction_json or {}).get("fields", {})
+            if latest_extraction
+            else {}
         ),
-        confidence_per_field=(latest_extraction.confidence_per_field or {}) if latest_extraction else {},
-        critical_flags=(latest_extraction.critical_flags or {}) if latest_extraction else {},
+        confidence_per_field=(latest_extraction.confidence_per_field or {})
+        if latest_extraction
+        else {},
+        critical_flags=(latest_extraction.critical_flags or {})
+        if latest_extraction
+        else {},
         voucher=_voucher_to_response(voucher) if voucher else None,
     )
 
 
-async def _get_document_or_404(repo: SqlAlchemyDocumentRepository, document_id: uuid.UUID) -> Document:
+async def _get_document_or_404(
+    repo: SqlAlchemyDocumentRepository, document_id: uuid.UUID
+) -> Document:
     document = await repo.get_document(document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -173,9 +201,13 @@ async def upload_documents(
         try:
             content = await upload.read()
             if not content:
-                raise HTTPException(status_code=400, detail=f"'{upload.filename}' is empty")
+                raise HTTPException(
+                    status_code=400, detail=f"'{upload.filename}' is empty"
+                )
             if len(content) > _MAX_UPLOAD_BYTES:
-                raise HTTPException(status_code=413, detail=f"'{upload.filename}' exceeds 20 MB")
+                raise HTTPException(
+                    status_code=413, detail=f"'{upload.filename}' exceeds 20 MB"
+                )
 
             stored = store_document_bytes(
                 content=content,
@@ -218,7 +250,9 @@ async def upload_documents(
     return DocumentUploadResult(documents=[_document_to_response(d) for d in created])
 
 
-@router.get("/v1/companies/{company_id}/documents", response_model=list[DocumentResponse])
+@router.get(
+    "/v1/companies/{company_id}/documents", response_model=list[DocumentResponse]
+)
 async def list_documents(
     company_id: uuid.UUID,
     status: str | None = None,
@@ -245,7 +279,9 @@ async def get_document_detail(
     return _document_to_detail_response(document)
 
 
-@router.post("/v1/documents/{document_id}/process", response_model=DocumentDetailResponse)
+@router.post(
+    "/v1/documents/{document_id}/process", response_model=DocumentDetailResponse
+)
 async def process_document_now(
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -273,7 +309,9 @@ async def process_document_now(
             local_path,
             settings.STORAGE_PROVIDER,
         )
-        raise HTTPException(status_code=409, detail="Source file is no longer available for processing")
+        raise HTTPException(
+            status_code=409, detail="Source file is no longer available for processing"
+        )
 
     document.status = "processing"
     await repo.flush()
@@ -329,11 +367,15 @@ async def approve_all_documents(
         try:
             doc_uuids = [uuid.UUID(doc_id) for doc_id in body.document_ids]
         except ValueError:
-            raise HTTPException(status_code=400, detail="document_ids must be valid UUIDs")
+            raise HTTPException(
+                status_code=400, detail="document_ids must be valid UUIDs"
+            )
         targets = [await _get_document_or_404(repo, doc_uuid) for doc_uuid in doc_uuids]
         for document in targets:
             if document.company_id != company_id:
-                raise HTTPException(status_code=403, detail="Document does not belong to this company")
+                raise HTTPException(
+                    status_code=403, detail="Document does not belong to this company"
+                )
     else:
         targets = await repo.list_documents(company_id, "review_scan")
 
@@ -395,7 +437,9 @@ async def get_document_file(
         content = get_storage_client().download_bytes(document.storage_key)
     except Exception as exc:  # storage backends raise different types (local: FileNotFoundError; S3/MinIO: ClientError)
         raise HTTPException(status_code=404, detail=f"Stored file is missing: {exc}")
-    return Response(content=content, media_type=document.content_type or "application/octet-stream")
+    return Response(
+        content=content, media_type=document.content_type or "application/octet-stream"
+    )
 
 
 @router.put(
@@ -415,7 +459,9 @@ async def update_voucher_line(
     await ensure_company_access(db, current_user, document.company_id)
     line = next((ln for ln in voucher.lines if ln.id == line_id), None)
     if line is None:
-        raise HTTPException(status_code=404, detail="Journal line not found on this voucher")
+        raise HTTPException(
+            status_code=404, detail="Journal line not found on this voucher"
+        )
 
     voucher = await update_journal_line(
         repo,
@@ -442,7 +488,9 @@ async def confirm_voucher(
     document = await _get_document_or_404(repo, voucher.document_id)
     await ensure_company_access(db, current_user, document.company_id)
     try:
-        voucher = await confirm_journal_voucher(repo, voucher, document, current_user.id)
+        voucher = await confirm_journal_voucher(
+            repo, voucher, document, current_user.id
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return _voucher_to_response(voucher)
