@@ -36,11 +36,14 @@ from src.backend.workers.celery_app import celery_app
 
 
 def _error_status_value() -> str:
-    """Return failure status while remaining compatible with current enum set."""
-    error_status = getattr(DocumentStatus, "ERROR", None)
-    if error_status is not None:
-        return str(error_status.value)
-    return "error"
+    """Return the canonical failure status for a document.
+
+    W5-PROCESSING-POC-PARITY-01: task-level failures must persist the same
+    ``DocumentStatus.FAILED`` value as pipeline-internal failures (previously this
+    fell back to an off-enum ``"error"`` string, which the Processing UI did not
+    recognise as a failure and rendered as a healthy/green badge).
+    """
+    return DocumentStatus.FAILED.value
 
 
 def _load_document(document_id: str) -> Document:

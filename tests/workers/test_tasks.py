@@ -148,7 +148,10 @@ def test_task_failure_sets_error_status(monkeypatch, tmp_path) -> None:
         result = process_document.delay(str(document.id))
 
         assert result.failed()
-        assert documents[document.id].status == "error"
+        # W5-PROCESSING-POC-PARITY-01: task-level failures now persist the
+        # canonical DocumentStatus.FAILED value (previously an off-enum "error"
+        # string the Processing UI did not recognise as a failure).
+        assert documents[document.id].status == DocumentStatus.FAILED.value
         assert documents[document.id].processing_error == "pipeline failed"
     finally:
         celery_app.conf.task_always_eager = old_always
@@ -174,7 +177,8 @@ def test_task_missing_source_file_sets_error_status(monkeypatch, eager_mode, tmp
     try:
         result = process_document.delay(str(document.id))
         assert result.failed()
-        assert documents[document.id].status == "error"
+        # W5-PROCESSING-POC-PARITY-01: canonical failure status (was "error").
+        assert documents[document.id].status == DocumentStatus.FAILED.value
         assert "no longer available" in (documents[document.id].processing_error or "")
     finally:
         celery_app.conf.task_always_eager = old_always
