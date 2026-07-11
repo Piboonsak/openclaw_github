@@ -1,0 +1,88 @@
+{
+  "_doc_id": "W5-COPILOT-PROCESSING-SLOWDOWN-INVESTIGATION-04",
+  "_version": "2026-07-11",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+  "_tracking_tag": "W5-COPILOT-PROCESSING-SLOWDOWN-INVESTIGATION-04",
+  "task_id": "TASK-W5-COPILOT-PROCESSING-SLOWDOWN-INVESTIGATION-04",
+  "title": "Investigate why async Processing on SIT/UAT feels far slower than expected without colliding with Claude's W5-12 implementation lane",
+  "risk_tier": "MEDIUM",
+  "lane": "Copilot - deploy / runtime / queue / environment investigation",
+  "objective": "Find where the slowdown actually happens in the live async Processing path: queue pickup, retry behavior, OCR runtime, extraction runtime, Stage C cascade runtime, or environment drift between SIT and UAT. Return hard evidence and a narrow fix recommendation, while leaving Claude's W5-12 product implementation lane untouched.",
+  "must_read_first": [
+    "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "D:/01_gitrepo/Openclaw/docs/governance/federated-hybrid-cicd.md",
+    "docs/requirement/phaseII/W5-TASK-BOARD.md",
+    "docs/requirement/phaseII/W5-SIT-E2E-ACCEPTANCE-MATRIX-01.md",
+    "test-results/w5-copilot-batch-deploy-sit-proof-03/2026-07-11T10-35-52-413Z/summary.json",
+    "docs/requirement/phaseII/W5-CLAUDE-PROCESSING-POC-PARITY-01-CODEX-HANDOFF.md",
+    "docs/requirement/phaseII/W5-CLAUDE-EXPORT-LINEITEM-REALDATA-04.prompt.json"
+  ],
+  "why_this_is_copilot_lane": [
+    "The latest proof artifact shows the task stayed pending with stage=null before OCR/extract began, which points first to worker pickup / queue / retry / runtime environment, not to a pure frontend issue.",
+    "Comparing SIT and UAT runtime behavior, worker health, queue latency, and deployed env/config drift is deploy/runtime work.",
+    "Claude is already assigned to W5-12 product implementation and should not be pulled off into infra/runtime diagnosis unless Copilot proves the issue is actually app-code logic."
+  ],
+  "known_evidence": [
+    "In test-results/w5-copilot-batch-deploy-sit-proof-03/.../summary.json, POST /api/v1/tasks/process-document returned a task id, but repeated GET /api/v1/tasks/{id} stayed status=pending, stage=null, result=null for multiple polls.",
+    "In the same artifact, the document list still showed status=uploaded during those polls, which suggests the worker had not yet started or had not persisted processing state.",
+    "The current async path is Celery-based: /api/v1/tasks/process-document -> process_document.delay() -> worker task -> run_pipeline().",
+    "The current pipeline is heavier than older direct runs because it can execute OCR -> extraction -> Stage C cascade -> reconciliation -> journal mapping, and Stage C can call multiple models sequentially."
+  ],
+  "what_to_do": [
+    "1. Reproduce the slowdown on SIT and, if available, UAT using the real async Processing path rather than only the synchronous /process path.",
+    "2. Capture exact timestamps for: request accepted, task enqueued, task first visible as started/progress, OCR start/end, extraction start/end, Stage C start/end, mapping start/end, document status persisted to processing/review_scan/failed.",
+    "3. Inspect Celery worker health, queue backlog, retry activity, and result-backend behavior for the processing task IDs involved.",
+    "4. Compare SIT vs UAT runtime configuration that materially affects latency: worker concurrency, result backend, Redis health, object-storage download latency, OCR engine availability, and the actual effective env values used by the live containers.",
+    "5. Determine whether the main problem is before pipeline start (queue/worker), during OCR, during extraction, during Stage C cascade, or during persistence.",
+    "6. Return the smallest credible fix path: runtime-only fix for Copilot, or app-code fix to hand back to Claude/Codex if and only if the evidence points there."
+  ],
+  "hard_scope_boundary": {
+    "allowed_scope": [
+      "Openclaw workflow runs and deploy/runtime investigation",
+      "Live SIT/UAT route checks",
+      "Worker / queue / retry / health diagnosis",
+      "Runtime env comparison",
+      "Minimal diagnostic scripts or logs collection",
+      "Docs/report artifacts for the investigation"
+    ],
+    "forbidden_scope": [
+      "Do not implement W5-12 line-item storage, review UI, or export-realdata product changes",
+      "Do not refactor src/frontend/main-ux-ui.html or src/frontend/index.html for W5-12",
+      "Do not modify application behavior in ways that would overlap with Claude's line-item/export lane unless the evidence proves a tiny runtime-safe fix is the real cause and you clearly isolate it",
+      "Do not claim W5-12 is fixed or in scope for this investigation"
+    ]
+  },
+  "questions_to_answer": [
+    "Is the major delay happening before the worker picks up the task, or after the pipeline begins?",
+    "If before pickup, what exactly is the blocker: worker offline, low concurrency, queue backlog, retries, Redis/result-backend lag, or storage-download failure causing delayed retries?",
+    "If after pickup, which stage dominates wall-clock time: OCR, extraction, Stage C cascade, or mapping?",
+    "Is UAT actually faster than SIT on the same kind of document, and if so, what runtime difference explains it?",
+    "Is there a regression window in git history or deployed config that explains why users remember it as under 1 minute?"
+  ],
+  "acceptance_criteria": [
+    "The report identifies the dominant slowdown stage with concrete evidence, not guesswork.",
+    "The report clearly separates queue/worker delay from OCR/LLM processing delay.",
+    "If UAT and SIT differ, the report states exactly what differs and why it matters.",
+    "If a fix is recommended, it is scoped to the responsible lane: Copilot for runtime/deploy fixes, Claude/Codex for app-code fixes.",
+    "The report explicitly states that W5-12 remains a separate product lane and was not modified by this task."
+  ],
+  "deliverable_format": {
+    "report_path": "docs/requirement/phaseII/W5-COPILOT-PROCESSING-SLOWDOWN-INVESTIGATION-04-RESULT.md",
+    "report_sections": [
+      "Question investigated",
+      "Runtime environment checked",
+      "Timeline of one real processing task",
+      "Queue / worker findings",
+      "OCR / extraction / Stage C findings",
+      "SIT vs UAT comparison",
+      "Root-cause classification",
+      "Recommended next action by lane",
+      "Exact blocker if unresolved"
+    ]
+  },
+  "final_instruction_to_copilot": "Investigate the live slowdown and return hard evidence. Do not drift into W5-12 implementation. Your job is to say where the time is really going and what lane should fix it next."
+}
