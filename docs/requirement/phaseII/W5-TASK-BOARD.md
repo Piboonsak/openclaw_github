@@ -46,19 +46,26 @@ Focus หลัก:
 
 ---
 
-## 4. Current W5 Status After 2026-07-11 Code Pass
+## 4. Current W5 Status After 2026-07-11 SIT Proof
 
-Two W5 code slices are now on `origin/dev` and ready for one Copilot SIT deploy/proof batch:
+The W5 code slices were deployed to SIT and one live proof pack was completed:
 
 - `5836bd6` — `feat(processing): POC-parity per-file stage tracker, elapsed + honest progress (W5-PROCESSING-POC-PARITY-01)`
 - `1f4d964` — `feat(ui): add W5 human review functional fixes`
+- Live deploy proof: Openclaw run `#29148944553`
+- Live deployed commit recorded by Copilot: `eac484d63442110e7c73c7900c267bc958b7bbc3`
+- Live proof artifacts:
+  - `docs/requirement/phaseII/W5-SIT-E2E-ACCEPTANCE-MATRIX-01.md`
+  - `test-results/w5-copilot-batch-deploy-sit-proof-03/2026-07-11T10-35-52-413Z/summary.json`
 
-What is now true in repo code:
+What is now true after SIT proof:
 
-- `W5-02` Processing perceived-stall fix is implemented locally and pushed; live SIT proof is still required.
-- `W5-03` Users functional gap is **partially** closed: deactivate action, company-name rendering, and `SysAdmin` badge/role path are implemented; first-login/live credential proof is still open.
-- `W5-04` Company functional gap is **partially** closed: Mapping Rules DOCX row delete is implemented; COA PDF Thai glyph normalization is still open.
-- `W5-06` Template continuity is **partially** closed: blank Template Configurator path is implemented; full live export continuity still depends on W5-12.
+- `W5-01` is only **partially** proven on SIT: upload works, task starts, Processing UI moves, and Review screens open, but the captured proof still ends with `0` docs in Review Scan / Review Mapping, so the full Upload -> OCR -> Review -> Mapping -> Export round-trip is not yet closed with a real processed row.
+- `W5-02` Processing perceived-stall fix is now **live-proven** on SIT.
+- `W5-03` Users functional gap is **mostly closed on SIT**: deactivate action, company-name rendering, and `SysAdmin` badge/role path are live; first-login/live credential behavior still remains open.
+- `W5-04` Company functional gap is **partially** closed on SIT: Mapping Rules DOCX row delete is live-proven; COA PDF Thai glyph normalization is still open.
+- `W5-06` Template continuity is **partially** live-proven: blank Template Configurator path is working; upload sub-tab is honestly deferred; full real-data export continuity still depends on W5-12.
+- `W5-07` Copilot SIT proof pack is **done**.
 - `W5-12` real scanned-data export + line-item path remains the next major implementation task and must stay visible as open.
 
 ---
@@ -95,13 +102,13 @@ Short status:
 
 | ID | Priority | Owner | Status | Short Task |
 | --- | --- | --- | --- | --- |
-| W5-01 | P0 | Copilot | Ready for deploy/proof | Full header-only E2E on SIT |
-| W5-02 | P0 | Claude | Code done in `5836bd6`; SIT proof pending | Processing progress / perceived-stall fix |
-| W5-03 | P0 | Claude | Partial code done in `1f4d964`; login proof open | User admin CRUD + role correctness |
-| W5-04 | P0 | Claude | Partial in `1f4d964`; COA glyph repair open | COA/Mapping Rules import quality |
+| W5-01 | P0 | Copilot | Partial live proof only; real review-row round-trip still open | Full header-only E2E on SIT |
+| W5-02 | P0 | Claude | Live-proven on SIT | Processing progress / perceived-stall fix |
+| W5-03 | P0 | Claude | Mostly live-proven; first-login proof open | User admin CRUD + role correctness |
+| W5-04 | P0 | Claude | Partial live-proven; COA glyph repair open | COA/Mapping Rules import quality |
 | W5-05 | P0 | Claude | Waiting on live proof | Review Mapping filename-first with real doc |
-| W5-06 | P0 | Claude + Copilot | Partial in `1f4d964`; export continuity open | Template/configurator/export continuity |
-| W5-07 | P0 | Copilot | Ready after deploy | One SIT proof pack after W5 fixes |
+| W5-06 | P0 | Claude + Copilot | Partial live-proven; upload tab deferred; export continuity open | Template/configurator/export continuity |
+| W5-07 | P0 | Copilot | Done | One SIT proof pack after W5 fixes |
 | W5-12 | P0 | Claude | Open next implementation task | Real-data export + line-item path |
 | W5-08 | P1 | Claude | Open | Dashboard honesty / real-data boundary |
 | W5-09 | P1 | Claude | Open | Internal Console follow-through |
@@ -111,32 +118,30 @@ Short status:
 ### 6.2 Task Notes
 
 `W5-01` Full header-only routine E2E proof on SIT:
-Result 23 only proved file selection/navigation, not a completed OCR round-trip.
-Acceptance: Upload 2-3 real docs -> start Processing -> stage progress completes -> Review Scan opens real docs -> approve -> Review Mapping shows rows -> Export downloads file.
+Current SIT result: upload worked, Processing task started, running notice/stage UI appeared, and Review screens opened, but the captured proof still showed `0` docs in Review Scan / Review Mapping.
+Still needed to close: Upload 2-3 real docs -> start Processing -> stage progress completes -> Review Scan opens real docs -> approve -> Review Mapping shows rows -> Export downloads file.
 
 `W5-02` Processing progress and perceived-stall fix:
-User sees `0 / 3` and feels the scan is stuck even when backend may still run.
-Acceptance: UI shows per-document stages, elapsed time, queued/running/done/error state, and never looks frozen during long OCR/LLM work.
+Live SIT result: passed. Proof captured `8%`, the running note, and the queued/running stage table without the UI looking frozen.
 
 `W5-03` User admin CRUD and role correctness:
-Human review found cannot delete user, deleted user's company assignment shows raw UUIDs, cannot add `SysAdmin`, double-login behavior.
-Acceptance: user delete works or is clearly disabled with reason; deleted/disabled users do not leave UUID display garbage; `SysAdmin` role can be assigned by sys_admin; login/first-login flow happens once and is understandable.
+Live SIT result: create `sys_admin`, `SysAdmin` badge, company-name rendering, deactivate, and inactive-after-reload all passed.
+Still open: login/first-login flow needs its own explicit proof.
 
 `W5-04` Company import quality:
-COA AI import has corrupted Thai tone/glyphs such as `คา`; Mapping Rules import review cannot remove unwanted/duplicate rows.
-Acceptance: COA preview normalizes Thai text before confirm; Mapping Rules review table supports delete/remove before save; deleted rows are not persisted.
+Live SIT result: Mapping Rules DOCX preview/delete/confirm passed with 2 rules -> delete 1 -> import 1.
+Still open: COA AI import Thai glyph normalization such as `คา`.
 
 `W5-05` Review Mapping filename-first proof:
 Repo/local says fixed, but live proof had no real document row.
 Acceptance: real processed document appears in Review Mapping with uploaded filename as primary label and invoice number only secondary.
 
 `W5-06` Template/export continuity:
-Customer presentation needs a clear Template -> Export story, not disconnected screens.
-Acceptance: create/edit template without forced CSV-only path; sample upload remains helper; Quick/Template Export preview/download works from selected company data on SIT.
+Live SIT result: blank Template Configurator opens and configure tab is visible.
+Still open: upload sub-tab is deferred in current build, and full export continuity from real reviewed documents still depends on W5-12.
 
 `W5-07` End-to-end SIT proof pack after W5 fixes:
-Payment/presentation needs one trustworthy proof, not many isolated claims.
-Acceptance: one report with screenshots/network proof for Companies, Users, Upload, Processing, Review Scan, Review Mapping, Templates, Export.
+Live SIT result: done. Report, screenshots, and summary artifact were produced.
 
 `W5-12` Export real scanned data + line-item scan path:
 Human review found Export still contains demo/static rows and the target company is configured for line-item scan.
