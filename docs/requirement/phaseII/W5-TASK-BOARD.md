@@ -63,7 +63,33 @@ What is now true in repo code:
 
 ---
 
-## 5. W5 Delivery Board
+## 5. W5-12 Spotlight
+
+`W5-12` is intentionally still OPEN and is the next major Claude implementation task after the current Copilot SIT deploy/proof pass.
+
+Why it is special:
+
+- This is the bridge from the current honest header-only/product-shell state into the real `enable_stock=true` workflow.
+- It is not just "one more export tweak" — it is the combined real-data export path plus line-item extraction/review/export path.
+- Copilot should **not** close it during the current SIT proof unless the live app truly proves backend-driven line-item extraction, confirmation, and export for reviewed documents.
+
+What W5-12 must close:
+
+1. Export must stop depending on demo/static rows and read real reviewed/mapped documents for the selected company.
+2. `enable_stock=true` must trigger non-blocking line-item extraction after header extraction.
+3. Extracted line items must be stored and exposed for human confirmation in Review Scan / Review Mapping.
+4. Export output must include confirmed line-item rows from the real document set.
+
+Short status:
+
+- Current state: open
+- Owner: Claude
+- Dependency before proof/closure: Copilot deploy/prove the already-pushed W5 slices first
+- Do not mark done from banner-only behavior
+
+---
+
+## 6. W5 Delivery Board
 
 | ID | Priority | Owner | Status | Task | Why It Matters | Acceptance / Proof |
 | --- | --- | --- | --- | --- | --- |
@@ -82,7 +108,7 @@ What is now true in repo code:
 
 ---
 
-## 6. Human Review Issues Added To W5
+## 7. Human Review Issues Added To W5
 
 ### Users
 
@@ -119,7 +145,7 @@ What is now true in repo code:
 
 ---
 
-## 7. Acceptance Gates For W5
+## 8. Acceptance Gates For W5
 
 W5 is not done until all P0 gates pass:
 
@@ -135,7 +161,7 @@ W5 is not done until all P0 gates pass:
 
 ---
 
-## 8. Recommended Execution Order
+## 9. Recommended Execution Order
 
 1. **Copilot - deploy and live proof of the already-pushed W5 slices**: deploy `dev` including `5836bd6` and `1f4d964` via Openclaw, then run one full SIT proof pack
 2. **Claude - W5-12 implementation**: real scanned-data export + line-item path for `enable_stock=true` companies, because the current deploy should still report this honestly as open unless live SIT somehow already proves otherwise
