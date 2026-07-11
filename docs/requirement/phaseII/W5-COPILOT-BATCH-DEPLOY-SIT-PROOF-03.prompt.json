@@ -1,0 +1,80 @@
+{
+  "_doc_id": "W5-COPILOT-BATCH-DEPLOY-SIT-PROOF-03",
+  "_version": "2026-07-11",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_org": "YAHWAN-SHOP",
+  "_repo": "ai-accounting-copilot",
+  "_branch": "dev",
+  "_tracking_tag": "W5-COPILOT-BATCH-DEPLOY-SIT-PROOF-03",
+  "task_id": "TASK-W5-COPILOT-BATCH-DEPLOY-SIT-PROOF-03",
+  "title": "Deploy current W5 dev HEAD to SIT and prove the merged Processing + human-review fixes without falsely closing W5-12",
+  "risk_tier": "MEDIUM",
+  "lane": "Copilot - deploy / infra / runtime proof",
+  "objective": "Deploy the current dev HEAD to SIT via the Openclaw control-plane workflow, then run one live proof pack covering the already-pushed W5 slices: Processing PoC-parity progress UX and the functional fixes for Users, Mapping Rules DOCX review, and blank Template Configurator entry. Report W5-12 line-item/export-realdata as still open unless the live system truly proves otherwise.",
+  "must_read_first": [
+    "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "D:/01_gitrepo/Openclaw/docs/governance/federated-hybrid-cicd.md",
+    "docs/requirement/phaseII/W5-TASK-BOARD.md",
+    "docs/requirement/phaseII/W4-SIT-E2E-COPILOT-PRODUCT-SHELL-LIVE-PROOF-RESULT-23.prompt.json",
+    "docs/requirement/phaseII/epic-10/W5-CLAUDE-PROCESSING-POC-PARITY-01-COMPLETION.md",
+    "docs/requirement/phaseII/epic-10/W5-CODEX-HUMAN-REVIEW-FUNCTIONAL-FIX-02-COMPLETION.md"
+  ],
+  "deploy_context": {
+    "workflow": "D:/01_gitrepo/Openclaw/.github/workflows/deploy-ai-accounting-copilot-sit.yml",
+    "required_ref": "dev",
+    "required_head_commit": "1f4d9646b20c574bcc0b101eed57c041ed373890",
+    "included_w5_commits": [
+      "5836bd6",
+      "1f4d9646b20c574bcc0b101eed57c041ed373890"
+    ],
+    "target_host": "sit.yahwan.biz",
+    "rule": "Use the SIT control-plane workflow in Openclaw. Do not modify the VPS manually outside the approved Git + GitHub Actions path."
+  },
+  "what_is_in_scope_now": [
+    "W5-02 Processing perceived-stall fix: per-file OCR/extract/mapping stage glyphs, honest stage-weighted progress, elapsed timer, running/retry states.",
+    "W5-03 partial user fix: deactivate action, company names instead of raw UUIDs, SysAdmin badge/role path.",
+    "W5-04 partial company fix: Mapping Rules DOCX review can remove rows before confirm.",
+    "W5-06 partial template fix: '+ สร้าง Template ใหม่' opens blank Template Configurator instead of forcing sample upload first."
+  ],
+  "what_must_remain_honest": [
+    "W5-12 is still OPEN unless live proof shows a real backend-driven export dataset from reviewed documents plus real line-item extraction/review/export for enable_stock=true companies.",
+    "If enable_stock=true still only shows the existing honest notice banner and header-only flow, report that as NOT CLOSED, not as a pass.",
+    "Do not claim COA PDF Thai glyph normalization is fixed unless you can prove the corrupted-glyph issue no longer exists on live SIT."
+  ],
+  "live_proof_steps": [
+    "1. Deploy current dev HEAD to SIT using the Openclaw control-plane workflow and capture the workflow run URL plus the deployed SHA.",
+    "2. Verify runtime/head on SIT is at required commit 1f4d9646b20c574bcc0b101eed57c041ed373890 or newer.",
+    "3. Check core routes after deploy: /phase2, /phase2/prototype, /prototype, /workflow-demo, /index.html, /api/health, /api/health/ready.",
+    "4. Run one header-only routine proof with 2-3 real sample docs on a company where enable_stock=false: Upload -> start Processing -> watch stage progress move -> Review Scan -> Review Mapping -> Export.",
+    "5. While Processing runs, capture proof that the W5-02 UI really works live: per-file OCR/extract/mapping glyphs, non-frozen progress, elapsed timer, and calm long-running note if the job takes long enough.",
+    "6. On Users screen, create or use a sys_admin-capable account path to prove: SysAdmin rendering, no raw company UUID display, deactivate action, and inactive state after reload.",
+    "7. On Mapping Rules DOCX import review, prove that deleting one duplicate/unwanted row before confirm removes it from the final persisted payload/result.",
+    "8. On Templates, prove that '+ สร้าง Template ใหม่' enters the blank configurator path directly and that sample upload is still presented as an optional helper, not a forced first step.",
+    "9. For enable_stock=true company context, check the Processing / Review / Export path specifically and classify it honestly: either real line-item rows exist and are confirmable/exportable, or W5-12 remains open.",
+    "10. Return one concise proof report with screenshots and concrete route/network/runtime evidence, plus a clear pass/partial/open classification for W5-01, W5-02, W5-03, W5-04, W5-06, W5-07, and W5-12."
+  ],
+  "acceptance_criteria": [
+    "The control-plane SIT deploy completes successfully against dev HEAD that includes commit 1f4d9646b20c574bcc0b101eed57c041ed373890.",
+    "Live SIT proves the W5-02 Processing UX is present on the real app, not only locally.",
+    "Live SIT proves the W5-03 user fixes except any explicitly noted residual login/first-login gap.",
+    "Live SIT proves the W5-04 Mapping Rules DOCX row-delete behavior.",
+    "Live SIT proves the W5-06 blank Template Configurator entry path.",
+    "The report clearly separates what is now closed on live SIT from what remains open, especially W5-12 line-item/export-realdata scope."
+  ],
+  "deliverable_format": {
+    "report_sections": [
+      "Deployed ref/SHA",
+      "Workflow run used",
+      "Route status table",
+      "Processing live proof",
+      "Users live proof",
+      "Mapping Rules DOCX live proof",
+      "Template Configurator live proof",
+      "W5-12 line-item/export-realdata classification",
+      "Remaining blockers before customer review"
+    ]
+  },
+  "credentials_handling": "SIT Basic Auth credentials, SSH credentials, and app login credentials are operator-supplied out of band. Do not commit, print, or store plaintext credentials in repo files, workflow logs, or handoff artifacts.",
+  "final_instruction_to_copilot": "Do the deploy and the live proof work now. Do not stop at a plan, and do not mark W5-12 closed unless the live system truly shows backend-driven line-item extraction/review/export for enable_stock=true companies."
+}
