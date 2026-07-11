@@ -221,7 +221,7 @@
         <span class="badge badge-purple badge-lg">E14-E16 รวมในวงเงินตาม PO 500,000 บาท (ระยะเวลาอาจปรับได้)</span>
       </div>
       <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono);text-align:right;margin-top:0.35rem;">
-        Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Updated: 2026-06-27
+        Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Updated: 2026-07-10
       </div>
       <button class="no-print" onclick="window.print()" style="margin-top:0.4rem;font-size:0.72rem;border:1px solid var(--line);border-radius:6px;padding:3px 10px;background:white;cursor:pointer;color:var(--muted);">🖨 Print</button>
     </div>
@@ -558,7 +558,7 @@
               <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1313 prep: SECRETS-CHECKLIST.md + post-push hook template</div>
               <div class="deliverable-item" style="color:var(--muted);font-size:0.75rem;font-style:italic;">59 tests passed (dev f01296d + 8c01c54)</div>
               <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> WHT detection + PND badge → W3 (TASK-902)</div>
-              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> Openclaw UAT deploy trigger → รอ Openclaw workflow ก่อน (TASK-1313 Step 1)</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> UAT/PROD deploy bootstrap แยกเป็นงาน control-plane follow-up หลัง SIT</div>
             </div>
           </td>
           <td>
@@ -588,9 +588,9 @@
               <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1101 ภ.พ.30 ย้ายเป็น template-based (`a693d06`)</div>
               <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-1104 preview + balance validation done (`fd7e11c`)</div>
               <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> SIT runtime gate green (TASK-1306A)</div>
-              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> PO review on live SIT + 5 UX freeze checkboxes before TASK-1003/TASK-1006</div>
-              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> TASK-1313 deploy evidence lane still in progress</div>
-              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> TASK-906 final wording still needs alignment to current repo state</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> เตรียม handoff สำหรับ live SIT review + UX freeze gate ของ W4</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> TASK-906 สรุปผล PoC ใช้เป็นฐานตัดสินใจงาน line-item ต่อเนื่อง</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> งาน deploy evidence และ UAT bootstrap ต่อเนื่องใน control-plane lane</div>
             </div>
           </td>
           <td>
@@ -606,16 +606,19 @@
           </td>
           <td style="font-size:0.78rem;">6 ก.ค. 2569<br>— 12 ก.ค. 2569</td>
           <td>
-            <div><span class="badge badge-accent">E10</span> Configurator UI</div>
-            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Backup + Offsite R2</div>
+            <div><span class="badge badge-accent">E10-E12</span> SIT E2E + Product Shell</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Runtime Hardening</div>
           </td>
           <td>
             <div class="deliverable-list">
-              <div class="deliverable-item">Configurator UI: drag-drop (SortableJS) ทำงาน</div>
-              <div class="deliverable-item">Field picker: Available → Selected columns</div>
-              <div class="deliverable-item">Master templates seed: Express GL + ภ.พ.30</div>
-              <div class="deliverable-item">pg_dump 4×/วัน + sync ไป Cloudflare R2</div>
-              <div class="deliverable-item">RPO/RTO 6hr/6hr: Restore drill ผ่าน</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> ปิด live SIT review และ 5 UX freeze approvals สำหรับ export/configurator</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Companies / Users เชื่อม backend จริง: create/edit/reset password/assign company ใช้งานบน SIT</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> AP/AR import, Mapping Rules, price list และ Company context บนหน้าปฏิบัติงานถูกผูกกับข้อมูลจริง</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Upload -> Processing -> Review Scan แก้เส้นทางใช้งานจริง: เปิด file picker ได้, queue ผ่าน Celery, แสดงสถานะจริงแทน fixture</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> COA PDF AI import เปลี่ยนเป็น async พร้อม progress เพื่อลดปัญหา timeout 120 วินาที</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> ปรับ usability ระหว่างตรวจเอกสาร: แยก current batch กับประวัติ, filename-first, preview สูงขึ้น</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> SIT deploy/runtime hardening: merge env อัตโนมัติ, upload click fix, live proof ของ approve flow และ COA async</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> เก็บ product-shell ที่เหลือ: ล้าง demo text, Internal Console, company stock config, line-item review flow</div>
             </div>
           </td>
           <td><span class="badge badge-muted">ไม่มี milestone</span></td>
@@ -801,9 +804,9 @@
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Dynamic column mapping (ไม่ hardcode)</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Export CSV + Excel + รองรับ TIS-620</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">รายงานภาษีซื้อ (ภ.พ.30) ย้ายเป็น template-based (Epic 11)</span></div>
-        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Drag-drop column reorder + inline rename (TASK-1003 hold until PO review on SIT)</span></div>
-        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Master templates: Express GL + ภ.พ.30 (follow-on after approval lane opens)</span></div>
-        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Clone Master → แก้ไขตามบริษัท (W5 follow-on)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">ปิด UX freeze gate บน SIT แล้ว และหน้า export/configurator ใช้งานต่อบนเส้นจริงได้</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Quick Export / Template Export, preview และ validation เชื่อม backend จริง</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Template lifecycle และ company-specific refinement ยังมี follow-up ต่อใน W4-W5</span></div>
       </div>
     </div>
 
@@ -812,14 +815,14 @@
         <div class="delivery-card-icon">🏢</div>
         <div>
           <div class="delivery-card-title">Admin Management</div>
-          <div style="font-size:0.72rem;color:var(--muted);">Epic 12 · W5-6</div>
+          <div style="font-size:0.72rem;color:var(--muted);">Epic 12 · W4-6</div>
         </div>
       </div>
       <div class="delivery-items">
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Dashboard: KPI + Cost meter + กิจกรรมล่าสุด</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">จัดการบริษัทลูกค้า + COA import (YAML)</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">จัดการผู้ใช้ + assign บริษัท</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Cost tracking: usage per company per model</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">จัดการบริษัทลูกค้าและผู้ใช้เชื่อมฐานข้อมูลจริงแล้วบน SIT</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Reset password, first-login flow และ company assignment เดินบนเส้น auth จริง</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">COA / stock-report config / company delete / Internal Console อยู่ใน follow-up slice ถัดไป</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Dashboard KPI บางส่วนยังอยู่ในช่วงล้าง demo และผูกข้อมูลจริงต่อ</span></div>
       </div>
     </div>
 
@@ -832,12 +835,11 @@
         </div>
       </div>
       <div class="delivery-items">
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">UAT: uat.bwcacc.biz (KVM 2, 8GB RAM)</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">PROD: app.bwcacc.biz (KVM 4, 16GB RAM)</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">SIT runtime พร้อม DB/Redis/MinIO/Celery สำหรับพิสูจน์เส้นงานจริง</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">SSL Let's Encrypt auto-renew</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">CI/CD: push code → auto deploy</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Backup: pg_dump 4×/วัน → Cloudflare R2</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">RPO 6 ชั่วโมง / RTO 6 ชั่วโมง</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">CI/CD: control-plane deploy ไป SIT พร้อม env merge hardening</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Health checks และ runtime diagnostics ใช้ยืนยันปัญหาเชิงระบบได้แล้ว</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">UAT/PROD bootstrap parity ยังเป็นงานถัดไปหลังปิด SIT shell</span></div>
       </div>
     </div>
 
@@ -868,28 +870,27 @@
   </div>
 
   <div class="note-box">
-    <strong>W3 continuation reference</strong> — เวลาจะกลับมาทำต่อหลังจากวันนี้ ให้ใช้
-    <code>docs/requirement/phaseII/W3-EXECUTION-PLAN.md</code> เป็นตัวตามลำดับงาน W3 จริง
-    และใช้ <code>docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md</code> เป็นตัวคุม freeze / approval gate
-    ของงาน export + configurator ก่อนอัปเดต timeline หรือเริ่ม TASK-1003 / TASK-1006
+    <strong>สถานะปัจจุบัน ณ W4</strong> — งาน foundation, template backend และเส้นงานหลักบน SIT เดินหน้าแล้วมากในช่วง W2-W4:
+    ปัจจุบันทีมกำลังปิด product-shell ส่วนที่เหลือให้ใช้งานจริงต่อเนื่องทั้งเส้น
+    (เช่น company settings, line-item flow, Internal Console, และการล้าง demo text/fixture บางหน้าจอ)
+    ก่อนขยับสู่ UAT เต็มรูปแบบ
   </div>
 
   <div class="note-box warn">
     <strong>Client Responsibilities</strong> — สิ่งที่ลูกค้าต้องเตรียม:
     <ul style="margin-top:0.5rem;padding-left:1.25rem;line-height:2;">
-      <li>ตัวอย่าง Express CSV format จริง ✗ (ต้องได้ก่อน W3 Template Engine)</li>
+      <li><s>ตัวอย่าง Express CSV format จริง</s> ✓ ได้รับแล้ว และใช้เดินงาน template backend / export configurator แล้ว</li>
       <li><s>DNS: bwcacc.biz จดบน Hostinger โดยตรง — A records + CAA ตั้งเรียบร้อยแล้ว</s> ✓ (2026-06-21)</li>
-      <li>ชำระงวด 1 (180,000 บาท) ก่อนวันที่ 15 มิ.ย. 2569</li>
-      <li>ตัวอย่างเอกสาร 20-30 ฉบับ สำหรับ TASK-906</li>
-      <li>ผังบัญชี (COA) ของแต่ละบริษัทในรูปแบบ YAML หรือ CSV</li>
-      <li>ยืนยัน 2 roles (Admin/Staff) เพียงพอ หรือต้องการ 4 roles</li>
+      <li><s>ชำระงวด 1 (180,000 บาท) ก่อนวันที่ 15 มิ.ย. 2569</s> ✓ ชำระเรียบร้อยแล้ว</li>
+      <li><s>ตัวอย่างเอกสาร 20-30 ฉบับ สำหรับ TASK-906</s> ✓ ได้รับแล้วและใช้ใน PoC / SIT verification แล้ว</li>
+      <li><s>ผังบัญชี (COA) / Mapping Rules / AP-AR master ของแต่ละบริษัทสำหรับทดสอบจริงบน SIT</s> ✓ ใช้ข้อมูลของ Comp 1-3 ได้เพียงพอสำหรับรอบนี้</li>
+      <li><s>ยืนยัน 2 roles (Admin/Staff) เพียงพอ หรือต้องการ 4 roles</s> ✓ แจ้ง requirement แล้วในเอกสาร</li>
     </ul>
   </div>
 
   <div class="page-footer">
-    LedgerFlow Phase II — Project Timeline · Baseline 2026-06-15 · Generated 2026-06-20<br>
-    W3 reference: <code>docs/requirement/phaseII/W3-EXECUTION-PLAN.md</code> ·
-    <code>docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md</code><br>
+    LedgerFlow Phase II — Project Timeline · Baseline 2026-06-15 · Updated 2026-07-10<br>
+    Current focus: ปิด SIT product shell ให้ครบเส้นก่อน UAT<br>
     สอบถามเพิ่มเติม: สมชาย กิตติคุณ · bwc.co.th
   </div>
 
