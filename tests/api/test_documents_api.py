@@ -40,6 +40,7 @@ class InMemoryRepository:
         self.extractions = []
         self.vouchers: dict[uuid.UUID, JournalVoucher] = {}
         self.lines: dict[uuid.UUID, JournalLine] = {}
+        self.line_items: dict[uuid.UUID, object] = {}
         self.flags: list[DocumentFlag] = []
         self.field_corrections: list[FieldCorrection] = []
 
@@ -54,6 +55,7 @@ class InMemoryRepository:
             document.id = uuid.uuid4()
         document.extractions = []
         document.journal_vouchers = []
+        document.line_items = []
         self.documents[document.id] = document
 
     async def get_document(self, document_id):
@@ -86,6 +88,21 @@ class InMemoryRepository:
         voucher = self.vouchers.get(line.voucher_id)
         if voucher is not None:
             voucher.lines.append(line)
+
+    async def add_line_item(self, line_item):
+        if getattr(line_item, "id", None) is None:
+            line_item.id = uuid.uuid4()
+        self.line_items[line_item.id] = line_item
+        doc = self.documents.get(line_item.document_id)
+        if doc is not None:
+            doc.line_items.append(line_item)
+
+    async def clear_line_items(self, document_id):
+        for key in [k for k, li in self.line_items.items() if li.document_id == document_id]:
+            self.line_items.pop(key, None)
+        doc = self.documents.get(document_id)
+        if doc is not None:
+            doc.line_items = []
 
     async def get_voucher(self, voucher_id):
         return self.vouchers.get(voucher_id)

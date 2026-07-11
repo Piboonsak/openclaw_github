@@ -18,15 +18,16 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Protocol
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.backend.db.enums import DocumentStatus
+from src.backend.db.enums import DocumentStatus, LineItemStatus
 from src.backend.db.models import (
     Company,
     Document,
     DocumentFlag,
+    DocumentLineItem,
     Extraction,
     FieldCorrection,
     JournalLine,
@@ -68,6 +69,17 @@ def _to_amount(value: Any) -> float | None:
         return None
 
 
+def _to_confidence(value: Any) -> float | None:
+    """Parse a 0.0-1.0 confidence (model-returned as a numeric string), clamped."""
+    if value in (None, ""):
+        return None
+    try:
+        conf = float(value)
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, min(1.0, conf))
+
+
 class DocumentRepository(Protocol):
     async def company_exists(self, company_id: uuid.UUID) -> bool: ...
 
@@ -86,6 +98,10 @@ class DocumentRepository(Protocol):
     async def add_voucher(self, voucher: JournalVoucher) -> None: ...
 
     async def add_line(self, line: JournalLine) -> None: ...
+
+    async def add_line_item(self, line_item: DocumentLineItem) -> None: ...
+
+    async def clear_line_items(self, document_id: uuid.UUID) -> None: ...
 
     async def get_voucher(self, voucher_id: uuid.UUID) -> JournalVoucher | None: ...
 
@@ -121,6 +137,7 @@ class SqlAlchemyDocumentRepository:
                 selectinload(Document.journal_vouchers).selectinload(
                     JournalVoucher.lines
                 ),
+                selectinload(Document.line_items),
             )
         )
         result = await self.db.execute(stmt)
@@ -146,6 +163,16 @@ class SqlAlchemyDocumentRepository:
 
     async def add_line(self, line: JournalLine) -> None:
         self.db.add(line)
+
+    async def add_line_item(self, line_item: DocumentLineItem) -> None:
+        self.db.add(line_item)
+
+    async def clear_line_items(self, document_id: uuid.UUID) -> None:
+        await self.db.execute(
+            delete(DocumentLineItem).where(
+                DocumentLineItem.document_id == document_id
+            )
+        )
 
     async def get_voucher(self, voucher_id: uuid.UUID) -> JournalVoucher | None:
         stmt = (
@@ -221,6 +248,33 @@ class PipelinePersistencePlan:
     extraction_kwargs: dict[str, Any] | None
     voucher_kwargs: dict[str, Any] | None
     line_specs: list[dict[str, Any]]
+    line_item_specs: list[dict[str, Any]]
+
+
+def _build_line_item_specs(ctx: Any) -> list[dict[str, Any]]:
+    """Map the pipeline's line-item output (Epic 9) to DocumentLineItem row
+    kwargs. Pure/I-O-free — product matching against ProductMaster is a
+    best-effort aid done later where a DB session is available."""
+    line_item_output = getattr(ctx, "line_item_output", None) or {}
+    specs: list[dict[str, Any]] = []
+    for index, item in enumerate(line_item_output.get("line_items") or [], start=1):
+        if not isinstance(item, dict):
+            continue
+        specs.append(
+            {
+                "line_order": index,
+                "product_name": (str(item.get("product_name") or "").strip() or None),
+                "qty": _to_amount(item.get("qty")),
+                "unit": (str(item.get("unit") or "").strip()[:20] or None),
+                "unit_price": _to_amount(item.get("unit_price")),
+                "line_amount": _to_amount(item.get("line_amount")),
+                "confidence": _to_confidence(item.get("line_type_confidence")),
+                "line_type": (str(item.get("line_type") or "").strip()[:30] or None),
+                "matched_product_code": None,
+                "status": "pending",
+            }
+        )
+    return specs
 
 
 def build_pipeline_persistence_plan(ctx: Any) -> PipelinePersistencePlan:
@@ -232,6 +286,7 @@ def build_pipeline_persistence_plan(ctx: Any) -> PipelinePersistencePlan:
             extraction_kwargs=None,
             voucher_kwargs=None,
             line_specs=[],
+            line_item_specs=[],
         )
 
     extraction_output = ctx.extraction_output or {}
@@ -305,6 +360,7 @@ def build_pipeline_persistence_plan(ctx: Any) -> PipelinePersistencePlan:
         extraction_kwargs=extraction_kwargs,
         voucher_kwargs=voucher_kwargs,
         line_specs=line_specs,
+        line_item_specs=_build_line_item_specs(ctx),
     )
 
 
@@ -338,6 +394,13 @@ async def apply_pipeline_result(
         for spec in plan.line_specs:
             await repo.add_line(JournalLine(voucher_id=voucher.id, **spec))
         await repo.flush()
+
+    # Replace any prior line items (idempotent reprocess), then persist the
+    # freshly extracted ones. Header-only documents produce an empty list.
+    await repo.clear_line_items(document.id)
+    for spec in plan.line_item_specs:
+        await repo.add_line_item(DocumentLineItem(document_id=document.id, **spec))
+    await repo.flush()
 
     return ProcessOutcome(document=document, extraction=extraction, voucher=voucher)
 
@@ -469,3 +532,50 @@ async def confirm_journal_voucher(
     document.status = DocumentStatus.MAPPING_CONFIRMED.value
     await repo.flush()
     return voucher
+
+
+async def update_document_line_items(
+    repo: DocumentRepository,
+    document: Document,
+    items: list[dict[str, Any]],
+) -> Document:
+    """Apply human edits to extracted line items on the Review Scan screen.
+
+    `items` is a list of change dicts each carrying an `id` plus any of
+    `product_name`/`qty`/`unit`/`unit_price`/`line_amount`. Unknown ids are
+    ignored. Editing a confirmed item drops it back to `pending`."""
+    by_id = {str(li.id): li for li in document.line_items}
+    for change in items:
+        line_item = by_id.get(str(change.get("id")))
+        if line_item is None:
+            continue
+        if "product_name" in change:
+            value = change["product_name"]
+            line_item.product_name = (
+                str(value).strip() or None if value is not None else None
+            )
+        if "unit" in change:
+            value = change["unit"]
+            line_item.unit = (
+                str(value).strip()[:20] or None if value is not None else None
+            )
+        if "qty" in change:
+            line_item.qty = _to_amount(change["qty"])
+        if "unit_price" in change:
+            line_item.unit_price = _to_amount(change["unit_price"])
+        if "line_amount" in change:
+            line_item.line_amount = _to_amount(change["line_amount"])
+        line_item.status = LineItemStatus.PENDING.value
+    await repo.flush()
+    return document
+
+
+async def confirm_document_line_items(
+    repo: DocumentRepository, document: Document
+) -> Document:
+    """Mark all of a document's extracted line items as human-confirmed so they
+    become eligible for export."""
+    for line_item in document.line_items:
+        line_item.status = LineItemStatus.CONFIRMED.value
+    await repo.flush()
+    return document

@@ -59,11 +59,39 @@ class JournalVoucherResponse(BaseModel):
     lines: list[JournalLineResponse] = Field(default_factory=list)
 
 
+class DocumentLineItemResponse(BaseModel):
+    id: str
+    line_order: int
+    product_name: Optional[str] = None
+    qty: Optional[float] = None
+    unit: Optional[str] = None
+    unit_price: Optional[float] = None
+    line_amount: Optional[float] = None
+    confidence: Optional[float] = None
+    line_type: Optional[str] = None
+    matched_product_code: Optional[str] = None
+    status: str
+
+
 class DocumentDetailResponse(DocumentResponse):
     extraction_fields: dict = Field(default_factory=dict)
     confidence_per_field: dict = Field(default_factory=dict)
     critical_flags: dict = Field(default_factory=dict)
     voucher: Optional[JournalVoucherResponse] = None
+    line_items: list[DocumentLineItemResponse] = Field(default_factory=list)
+
+
+class LineItemEditRequest(BaseModel):
+    id: str
+    product_name: Optional[str] = Field(None, max_length=500)
+    qty: Optional[float] = None
+    unit: Optional[str] = Field(None, max_length=20)
+    unit_price: Optional[float] = None
+    line_amount: Optional[float] = None
+
+
+class LineItemsUpdateRequest(BaseModel):
+    items: list[LineItemEditRequest] = Field(default_factory=list)
 
 
 class ApproveAllRequest(BaseModel):

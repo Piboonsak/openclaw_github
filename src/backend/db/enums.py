@@ -63,3 +63,12 @@ class FlagStatus(StrEnum):
     OPEN = "open"
     RESOLVED = "resolved"
     DISMISSED = "dismissed"
+
+
+class LineItemStatus(StrEnum):
+    """Human-review status of an extracted document line item (Epic 9 /
+    W5-EXPORT-LINEITEM-REALDATA-04)."""
+
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"

@@ -21,10 +21,32 @@ from src.backend.api.templates import cols_from_jsonb, render_preview
 from src.backend.auth.dependencies import get_current_active_user
 from src.backend.db.models import ExportTemplate, User
 from src.backend.db.session import get_db
+from src.backend.services.export_dataset import build_export_records
 from src.backend.services.export_service import validate_balance
 from src.backend.services.template_engine import TemplateEngine
 
 router = APIRouter()
+
+
+async def _resolve_export_rows(
+    db: AsyncSession,
+    *,
+    company_id: uuid.UUID | None,
+    document_ids: list[uuid.UUID] | None,
+    include_line_items: bool,
+    sample_data: list[dict],
+) -> list[dict]:
+    """Live Export builds rows from real reviewed/mapped documents when a
+    ``company_id`` is provided; ``sample_data`` is used only for the Template
+    Configurator design-time preview (no company context)."""
+    if company_id is not None:
+        return await build_export_records(
+            db,
+            company_id,
+            document_ids=document_ids or None,
+            include_line_items=include_line_items,
+        )
+    return sample_data
 
 _PREVIEW_MAX_ROWS = 10
 _SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._ -]+")
@@ -40,6 +62,12 @@ class ExportPreviewRequest(BaseModel):
     template_id: Optional[uuid.UUID] = None
     sample_data: list[dict] = Field(default=[], max_length=50)
     column_overrides: list[ColumnDefSchema] = Field(default=[])
+    # Live export: when company_id is set, rows come from real reviewed/mapped
+    # documents (sample_data is ignored for live export, used only for the
+    # Template Configurator design-time preview).
+    company_id: Optional[uuid.UUID] = None
+    document_ids: Optional[list[uuid.UUID]] = None
+    include_line_items: bool = False
 
 
 class VoucherLine(BaseModel):
@@ -77,6 +105,10 @@ class ExportFileRequest(BaseModel):
     column_overrides: list[ColumnDefSchema] = Field(default=[])
     encoding: Optional[str] = None
     delimiter: Optional[str] = None
+    # Live export from real documents (see ExportPreviewRequest).
+    company_id: Optional[uuid.UUID] = None
+    document_ids: Optional[list[uuid.UUID]] = None
+    include_line_items: bool = False
 
 
 def _sanitize_download_stem(name: str | None) -> str:
@@ -131,7 +163,14 @@ async def export_preview(
         )
 
     cols = cols_from_jsonb(columns_json)
-    return render_preview(cols, body.sample_data, max_rows=_PREVIEW_MAX_ROWS)
+    rows = await _resolve_export_rows(
+        db,
+        company_id=body.company_id,
+        document_ids=body.document_ids,
+        include_line_items=body.include_line_items,
+        sample_data=body.sample_data,
+    )
+    return render_preview(cols, rows, max_rows=_PREVIEW_MAX_ROWS)
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +235,14 @@ async def export_file(
         delimiter=delimiter,
         file_format=file_format,
     )
-    headers, rows = engine.render(body.sample_data, column_overrides=columns)
+    export_rows = await _resolve_export_rows(
+        db,
+        company_id=body.company_id,
+        document_ids=body.document_ids,
+        include_line_items=body.include_line_items,
+        sample_data=body.sample_data,
+    )
+    headers, rows = engine.render(export_rows, column_overrides=columns)
     safe_stem = _sanitize_download_stem(body.filename or template_name)
 
     if file_format == "xlsx":

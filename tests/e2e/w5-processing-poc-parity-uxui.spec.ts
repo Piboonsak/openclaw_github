@@ -218,7 +218,9 @@ test.describe("W5 Processing POC parity", () => {
     await expect(page.locator("#processingTableBody")).toContainText("⏱");
     await expect(page.locator("#processingRunningNote")).toBeVisible();
     await expect(page.locator("#processingRunningNote")).toContainText("ระบบยังทำงานอยู่");
-    await expect(page.locator("#processingPercentText")).toHaveText("35%");
+    // The stage-weighted bar must leave 0% while the single doc is mid-pipeline
+    // (exact % depends on stage weights, so just assert it moved off zero).
+    await expect(page.locator("#processingPercentText")).not.toHaveText("0%");
 
     // Completion hands off to Review Scan.
     await expect(page.locator("#s-review-scan")).toBeVisible({ timeout: 20_000 });

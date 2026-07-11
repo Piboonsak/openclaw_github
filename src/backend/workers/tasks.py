@@ -17,12 +17,15 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import delete as sa_delete
+
 from config.settings import settings
 from src.backend.db.base import get_sync_session_factory
 from src.backend.db.enums import DocumentStatus
 from src.backend.db.models import (
     Company,
     Document,
+    DocumentLineItem,
     Extraction,
     JournalLine,
     JournalVoucher,
@@ -113,12 +116,14 @@ def _run_and_persist_pipeline(
             raise FileNotFoundError(f"Source file is no longer available: {local_path}")
 
         company = session.get(Company, document.company_id)
+        enable_stock = bool((company.settings or {}).get("enable_stock")) if company else False
         ctx = asyncio.run(
             run_pipeline(
                 str(local_path),
                 company_id=str(document.company_id),
                 company_tax_id=company.tax_id if company else None,
                 progress_callback=progress_callback,
+                enable_stock=enable_stock,
             )
         )
 
@@ -138,6 +143,16 @@ def _run_and_persist_pipeline(
             session.flush()
             for spec in plan.line_specs:
                 session.add(JournalLine(voucher_id=voucher.id, **spec))
+
+        # Replace any prior line items (idempotent reprocess), then persist the
+        # freshly extracted ones. Header-only docs produce an empty list.
+        session.execute(
+            sa_delete(DocumentLineItem).where(
+                DocumentLineItem.document_id == document.id
+            )
+        )
+        for spec in plan.line_item_specs:
+            session.add(DocumentLineItem(document_id=document.id, **spec))
 
         session.commit()
         return {

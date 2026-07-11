@@ -32,25 +32,29 @@ from src.backend.api.schemas.document_schemas import (
     ApproveAllResult,
     DocumentDetailResponse,
     DocumentFieldsUpdateRequest,
+    DocumentLineItemResponse,
     DocumentResponse,
     DocumentUploadResult,
     FlagRequest,
     JournalLineResponse,
     JournalLineUpdateRequest,
     JournalVoucherResponse,
+    LineItemsUpdateRequest,
 )
 from src.backend.auth.dependencies import ensure_company_access, get_current_active_user
-from src.backend.db.models import Document, JournalVoucher, User
+from src.backend.db.models import Document, DocumentLineItem, JournalVoucher, User
 from src.backend.db.session import get_db
 from src.backend.pipeline.orchestrator import run_pipeline
 from src.backend.services.document_workflow import (
     SqlAlchemyDocumentRepository,
     apply_pipeline_result,
     approve_document,
+    confirm_document_line_items,
     confirm_journal_voucher,
     create_document,
     flag_document,
     update_document_fields,
+    update_document_line_items,
     update_journal_line,
 )
 from src.backend.storage import (
@@ -135,6 +139,28 @@ def _voucher_to_response(voucher: JournalVoucher) -> JournalVoucherResponse:
     )
 
 
+def _line_item_to_response(line_item: DocumentLineItem) -> DocumentLineItemResponse:
+    return DocumentLineItemResponse(
+        id=str(line_item.id),
+        line_order=line_item.line_order,
+        product_name=line_item.product_name,
+        qty=float(line_item.qty) if line_item.qty is not None else None,
+        unit=line_item.unit,
+        unit_price=float(line_item.unit_price)
+        if line_item.unit_price is not None
+        else None,
+        line_amount=float(line_item.line_amount)
+        if line_item.line_amount is not None
+        else None,
+        confidence=float(line_item.confidence)
+        if line_item.confidence is not None
+        else None,
+        line_type=line_item.line_type,
+        matched_product_code=line_item.matched_product_code,
+        status=line_item.status,
+    )
+
+
 def _document_to_detail_response(document: Document) -> DocumentDetailResponse:
     base = _document_to_response(document).model_dump()
     latest_extraction = document.extractions[-1] if document.extractions else None
@@ -153,6 +179,10 @@ def _document_to_detail_response(document: Document) -> DocumentDetailResponse:
         if latest_extraction
         else {},
         voucher=_voucher_to_response(voucher) if voucher else None,
+        line_items=[
+            _line_item_to_response(li)
+            for li in sorted(document.line_items, key=lambda x: x.line_order)
+        ],
     )
 
 
@@ -316,11 +346,13 @@ async def process_document_now(
     document.status = "processing"
     await repo.flush()
 
+    enable_stock = bool((getattr(company, "settings", None) or {}).get("enable_stock"))
     try:
         ctx = await run_pipeline(
             str(local_path),
             company_id=str(document.company_id),
             company_tax_id=company.tax_id if company else None,
+            enable_stock=enable_stock,
         )
         await apply_pipeline_result(repo, document, ctx)
     except Exception:
@@ -417,6 +449,47 @@ async def update_document_header_fields(
         repo, document, current_user.id, body.model_dump(exclude_unset=True)
     )
     return _document_to_response(document)
+
+
+@router.put(
+    "/v1/documents/{document_id}/line-items",
+    response_model=DocumentDetailResponse,
+)
+async def update_document_line_item_rows(
+    document_id: uuid.UUID,
+    body: LineItemsUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DocumentDetailResponse:
+    """Review Scan line-item edits (Epic 9) — persist human corrections to the
+    extracted product/qty/unit/price rows before confirmation/export."""
+    repo = SqlAlchemyDocumentRepository(db)
+    document = await _get_document_or_404(repo, document_id)
+    await ensure_company_access(db, current_user, document.company_id)
+    await update_document_line_items(
+        repo, document, [item.model_dump(exclude_unset=True) for item in body.items]
+    )
+    document = await _get_document_or_404(repo, document_id)
+    return _document_to_detail_response(document)
+
+
+@router.post(
+    "/v1/documents/{document_id}/line-items/confirm",
+    response_model=DocumentDetailResponse,
+)
+async def confirm_document_line_item_rows(
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DocumentDetailResponse:
+    """Confirm all extracted line items for a document so they become eligible
+    for line-item export (Epic 9 / W5-EXPORT-LINEITEM-REALDATA-04)."""
+    repo = SqlAlchemyDocumentRepository(db)
+    document = await _get_document_or_404(repo, document_id)
+    await ensure_company_access(db, current_user, document.company_id)
+    await confirm_document_line_items(repo, document)
+    document = await _get_document_or_404(repo, document_id)
+    return _document_to_detail_response(document)
 
 
 @router.get("/v1/documents/{document_id}/file")

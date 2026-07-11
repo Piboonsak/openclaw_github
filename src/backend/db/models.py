@@ -261,6 +261,9 @@ class Document(Base):
     journal_vouchers: Mapped[list[JournalVoucher]] = relationship(
         back_populates="document"
     )
+    line_items: Mapped[list[DocumentLineItem]] = relationship(
+        back_populates="document"
+    )
     flags: Mapped[list[DocumentFlag]] = relationship(back_populates="document")
     field_corrections: Mapped[list[FieldCorrection]] = relationship(
         back_populates="document"
@@ -352,6 +355,44 @@ class JournalLine(Base):
     created_at: Mapped[datetime] = _now()
 
     voucher: Mapped[JournalVoucher] = relationship(back_populates="lines")
+
+
+# ---------------------------------------------------------------------------
+# Document Line Items (Epic 9 line-item scan / W5-EXPORT-LINEITEM-REALDATA-04)
+# ---------------------------------------------------------------------------
+
+
+class DocumentLineItem(Base):
+    """Per-document extracted invoice line item, produced only when the owning
+    company has ``settings.enable_stock`` true. Kept separate from
+    ``JournalLine`` (GL Dr/Cr postings) — this is scanned product/quantity data
+    that a human confirms before it can be exported.
+    """
+
+    __tablename__ = "document_line_items"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    line_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    product_name: Mapped[str | None] = mapped_column(Text)
+    qty: Mapped[float | None] = mapped_column(Numeric(15, 2))
+    unit: Mapped[str | None] = mapped_column(String(20))
+    unit_price: Mapped[float | None] = mapped_column(Numeric(15, 2))
+    line_amount: Mapped[float | None] = mapped_column(Numeric(15, 2))
+    confidence: Mapped[float | None] = mapped_column(Numeric(5, 4))
+    line_type: Mapped[str | None] = mapped_column(String(30))
+    matched_product_code: Mapped[str | None] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    document: Mapped[Document] = relationship(back_populates="line_items")
+
+    __table_args__ = (Index("ix_line_items_document", "document_id"),)
 
 
 # ---------------------------------------------------------------------------

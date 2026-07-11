@@ -10,6 +10,7 @@ from config.settings import settings
 from src.backend.ml.amount_reconciler import apply_amount_confidence, reconcile_amounts
 from src.backend.ml.field_extractor import run_extraction
 from src.backend.ml.llm_claude import STAGE_C_SYSTEM_PROMPT
+from src.backend.ml.line_item_extractor import extract_line_items
 from src.backend.ml.llm_router import cascade_repair
 from src.backend.ml.ocr import run_ocr
 from src.backend.services.rule_engine import run_journal_router
@@ -67,6 +68,7 @@ class PipelineContext:
     extraction_output: dict[str, Any] = field(default_factory=dict)
     stage_c_output: dict[str, Any] = field(default_factory=dict)
     journal_output: dict[str, Any] = field(default_factory=dict)
+    line_item_output: dict[str, Any] = field(default_factory=dict)
     overall_confidence: float = 0.0
     stage_c_applied: bool = False
     escalated_to_sonnet: bool = False
@@ -309,14 +311,19 @@ async def run_pipeline(
     company_tax_id: str | None = None,
     force_refresh: bool = False,
     progress_callback: Callable[[str], None] | None = None,
+    enable_stock: bool = False,
 ) -> PipelineContext:
     """Run OCR -> extraction -> Stage C cascade repair -> journal routing.
 
     `progress_callback`, when provided, is invoked with a short stage name at
-    each key boundary ("ocr", "extract", "mapping") so async callers (the
-    Celery `process_document` task) can surface real progress instead of a
+    each key boundary ("ocr", "extract", "line_item", "mapping") so async callers
+    (the Celery `process_document` task) can surface real progress instead of a
     single opaque "processing" state. It is a best-effort UI signal only and
     must never affect pipeline behavior if it raises.
+
+    `enable_stock` (from `Company.settings.enable_stock`) gates a non-blocking
+    line-item extraction sub-stage after header extraction. Its failure never
+    fails the pipeline — header extraction stands on its own.
     """
 
     def _emit(stage: str) -> None:
@@ -488,6 +495,34 @@ async def run_pipeline(
         )
         ctx.overall_confidence = overall
         ctx.extraction_output["overall_confidence"] = overall
+
+        # --- Non-blocking line-item extraction (Epic 9), only when the owning
+        # company has enable_stock. Wrapped in its own try/except so a failure
+        # never touches ctx.status or blocks header persistence / journal
+        # routing — header extraction stands on its own. ---
+        if enable_stock:
+            _emit("line_item")
+            try:
+                metadata = {
+                    "doc_id": company_id or "",
+                    "invoice_number": fields.get("invoice_number", ""),
+                    "invoice_date": fields.get("invoice_date", ""),
+                    "seller_name": fields.get("seller_name", ""),
+                    "total_amount": fields.get("total_amount", ""),
+                    "currency": fields.get("currency", "THB") or "THB",
+                }
+                ocr_text = fields.get("source_text", "") or ""
+                ctx.line_item_output = extract_line_items(
+                    image_path=image_path,
+                    ocr_text=ocr_text,
+                    metadata=metadata,
+                )
+                ctx.extraction_output["line_items"] = ctx.line_item_output.get(
+                    "line_items", []
+                )
+            except Exception as exc:  # noqa: BLE001 - line items are best-effort
+                ctx.line_item_output = {"error": str(exc), "line_items": []}
+                ctx.extraction_output["line_items"] = []
 
         _emit("mapping")
         ctx.journal_output = run_journal_router(

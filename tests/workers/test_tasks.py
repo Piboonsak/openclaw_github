@@ -41,6 +41,10 @@ class DummySession:
             self.documents[obj.id] = obj
         self.added.append(obj)
 
+    def execute(self, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+        # Line-item idempotent-replace issues a DELETE; the fake ignores it.
+        return None
+
     def flush(self) -> None:
         return None
 

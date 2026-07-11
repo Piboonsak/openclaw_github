@@ -8,16 +8,18 @@ import unittest
 import uuid
 from datetime import date, datetime, timezone
 
-from src.backend.db.enums import DocumentStatus
+from src.backend.db.enums import DocumentStatus, LineItemStatus
 from src.backend.db.models import Document, DocumentFlag, FieldCorrection, JournalLine, JournalVoucher
 from src.backend.pipeline.orchestrator import PipelineContext
 from src.backend.services.document_workflow import (
     apply_pipeline_result,
     approve_document,
+    confirm_document_line_items,
     confirm_journal_voucher,
     create_document,
     flag_document,
     update_document_fields,
+    update_document_line_items,
     update_journal_line,
 )
 
@@ -29,6 +31,7 @@ class InMemoryDocumentRepository:
         self.extractions: list = []
         self.vouchers: dict[uuid.UUID, JournalVoucher] = {}
         self.lines: dict[uuid.UUID, JournalLine] = {}
+        self.line_items: dict[uuid.UUID, object] = {}
         self.flags: list[DocumentFlag] = []
         self.field_corrections: list[FieldCorrection] = []
 
@@ -73,6 +76,21 @@ class InMemoryDocumentRepository:
 
     async def get_line(self, line_id: uuid.UUID):
         return self.lines.get(line_id)
+
+    async def add_line_item(self, line_item) -> None:
+        if getattr(line_item, "id", None) is None:
+            line_item.id = uuid.uuid4()
+        self.line_items[line_item.id] = line_item
+        document = self.documents.get(line_item.document_id)
+        if document is not None:
+            document.line_items.append(line_item)
+
+    async def clear_line_items(self, document_id: uuid.UUID) -> None:
+        for key in [k for k, li in self.line_items.items() if li.document_id == document_id]:
+            self.line_items.pop(key, None)
+        document = self.documents.get(document_id)
+        if document is not None:
+            document.line_items.clear()
 
     async def add_flag(self, flag: DocumentFlag) -> None:
         self.flags.append(flag)
@@ -201,6 +219,100 @@ class TestApplyPipelineResult(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(outcome.extraction)
         self.assertIsNone(outcome.voucher)
         self.assertEqual(len(repo.extractions), 0)
+
+
+def _fake_ctx_with_line_items(company_id: uuid.UUID) -> PipelineContext:
+    ctx = _fake_ctx(company_id)
+    ctx.line_item_output = {
+        "document_total": "1000.00",
+        "currency": "THB",
+        "line_items": [
+            {
+                "product_name": "ท่อ PVC 4 นิ้ว",
+                "qty": "10",
+                "unit": "เส้น",
+                "unit_price": "80",
+                "line_amount": "800",
+                "line_type": "part_or_material",
+                "line_type_confidence": "0.86",
+                "stock_candidate": True,
+            },
+            {
+                "product_name": "ค่าขนส่ง",
+                "qty": "1",
+                "unit": "",
+                "unit_price": "200",
+                "line_amount": "200",
+                "line_type": "service",
+                "line_type_confidence": "0.4",
+                "stock_candidate": False,
+            },
+        ],
+    }
+    return ctx
+
+
+def _registered_doc(repo: InMemoryDocumentRepository, company_id: uuid.UUID) -> Document:
+    """A document registered in the repo (as create_document would), so the
+    in-memory repo can attach persisted line items back to it."""
+    document = _make_document(company_id)
+    repo.documents[document.id] = document
+    return document
+
+
+class TestLineItemPersistence(unittest.IsolatedAsyncioTestCase):
+    async def test_apply_persists_line_items_as_pending(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+        ctx = _fake_ctx_with_line_items(company_id)
+
+        await apply_pipeline_result(repo, document, ctx)
+
+        self.assertEqual(len(document.line_items), 2)
+        first = sorted(document.line_items, key=lambda li: li.line_order)[0]
+        self.assertEqual(first.product_name, "ท่อ PVC 4 นิ้ว")
+        self.assertEqual(float(first.qty), 10.0)
+        self.assertEqual(float(first.unit_price), 80.0)
+        self.assertAlmostEqual(float(first.confidence), 0.86, places=4)
+        self.assertEqual(first.status, LineItemStatus.PENDING.value)
+
+    async def test_reprocess_replaces_line_items(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+        await apply_pipeline_result(repo, document, _fake_ctx_with_line_items(company_id))
+        await apply_pipeline_result(repo, document, _fake_ctx_with_line_items(company_id))
+        # Idempotent reprocess: still 2 rows, not 4.
+        self.assertEqual(len(document.line_items), 2)
+        self.assertEqual(len(repo.line_items), 2)
+
+    async def test_header_only_document_has_no_line_items(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+        await apply_pipeline_result(repo, document, _fake_ctx(company_id))
+        self.assertEqual(len(document.line_items), 0)
+
+    async def test_confirm_and_edit_line_items(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+        await apply_pipeline_result(repo, document, _fake_ctx_with_line_items(company_id))
+
+        await confirm_document_line_items(repo, document)
+        self.assertTrue(
+            all(li.status == LineItemStatus.CONFIRMED.value for li in document.line_items)
+        )
+
+        target = sorted(document.line_items, key=lambda li: li.line_order)[0]
+        await update_document_line_items(
+            repo, document, [{"id": str(target.id), "product_name": "ท่อ PVC (แก้ไข)", "qty": 12}]
+        )
+        self.assertEqual(target.product_name, "ท่อ PVC (แก้ไข)")
+        self.assertEqual(float(target.qty), 12.0)
+        # Editing drops the row back to pending for re-confirmation.
+        self.assertEqual(target.status, LineItemStatus.PENDING.value)
 
 
 class TestApproveAndFlag(unittest.IsolatedAsyncioTestCase):

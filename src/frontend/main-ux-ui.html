@@ -853,6 +853,14 @@
           <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.6rem;">จำนวนเงิน (แก้ไขได้)</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;" id="reviewScanAmounts"></div>
         </div>
+        <div id="reviewScanLineItemsCard" style="display:none;background:var(--surface);border-radius:8px;padding:0.85rem;margin-bottom:1rem;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.6rem;">รายการสินค้า (line item — แก้ไข/ยืนยันได้)</div>
+          <div id="reviewScanLineItems"></div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.6rem;">
+            <button class="btn btn-ghost btn-sm" id="reviewScanSaveLineItemsBtn" onclick="saveReviewScanLineItems()">💾 บันทึกรายการ</button>
+            <button class="btn btn-primary btn-sm" id="reviewScanConfirmLineItemsBtn" onclick="confirmReviewScanLineItems()">✓ ยืนยันรายการสินค้า</button>
+          </div>
+        </div>
         <div style="display:flex;gap:0.5rem;">
           <button class="btn btn-ghost" style="flex:1;" id="reviewScanSaveBtn" onclick="saveReviewScanFieldEdits()" disabled>💾 บันทึกการแก้ไข</button>
         </div>
@@ -906,15 +914,16 @@
   </div>
 
   <div class="card" style="padding:0;margin-bottom:1rem;">
-    <div style="padding:0.9rem 1.25rem;border-bottom:1px solid var(--line);">
-      <span style="font-size:0.88rem;font-weight:600;">① เลือกเอกสารที่ต้องการ Export</span>
+    <div style="padding:0.9rem 1.25rem;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
+      <span style="font-size:0.88rem;font-weight:600;">① เอกสารที่พร้อม Export</span>
+      <span class="mono" style="font-size:.78rem;color:var(--muted);" id="exportDocsCount"></span>
     </div>
-    <div style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.9rem 1.25rem;font-size:0.82rem;color:var(--muted);line-height:1.6;">
-      <span>
-        <strong>การเลือกเอกสารรายตัวยังไม่เชื่อมข้อมูลจริงในรอบนี้</strong> — ปัจจุบัน Export ทำงานตาม
-        <strong>template + บริษัทที่เลือก (ด้านล่าง)</strong> ผ่าน API จริง เอกสารที่ผ่าน Confirm Mapping แล้วของบริษัทนั้นจะถูกรวมในไฟล์ที่ดาวน์โหลด
-        (การเลือก/ตัดเอกสารรายตัวก่อน export จะเพิ่มในรอบถัดไป — ไม่แสดงข้อมูลตัวอย่างปลอมแทน)
-      </span>
+    <div style="padding:0.9rem 1.25rem;font-size:0.82rem;color:var(--muted);">
+      <div style="margin-bottom:.6rem;">Export จะรวม<strong>เอกสารที่ผ่าน Confirm Mapping แล้วทั้งหมด</strong>ของบริษัทที่เลือก ผ่าน API จริง — ไม่ใช่ข้อมูลตัวอย่าง</div>
+      <div id="exportDocsBody">กำลังโหลด...</div>
+      <label id="exportLineItemToggleWrap" style="display:none;align-items:center;gap:.5rem;margin-top:.75rem;font-size:.8rem;color:var(--text);cursor:pointer;">
+        <input type="checkbox" id="exportIncludeLineItems"> รวมรายการสินค้า (line item) ที่ยืนยันแล้วในไฟล์ export
+      </label>
     </div>
   </div>
 
@@ -2969,6 +2978,10 @@
     });
     // Scroll content to top
     document.getElementById('mainContent').scrollTop = 0;
+    // Per-screen data refresh for the live Export document list.
+    if (screenId === 's-export' && typeof renderExportDocuments === 'function') {
+      renderExportDocuments();
+    }
   }
 
   // Dead/shadowed: window.saStartAnalysis is reassigned in installListeners()
@@ -3166,76 +3179,10 @@
     { value: "doc_number", label: "doc_number" }
   ];
 
-  var fallbackSampleData = [
-    {
-      voucher_no: "PV-260501-001",
-      voucher_date: "2026-05-04",
-      book_code: "PV",
-      account_code: "05100",
-      account_name: "Office Supplies",
-      debit: "12345.80",
-      credit: "0.00",
-      description: "Vendor payment",
-      invoice_number: "INV-2605-001",
-      invoice_date: "2026-05-04",
-      seller_name: "Metro Electric",
-      seller_tax_id: "0105560123456",
-      net_amount: "12345.80",
-      vat_amount: "864.21",
-      total_amount: "13210.01"
-    },
-    {
-      voucher_no: "PV-260501-001",
-      voucher_date: "2026-05-04",
-      book_code: "PV",
-      account_code: "21000",
-      account_name: "Accounts Payable",
-      debit: "0.00",
-      credit: "12345.80",
-      description: "Vendor payment",
-      invoice_number: "INV-2605-001",
-      invoice_date: "2026-05-04",
-      seller_name: "Metro Electric",
-      seller_tax_id: "0105560123456",
-      net_amount: "12345.80",
-      vat_amount: "864.21",
-      total_amount: "13210.01"
-    },
-    {
-      voucher_no: "PV-260504-002",
-      voucher_date: "2026-05-05",
-      book_code: "PV",
-      account_code: "05200",
-      account_name: "Utilities",
-      debit: "4820.00",
-      credit: "0.00",
-      description: "Electricity May",
-      invoice_number: "INV-2605-005",
-      invoice_date: "2026-05-05",
-      seller_name: "Green Supply",
-      seller_tax_id: "0107561234567",
-      net_amount: "4820.00",
-      vat_amount: "337.40",
-      total_amount: "5157.40"
-    }
-  ];
-
-  var fallbackVouchers = [
-    {
-      voucher_no: "PV-260501-001",
-      lines: [
-        { debit: 12345.80, credit: 0.00 },
-        { debit: 0.00, credit: 12345.80 }
-      ]
-    },
-    {
-      voucher_no: "PV-260504-002",
-      lines: [
-        { debit: 4820.00, credit: 0.00 },
-        { debit: 0.00, credit: 4700.00 }
-      ]
-    }
-  ];
+  // W5-EXPORT-LINEITEM-REALDATA-04: the old fallbackSampleData / fallbackVouchers
+  // "Metro Electric / INV-2605" fixtures were removed. Live Export now builds rows
+  // from real reviewed/mapped documents on the backend (company_id), and shows an
+  // honest empty state when none are ready — no fake rows.
 
   function getEl(id) {
     return document.getElementById(id);
@@ -4018,7 +3965,59 @@
   window.previewExport = previewExport;
 
   function getEffectiveSampleData() {
-    return state.analysisSampleData.length ? state.analysisSampleData : fallbackSampleData;
+    // Only real schema-analysis rows from an uploaded sample file feed the
+    // Template Configurator design-time preview. Live Export no longer uses any
+    // fixture — it sends company_id and the backend builds rows from real
+    // reviewed/mapped documents (W5-EXPORT-LINEITEM-REALDATA-04).
+    return state.analysisSampleData.length ? state.analysisSampleData : [];
+  }
+
+  function exportIncludeLineItemsChecked() {
+    var el = getEl("exportIncludeLineItems");
+    return !!(el && el.checked);
+  }
+
+  async function renderExportDocuments() {
+    var body = getEl("exportDocsBody");
+    var countEl = getEl("exportDocsCount");
+    var toggleWrap = getEl("exportLineItemToggleWrap");
+    if (toggleWrap) {
+      toggleWrap.style.display = currentCompanyLineItemEnabled() ? "flex" : "none";
+    }
+    if (!body) return;
+    if (!state.currentCompanyId) {
+      body.innerHTML = '<div style="color:var(--muted);">เลือกบริษัทก่อน (แถบด้านบน) เพื่อดูเอกสารที่พร้อม export</div>';
+      if (countEl) countEl.textContent = "";
+      return;
+    }
+    body.innerHTML = "กำลังโหลด...";
+    try {
+      var resp = await apiFetch(auth.apiUrl(
+        "/api/v1/companies/" + encodeURIComponent(state.currentCompanyId) + "/documents?status=mapping_confirmed"
+      ));
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      var docs = await resp.json();
+      if (countEl) countEl.textContent = docs.length + " เอกสาร";
+      if (!docs.length) {
+        body.innerHTML = '<div style="padding:.6rem .8rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;color:var(--warn);font-size:.8rem;">ยังไม่มีเอกสารที่พร้อม export — ยืนยัน Mapping (Confirm Mapping) ให้เสร็จก่อน แล้วเอกสารจะปรากฏที่นี่ (ไม่มีการแสดงข้อมูลตัวอย่างแทน)</div>';
+        return;
+      }
+      body.innerHTML =
+        '<table class="data-table" style="width:100%;font-size:.8rem;"><thead><tr>' +
+        '<th>ไฟล์</th><th>เลขที่</th><th style="text-align:right;">ยอดรวม</th></tr></thead><tbody>' +
+        docs.map(function (d) {
+          var total = d.total_amount != null
+            ? Number(d.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : "—";
+          return "<tr><td class=\"mono\" style=\"font-size:.78rem;\">" + escapeHtml(d.filename || "") + "</td>" +
+            "<td>" + escapeHtml(d.invoice_number || "—") + "</td>" +
+            "<td style=\"text-align:right;\">" + total + "</td></tr>";
+        }).join("") +
+        "</tbody></table>";
+    } catch (error) {
+      body.innerHTML = '<div style="color:var(--danger);font-size:.8rem;">โหลดรายการเอกสารไม่สำเร็จ: ' + escapeHtml(error.message) + '</div>';
+      if (countEl) countEl.textContent = "";
+    }
   }
 
   function buildSampleDataFromAnalysis(result) {
@@ -4062,7 +4061,7 @@
     }).filter(function (voucher) {
       return voucher.lines.length > 0;
     });
-    return vouchers.length ? vouchers : fallbackVouchers;
+    return vouchers;
   }
 
   function renderPreviewTable(preview) {
@@ -4469,7 +4468,9 @@
     var payload = {
       template_id: templateId,
       sample_data: getEffectiveSampleData(),
-      column_overrides: buildRuntimeColumnPayload({ disableTransforms: state.exportMode === "quick" })
+      column_overrides: buildRuntimeColumnPayload({ disableTransforms: state.exportMode === "quick" }),
+      company_id: state.currentCompanyId || null,
+      include_line_items: exportIncludeLineItemsChecked()
     };
     var response = await apiFetch(auth.apiUrl("/api/v1/export/preview"), {
       method: "POST",
@@ -4536,7 +4537,9 @@
         column_overrides: buildRuntimeColumnPayload({ disableTransforms: state.exportMode === "quick" }),
         format: format,
         encoding: encoding,
-        filename: "w4-live-export"
+        filename: "w4-live-export",
+        company_id: state.currentCompanyId || null,
+        include_line_items: exportIncludeLineItemsChecked()
       })
     });
     if (!response.ok) {
@@ -6037,6 +6040,7 @@
     queued: "รอคิว...",
     ocr: "กำลังรัน OCR...",
     extract: "กำลังสกัดข้อมูล...",
+    line_item: "กำลังสกัดรายการสินค้า...",
     mapping: "กำลังจัดสมุดบัญชี...",
   };
 
@@ -6044,12 +6048,16 @@
   // (backend workers/tasks.py + pipeline/orchestrator.py _emit): queued -> ocr ->
   // extract -> mapping. The 3 visible stage columns map 1:1 to the real emitted
   // pipeline stages — no fake "classify" column that never lights.
-  var PROCESSING_STAGE_ORDER = ["queued", "ocr", "extract", "mapping"];
+  // `line_item` runs (after extract, before mapping) only for enable_stock
+  // companies (Epic 9); header-only companies never emit it so it simply never
+  // appears. It shows as a status label + advances the stage bar rather than a
+  // dedicated glyph column, so the 3-column tracker stays stable for all companies.
+  var PROCESSING_STAGE_ORDER = ["queued", "ocr", "extract", "line_item", "mapping"];
   var PROCESSING_STAGE_COLUMNS = ["ocr", "extract", "mapping"];
   // Conservative stage-progress weights so the summary bar visibly advances while
   // a single doc is mid-pipeline instead of sitting frozen at 0 / N. Labelled as
   // *stage* progress in the UI, NOT a real backend percent (backend emits no %).
-  var PROCESSING_STAGE_WEIGHT = { queued: 0.08, ocr: 0.35, extract: 0.65, mapping: 0.88 };
+  var PROCESSING_STAGE_WEIGHT = { queued: 0.06, ocr: 0.3, extract: 0.55, line_item: 0.72, mapping: 0.9 };
   var PROCESSING_LONG_RUN_MS = 25000; // show a calm "still working" note past this
 
   function isFailedStatus(status) {
@@ -6452,9 +6460,50 @@
       amountsEl.appendChild(wrap);
     });
 
+    renderReviewScanLineItems(doc);
+
     getEl("reviewScanApproveBtn").disabled = false;
     getEl("reviewScanFlagBtn").disabled = false;
     getEl("reviewScanSaveBtn").disabled = false;
+  }
+
+  function renderReviewScanLineItems(doc) {
+    var card = getEl("reviewScanLineItemsCard");
+    var body = getEl("reviewScanLineItems");
+    if (!card || !body) return;
+    var items = doc.line_items || [];
+    if (!items.length) {
+      card.style.display = "none";
+      body.innerHTML = "";
+      return;
+    }
+    card.style.display = "block";
+    body.innerHTML =
+      '<table class="data-table" style="width:100%;font-size:.78rem;"><thead><tr>' +
+      '<th>สินค้า</th><th style="width:60px;">จำนวน</th><th style="width:52px;">หน่วย</th>' +
+      '<th style="width:80px;">ราคา/หน่วย</th><th style="width:84px;">มูลค่า</th><th style="width:96px;">สถานะ</th>' +
+      '</tr></thead><tbody>' +
+      items.map(function (li) {
+        var conf = li.confidence != null ? Math.round(li.confidence * 100) : null;
+        var confBadge = conf != null
+          ? '<span class="badge ' + (conf >= 70 ? "badge-ok" : "badge-warn") + '" style="font-size:.6rem;">' + conf + '%</span> '
+          : "";
+        var statusBadge = li.status === "confirmed"
+          ? '<span class="badge badge-ok" style="font-size:.6rem;">ยืนยันแล้ว</span>'
+          : '<span class="badge badge-muted" style="font-size:.6rem;">รอยืนยัน</span>';
+        function cell(field, value, mono) {
+          return '<td><input class="field-input' + (mono ? " mono" : "") + '" data-li-field="' + field +
+            '" style="padding:2px 5px;font-size:.76rem;" value="' + escapeHtml(value != null ? value : "") + '" /></td>';
+        }
+        return '<tr data-li-id="' + escapeHtml(li.id) + '">' +
+          cell("product_name", li.product_name, false) +
+          cell("qty", li.qty, true) +
+          cell("unit", li.unit, false) +
+          cell("unit_price", li.unit_price, true) +
+          cell("line_amount", li.line_amount, true) +
+          '<td>' + confBadge + statusBadge + '</td></tr>';
+      }).join("") +
+      '</tbody></table>';
   }
 
   async function saveReviewScanFieldEdits() {
@@ -6480,6 +6529,56 @@
       renderReviewScanList();
     } catch (error) {
       showToast("บันทึกไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  function collectReviewScanLineItemEdits() {
+    var items = [];
+    document.querySelectorAll('#reviewScanLineItems tr[data-li-id]').forEach(function (row) {
+      var change = { id: row.getAttribute("data-li-id") };
+      row.querySelectorAll('[data-li-field]').forEach(function (input) {
+        var field = input.getAttribute("data-li-field");
+        var raw = input.value;
+        if (field === "qty" || field === "unit_price" || field === "line_amount") {
+          change[field] = raw === "" ? null : Number(raw);
+        } else {
+          change[field] = raw || null;
+        }
+      });
+      items.push(change);
+    });
+    return items;
+  }
+
+  async function saveReviewScanLineItems() {
+    if (!state.reviewScanSelectedId) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/documents/" + encodeURIComponent(state.reviewScanSelectedId) + "/line-items"),
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: collectReviewScanLineItemEdits() }) }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var updated = await response.json();
+      showToast("บันทึกรายการสินค้าแล้ว ✓", "ok");
+      renderReviewScanDetail(updated);
+    } catch (error) {
+      showToast("บันทึกรายการไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+
+  async function confirmReviewScanLineItems() {
+    if (!state.reviewScanSelectedId) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/documents/" + encodeURIComponent(state.reviewScanSelectedId) + "/line-items/confirm"),
+        { method: "POST" }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var updated = await response.json();
+      showToast("ยืนยันรายการสินค้าแล้ว ✓", "ok");
+      renderReviewScanDetail(updated);
+    } catch (error) {
+      showToast("ยืนยันรายการไม่สำเร็จ: " + error.message, "warn");
     }
   }
 
@@ -6732,6 +6831,9 @@
     window.selectReviewScanDocument = selectReviewScanDocument;
     window.approveReviewScanDocument = approveReviewScanDocument;
     window.saveReviewScanFieldEdits = saveReviewScanFieldEdits;
+    window.saveReviewScanLineItems = saveReviewScanLineItems;
+    window.confirmReviewScanLineItems = confirmReviewScanLineItems;
+    window.renderExportDocuments = renderExportDocuments;
     window.approveAllReviewScan = approveAllReviewScan;
     window.submitFlagDocument = submitFlagDocument;
     window.goToReviewMapping = goToReviewMapping;
