@@ -167,12 +167,13 @@
   },
 
   "commit_and_push_proof": {
-    "new_commits_this_session": "None — this session performed browser-based verification and result reporting only, no application code changes.",
+    "new_commits_this_session": "c90f5b6 — docs(phaseII): task 23 live SIT product-shell proof result + playwright script",
+    "pushed_to": "https://github.com/YAHWAN-SHOP/ai-accounting-copilot.git (dev branch), confirmed: 467a8f9..c90f5b6  dev -> dev",
     "prior_commit_referenced": "0ca8c15 (already committed and pushed to origin/dev in the prior session of this same task, and already deployed/verified live — see Deploy proof and Runtime SHA sections above)",
-    "this_session_artifacts_to_commit": [
+    "this_session_artifacts_committed": [
       "scripts/live_proof_product_shell_w4_23.js",
       "docs/requirement/phaseII/W4-SIT-E2E-COPILOT-PRODUCT-SHELL-LIVE-PROOF-RESULT-23.prompt.json"
     ],
-    "commit_status": "Will be committed and pushed to origin/dev as part of finishing this task (see Procedure Completion Audit)."
+    "commit_status": "DONE — committed as c90f5b6 and pushed to origin/dev. Note: this repo has a local .git/info/exclude rule hiding docs/requirement/phaseII/W4-* from `git status` by default (local-only orchestration docs convention); this deliverable was force-added (`git add -f`) to comply with the task's commit_and_push_rule, consistent with how the prior RESULT-12 report was published."
   }
 }

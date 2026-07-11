@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright");
 
+// Result report for this proof run: docs/requirement/phaseII/W4-SIT-E2E-COPILOT-PRODUCT-SHELL-LIVE-PROOF-RESULT-23.prompt.json
+
 function loadEnv(filePath) {
   const env = {};
   if (!fs.existsSync(filePath)) return env;
