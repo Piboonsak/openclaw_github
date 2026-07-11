@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import delete as sa_delete
+from sqlalchemy import select as sa_select
 
 from config.settings import settings
 from src.backend.db.base import get_sync_session_factory
@@ -136,6 +137,18 @@ def _run_and_persist_pipeline(
 
         if plan.extraction_kwargs is not None:
             session.add(Extraction(document_id=document.id, **plan.extraction_kwargs))
+
+        # Replace any prior vouchers/lines (idempotent reprocess) so document
+        # detail / export read the fresh voucher, not a stale earlier one (W5-12-F2).
+        stale_voucher_ids = sa_select(JournalVoucher.id).where(
+            JournalVoucher.document_id == document.id
+        )
+        session.execute(
+            sa_delete(JournalLine).where(JournalLine.voucher_id.in_(stale_voucher_ids))
+        )
+        session.execute(
+            sa_delete(JournalVoucher).where(JournalVoucher.document_id == document.id)
+        )
 
         if plan.voucher_kwargs is not None:
             voucher = JournalVoucher(document_id=document.id, **plan.voucher_kwargs)

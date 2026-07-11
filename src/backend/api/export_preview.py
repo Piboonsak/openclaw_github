@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.api.schemas.template_schemas import ColumnDefSchema, PreviewResponse
 from src.backend.api.templates import cols_from_jsonb, render_preview
-from src.backend.auth.dependencies import get_current_active_user
+from src.backend.auth.dependencies import ensure_company_access, get_current_active_user
 from src.backend.db.models import ExportTemplate, User
 from src.backend.db.session import get_db
 from src.backend.services.export_dataset import build_export_records
@@ -30,6 +30,7 @@ router = APIRouter()
 
 async def _resolve_export_rows(
     db: AsyncSession,
+    current_user: User,
     *,
     company_id: uuid.UUID | None,
     document_ids: list[uuid.UUID] | None,
@@ -38,8 +39,13 @@ async def _resolve_export_rows(
 ) -> list[dict]:
     """Live Export builds rows from real reviewed/mapped documents when a
     ``company_id`` is provided; ``sample_data`` is used only for the Template
-    Configurator design-time preview (no company context)."""
+    Configurator design-time preview (no company context).
+
+    W5-12-F1: the live path must enforce company scoping — a caller cannot read
+    another company's reviewed documents just by posting a foreign ``company_id``.
+    """
     if company_id is not None:
+        await ensure_company_access(db, current_user, company_id)
         return await build_export_records(
             db,
             company_id,
@@ -137,7 +143,7 @@ def _csv_media_type_for_encoding(encoding: str) -> str:
 async def export_preview(
     body: ExportPreviewRequest,
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> PreviewResponse:
     """Return formatted JSON table preview (first 10 rows).
 
@@ -165,6 +171,7 @@ async def export_preview(
     cols = cols_from_jsonb(columns_json)
     rows = await _resolve_export_rows(
         db,
+        current_user,
         company_id=body.company_id,
         document_ids=body.document_ids,
         include_line_items=body.include_line_items,
@@ -201,7 +208,7 @@ async def export_validate(
 async def export_file(
     body: ExportFileRequest,
     db: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Response:
     """Generate CSV/XLSX bytes from a saved template or per-run column overrides."""
     runtime_columns = [col.model_dump() for col in body.column_overrides]
@@ -237,6 +244,7 @@ async def export_file(
     )
     export_rows = await _resolve_export_rows(
         db,
+        current_user,
         company_id=body.company_id,
         document_ids=body.document_ids,
         include_line_items=body.include_line_items,

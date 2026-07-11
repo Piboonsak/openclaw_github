@@ -97,6 +97,8 @@ class DocumentRepository(Protocol):
 
     async def add_voucher(self, voucher: JournalVoucher) -> None: ...
 
+    async def clear_vouchers(self, document_id: uuid.UUID) -> None: ...
+
     async def add_line(self, line: JournalLine) -> None: ...
 
     async def add_line_item(self, line_item: DocumentLineItem) -> None: ...
@@ -160,6 +162,19 @@ class SqlAlchemyDocumentRepository:
     async def add_voucher(self, voucher: JournalVoucher) -> None:
         self.db.add(voucher)
         await self.db.flush()
+
+    async def clear_vouchers(self, document_id: uuid.UUID) -> None:
+        # W5-12-F2: on reprocess, remove prior vouchers (and their lines) so
+        # document detail / export always read the fresh voucher, not a stale one.
+        voucher_ids = select(JournalVoucher.id).where(
+            JournalVoucher.document_id == document_id
+        )
+        await self.db.execute(
+            delete(JournalLine).where(JournalLine.voucher_id.in_(voucher_ids))
+        )
+        await self.db.execute(
+            delete(JournalVoucher).where(JournalVoucher.document_id == document_id)
+        )
 
     async def add_line(self, line: JournalLine) -> None:
         self.db.add(line)
@@ -386,6 +401,10 @@ async def apply_pipeline_result(
 
     extraction = Extraction(document_id=document.id, **plan.extraction_kwargs)
     await repo.add_extraction(extraction)
+
+    # Replace any prior vouchers/lines (idempotent reprocess) so detail/export
+    # never read a stale earlier voucher (W5-12-F2).
+    await repo.clear_vouchers(document.id)
 
     voucher: JournalVoucher | None = None
     if plan.voucher_kwargs is not None:

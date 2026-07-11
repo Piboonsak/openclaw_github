@@ -1,0 +1,109 @@
+{
+  "_doc_id": "W5-CLAUDE-EXPORT-LINEITEM-HARDENING-05",
+  "_version": "2026-07-11",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_branch": "dev",
+  "_tracking_tag": "W5-EXPORT-LINEITEM-HARDENING-05",
+  "task_id": "TASK-W5-CLAUDE-EXPORT-LINEITEM-HARDENING-05",
+  "title": "Patch the W5-12 follow-up review findings before the next SIT deploy and proof round",
+  "lane": "Claude",
+  "recommended_model": "Claude Opus 4.6",
+  "fallback_model": "Claude Sonnet only if the patch stays tightly scoped to the findings below",
+  "objective": "Take the W5-12 implementation from 'feature mostly wired' to 'safe to redeploy' by fixing the two review findings Codex found in commit 3a87116: add proper company-access enforcement for the new live export path, and make reprocess/detail/export use the correct latest voucher state instead of stale earlier vouchers.",
+  "must_read_first": [
+    "docs/requirement/phaseII/epic-10/W5-CLAUDE-EXPORT-LINEITEM-REALDATA-04-COMPLETION.md",
+    "docs/requirement/phaseII/W5-COPILOT-PROCESSING-SLOWDOWN-INVESTIGATION-04-RESULT.md",
+    "docs/requirement/phaseII/W5-TASK-BOARD.md",
+    "src/backend/api/export_preview.py",
+    "src/backend/api/documents.py",
+    "src/backend/services/document_workflow.py",
+    "src/backend/services/export_dataset.py",
+    "src/backend/db/models.py",
+    "tests/api/test_export_api.py",
+    "tests/services/test_document_workflow.py",
+    "tests/services/test_export_dataset.py",
+    "tests/workers/test_tasks.py"
+  ],
+  "current_truth_from_codex_review": [
+    "Commit 3a87116 is real and does wire W5-12 end to end in broad strokes: line-item storage, processing branch, review endpoints, and backend-built export rows are present.",
+    "However, the new live export path trusts any caller-provided company_id without an explicit company-access check in export_preview/export_file. That is a real data-scope risk.",
+    "Also, reprocessing clears/replaces line items idempotently, but it does not clear prior journal vouchers. Document detail and export currently read journal_vouchers[0], so a reprocessed document can still show/export stale mapping data.",
+    "These findings are blockers for the next deploy/proof round because they affect data isolation and correctness of real reviewed-document export."
+  ],
+  "hard_scope_boundary": {
+    "allowed_scope": [
+      "Fix the company-access check for the live export path",
+      "Fix stale-voucher behavior on reprocess/detail/export",
+      "Add focused API/service tests for these exact cases",
+      "Small supporting refactors only if required to keep the patch clean and consistent"
+    ],
+    "forbidden_scope": [
+      "Do not reopen W5-12 architecture or redesign the line-item product flow",
+      "Do not turn this into COA glyph work, dashboard honesty work, or first-login work",
+      "Do not modify SIT runtime env or deploy flows; Copilot owns that lane",
+      "Do not broaden scope into product matching, OCR tuning, or Stage C timeout handling in this prompt"
+    ]
+  },
+  "findings_to_close": [
+    {
+      "id": "W5-12-F1",
+      "severity": "HIGH",
+      "symptom": "The new live export path switches to backend data as soon as company_id is present, but export_preview/export_file do not explicitly enforce company access for that company."
+    },
+    {
+      "id": "W5-12-F2",
+      "severity": "MEDIUM",
+      "symptom": "Reprocessing creates a new journal voucher without clearing earlier ones, while document detail/export read the first voucher. A reprocessed document can therefore surface/export stale mapping data."
+    }
+  ],
+  "what_to_do": [
+    "1. Patch /v1/export/preview and /v1/export so the live export path cannot read another company's reviewed documents just by passing a foreign company_id. Reuse the repo's existing company-access pattern instead of inventing a new auth model.",
+    "2. Patch the reprocess path so document detail and export no longer read stale voucher data after a document is processed more than once.",
+    "3. Choose the most conservative repo-aligned fix for voucher correctness. Acceptable outcomes include either clearing/replacing old vouchers during reprocess or explicitly using the latest active voucher consistently in detail/export, as long as stale rows cannot leak into the real product path.",
+    "4. Add focused tests that would have caught both findings before review.",
+    "5. Keep the W5-12 line-item/export feature behavior intact; this prompt is a hardening pass, not a redesign."
+  ],
+  "implementation_guidance": [
+    "For export access control, do not rely on the frontend to only send the selected company. Enforce access on the backend in the new live-export branch.",
+    "If you introduce a helper for export company resolution/access, keep it local and obvious rather than spreading new abstractions across unrelated modules.",
+    "For voucher correctness, think through all three surfaces together: persisted data on reprocess, GET /v1/documents/{id} detail payload, and build_export_records(). They must agree on which voucher is authoritative.",
+    "If the cleanest fix is voucher replace-on-reprocess, make sure tests cover that path and that journal lines are replaced coherently too.",
+    "If the cleanest fix is latest-voucher selection, make sure ordering is explicit and not left to ORM accident."
+  ],
+  "acceptance_criteria": [
+    "A user without access to company B cannot preview or download company B's live export data by posting company_id=company_b.",
+    "A reprocessed document does not expose or export stale earlier voucher rows.",
+    "Document detail and export agree on the authoritative voucher after reprocess.",
+    "Focused API/service tests cover the new access-control path and the reprocess-voucher correctness path.",
+    "No regression to the core W5-12 behavior: line-item review/confirm/export still works for enable_stock=true companies, and header-only companies still work normally."
+  ],
+  "suggested_files_to_modify": [
+    "src/backend/api/export_preview.py",
+    "src/backend/api/documents.py",
+    "src/backend/services/document_workflow.py",
+    "src/backend/services/export_dataset.py",
+    "tests/api/test_export_api.py",
+    "tests/services/test_document_workflow.py",
+    "tests/services/test_export_dataset.py",
+    "tests/workers/test_tasks.py"
+  ],
+  "verification_expectation": [
+    "Run focused pytest for export API/service and document workflow coverage.",
+    "Include exact test commands and results in the completion report.",
+    "If you change voucher persistence semantics, add or update the tightest possible test for reprocess behavior."
+  ],
+  "deliverables": {
+    "completion_report": "docs/requirement/phaseII/epic-10/W5-CLAUDE-EXPORT-LINEITEM-HARDENING-05-COMPLETION.md",
+    "report_sections": [
+      "Doc ID",
+      "Commit SHA",
+      "Findings closed",
+      "Access-control patch",
+      "Voucher/reprocess patch",
+      "Tests run",
+      "Residual risks",
+      "Next Copilot deploy/proof handoff"
+    ]
+  },
+  "final_instruction_to_claude": "Treat this as the last code-hardening pass before the next SIT redeploy/proof round for W5-12. Do not stop at analysis. Implement the patch, add the tests, push to dev, and write the completion report."
+}

@@ -62,6 +62,21 @@ class InMemoryDocumentRepository:
         if voucher.id is None:
             voucher.id = uuid.uuid4()
         self.vouchers[voucher.id] = voucher
+        document = self.documents.get(voucher.document_id)
+        if document is not None:
+            document.journal_vouchers.append(voucher)
+
+    async def clear_vouchers(self, document_id: uuid.UUID) -> None:
+        vids = [vid for vid, v in self.vouchers.items() if v.document_id == document_id]
+        for vid in vids:
+            self.vouchers.pop(vid, None)
+        for lid in [lid for lid, ln in self.lines.items() if ln.voucher_id in vids]:
+            self.lines.pop(lid, None)
+        document = self.documents.get(document_id)
+        if document is not None:
+            document.journal_vouchers = [
+                v for v in document.journal_vouchers if v.document_id != document_id
+            ]
 
     async def add_line(self, line: JournalLine) -> None:
         if line.id is None:
@@ -204,6 +219,24 @@ class TestApplyPipelineResult(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(outcome.voucher.book_code, "PV")
         self.assertTrue(outcome.voucher.is_balanced)
         self.assertEqual(len(repo.lines), 3)
+
+    async def test_reprocess_replaces_voucher_no_stale_rows(self) -> None:
+        # W5-12-F2: reprocessing must not leave a stale earlier voucher that
+        # document detail / export (which read journal_vouchers[0]) could surface.
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+
+        await apply_pipeline_result(repo, document, _fake_ctx(company_id))
+        first_voucher_id = document.journal_vouchers[0].id
+
+        await apply_pipeline_result(repo, document, _fake_ctx(company_id))
+
+        # Exactly one voucher + one balanced line-set remains, and it is the fresh one.
+        self.assertEqual(len(repo.vouchers), 1)
+        self.assertEqual(len(repo.lines), 3)
+        self.assertEqual(len(document.journal_vouchers), 1)
+        self.assertNotEqual(document.journal_vouchers[0].id, first_voucher_id)
 
     async def test_pipeline_error_marks_document_failed(self) -> None:
         company_id = uuid.uuid4()

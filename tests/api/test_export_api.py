@@ -97,6 +97,39 @@ class TestExportApi(unittest.TestCase):
         self.assertIn("Voucher No,Debit", text)
         self.assertIn("PV-001,123.45", text)
 
+    def test_live_export_denies_foreign_company_for_unassigned_staff(self) -> None:
+        # W5-12-F1: a staff user not assigned to company B must not be able to
+        # preview or download B's live export data by posting company_id=B.
+        from unittest import mock
+
+        async def staff_user():
+            return SimpleNamespace(id=uuid.uuid4(), username="staff", role="staff")
+
+        async def _no_companies(_db, _user_id):
+            return set()
+
+        self.app.dependency_overrides[get_current_active_user] = staff_user
+        foreign_company = str(uuid.uuid4())
+        columns = [{
+            "source_field": "invoice_number", "header_label": "Invoice No.",
+            "data_type": "string", "transform": None, "format_pattern": None,
+            "default_value": None,
+        }]
+        with mock.patch(
+            "src.backend.auth.dependencies.get_user_company_ids", _no_companies
+        ):
+            preview = self.client.post(
+                "/v1/export/preview",
+                json={"column_overrides": columns, "company_id": foreign_company},
+            )
+            download = self.client.post(
+                "/v1/export",
+                json={"column_overrides": columns, "company_id": foreign_company},
+            )
+
+        self.assertEqual(preview.status_code, 403)
+        self.assertEqual(download.status_code, 403)
+
     def test_export_uses_template_default_xlsx_when_format_omitted(self) -> None:
         xlsx_template_id = uuid.uuid4()
         self.templates[xlsx_template_id] = _template_record(

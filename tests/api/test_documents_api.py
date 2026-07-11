@@ -81,6 +81,18 @@ class InMemoryRepository:
         if doc is not None:
             doc.journal_vouchers.append(voucher)
 
+    async def clear_vouchers(self, document_id):
+        vids = [vid for vid, v in self.vouchers.items() if v.document_id == document_id]
+        for vid in vids:
+            self.vouchers.pop(vid, None)
+        for lid in [lid for lid, ln in self.lines.items() if ln.voucher_id in vids]:
+            self.lines.pop(lid, None)
+        doc = self.documents.get(document_id)
+        if doc is not None:
+            doc.journal_vouchers = [
+                v for v in doc.journal_vouchers if v.document_id != document_id
+            ]
+
     async def add_line(self, line):
         if line.id is None:
             line.id = uuid.uuid4()
