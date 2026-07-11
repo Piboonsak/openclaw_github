@@ -91,20 +91,72 @@ Short status:
 
 ## 6. W5 Delivery Board
 
-| ID | Priority | Owner | Status | Task | Why It Matters | Acceptance / Proof |
-| --- | --- | --- | --- | --- | --- |
-| W5-01 | P0 | Copilot first, Claude if defect found | Ready for deploy/proof | Full header-only routine E2E proof on SIT | Result 23 only proved file selection/navigation, not a completed OCR round-trip | On SIT: Upload 2-3 real docs -> start Processing -> stage progress completes -> Review Scan opens real docs -> approve -> Review Mapping shows rows -> Export downloads file |
-| W5-02 | P0 | Claude | Code done in `5836bd6`; SIT proof pending | Processing progress and perceived-stall fix | User sees `0 / 3` and feels the scan is stuck even when backend may still run | UI must show per-document stages, elapsed time, queued/running/done/error state, and never look frozen during long OCR/LLM work |
-| W5-03 | P0 | Claude | Partial code done in `1f4d964`; login proof still open | User admin CRUD and role correctness | Human review found: cannot delete user, deleted user's company assignment shows raw UUIDs, cannot add `SysAdmin`, double-login behavior | User delete works or is clearly disabled with reason; deleted/disabled users do not leave UUID display garbage; `SysAdmin` role can be assigned by sys_admin; login/first-login flow happens once and is understandable |
-| W5-04 | P0 | Claude | Partial: Mapping Rules row delete done in `1f4d964`; COA glyph repair still open | Company import quality: COA PDF text normalization + Mapping Rules row delete | COA AI import has corrupted Thai tone/glyphs such as `คา`; Mapping Rules import review cannot remove unwanted/duplicate rows | COA preview normalizes Thai text before confirm; Mapping Rules review table supports delete/remove before save; deleted rows are not persisted |
-| W5-05 | P0 | Claude | Waiting on live processed document proof | Review Mapping filename-first proof with real processed document | Repo/local says fixed, but live proof had no real document row | Real processed document appears in Review Mapping with uploaded filename as primary label and invoice number only secondary |
-| W5-06 | P0 | Claude + Copilot | Partial: blank-configurator path done in `1f4d964`; full export continuity still open | Template/export continuity | Customer presentation needs a clear Template -> Export story, not disconnected screens | Create/edit template without forced CSV-only path; sample upload remains helper; Quick/Template Export preview/download works from selected company data on SIT |
-| W5-07 | P0 | Copilot | Ready after deploy | End-to-end SIT proof pack after W5 fixes | Payment/presentation needs one trustworthy proof, not many isolated claims | One report with screenshots/network proof for Companies, Users, Upload, Processing, Review Scan, Review Mapping, Templates, Export |
-| W5-12 | P0 | Claude | Open next implementation task | Export real scanned data + line-item scan path | Human review found Export still contains demo/static rows and the target company is configured for line-item scan | Remove demo export rows and fixture fallback; Export document selector/preview/download must read from reviewed/mapped documents for selected company; when `enable_stock=true`, Processing must extract line items, Review Scan/Mapping must allow line-item confirmation, and Export must include confirmed line-item rows |
-| W5-08 | P1 | Claude | Open | Dashboard honesty / real data boundary | Dashboard still has fixture disclosure; acceptable only if clearly labeled, but confusing for presentation | Either wire minimal real counts or keep a concise "analytics pending" state with no fake operational rows |
-| W5-09 | P1 | Claude | Open | Internal Console follow-through | Result 23 proves Model Router only; logs/settings are still partial | Keep sys_admin access; wire existing endpoints where present; label panels with exact missing backend dependency |
-| W5-10 | P1 | Codex | Open after SIT proof | Customer-facing demo script and status wording | 24 Jul presentation needs a safe route through working features | Prepare concise demo flow and customer-safe "done / in progress / next" notes |
-| W5-11 | P1 | Copilot | Open | UAT static/prototype page refresh path | User says `https://uat.bwcacc.biz/prototype` is the easy UX/UI page for customer view | Confirm current UAT/prototype source, publish only approved customer-facing pages, and prove route/content |
+### 6.1 Snapshot
+
+| ID | Priority | Owner | Status | Short Task |
+| --- | --- | --- | --- | --- |
+| W5-01 | P0 | Copilot | Ready for deploy/proof | Full header-only E2E on SIT |
+| W5-02 | P0 | Claude | Code done in `5836bd6`; SIT proof pending | Processing progress / perceived-stall fix |
+| W5-03 | P0 | Claude | Partial code done in `1f4d964`; login proof open | User admin CRUD + role correctness |
+| W5-04 | P0 | Claude | Partial in `1f4d964`; COA glyph repair open | COA/Mapping Rules import quality |
+| W5-05 | P0 | Claude | Waiting on live proof | Review Mapping filename-first with real doc |
+| W5-06 | P0 | Claude + Copilot | Partial in `1f4d964`; export continuity open | Template/configurator/export continuity |
+| W5-07 | P0 | Copilot | Ready after deploy | One SIT proof pack after W5 fixes |
+| W5-12 | P0 | Claude | Open next implementation task | Real-data export + line-item path |
+| W5-08 | P1 | Claude | Open | Dashboard honesty / real-data boundary |
+| W5-09 | P1 | Claude | Open | Internal Console follow-through |
+| W5-10 | P1 | Codex | Open after SIT proof | Demo script + customer-safe wording |
+| W5-11 | P1 | Copilot | Open | UAT prototype refresh path |
+
+### 6.2 Task Notes
+
+`W5-01` Full header-only routine E2E proof on SIT:
+Result 23 only proved file selection/navigation, not a completed OCR round-trip.
+Acceptance: Upload 2-3 real docs -> start Processing -> stage progress completes -> Review Scan opens real docs -> approve -> Review Mapping shows rows -> Export downloads file.
+
+`W5-02` Processing progress and perceived-stall fix:
+User sees `0 / 3` and feels the scan is stuck even when backend may still run.
+Acceptance: UI shows per-document stages, elapsed time, queued/running/done/error state, and never looks frozen during long OCR/LLM work.
+
+`W5-03` User admin CRUD and role correctness:
+Human review found cannot delete user, deleted user's company assignment shows raw UUIDs, cannot add `SysAdmin`, double-login behavior.
+Acceptance: user delete works or is clearly disabled with reason; deleted/disabled users do not leave UUID display garbage; `SysAdmin` role can be assigned by sys_admin; login/first-login flow happens once and is understandable.
+
+`W5-04` Company import quality:
+COA AI import has corrupted Thai tone/glyphs such as `คา`; Mapping Rules import review cannot remove unwanted/duplicate rows.
+Acceptance: COA preview normalizes Thai text before confirm; Mapping Rules review table supports delete/remove before save; deleted rows are not persisted.
+
+`W5-05` Review Mapping filename-first proof:
+Repo/local says fixed, but live proof had no real document row.
+Acceptance: real processed document appears in Review Mapping with uploaded filename as primary label and invoice number only secondary.
+
+`W5-06` Template/export continuity:
+Customer presentation needs a clear Template -> Export story, not disconnected screens.
+Acceptance: create/edit template without forced CSV-only path; sample upload remains helper; Quick/Template Export preview/download works from selected company data on SIT.
+
+`W5-07` End-to-end SIT proof pack after W5 fixes:
+Payment/presentation needs one trustworthy proof, not many isolated claims.
+Acceptance: one report with screenshots/network proof for Companies, Users, Upload, Processing, Review Scan, Review Mapping, Templates, Export.
+
+`W5-12` Export real scanned data + line-item scan path:
+Human review found Export still contains demo/static rows and the target company is configured for line-item scan.
+Acceptance: remove demo export rows and fixture fallback; Export document selector/preview/download must read from reviewed/mapped documents for selected company; when `enable_stock=true`, Processing must extract line items, Review Scan/Mapping must allow line-item confirmation, and Export must include confirmed line-item rows.
+
+`W5-08` Dashboard honesty / real-data boundary:
+Dashboard still has fixture disclosure; acceptable only if clearly labeled, but confusing for presentation.
+Acceptance: either wire minimal real counts or keep a concise `analytics pending` state with no fake operational rows.
+
+`W5-09` Internal Console follow-through:
+Result 23 proves Model Router only; logs/settings are still partial.
+Acceptance: keep sys_admin access; wire existing endpoints where present; label panels with exact missing backend dependency.
+
+`W5-10` Customer-facing demo script and status wording:
+24 Jul presentation needs a safe route through working features.
+Acceptance: prepare concise demo flow and customer-safe `done / in progress / next` notes.
+
+`W5-11` UAT static/prototype page refresh path:
+User says `https://uat.bwcacc.biz/prototype` is the easy UX/UI page for customer view.
+Acceptance: confirm current UAT/prototype source, publish only approved customer-facing pages, and prove route/content.
 
 ---
 
@@ -168,3 +220,20 @@ W5 is not done until all P0 gates pass:
 3. **Codex - review and customer script**: verify result reports, summarize demo path, update customer-facing status
 
 Full Epic 9 line-item extraction/review is now promoted for the W5 customer-critical path where `enable_stock=true`. Header-only companies must continue to work without line-item blocking.
+
+---
+
+## 10. Work While Waiting For Deploy
+
+These are the best follow-on tasks that do not need the current SIT deploy result first:
+
+1. **Claude - W5-12 backend design + implementation prep**
+   Lock the production shape for real-data export and line-item flow: storage model, API contract, review surface choice, and export dataset path.
+2. **Claude - COA Thai glyph normalization spike**
+   Fix the remaining `W5-04` COA PDF text corruption path, because it is independent from the current Processing/User/Template deploy proof.
+3. **Codex - W5-12 implementation prompt**
+   Write the dedicated Claude JSON prompt for `W5-12` so the next lane starts immediately after deploy proof returns.
+4. **Codex - customer-safe demo/status draft**
+   Prepare the short `done / proving now / next` wording and a safe demo route for the 24 Jul review.
+5. **Copilot - UAT prototype route inventory**
+   Only if it does not block SIT deploy: confirm what `uat.bwcacc.biz/prototype` currently serves and whether it should be refreshed later as a separate lane.
