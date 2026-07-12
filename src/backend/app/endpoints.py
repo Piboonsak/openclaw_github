@@ -169,52 +169,11 @@ def llm_routing_diagnostics(
     }
 
 
-@router.get("/v1/tasks/{task_id}")
-async def get_task_status(
-    task_id: str,
-    _current_user: User = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    """Return Celery task execution status, pipeline stage, and latest result
-    payload. `stage` (e.g. "queued" / "ocr" / "extract" / "mapping") lets the
-    Processing screen show real pipeline progress instead of an opaque
-    spinner (W4 Processing UX fix) - it is only meaningful while status is
-    "started".
-    """
-    async_result = AsyncResult(task_id, app=celery_app)
-    normalized_status = _TASK_STATUS_MAP.get(async_result.state, "pending")
-
-    stage: str | None = None
-    result_payload: Any = None
-    if async_result.successful():
-        result_payload = async_result.result
-    elif async_result.failed():
-        result_payload = str(async_result.result)
-    elif async_result.state == "PROGRESS":
-        meta = async_result.info if isinstance(async_result.info, dict) else {}
-        stage = str(meta.get("stage") or "") or None
-
-    return {
-        "task_id": task_id,
-        "status": normalized_status,
-        "stage": stage,
-        "result": result_payload,
-    }
-
-
-@router.post("/v1/tasks/process-document/{document_id}")
-async def enqueue_document_processing(
-    document_id: str,
-    _current_user: User = Depends(get_current_active_user),
-) -> dict[str, str]:
-    """Queue a document processing task to Celery workers."""
-    task = process_document.delay(document_id)
-    return {
-        "task_id": task.id,
-        "status": "pending",
-        "document_id": document_id,
-    }
-
-
+# IMPORTANT (W5-CLAUDE-TASK-DIAGNOSTICS-ROUTE-SHADOW-FIX-09): this static route
+# MUST be declared BEFORE `/v1/tasks/{task_id}` below. FastAPI matches routes in
+# declaration order, so if the dynamic `{task_id}` route comes first it captures
+# `/v1/tasks/diagnostics` as `task_id="diagnostics"` and returns a task-status
+# payload instead of the diagnostics object. Do not reorder these two.
 @router.get("/v1/tasks/diagnostics")
 async def get_task_diagnostics(
     _current_user: User = Depends(get_current_active_user),
@@ -266,6 +225,52 @@ async def get_task_diagnostics(
             "workers": [],
             "error": "diagnostics probe timed out (broker likely unreachable)",
         }
+
+
+@router.get("/v1/tasks/{task_id}")
+async def get_task_status(
+    task_id: str,
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Return Celery task execution status, pipeline stage, and latest result
+    payload. `stage` (e.g. "queued" / "ocr" / "extract" / "mapping") lets the
+    Processing screen show real pipeline progress instead of an opaque
+    spinner (W4 Processing UX fix) - it is only meaningful while status is
+    "started".
+    """
+    async_result = AsyncResult(task_id, app=celery_app)
+    normalized_status = _TASK_STATUS_MAP.get(async_result.state, "pending")
+
+    stage: str | None = None
+    result_payload: Any = None
+    if async_result.successful():
+        result_payload = async_result.result
+    elif async_result.failed():
+        result_payload = str(async_result.result)
+    elif async_result.state == "PROGRESS":
+        meta = async_result.info if isinstance(async_result.info, dict) else {}
+        stage = str(meta.get("stage") or "") or None
+
+    return {
+        "task_id": task_id,
+        "status": normalized_status,
+        "stage": stage,
+        "result": result_payload,
+    }
+
+
+@router.post("/v1/tasks/process-document/{document_id}")
+async def enqueue_document_processing(
+    document_id: str,
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, str]:
+    """Queue a document processing task to Celery workers."""
+    task = process_document.delay(document_id)
+    return {
+        "task_id": task.id,
+        "status": "pending",
+        "document_id": document_id,
+    }
 
 
 @router.post("/process")
