@@ -258,6 +258,42 @@ class TestUpdateUser(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(existing.role, "staff")
 
+    def test_admin_can_edit_sys_admin_company_assignments_without_escalation(self):
+        """HR-07-04: an admin editing an EXISTING sys_admin's company assignments
+        echoes the unchanged `sys_admin` role. That is NOT an escalation and must
+        save (previously it 403'd, so the assignment could never be saved)."""
+        company_id = uuid.uuid4()
+        existing = FakeUser(email="s@b.co", username="sys", role="sys_admin")
+        session = FakeAsyncSession(users=[existing], company_ids={company_id})
+        app = _build_app_with_overrides(session, requester_role="admin")
+        client = TestClient(app)
+
+        response = client.put(
+            f"/v1/admin/users/{existing.id}",
+            json={"role": "sys_admin", "company_ids": [str(company_id)]},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(existing.role, "sys_admin")
+        # The forbidden-escalation guard did not fire, and the assignment delete +
+        # re-insert ran (proof the company_ids branch was reached).
+        self.assertEqual(session.deleted_calls, 1)
+
+    def test_sys_admin_can_promote_existing_user_to_sys_admin(self):
+        """Role matrix: a genuine promotion is allowed for a sys_admin requester."""
+        existing = FakeUser(email="a@b.co", username="a", role="staff")
+        session = FakeAsyncSession(users=[existing])
+        app = _build_app_with_overrides(session, requester_role="sys_admin")
+        client = TestClient(app)
+
+        response = client.put(
+            f"/v1/admin/users/{existing.id}",
+            json={"role": "sys_admin"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(existing.role, "sys_admin")
+
 
 class TestResetPassword(unittest.TestCase):
     def test_generates_new_temp_password_and_forces_change(self):

@@ -108,6 +108,26 @@ class Settings:
         self.STAGE_C_USE_IMAGE_INPUT = (
             os.getenv("STAGE_C_USE_IMAGE_INPUT", "true").strip().lower() == "true"
         )
+        # HR-07-02: bound provider/stage latency so one hung LLM call cannot ride
+        # the document task all the way to Celery's soft_time_limit and kill the
+        # whole (potentially multi-document) batch with SoftTimeLimitExceeded.
+        #   * LLM_HTTP_TIMEOUT_SECONDS — per HTTP request to any LLM provider.
+        #     The openai/anthropic SDKs default to ~600s, longer than the task
+        #     soft limit, so without this a single stalled call is fatal.
+        #   * STAGE_C_STAGE_TIMEOUT_SECONDS — wall-clock cap for the whole Stage C
+        #     cascade (multiple provider attempts). Header keeps whatever it has.
+        #   * LINE_ITEM_STAGE_TIMEOUT_SECONDS — wall-clock cap for the OPTIONAL
+        #     line-item stage; on timeout the document still reaches Review Scan
+        #     with empty/pending line items (non-blocking by contract).
+        self.LLM_HTTP_TIMEOUT_SECONDS = float(
+            os.getenv("LLM_HTTP_TIMEOUT_SECONDS", "60")
+        )
+        self.STAGE_C_STAGE_TIMEOUT_SECONDS = float(
+            os.getenv("STAGE_C_STAGE_TIMEOUT_SECONDS", "240")
+        )
+        self.LINE_ITEM_STAGE_TIMEOUT_SECONDS = float(
+            os.getenv("LINE_ITEM_STAGE_TIMEOUT_SECONDS", "75")
+        )
 
 
 settings = Settings()

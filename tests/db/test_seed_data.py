@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import uuid
+from types import SimpleNamespace
+
 from scripts.seed_data import (
     DEFAULT_COMPANIES_PATH,
     DEFAULT_INCLUDED_PAGE_CREDITS,
     DEFAULT_PLAN_NAME,
     DEFAULT_PRICE_EFFECTIVE_THB,
     DEFAULT_PRICE_ORIGINAL_THB,
+    _get_or_create_admin_user,
     build_credit_plan_seed,
     build_master_templates,
     get_required_env,
@@ -13,6 +17,27 @@ from scripts.seed_data import (
     load_company_seeds,
     verify_password,
 )
+
+
+class _FakeSeedSession:
+    """Minimal session stand-in for exercising the pure create branch of
+    `_get_or_create_admin_user` without a live database."""
+
+    def __init__(self) -> None:
+        self.added: list[object] = []
+
+    def execute(self, _stmt):  # noqa: ANN001
+        class _Result:
+            def scalar_one_or_none(self):  # noqa: ANN001
+                return None
+
+        return _Result()
+
+    def add(self, obj) -> None:  # noqa: ANN001
+        self.added.append(obj)
+
+    def flush(self) -> None:
+        return None
 
 
 def test_load_company_seeds_reads_companies_json() -> None:
@@ -61,3 +86,25 @@ def test_get_required_env_raises_for_missing_values(monkeypatch) -> None:
         assert "ADMIN_PASSWORD" in str(exc)
     else:
         raise AssertionError("Expected RuntimeError when env var is missing")
+
+
+def test_bootstrap_admin_user_is_seeded_as_true_sys_admin() -> None:
+    """HR-07-03: the single bootstrap operator account must be seeded as a real
+    `sys_admin`, not `admin` — otherwise the reviewer's "System Admin" path is a
+    display label only and (correctly) cannot see the company delete action or
+    save sys_admin company assignments."""
+    session = _FakeSeedSession()
+    tenant = SimpleNamespace(id=uuid.uuid4())
+
+    user, created = _get_or_create_admin_user(
+        session,
+        tenant,
+        email="ops@bwc.co.th",
+        username="ops",
+        display_name="System Admin",
+        password="ChangeMe123!",
+    )
+
+    assert created is True
+    assert user.role == "sys_admin"
+

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Callable
@@ -74,6 +76,14 @@ class PipelineContext:
     escalated_to_sonnet: bool = False
     status: StageResult = StageResult.SUCCESS
     error: str | None = None
+    # HR-07-02 per-stage evidence: one entry per completed stage
+    # ({"stage": str, "elapsed_s": float}) plus the stage that was active when a
+    # failure/timeout occurred, so the Processing UI and logs can say exactly
+    # where a document spent its time or died.
+    stage_history: list[dict[str, Any]] = field(default_factory=list)
+    failed_stage: str | None = None
+    stage_c_timed_out: bool = False
+    line_item_timed_out: bool = False
 
 
 def _compute_overall_confidence(
@@ -326,7 +336,33 @@ async def run_pipeline(
     fails the pipeline — header extraction stands on its own.
     """
 
+    settings.reload()
+    ctx = PipelineContext(source_file=image_path, company_id=company_id)
+
+    # HR-07-02 stage-evidence tracker: remember the active stage + its start
+    # time so we can record per-stage elapsed and, on failure, the exact stage
+    # that was running.
+    _stage_state: dict[str, Any] = {"name": None, "t0": time.monotonic()}
+
+    def _record_stage_end() -> None:
+        prev = _stage_state["name"]
+        if prev is None:
+            return
+        ctx.stage_history.append(
+            {
+                "stage": prev,
+                "elapsed_s": round(time.monotonic() - _stage_state["t0"], 2),
+            }
+        )
+        _stage_state["name"] = None
+
     def _emit(stage: str) -> None:
+        # Close the previous stage's timing window, open this one, then fire the
+        # best-effort progress callback (a raising callback must never affect the
+        # pipeline).
+        _record_stage_end()
+        _stage_state["name"] = stage
+        _stage_state["t0"] = time.monotonic()
         if progress_callback is None:
             return
         try:
@@ -334,8 +370,13 @@ async def run_pipeline(
         except Exception:
             pass
 
-    settings.reload()
-    ctx = PipelineContext(source_file=image_path, company_id=company_id)
+    async def _run_stage_with_timeout(func: Callable[[], Any], timeout_s: float) -> Any:
+        """Run a blocking stage function in a worker thread bounded by a wall
+        clock (HR-07-02). Raises ``asyncio.TimeoutError`` if it overruns. The
+        orphaned worker thread is itself bounded by the provider HTTP timeout, so
+        it drains shortly after rather than riding the task to soft_time_limit."""
+        return await asyncio.wait_for(asyncio.to_thread(func), timeout_s)
+
     try:
         _emit("ocr")
         ctx.ocr_output = run_ocr(
@@ -366,12 +407,35 @@ async def run_pipeline(
 
         if low_conf_keys:
             raw_text = fields.get("source_text", "")
-            cascade = cascade_repair(
-                raw_text=raw_text,
-                current_fields=fields,
-                current_confidence=confidence,
-                system_prompt=STAGE_C_SYSTEM_PROMPT,
-                image_path=image_path,
+            # HR-07-02: bound the whole Stage C cascade (which can attempt several
+            # provider/model calls) with a wall clock. On overrun keep whatever
+            # header we already have and continue — low-confidence fields simply
+            # stay flagged for human review rather than killing the document.
+            stage_c_started = time.monotonic()
+            try:
+                cascade = await _run_stage_with_timeout(
+                    lambda: cascade_repair(
+                        raw_text=raw_text,
+                        current_fields=fields,
+                        current_confidence=confidence,
+                        system_prompt=STAGE_C_SYSTEM_PROMPT,
+                        image_path=image_path,
+                    ),
+                    float(getattr(settings, "STAGE_C_STAGE_TIMEOUT_SECONDS", 240) or 240),
+                )
+            except asyncio.TimeoutError:
+                ctx.stage_c_timed_out = True
+                cascade = {
+                    "fields": {},
+                    "confidence": {},
+                    "attempts": [],
+                    "unresolved_fields": low_conf_keys,
+                    "skipped": True,
+                    "skip_reason": "stage_c_timeout",
+                }
+                ctx.extraction_output["stage_c_timed_out"] = True
+            ctx.extraction_output["stage_c_elapsed_s"] = round(
+                time.monotonic() - stage_c_started, 2
             )
             ctx.stage_c_output = cascade
             if cascade.get("fields"):
@@ -512,14 +576,30 @@ async def run_pipeline(
                     "currency": fields.get("currency", "THB") or "THB",
                 }
                 ocr_text = fields.get("source_text", "") or ""
-                ctx.line_item_output = extract_line_items(
-                    image_path=image_path,
-                    ocr_text=ocr_text,
-                    metadata=metadata,
+                # HR-07-02: the optional line-item stage is bounded by its own wall
+                # clock AND catches every failure, so a hung/slow line-item LLM
+                # call can never stop the document from reaching Review Scan.
+                ctx.line_item_output = await _run_stage_with_timeout(
+                    lambda: extract_line_items(
+                        image_path=image_path,
+                        ocr_text=ocr_text,
+                        metadata=metadata,
+                    ),
+                    float(
+                        getattr(settings, "LINE_ITEM_STAGE_TIMEOUT_SECONDS", 75) or 75
+                    ),
                 )
                 ctx.extraction_output["line_items"] = ctx.line_item_output.get(
                     "line_items", []
                 )
+            except asyncio.TimeoutError:
+                ctx.line_item_timed_out = True
+                ctx.line_item_output = {
+                    "error": "line_item_timeout",
+                    "line_items": [],
+                }
+                ctx.extraction_output["line_items"] = []
+                ctx.extraction_output["line_item_timed_out"] = True
             except Exception as exc:  # noqa: BLE001 - line items are best-effort
                 ctx.line_item_output = {"error": str(exc), "line_items": []}
                 ctx.extraction_output["line_items"] = []
@@ -532,9 +612,15 @@ async def run_pipeline(
             rules_root=settings.RULES_ROOT,
             force_refresh=force_refresh,
         )
+        # Close the final ("mapping") stage timing window on the happy path.
+        _record_stage_end()
     except Exception as exc:  # pragma: no cover - safety net for runtime failures
         ctx.status = StageResult.FAILED
         ctx.error = str(exc)
+        # HR-07-02: remember which stage was active so the Processing UI / logs
+        # can show where the document died instead of an opaque failure.
+        ctx.failed_stage = _stage_state["name"]
+        _record_stage_end()
     return ctx
 
 

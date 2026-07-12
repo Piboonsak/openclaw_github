@@ -10,8 +10,12 @@ from .base import LLMProvider, ProviderResponse
 class AnthropicProvider(LLMProvider):
     """Anthropic SDK-backed provider."""
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, timeout: float | None = None) -> None:
         self._api_key = api_key
+        # HR-07-02: bound the emergency Anthropic fallback call the same way as
+        # the primary OpenRouter path so a stalled request cannot ride the task
+        # to Celery's soft_time_limit.
+        self._timeout = timeout
 
     def call(
         self,
@@ -45,7 +49,10 @@ class AnthropicProvider(LLMProvider):
         else:
             user_content = user_prompt
 
-        client = Anthropic(api_key=self._api_key)
+        client_kwargs: dict = {"api_key": self._api_key, "max_retries": 1}
+        if self._timeout is not None:
+            client_kwargs["timeout"] = self._timeout
+        client = Anthropic(**client_kwargs)
         response = client.messages.create(
             model=model,
             max_tokens=512,

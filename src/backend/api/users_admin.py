@@ -163,7 +163,13 @@ async def update_user(
 
     if body.display_name is not None:
         user.display_name = body.display_name
-    if body.role is not None:
+    if body.role is not None and body.role != user.role:
+        # HR-07-04: only a genuine role CHANGE can be a privilege escalation.
+        # Re-sending a user's existing role — e.g. an admin editing an existing
+        # sys_admin's company assignments, where the edit drawer echoes the
+        # unchanged `sys_admin` role — must NOT be rejected as escalation, or the
+        # company assignment can never be saved. A real staff/admin -> sys_admin
+        # change is still blocked for non-sys-admin requesters below.
         _reject_sys_admin_escalation(body.role, current_user)
         user.role = body.role if body.role in _ASSIGNABLE_ROLES else user.role
     if body.is_active is not None:

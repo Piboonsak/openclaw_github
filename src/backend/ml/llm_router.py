@@ -317,8 +317,20 @@ def _dedupe_model_plan(plan: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return deduped
 
 
+def _http_timeout_seconds() -> float:
+    """Per-request LLM HTTP timeout (HR-07-02). Falls back to a conservative 60s
+    if the setting is missing or unparseable so a provider call can never inherit
+    the SDK's ~600s default and outlive the Celery soft_time_limit."""
+    try:
+        value = float(getattr(settings, "LLM_HTTP_TIMEOUT_SECONDS", 60) or 60)
+    except (TypeError, ValueError):
+        return 60.0
+    return value if value > 0 else 60.0
+
+
 def _build_provider(name: str) -> tuple[LLMProvider, str] | tuple[None, str]:
     settings.reload()
+    timeout = _http_timeout_seconds()
     if name == "openrouter":
         key = (
             os.environ.get("BWCACC_OPENROUTER_API_KEY", "")
@@ -329,13 +341,13 @@ def _build_provider(name: str) -> tuple[LLMProvider, str] | tuple[None, str]:
         if not key:
             return None, "BWCACC_OPENROUTER_API_KEY/OPENROUTER_API_KEY not set"
         return OpenRouterProvider(
-            api_key=key, base_url=settings.OPENROUTER_BASE_URL
+            api_key=key, base_url=settings.OPENROUTER_BASE_URL, timeout=timeout
         ), ""
 
     key = os.environ.get("ANTHROPIC_API_KEY", "") or settings.ANTHROPIC_API_KEY
     if not key:
         return None, "ANTHROPIC_API_KEY not set"
-    return AnthropicProvider(api_key=key), ""
+    return AnthropicProvider(api_key=key, timeout=timeout), ""
 
 
 def _strip_code_fence(content: str) -> str:

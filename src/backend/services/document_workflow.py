@@ -294,9 +294,17 @@ def _build_line_item_specs(ctx: Any) -> list[dict[str, Any]]:
 
 def build_pipeline_persistence_plan(ctx: Any) -> PipelinePersistencePlan:
     if ctx.error:
+        # HR-07-02: prefix the failure with the stage that was active when the
+        # pipeline died (OCR / extract / line_item / mapping ...) so the
+        # Processing UI and logs point straight at the failing stage instead of a
+        # bare exception string.
+        failed_stage = getattr(ctx, "failed_stage", None)
+        error_text = str(ctx.error)
+        if failed_stage:
+            error_text = f"[{failed_stage}] {error_text}"
         return PipelinePersistencePlan(
             status=DocumentStatus.FAILED.value,
-            processing_error=str(ctx.error),
+            processing_error=error_text,
             document_fields={},
             extraction_kwargs=None,
             voucher_kwargs=None,

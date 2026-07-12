@@ -13,6 +13,7 @@ SQLAlchemy session (Celery tasks run outside the request's async context).
 from __future__ import annotations
 
 import asyncio
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -172,15 +173,31 @@ def _run_and_persist_pipeline(
             "document_id": str(document.id),
             "status": plan.status,
             "pipeline_error": plan.processing_error,
+            # HR-07-02 stage evidence for the task result payload (surfaced via
+            # GET /tasks/{id}): per-stage elapsed timings + the stage that failed
+            # (if any) so a stalled/failed document can be diagnosed.
+            "stage_history": list(getattr(ctx, "stage_history", []) or []),
+            "failed_stage": getattr(ctx, "failed_stage", None),
+            "stage_c_timed_out": bool(getattr(ctx, "stage_c_timed_out", False)),
+            "line_item_timed_out": bool(getattr(ctx, "line_item_timed_out", False)),
         }
 
 
-def _report_progress(task, stage: str) -> None:
+def _report_progress(task, stage: str, started_at: float | None = None) -> None:
     """Best-effort progress reporting: a broken/unreachable result backend
     must never kill the actual extraction work (also keeps eager-mode test
-    runs, which have no live Redis, from failing on state updates)."""
+    runs, which have no live Redis, from failing on state updates).
+
+    HR-07-02: the meta now carries elapsed seconds since the task started so the
+    Processing UI polling `GET /tasks/{id}` can show which stage a document is on
+    AND how long it has been there — the evidence needed to spot a stalled stage
+    before it hits the soft time limit.
+    """
+    meta: dict[str, Any] = {"stage": stage}
+    if started_at is not None:
+        meta["elapsed_s"] = round(time.monotonic() - started_at, 2)
     try:
-        task.update_state(state="PROGRESS", meta={"stage": stage})
+        task.update_state(state="PROGRESS", meta=meta)
     except Exception:
         pass
 
@@ -262,20 +279,24 @@ def extract_coa_pdf(
 def process_document(self, document_id: str) -> dict[str, Any]:
     """Run document processing asynchronously with persistent task state.
 
-    Reports "ocr" / "extract" / "mapping" progress stages (W4 Processing UX
-    fix) so the frontend can poll `GET /api/v1/tasks/{task_id}` and show real
-    pipeline progress instead of an opaque spinner. Carries the same longer
-    time budget as `extract_coa_pdf` (real OCR + Stage C LLM escalation can
-    exceed the app-wide 120s/180s defaults; without this override tasks were
-    observed hitting SoftTimeLimitExceeded at exactly 120s on SIT).
+    Reports "ocr" / "extract" / "line_item" / "mapping" progress stages with
+    elapsed seconds (W4 Processing UX fix + HR-07-02 stage evidence) so the
+    frontend can poll `GET /api/v1/tasks/{task_id}` and show which stage a
+    document is on and for how long, instead of an opaque spinner. Carries the
+    same longer time budget as `extract_coa_pdf` (real OCR + Stage C LLM
+    escalation can exceed the app-wide 120s/180s defaults). The provider HTTP
+    timeouts and per-stage circuit breakers added in HR-07-02 keep a single hung
+    provider call from riding the whole task to SoftTimeLimitExceeded and taking
+    a batch of sibling documents down with it.
     """
+    task_started = time.monotonic()
     _set_document_status(document_id, DocumentStatus.PROCESSING.value)
-    _report_progress(self, "queued")
+    _report_progress(self, "queued", task_started)
 
     try:
         result = _run_and_persist_pipeline(
             document_id,
-            progress_callback=lambda stage: _report_progress(self, stage),
+            progress_callback=lambda stage: _report_progress(self, stage, task_started),
         )
         return {
             "task_id": self.request.id,

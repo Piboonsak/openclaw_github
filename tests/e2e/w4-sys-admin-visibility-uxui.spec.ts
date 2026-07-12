@@ -30,7 +30,7 @@ function userFor(role: string) {
   };
 }
 
-async function loginAs(page: Page, role: string) {
+async function loginAs(page: Page, role: string, opts: { companies?: unknown[] } = {}) {
   const user = userFor(role);
   await page.route("**/api/v1/auth/login", (route) =>
     route.fulfill({
@@ -46,7 +46,11 @@ async function loginAs(page: Page, role: string) {
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
   );
   await page.route("**/api/v1/admin/companies", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(opts.companies ?? []),
+    })
   );
   await page.route("**/api/v1/admin/users", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
@@ -57,6 +61,17 @@ async function loginAs(page: Page, role: string) {
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#app")).toHaveClass(/visible/);
 }
+
+const SAMPLE_COMPANY = [
+  {
+    id: "11111111-1111-1111-1111-111111111111",
+    name: "บริษัท ทดสอบ จำกัด",
+    tax_id: "0105560123456",
+    branch_code: "00000",
+    is_active: true,
+    settings: {},
+  },
+];
 
 test.describe("W4 SIT closure — role-aware UI visibility (TASK-1204 3-role model)", () => {
   test("staff sees neither Users nav, Internal Console, nor the create-company button", async ({ page }) => {
@@ -92,5 +107,39 @@ test.describe("W4 SIT closure — role-aware UI visibility (TASK-1204 3-role mod
     await loginAs(page, "sys_admin");
     await page.click("#internalConsoleTopbarBtn");
     await expect(page.locator("#s-system-home")).toBeVisible();
+  });
+
+  // HR-07-03: company soft-delete is sys_admin-only. The reviewer path must see
+  // it (true sys_admin), and admin/staff must not — a permission-sensitive UI
+  // regression that CI should catch.
+  test("sys_admin sees the company delete (ลบ) action in the companies table", async ({ page }) => {
+    await loginAs(page, "sys_admin", { companies: SAMPLE_COMPANY });
+    await page.click("[data-screen='s-companies']");
+    await expect(page.locator("#companiesTableBody")).toContainText("บริษัท ทดสอบ จำกัด");
+    await expect(page.locator("#companiesTableBody .btn-danger")).toBeVisible();
+  });
+
+  test("admin does NOT see the company delete action", async ({ page }) => {
+    await loginAs(page, "admin", { companies: SAMPLE_COMPANY });
+    await page.click("[data-screen='s-companies']");
+    await expect(page.locator("#companiesTableBody")).toContainText("บริษัท ทดสอบ จำกัด");
+    await expect(page.locator("#companiesTableBody .btn-danger")).toHaveCount(0);
+  });
+
+  test("staff does NOT see the company delete action", async ({ page }) => {
+    await loginAs(page, "staff", { companies: SAMPLE_COMPANY });
+    await page.click("[data-screen='s-companies']");
+    await expect(page.locator("#companiesTableBody .btn-danger")).toHaveCount(0);
+  });
+
+  // HR-07-06: the Template Configurator blank state must not carry demo template
+  // names / runtime content ("GL เมโทร อีเล็กทริค — Clone of Express GL").
+  test("Template Configurator blank state shows no demo template content", async ({ page }) => {
+    await loginAs(page, "sys_admin");
+    await page.evaluate(() => (window as unknown as { showScreen: (id: string) => void }).showScreen("s-template-configurator"));
+    const screen = page.locator("#s-template-configurator");
+    await expect(screen).not.toContainText("Clone of Express GL");
+    await expect(screen).not.toContainText("เมโทร");
+    await expect(page.locator("#configuratorSubtitle")).toContainText("ยังไม่ได้เลือก template");
   });
 });

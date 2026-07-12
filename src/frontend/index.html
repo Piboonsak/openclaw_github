@@ -1376,7 +1376,7 @@
 
   <div class="page-header" style="margin-bottom:1.25rem;">
     <h1 style="margin:0 0 .25rem;">Template Configurator</h1>
-    <span style="color:#6b7280;font-size:.9rem;">GL เมโทร อีเล็กทริค — Clone of Express GL · self-service builder mode</span>
+    <span id="configuratorSubtitle" style="color:#6b7280;font-size:.9rem;">ยังไม่ได้เลือก template — เลือก template หรืออัปโหลดไฟล์ตัวอย่างเพื่อเริ่มตั้งค่า</span>
   </div>
 
   <div class="card" style="padding:1rem;margin-bottom:1rem;background:var(--accent-soft);border-color:var(--accent-mid);">
@@ -4333,10 +4333,24 @@
   // panel's template dropdown already uses (syncSelectedTemplate), so an
   // existing template's real saved columns load into the Configurator instead
   // of just showing a toast.
+  // HR-07-06: the Configurator header must never show a hardcoded demo template
+  // name. It shows a neutral empty state until a REAL template is selected (edit
+  // or view), then reflects that template's actual name.
+  function updateConfiguratorSubtitle() {
+    var el = getEl("configuratorSubtitle");
+    if (!el) return;
+    if (state.activeTemplate && state.activeTemplate.template_name) {
+      el.textContent = state.activeTemplate.template_name + " · self-service builder mode";
+    } else {
+      el.textContent = "ยังไม่ได้เลือก template — เลือก template หรืออัปโหลดไฟล์ตัวอย่างเพื่อเริ่มตั้งค่า";
+    }
+  }
+
   function openTemplateConfiguratorReal(mode, templateId) {
     syncSelectedTemplate(templateId);
     navigate('s-template-configurator');
     if (typeof setConfiguratorTab === "function") setConfiguratorTab('configure');
+    updateConfiguratorSubtitle();
     var label = state.activeTemplate ? state.activeTemplate.template_name : templateId;
     showToast((mode === 'edit' ? 'เปิดแก้ไข' : 'เปิดดู') + ' template: ' + label, '');
   }
@@ -4352,6 +4366,7 @@
     state.exportColumns = [];
     navigate('s-template-configurator');
     if (typeof setConfiguratorTab === "function") setConfiguratorTab('configure');
+    updateConfiguratorSubtitle();
     renderExportColumnsPanel();
     renderExportAddColumnOptions();
     refreshConfiguratorTestTab();
@@ -5036,11 +5051,19 @@
     var companyIds = getCheckedUserCompanyIds();
     try {
       if (isEdit) {
+        var selectedRole = getEl("userRoleSelect").value;
+        var originalUser = findUserById(state.userDrawerEditId);
         var updatePayload = {
           display_name: getEl("userDisplayNameInput").value.trim() || null,
-          role: getEl("userRoleSelect").value,
           company_ids: companyIds
         };
+        // HR-07-04: only send `role` when it actually changed. Echoing an
+        // unchanged sys_admin role (the drawer pre-fills the current role) would
+        // otherwise be rejected by the backend as a forbidden escalation when an
+        // admin merely edits an existing sys_admin's company assignments.
+        if (!originalUser || selectedRole !== originalUser.role) {
+          updatePayload.role = selectedRole;
+        }
         var updateResponse = await apiFetch(auth.apiUrl("/api/v1/admin/users/" + encodeURIComponent(state.userDrawerEditId)), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

@@ -339,6 +339,13 @@ def _get_or_create_admin_user(
     display_name: str,
     password: str,
 ) -> tuple[User, bool]:
+    # HR-07-03: the single bootstrap operator account IS the system administrator
+    # in this single-tenant PoC/MVP. It must be a TRUE `sys_admin`, not merely
+    # labelled "System Admin" — otherwise the reviewer logs in and (correctly per
+    # the fail-closed frontend rule) sees no company delete action and cannot save
+    # sys_admin company assignments. Seeding it as `admin` was the root cause of
+    # HR-07-03/HR-07-04. sys_admin is a strict superset of admin, so nothing is
+    # lost; admin/staff accounts are still created via the Users admin UI.
     user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
     created = user is None
     if user is None:
@@ -348,7 +355,7 @@ def _get_or_create_admin_user(
             username=username,
             password_hash=hash_password(password),
             display_name=display_name,
-            role="admin",
+            role="sys_admin",
             is_active=True,
             must_change_password=True,
         )
@@ -358,7 +365,9 @@ def _get_or_create_admin_user(
         user.tenant_id = tenant.id
         user.username = username
         user.display_name = display_name
-        user.role = "admin"
+        # Re-seed also PROMOTES an existing bootstrap account left on the old
+        # `admin` role up to `sys_admin` so a redeploy repairs the reviewer path.
+        user.role = "sys_admin"
         user.is_active = True
         password_matches_default = verify_password(password, user.password_hash)
         if user.must_change_password and not password_matches_default:
