@@ -28,6 +28,32 @@ from src.backend.services.template_engine import TemplateEngine
 router = APIRouter()
 
 
+# Granularity detection (W5-EXPORT-FORMAT-NORMALIZE): the row shape the customer
+# wants is implied by the template's own columns. A template with per-posting
+# debit/credit columns is an Express-GL / journal export (one row per posting); a
+# template with product/qty columns is a line-item export (one row per confirmed
+# line item, หลายบรรทัด); anything else is a document export (one row per
+# document, บรรทัดเดียว — the common purchase/sale/expense case).
+_GL_SOURCE_FIELDS = {"debit", "credit"}
+_LINE_ITEM_SOURCE_FIELDS = {
+    "product_code",
+    "product_name",
+    "product_unit",
+    "product_unit_price",
+    "qty",
+    "line_amount",
+}
+
+
+def _detect_granularity(cols: list, include_line_items: bool) -> str:
+    fields = {str(getattr(col, "source_field", "") or "") for col in cols}
+    if fields & _GL_SOURCE_FIELDS:
+        return "journal"
+    if include_line_items or (fields & _LINE_ITEM_SOURCE_FIELDS):
+        return "line_item"
+    return "document"
+
+
 async def _resolve_export_rows(
     db: AsyncSession,
     current_user: User,
@@ -36,6 +62,7 @@ async def _resolve_export_rows(
     document_ids: list[uuid.UUID] | None,
     include_line_items: bool,
     sample_data: list[dict],
+    granularity: str | None = None,
 ) -> list[dict]:
     """Live Export builds rows from real reviewed/mapped documents when a
     ``company_id`` is provided; ``sample_data`` is used only for the Template
@@ -51,6 +78,7 @@ async def _resolve_export_rows(
             company_id,
             document_ids=document_ids or None,
             include_line_items=include_line_items,
+            granularity=granularity,
         )
     return sample_data
 
@@ -176,6 +204,7 @@ async def export_preview(
         document_ids=body.document_ids,
         include_line_items=body.include_line_items,
         sample_data=body.sample_data,
+        granularity=_detect_granularity(cols, body.include_line_items),
     )
     return render_preview(cols, rows, max_rows=_PREVIEW_MAX_ROWS)
 
@@ -249,6 +278,7 @@ async def export_file(
         document_ids=body.document_ids,
         include_line_items=body.include_line_items,
         sample_data=body.sample_data,
+        granularity=_detect_granularity(columns, body.include_line_items),
     )
     headers, rows = engine.render(export_rows, column_overrides=columns)
     safe_stem = _sanitize_download_stem(body.filename or template_name)
