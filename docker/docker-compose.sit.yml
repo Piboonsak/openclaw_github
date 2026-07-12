@@ -89,13 +89,19 @@ services:
         "-A", "src.backend.workers.celery_app:celery_app",
         "worker",
         "--loglevel=info",
-        "--concurrency=4"
+        "--concurrency=2"
       ]
     env_file:
       - .env.sit
     environment:
       APP_ENV: sit
       STAGE: SIT
+      # W5 OCR hotfix: cap native thread fan-out so each OCR task does not
+      # overrun CPU on a 4-core VPS when several docs are processed together.
+      OMP_THREAD_LIMIT: "1"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
     depends_on:
       redis:
         condition: service_healthy

@@ -23,6 +23,11 @@ OCR_SCHEMA_VERSION = "v3"
 # Bumped from 2.0 (≈144 DPI) so Thai diacritics survive PaddleOCR/Tesseract;
 # override via OCR_RENDER_SCALE for tuning per environment.
 OCR_RENDER_SCALE = float(os.environ.get("OCR_RENDER_SCALE", "3.0"))
+# Hard wall for a single tesseract call. Prevents one OCR subprocess from
+# pinning CPU for minutes and riding Celery jobs into soft-time-limit failures.
+OCR_TESSERACT_TIMEOUT_SECONDS = float(
+    os.environ.get("OCR_TESSERACT_TIMEOUT_SECONDS", "45")
+)
 # Set OCR_DESKEW=1 to enable automatic deskew correction (requires opencv-python-headless).
 OCR_DESKEW = os.environ.get("OCR_DESKEW", "0") == "1"
 # Set OCR_ADAPTIVE_THRESH=1 to enable adaptive binarization for faded/low-contrast scans.
@@ -310,12 +315,22 @@ def _extract_text_blocks_with_tesseract(
         # wrap it in quotes (pytesseract passes args directly, no shell parsing).
         config_args = f"--tessdata-dir {LOCAL_TESSDATA_DIR.as_posix()}"
 
-    data = pytesseract.image_to_data(
-        image_obj,
-        lang="tha+eng",
-        config=config_args,
-        output_type=pytesseract.Output.DICT,
-    )
+    try:
+        data = pytesseract.image_to_data(
+            image_obj,
+            lang="tha+eng",
+            config=config_args,
+            output_type=pytesseract.Output.DICT,
+            timeout=OCR_TESSERACT_TIMEOUT_SECONDS,
+        )
+    except RuntimeError as exc:
+        # pytesseract raises RuntimeError on timeout; convert to a stable message
+        # so caller/stage reports clearly identify OCR timeout as the failure mode.
+        if "timed out" in str(exc).lower() or "timeout" in str(exc).lower():
+            raise RuntimeError(
+                f"Tesseract timed out after {OCR_TESSERACT_TIMEOUT_SECONDS}s"
+            ) from exc
+        raise
 
     blocks: list[dict[str, Any]] = []
     count = len(data.get("text", []))
