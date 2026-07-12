@@ -215,6 +215,59 @@ async def enqueue_document_processing(
     }
 
 
+@router.get("/v1/tasks/diagnostics")
+async def get_task_diagnostics(
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Processing worker/queue liveness (W5-CLAUDE-OCR-PENDING-STALL-FIX-08).
+
+    Makes a stalled batch diagnosable instead of leaving the Processing screen on
+    permanent `pending`: `worker_count == 0` / `broker_reachable == False` means
+    no Celery worker is consuming the queue (so enqueued tasks will never run),
+    which is a fundamentally different condition from a task that is merely
+    queued. Use this on the Processing screen or in SIT proof to tell "no worker"
+    apart from "just queued".
+    """
+
+    def _probe() -> dict[str, Any]:
+        eager = bool(celery_app.conf.task_always_eager)
+        result: dict[str, Any] = {
+            "eager": eager,
+            "process_document_registered": (
+                "src.backend.workers.tasks.process_document" in celery_app.tasks
+            ),
+            "broker_reachable": False,
+            "worker_count": 0,
+            "workers": [],
+        }
+        if eager:
+            # Eager mode runs tasks inline in the API process — no separate worker
+            # is expected, and there is no pending-stall to diagnose.
+            result["broker_reachable"] = True
+            return result
+        try:
+            replies = celery_app.control.ping(timeout=1.0) or []
+            workers = [name for reply in replies for name in reply.keys()]
+            result["workers"] = workers
+            result["worker_count"] = len(workers)
+            result["broker_reachable"] = True
+        except Exception as exc:  # broker unreachable / control channel down
+            result["error"] = str(exc)[:200]
+        return result
+
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(_probe), timeout=8.0)
+    except asyncio.TimeoutError:
+        return {
+            "eager": bool(celery_app.conf.task_always_eager),
+            "process_document_registered": True,
+            "broker_reachable": False,
+            "worker_count": 0,
+            "workers": [],
+            "error": "diagnostics probe timed out (broker likely unreachable)",
+        }
+
+
 @router.post("/process")
 async def process(
     file_path: str | None = Query(None, description="Path to file on disk"),

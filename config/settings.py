@@ -55,6 +55,17 @@ class Settings:
         )
         self.REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.REDIS_TIMEOUT_SECONDS = int(os.getenv("REDIS_TIMEOUT_SECONDS", "5"))
+        # Celery broker/result-backend/eager flags (W5-CLAUDE-OCR-PENDING-STALL-FIX-08).
+        # These were previously NOT read here, so `celery_app.py`'s
+        # `getattr(settings, "CELERY_BROKER_URL", ...)` always fell back — the env's
+        # CELERY_BROKER_URL / CELERY_RESULT_BACKEND (e.g. a separate result DB) and
+        # CELERY_TASK_ALWAYS_EAGER were silently ignored. Read them explicitly so
+        # the API and worker honour the same configured broker/backend.
+        self.CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", self.REDIS_URL)
+        self.CELERY_RESULT_BACKEND = os.getenv(
+            "CELERY_RESULT_BACKEND", self.CELERY_BROKER_URL
+        )
+        self.CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "false")
         self.CORS_ORIGINS = _csv_from_env(
             "CORS_ORIGINS",
             "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000",
