@@ -14,6 +14,14 @@ The W6 rule is:
 - Do not leave UI controls that look clickable but are not wired. They must be wired, hidden, or visibly deferred.
 - Keep UX/UI aligned to the existing production-facing design in `src/frontend/main-ux-ui.html`; keep `src/frontend/index.html` in parity when that static fallback is still used.
 
+## Execution Handoff
+
+Use `docs/requirement/phaseII/W6-EXECUTION-HANDOFF-2026-07-19.md` to dispatch the next W6 steps:
+
+- Claude product fix prompt: `docs/requirement/phaseII/W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01.prompt.json`
+- Copilot SIT proof prompt: `docs/requirement/phaseII/W6-COPILOT-SIT-PROOF-02.prompt.json`
+- Codex QA/acceptance prompt: `docs/requirement/phaseII/W6-CODEX-QA-ACCEPTANCE-03.prompt.json`
+
 ## Input Docs Included In W6
 
 These planning files must be read together when assigning or accepting W6 work:

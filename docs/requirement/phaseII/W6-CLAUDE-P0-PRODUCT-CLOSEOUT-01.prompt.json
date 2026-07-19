@@ -1,0 +1,84 @@
+{
+  "_doc_id": "W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01",
+  "_version": "2026-07-19",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_branch": "dev",
+  "_tracking_tag": "W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01",
+  "task_id": "TASK-W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01",
+  "title": "Fix W6 P0 customer-visible product gaps before customer review",
+  "lane": "Claude - product implementation",
+  "objective": "Implement the repo-owned W6 P0 fixes from HR-17. Do not stop at analysis. Patch the product behavior, keep UX aligned to the existing production-facing UI, add focused regression tests, commit, push dev, and write a completion report.",
+  "must_read_first": [
+    "docs/requirement/phaseII/W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md",
+    "docs/requirement/phaseII/W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md",
+    "docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md",
+    "docs/requirement/phaseII/MENU-TREE-IA.html",
+    "docs/requirement/phaseII/BACKLOG.md",
+    "docs/requirement/phaseII/PHASE-II-TIMELINE.html",
+    "docs/requirement/phaseII/PHASE-II-MASTER-PLAN.md",
+    "docs/requirement/phaseII/PHASE-II-EPIC-ROADMAP.md",
+    "src/frontend/main-ux-ui.html",
+    "src/frontend/index.html",
+    "src/frontend/ux-ui-prototype.html",
+    "src/frontend/ux-ui-prototype.css"
+  ],
+  "hard_scope_boundary": {
+    "allowed_scope": [
+      "Export per-document selection, Select All, selected count/total, selected-only preview/download",
+      "Review Scan seller/buyer party fields and line-item approve/reject/unconfirm controls",
+      "Approve All behavior for confirmable line items",
+      "Companies master-data table consistency for COA, AP Vendor Master, AR Customer Master, and Product Master",
+      "Template Configurator mode wiring or honest disabled state, plus manual config fallback",
+      "Upload company Tax ID match/warning if feasible in the current UI/API shape",
+      "Excel-safe date export behavior or an explicit default XLSX/customer-safe path",
+      "Focused API/unit/e2e regression tests that reproduce HR-17 symptoms"
+    ],
+    "forbidden_scope": [
+      "Do not redesign the product shell",
+      "Do not replace the frozen full-page export flow with a modal-first picker",
+      "Do not leave fake-click controls visible on customer-facing surfaces",
+      "Do not weaken auth/RBAC to make tests pass",
+      "Do not edit SIT/VPS directly",
+      "Do not add deploy workflows to this repo"
+    ]
+  },
+  "work_items": [
+    {
+      "id": "W6-C1-01",
+      "source": "HR-17-05",
+      "title": "Export document selection",
+      "required_outcome": "Each export row has a checkbox, Select All/Clear works, preview/download receives selected document_ids, and selected-only output is covered by tests."
+    },
+    {
+      "id": "W6-C1-02",
+      "source": "HR-17-02, HR-17-04",
+      "title": "Review Scan party fields and line-item decisions",
+      "required_outcome": "Seller name, seller tax ID, buyer name, and buyer tax ID are visible/editable. Line items can be confirmed/rejected/unconfirmed. Approve All includes line items or asks clearly."
+    },
+    {
+      "id": "W6-C1-03",
+      "source": "HR-17-07",
+      "title": "Companies master-data tab consistency",
+      "required_outcome": "COA, AP Vendor Master, AR Customer Master, and Product Master share search, count, load more/page, import/add, edit, and delete/deactivate behavior where backend permits."
+    },
+    {
+      "id": "W6-C1-04",
+      "source": "HR-17-08, HR-17-09",
+      "title": "Template Configurator mode/manual fallback",
+      "required_outcome": "Flat Document, Flatten Row, and Grouped Summary are wired or visibly disabled with precise labels. Manual column setup is reachable and aligned with UX freeze."
+    },
+    {
+      "id": "W6-C1-05",
+      "source": "HR-17-01, HR-17-06, HR-17-10",
+      "title": "Upload company match, Excel date proof path, and test quality",
+      "required_outcome": "Restore or clearly warn on company Tax ID match, provide Excel-safe export behavior, and add tests that fail on the observed human issue before passing."
+    }
+  ],
+  "acceptance": [
+    "All touched UI keeps visual/layout alignment with main-ux-ui.html and index.html parity.",
+    "No W6 P0 visible control is UI-only.",
+    "Tests include at least one regression that proves a human-found issue would have been caught.",
+    "Completion report names changed files, tests run, residual risk, and any explicit deferrals."
+  ],
+  "completion_report_path": "docs/requirement/phaseII/epic-10/W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01-COMPLETION.md"
+}

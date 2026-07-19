@@ -1,0 +1,60 @@
+{
+  "_doc_id": "W6-COPILOT-SIT-PROOF-02",
+  "_version": "2026-07-19",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_control_plane_repo_path": "D:/01_gitrepo/Openclaw",
+  "_branch": "dev",
+  "_tracking_tag": "W6-COPILOT-SIT-PROOF-02",
+  "task_id": "TASK-W6-COPILOT-SIT-PROOF-02",
+  "title": "Deploy and prove W6 P0 closeout on live SIT",
+  "lane": "Copilot - deploy/runtime/SIT proof",
+  "objective": "After Claude completes W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01, deploy dev through the Openclaw control plane and produce a customer-review proof pack for the W6 P0 path.",
+  "must_read_first": [
+    "D:/01_gitrepo/Openclaw/docs/cicd/README.md",
+    "D:/01_gitrepo/Openclaw/docs/governance/federated-hybrid-cicd.md",
+    "docs/requirement/phaseII/W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md",
+    "docs/requirement/phaseII/W6-EXECUTION-HANDOFF-2026-07-19.md",
+    "docs/requirement/phaseII/W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md",
+    "docs/requirement/phaseII/epic-10/W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01-COMPLETION.md"
+  ],
+  "preconditions": [
+    "Do not deploy until the Claude completion report exists and the referenced commit is on dev.",
+    "Do not modify the VPS directly.",
+    "Use Openclaw workflows for deploy only.",
+    "Do not claim UAT proof from SIT-only evidence."
+  ],
+  "work_items": [
+    {
+      "id": "W6-CP2-01",
+      "title": "Deploy dev to SIT via Openclaw",
+      "pass_condition": "Record workflow URL, deployed SHA, health/ready status, auth smoke, and route status for /phase2/prototype."
+    },
+    {
+      "id": "W6-CP2-02",
+      "title": "Prove Upload -> Processing -> Review Scan",
+      "pass_condition": "A small known document set reaches Review Scan with party fields visible and company Tax ID match/warning behavior recorded."
+    },
+    {
+      "id": "W6-CP2-03",
+      "title": "Prove line-item decision flow",
+      "pass_condition": "Per-line confirm/reject/unconfirm and Approve All behavior are captured with screenshots and payload/evidence."
+    },
+    {
+      "id": "W6-CP2-04",
+      "title": "Prove Export selected documents",
+      "pass_condition": "Select a subset, preview/download, and show that output contains only selected documents. Include Excel/date behavior evidence."
+    },
+    {
+      "id": "W6-CP2-05",
+      "title": "Prove Companies and Template Configurator visible controls",
+      "pass_condition": "COA/AP/AR/Product tabs show consistent table controls. Template modes are wired or clearly disabled. Manual fallback is reachable."
+    }
+  ],
+  "proof_requirements": [
+    "Each browser proof must show the app left login and reached the target screen.",
+    "Capture screenshots, network/API evidence where practical, and final status table.",
+    "Any fail/partial item must be marked Deferred + customer-safe wording or Hidden.",
+    "Write a final report with commit SHA, deploy SHA, proof artifacts, and go/no-go recommendation."
+  ],
+  "result_report_path": "docs/requirement/phaseII/W6-COPILOT-SIT-PROOF-02-RESULT.md"
+}

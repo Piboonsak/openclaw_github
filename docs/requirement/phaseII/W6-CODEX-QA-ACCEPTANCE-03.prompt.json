@@ -1,0 +1,33 @@
+{
+  "_doc_id": "W6-CODEX-QA-ACCEPTANCE-03",
+  "_version": "2026-07-19",
+  "_repo_path": "D:/01_gitrepo/ai-accounting-copilot",
+  "_branch": "dev",
+  "_tracking_tag": "W6-CODEX-QA-ACCEPTANCE-03",
+  "task_id": "TASK-W6-CODEX-QA-ACCEPTANCE-03",
+  "title": "Review W6 proof, update acceptance status, and prepare customer review script",
+  "lane": "Codex - coordination/QA/status/customer wording",
+  "objective": "After Claude and Copilot finish, review the W6 completion/proof reports, decide Done/Deferred/Hidden per P0 item, update the planning docs, and prepare customer-safe wording for the 2026-07-30 review.",
+  "must_read_first": [
+    "docs/requirement/phaseII/W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md",
+    "docs/requirement/phaseII/W6-EXECUTION-HANDOFF-2026-07-19.md",
+    "docs/requirement/phaseII/epic-10/W6-CLAUDE-P0-PRODUCT-CLOSEOUT-01-COMPLETION.md",
+    "docs/requirement/phaseII/W6-COPILOT-SIT-PROOF-02-RESULT.md",
+    "docs/requirement/phaseII/W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md",
+    "docs/requirement/phaseII/PHASE-II-TIMELINE.html",
+    "docs/requirement/phaseII/W5-TASK-BOARD.md"
+  ],
+  "acceptance_review": [
+    "For every W6 P0 item, assign exactly one status: Done + SIT proof, Deferred + wording, or Hidden.",
+    "Do not accept tests that never left login or only proved mocked UI.",
+    "Check whether docs and runtime claims match the actual evidence.",
+    "Update W6 bundle, W5 task board, roadmap/timeline if the status changed.",
+    "Prepare a short Thai customer-review script: done, proving now, deferred, risk, next date."
+  ],
+  "output_requirements": [
+    "A concise go/no-go decision for 2026-07-30 customer review.",
+    "A table mapping HR-17 IDs to proof/report references.",
+    "Customer-safe Thai wording that avoids internal implementation detail.",
+    "Commit and push any docs-only status updates to dev."
+  ]
+}
