@@ -228,5 +228,60 @@ class TestMasterJoin(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(rows[0]["customer_code"], "")
 
 
+class _DocIdFilteringSession(_FakeSession):
+    """Fake session that actually honors ``Document.id IN (...)`` by compiling the
+    statement with literal bound params and filtering the doc list to the ids that
+    appear in the WHERE clause. This lets us prove the ``document_ids`` scoping in
+    ``build_export_records`` without a real DB engine — the guard the W6-C1-01
+    Export-selection feature depends on."""
+
+    async def execute(self, stmt):
+        text = str(stmt).lower()
+        if "vendor_master" in text or "customer_master" in text:
+            return await super().execute(stmt)
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        if "documents.id in" in compiled.lower():
+            # SQLAlchemy renders UUID literals without dashes, so match on .hex.
+            scoped = [
+                d for d in self._docs
+                if str(d.id) in compiled or d.id.hex in compiled
+            ]
+            return _FakeResult(scoped)
+        return _FakeResult(self._docs)
+
+
+class TestDocumentIdSelection(unittest.IsolatedAsyncioTestCase):
+    """HR-17-05 / W6-C1-01: Export must be scoped to the documents the user
+    selected. Before the fix the frontend never sent ``document_ids`` and every
+    export dumped all mapping_confirmed docs. These prove the backend contract
+    the new per-document checkboxes rely on."""
+
+    def _two_docs(self):
+        company_id = uuid.uuid4()
+        doc_a = _doc_with_voucher()
+        doc_b = _doc_with_voucher()
+        doc_a.company_id = company_id
+        doc_b.company_id = company_id
+        doc_a.invoice_number = "INV-A"
+        doc_b.invoice_number = "INV-B"
+        return company_id, doc_a, doc_b
+
+    async def test_document_ids_scopes_export_to_selection(self):
+        company_id, doc_a, doc_b = self._two_docs()
+        session = _DocIdFilteringSession(_company(), [doc_a, doc_b])
+        rows = await build_export_records(
+            session, company_id, document_ids=[doc_a.id]
+        )
+        invoices = {r["invoice_number"] for r in rows}
+        self.assertEqual(invoices, {"INV-A"})  # doc_b excluded, not exported
+
+    async def test_no_document_ids_exports_all(self):
+        company_id, doc_a, doc_b = self._two_docs()
+        session = _DocIdFilteringSession(_company(), [doc_a, doc_b])
+        rows = await build_export_records(session, company_id, document_ids=None)
+        invoices = {r["invoice_number"] for r in rows}
+        self.assertEqual(invoices, {"INV-A", "INV-B"})
+
+
 if __name__ == "__main__":
     unittest.main()

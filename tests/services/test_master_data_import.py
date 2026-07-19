@@ -6,7 +6,11 @@ import unittest
 import uuid
 
 from src.backend.db.models import CustomerMaster, VendorMaster
-from src.backend.services.master_data_import import import_master_csv, list_master_entries
+from src.backend.services.master_data_import import (
+    deactivate_master_entry,
+    import_master_csv,
+    list_master_entries,
+)
 
 
 def _csv_bytes(headers: list[str], rows: list[list[str]], encoding: str = "utf-8") -> bytes:
@@ -85,6 +89,24 @@ class InMemoryMasterRepository:
                 or needle in row.customer_name.lower()
             ]
         return sorted(items, key=lambda row: row.customer_code)
+
+    async def deactivate_vendor(
+        self, company_id: uuid.UUID, vendor_code: str
+    ) -> bool:
+        entry = self.vendors.get((company_id, vendor_code))
+        if entry is None:
+            return False
+        entry.is_active = False
+        return True
+
+    async def deactivate_customer(
+        self, company_id: uuid.UUID, customer_code: str
+    ) -> bool:
+        entry = self.customers.get((company_id, customer_code))
+        if entry is None:
+            return False
+        entry.is_active = False
+        return True
 
 
 class TestMasterDataImport(unittest.IsolatedAsyncioTestCase):
@@ -273,6 +295,41 @@ class TestExpressExportAdapter(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result.imported, 1)
         self.assertEqual(repo.vendors[(company_id, "V001")].vendor_name, "Regular Vendor Co")
+
+
+class TestMasterDeactivate(unittest.IsolatedAsyncioTestCase):
+    """HR-17-07: master-data rows must be deletable (soft-delete/deactivate). No
+    delete path existed before; this proves the new deactivate contract."""
+
+    async def _seed_vendor(self, company_id):
+        repo = InMemoryMasterRepository([company_id])
+        await import_master_csv(
+            repo,
+            company_id,
+            "vendor",
+            _csv_bytes(["vendor_code", "vendor_name"], [["V001", "ACME"]]),
+        )
+        return repo
+
+    async def test_deactivate_marks_vendor_inactive(self) -> None:
+        company_id = uuid.uuid4()
+        repo = await self._seed_vendor(company_id)
+        self.assertTrue(repo.vendors[(company_id, "V001")].is_active)
+
+        await deactivate_master_entry(repo, company_id, "vendor", "V001")
+
+        self.assertFalse(repo.vendors[(company_id, "V001")].is_active)
+
+    async def test_deactivate_unknown_code_raises_valueerror(self) -> None:
+        company_id = uuid.uuid4()
+        repo = await self._seed_vendor(company_id)
+        with self.assertRaises(ValueError):
+            await deactivate_master_entry(repo, company_id, "vendor", "NOPE")
+
+    async def test_deactivate_unknown_company_raises_lookuperror(self) -> None:
+        repo = InMemoryMasterRepository([])
+        with self.assertRaises(LookupError):
+            await deactivate_master_entry(repo, uuid.uuid4(), "customer", "C001")
 
 
 if __name__ == "__main__":

@@ -48,6 +48,25 @@ class ColumnDef:
         )
 
 
+# HR-17-06: a column holds a date if it is typed as one, carries a Thai-date
+# transform, or maps a known date source field. The UI historically saved every
+# column as data_type="string", so relying on data_type alone let raw dates
+# through and Excel auto-mangled them (e.g. 01/05/69 -> 1 May 2069). Detecting
+# via transform/source_field makes the Excel-safe path fire regardless.
+_DATE_TRANSFORMS = frozenset({"thai_date", "thai_date_full", "thai_date_short"})
+_DATE_SOURCE_FIELDS = frozenset(
+    {"invoice_date", "voucher_date", "date", "document_date", "doc_date"}
+)
+
+
+def _is_date_column(col: "ColumnDef") -> bool:
+    return (
+        getattr(col, "data_type", "") == "date"
+        or getattr(col, "transform", None) in _DATE_TRANSFORMS
+        or getattr(col, "source_field", "") in _DATE_SOURCE_FIELDS
+    )
+
+
 # ---------------------------------------------------------------------------
 # Express Transaction field aliases
 # Allow templates to use semantic aliases that map to extraction/journal fields
@@ -291,7 +310,7 @@ class TemplateEngine:
         date_indices: set[int] = set()
         if date_as_excel_text and columns:
             for i, col in enumerate(columns):
-                if col.data_type == "date":
+                if _is_date_column(col):
                     date_indices.add(i)
 
         buf = io.StringIO()
@@ -344,7 +363,7 @@ class TemplateEngine:
         col_fmts: list[Any] = []
         if columns:
             for col in columns:
-                if col.data_type == "date":
+                if _is_date_column(col):
                     col_fmts.append(text_fmt)
                 elif col.data_type == "number":
                     col_fmts.append(number_fmt)

@@ -11,6 +11,7 @@ import uuid
 
 from src.backend.db.models import ProductMaster
 from src.backend.services.product_master_import import (
+    deactivate_product_master_entry,
     import_product_master_csv,
     list_product_master_entries,
     parse_product_master_csv,
@@ -30,6 +31,15 @@ class InMemoryProductMasterRepository:
 
     async def add_product(self, entry: ProductMaster) -> None:
         self.products[(entry.company_id, entry.product_code)] = entry
+
+    async def deactivate_product(
+        self, company_id: uuid.UUID, product_code: str
+    ) -> bool:
+        entry = self.products.get((company_id, product_code))
+        if entry is None:
+            return False
+        entry.is_active = False
+        return True
 
     async def list_products(self, company_id: uuid.UUID, search: str | None):
         items = [p for (cid, _), p in self.products.items() if cid == company_id]
@@ -164,6 +174,27 @@ class TestListProductMasterEntries(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result.total, 1)
         self.assertEqual(result.items[0].code, "P001")
+
+
+class TestDeactivateProduct(unittest.IsolatedAsyncioTestCase):
+    """HR-17-07: product master rows must be soft-deletable."""
+
+    async def test_deactivate_marks_product_inactive(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryProductMasterRepository([company_id])
+        await repo.add_product(
+            ProductMaster(company_id=company_id, product_code="P001", product_name="Alpha", is_active=True)
+        )
+
+        await deactivate_product_master_entry(repo, company_id, "P001")
+
+        self.assertFalse(repo.products[(company_id, "P001")].is_active)
+
+    async def test_deactivate_unknown_product_raises(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryProductMasterRepository([company_id])
+        with self.assertRaises(ValueError):
+            await deactivate_product_master_entry(repo, company_id, "GHOST")
 
 
 if __name__ == "__main__":

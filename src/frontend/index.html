@@ -1095,23 +1095,24 @@
           <div style="font-size:0.82rem;color:var(--muted);">รายการผู้จำหน่ายที่ใช้ matching ตอน import และเตรียมสำหรับ export (Accounts Payable)</div>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" onclick="showToast('เพิ่มทีละรายการยังไม่รองรับ — ใช้ นำเข้า CSV แทน (deferred)','warn')">+ เพิ่มผู้จำหน่าย</button>
-          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-vendor')">📁 นำเข้า Vendor CSV/YAML</button>
+          <button class="btn btn-ghost btn-sm" disabled title="เพิ่มทีละรายการ (single-row add) ยังไม่รองรับใน W6 — ใช้ 'นำเข้า CSV' แทน">+ เพิ่มผู้จำหน่าย (ใช้ CSV)</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-import-vendor')">📁 นำเข้า Vendor CSV/YAML</button>
         </div>
       </div>
 
       <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
         <strong style="color:var(--warn);">Note:</strong>
-        <span>เพิ่มแถวผู้จำหน่ายได้แม้ยังไม่มีรหัส แล้วค่อยอัปเดตทีหลังด้วยเลขที่บัญชีของบริษัทเดียวกัน</span>
+        <span>เพิ่ม/อัปเดตผู้จำหน่ายผ่านการนำเข้า CSV (upsert ตามรหัส) — ลบได้แบบ deactivate (ปิดใช้งาน) โดยไม่ลบประวัติ</span>
       </div>
 
+      <input class="search-input" type="search" id="vendorSearchInput" placeholder="ค้นหารหัส/ชื่อผู้จำหน่าย..." oninput="searchVendorMaster()" style="margin-bottom:0.85rem;" />
       <div id="vendorMasterStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลด...</div>
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th style="width:130px;">Vendor Code</th><th>ชื่อผู้จำหน่าย</th><th style="width:150px;">GL Code</th><th style="width:130px;">สถานะ</th></tr></thead>
+            <thead><tr><th style="width:130px;">Vendor Code</th><th>ชื่อผู้จำหน่าย</th><th style="width:150px;">GL Code</th><th style="width:110px;">สถานะ</th><th style="width:90px;text-align:center;">จัดการ</th></tr></thead>
             <tbody id="vendorMasterTableBody">
-              <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1124,23 +1125,24 @@
           <div style="font-size:0.82rem;color:var(--muted);">รายการลูกค้าที่ใช้ matching ตอน import และเตรียมสำหรับ export (Accounts Receivable) — แยกจาก AP เพื่อไม่ให้ปนกัน</div>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" onclick="showToast('เพิ่มทีละรายการยังไม่รองรับ — ใช้ นำเข้า CSV แทน (deferred)','warn')">+ เพิ่มลูกค้า</button>
-          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-import-customer')">📁 นำเข้า Customer CSV/YAML</button>
+          <button class="btn btn-ghost btn-sm" disabled title="เพิ่มทีละรายการ (single-row add) ยังไม่รองรับใน W6 — ใช้ 'นำเข้า CSV' แทน">+ เพิ่มลูกค้า (ใช้ CSV)</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-import-customer')">📁 นำเข้า Customer CSV/YAML</button>
         </div>
       </div>
 
       <div style="display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;margin-bottom:1rem;font-size:0.84rem;">
         <strong style="color:var(--warn);">Note:</strong>
-        <span>เพิ่มแถวลูกค้าได้แม้ยังไม่มีรหัส แล้วค่อยอัปเดตทีหลังด้วยเลขที่บัญชีของบริษัทเดียวกัน</span>
+        <span>เพิ่ม/อัปเดตลูกค้าผ่านการนำเข้า CSV (upsert ตามรหัส) — ลบได้แบบ deactivate (ปิดใช้งาน) โดยไม่ลบประวัติ</span>
       </div>
 
+      <input class="search-input" type="search" id="customerSearchInput" placeholder="ค้นหารหัส/ชื่อลูกค้า..." oninput="searchCustomerMaster()" style="margin-bottom:0.85rem;" />
       <div id="customerMasterStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">กำลังโหลด...</div>
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th style="width:130px;">Customer Code</th><th>ชื่อลูกค้า</th><th style="width:100px;">AR Flag</th><th style="width:130px;">สถานะ</th></tr></thead>
+            <thead><tr><th style="width:130px;">Customer Code</th><th>ชื่อลูกค้า</th><th style="width:90px;">AR Flag</th><th style="width:110px;">สถานะ</th><th style="width:90px;text-align:center;">จัดการ</th></tr></thead>
             <tbody id="customerMasterTableBody">
-              <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1164,9 +1166,9 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th style="width:130px;">Product Code</th><th>ชื่อสินค้า</th><th style="width:100px;">หน่วย</th><th style="width:120px;text-align:right;">ราคาต่อหน่วย</th><th style="width:120px;">หมวด</th></tr></thead>
+            <thead><tr><th style="width:130px;">Product Code</th><th>ชื่อสินค้า</th><th style="width:80px;">หน่วย</th><th style="width:110px;text-align:right;">ราคาต่อหน่วย</th><th style="width:110px;">หมวด</th><th style="width:90px;text-align:center;">จัดการ</th></tr></thead>
             <tbody id="productMasterTableBody">
-              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.25rem;">กำลังโหลด...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1471,35 +1473,21 @@
     </div>
     <div id="configConfigureLiveColumns" style="margin-top:.85rem;font-size:.82rem;color:var(--muted);">ยังไม่มี runtime columns จาก live analysis</div>
   </div>
-  <!-- Row-grouping strategy: design reference only — row_source/aggregation are not part of the
-       current ColumnDefSchema/backend contract, so these controls are intentionally not wired.
-       See W4-EPIC10-CLAUDE-FOLLOWUP-01 cleanup note before wiring this block. -->
-  <div class="card" style="padding:.875rem;margin-bottom:1rem;background:#f9fafb;">
+  <!-- HR-17-08 / W6-C1-04: Template Mode is now wired end-to-end. The selected
+       mode is saved on the template (ExportTemplate.template_mode) and drives the
+       export row shape on the backend (flat_document -> document granularity,
+       flatten_row -> line_item, grouped_summary -> journal/GL posting). -->
+  <div class="card" style="padding:.875rem;margin-bottom:1rem;">
     <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap;">
-      <span class="section-title" style="font-size:.82rem;margin:0;">Row-grouping Strategy</span>
-      <span class="badge badge-muted" style="font-size:.68rem;">Design reference — not wired (no row_source/aggregation field in the current template schema)</span>
+      <span class="section-title" style="font-size:.82rem;margin:0;">Template Mode — รูปแบบแถวในไฟล์ export</span>
+      <span class="badge badge-ok" style="font-size:.68rem;">เชื่อมต่อ backend แล้ว</span>
     </div>
-    <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:.85rem;align-items:start;opacity:.7;">
-      <div>
-        <div class="field-label" style="font-size:.78rem;">Template Mode</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" disabled>Flat Document</button>
-          <button class="btn btn-ghost btn-sm" disabled>Flatten Row</button>
-          <button class="btn btn-ghost btn-sm" disabled>Grouped Summary</button>
-        </div>
-        <div class="field-hint" style="margin-top:.45rem;">กำหนดว่า 1 เอกสารจะออกกี่แถวในไฟล์ปลายทาง</div>
-      </div>
-      <div class="field-group" style="margin:0;">
-        <label class="field-label" style="font-size:.78rem;">Row Source</label>
-        <select class="field-select" style="font-size:.82rem;padding:.4rem .6rem;width:100%;" disabled>
-          <option selected>journal_lines</option>
-        </select>
-      </div>
-      <div class="field-group" style="margin:0;">
-        <label class="field-label" style="font-size:.78rem;">Document Number Strategy</label>
-        <input class="field-input mono" type="text" value="YYMM/NNN" style="font-size:.82rem;padding:.4rem .6rem;width:100%;" disabled />
-      </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;" id="templateModeButtons">
+      <button type="button" class="btn btn-ghost btn-sm" data-template-mode="flat_document" onclick="setTemplateMode('flat_document')">Flat Document</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-template-mode="flatten_row" onclick="setTemplateMode('flatten_row')">Flatten Row (Line Items)</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-template-mode="grouped_summary" onclick="setTemplateMode('grouped_summary')">Grouped Summary (GL)</button>
     </div>
+    <div class="field-hint" id="templateModeHint" style="margin-top:.5rem;"></div>
   </div>
 
   <!-- Real, wired column editor — shares state.exportColumns with the Export screen -->
@@ -3114,6 +3102,9 @@
     configuratorTab: "upload",
     exportMode: "template",
     exportColumns: [],
+    exportDocs: [],
+    exportSelectedDocIds: {},
+    templateMode: "flat_document",
     companies: [],
     users: [],
     companyDrawerMode: "create",
@@ -3621,6 +3612,11 @@
       column.visible = true;
       return column;
     });
+    // HR-17-08: adopt the analyzer's suggested row shape (flat_document / flatten_row).
+    if (TEMPLATE_MODE_HINTS[state.analysis.suggested_template_mode]) {
+      state.templateMode = state.analysis.suggested_template_mode;
+    }
+    renderTemplateModeButtons();
     renderExportColumnsPanel();
     renderExportAddColumnOptions();
     updateConfiguratorRuntimeFromAnalysis();
@@ -3651,6 +3647,11 @@
   function syncSelectedTemplate(templateId) {
     state.selectedTemplateId = templateId || "";
     state.activeTemplate = getTemplateById(state.selectedTemplateId);
+    // HR-17-08: adopt the selected template's saved mode so the configurator
+    // reflects (and re-saves) the real row shape.
+    if (state.activeTemplate && state.activeTemplate.template_mode) {
+      state.templateMode = state.activeTemplate.template_mode;
+    }
     ["liveTemplateSelect", "exportTemplateSelect"].forEach(function (id) {
       var select = getEl(id);
       if (!select) return;
@@ -3658,10 +3659,39 @@
         select.value = templateId;
       }
     });
+    renderTemplateModeButtons();
     refreshExportColumnsFromActiveTemplate();
     renderConfiguratorConfigurePanel();
     refreshConfiguratorTestTab();
   }
+
+  // HR-17-08 / W6-C1-04: wired Template Mode selector. Persisted on the template
+  // and drives backend export granularity.
+  var TEMPLATE_MODE_HINTS = {
+    flat_document: "Flat Document — 1 เอกสารออก 1 แถว (header-level export ปกติ)",
+    flatten_row: "Flatten Row — 1 รายการสินค้า (line item) ที่ยืนยันแล้วออก 1 แถว — ใช้ export ระดับ line item",
+    grouped_summary: "Grouped Summary — 1 บรรทัดบัญชี (GL Dr/Cr posting) ออก 1 แถว สำหรับสรุปลงบัญชี",
+  };
+
+  function renderTemplateModeButtons() {
+    var wrap = getEl("templateModeButtons");
+    if (wrap) {
+      wrap.querySelectorAll("button[data-template-mode]").forEach(function (btn) {
+        var active = btn.getAttribute("data-template-mode") === state.templateMode;
+        btn.className = "btn btn-sm " + (active ? "btn-primary" : "btn-ghost");
+      });
+    }
+    var hint = getEl("templateModeHint");
+    if (hint) hint.textContent = TEMPLATE_MODE_HINTS[state.templateMode] || "";
+  }
+
+  function setTemplateMode(mode) {
+    if (!TEMPLATE_MODE_HINTS[mode]) return;
+    state.templateMode = mode;
+    renderTemplateModeButtons();
+  }
+  window.setTemplateMode = setTemplateMode;
+  window.renderTemplateModeButtons = renderTemplateModeButtons;
 
   /* ── Export: Adjust Columns panel (inline, per UX-FREEZE-EXPORT-CONFIGURATOR.md Decision 2) ── */
 
@@ -3882,7 +3912,8 @@
       file_format: getEl("exportFormatSelect").value === "xlsx" ? "xlsx" : "csv",
       encoding: getEl("exportEncodingSelect").value,
       delimiter: ",",
-      is_master: false
+      is_master: false,
+      template_mode: state.templateMode
     };
     if (!payload.company_id) {
       throw new Error("Current user has no company assignment for saving a template");
@@ -3928,7 +3959,8 @@
           format_pattern: null,
           default_value: null
         };
-      })
+      }),
+      template_mode: state.templateMode
     };
     var response = await apiFetch(auth.apiUrl("/api/v1/templates/" + encodeURIComponent(templateId)), {
       method: "PUT",
@@ -3977,6 +4009,53 @@
     return !!(el && el.checked);
   }
 
+  // ── Export document selection (HR-17-05 / W6-C1-01) ─────────────────────
+  // Per-document checkboxes + Select All/Clear. The backend already filters by
+  // `document_ids` on /v1/export and /v1/export/preview; the frontend only ever
+  // sent company_id, so every export dumped all mapping_confirmed docs. These
+  // helpers track the user's selection and feed it into the export payloads.
+  function getSelectedExportDocIds() {
+    return state.exportDocs
+      .map(function (d) { return String(d.id); })
+      .filter(function (id) { return state.exportSelectedDocIds[id]; });
+  }
+
+  function updateExportSelectionSummary() {
+    var summaryEl = getEl("exportSelectionSummary");
+    var selectAllEl = getEl("exportSelectAll");
+    var selectedIds = getSelectedExportDocIds();
+    var total = state.exportDocs.reduce(function (sum, d) {
+      return state.exportSelectedDocIds[String(d.id)] && d.total_amount != null
+        ? sum + Number(d.total_amount)
+        : sum;
+    }, 0);
+    if (summaryEl) {
+      summaryEl.textContent = "เลือก " + selectedIds.length + " จาก " + state.exportDocs.length +
+        " เอกสาร · ฿" + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    if (selectAllEl) {
+      selectAllEl.checked = state.exportDocs.length > 0 && selectedIds.length === state.exportDocs.length;
+      selectAllEl.indeterminate = selectedIds.length > 0 && selectedIds.length < state.exportDocs.length;
+    }
+  }
+
+  function toggleExportDoc(docId, checked) {
+    state.exportSelectedDocIds[String(docId)] = !!checked;
+    updateExportSelectionSummary();
+  }
+
+  function toggleExportSelectAll(checked) {
+    state.exportDocs.forEach(function (d) {
+      state.exportSelectedDocIds[String(d.id)] = !!checked;
+    });
+    document.querySelectorAll('#exportDocsBody input[data-export-doc-id]').forEach(function (cb) {
+      cb.checked = !!checked;
+    });
+    updateExportSelectionSummary();
+  }
+  window.toggleExportDoc = toggleExportDoc;
+  window.toggleExportSelectAll = toggleExportSelectAll;
+
   async function renderExportDocuments() {
     var body = getEl("exportDocsBody");
     var countEl = getEl("exportDocsCount");
@@ -3985,6 +4064,8 @@
       toggleWrap.style.display = currentCompanyLineItemEnabled() ? "flex" : "none";
     }
     if (!body) return;
+    state.exportDocs = [];
+    state.exportSelectedDocIds = {};
     if (!state.currentCompanyId) {
       body.innerHTML = '<div style="color:var(--muted);">เลือกบริษัทก่อน (แถบด้านบน) เพื่อดูเอกสารที่พร้อม export</div>';
       if (countEl) countEl.textContent = "";
@@ -4002,18 +4083,29 @@
         body.innerHTML = '<div style="padding:.6rem .8rem;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;color:var(--warn);font-size:.8rem;">ยังไม่มีเอกสารที่พร้อม export — ยืนยัน Mapping (Confirm Mapping) ให้เสร็จก่อน แล้วเอกสารจะปรากฏที่นี่ (ไม่มีการแสดงข้อมูลตัวอย่างแทน)</div>';
         return;
       }
+      // Default: all documents selected (matches the frozen Export UX where docs
+      // are pre-selected and the user unchecks what they do not want).
+      state.exportDocs = docs;
+      docs.forEach(function (d) { state.exportSelectedDocIds[String(d.id)] = true; });
       body.innerHTML =
         '<table class="data-table" style="width:100%;font-size:.8rem;"><thead><tr>' +
+        '<th style="width:34px;text-align:center;"><input type="checkbox" id="exportSelectAll" checked ' +
+        'onchange="toggleExportSelectAll(this.checked)" title="เลือกทั้งหมด / ล้าง" /></th>' +
         '<th>ไฟล์</th><th>เลขที่</th><th style="text-align:right;">ยอดรวม</th></tr></thead><tbody>' +
         docs.map(function (d) {
           var total = d.total_amount != null
             ? Number(d.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
             : "—";
-          return "<tr><td class=\"mono\" style=\"font-size:.78rem;\">" + escapeHtml(d.filename || "") + "</td>" +
+          var docId = escapeHtml(String(d.id));
+          return "<tr><td style=\"text-align:center;\"><input type=\"checkbox\" data-export-doc-id=\"" + docId +
+            "\" checked onchange=\"toggleExportDoc('" + docId + "', this.checked)\" /></td>" +
+            "<td class=\"mono\" style=\"font-size:.78rem;\">" + escapeHtml(d.filename || "") + "</td>" +
             "<td>" + escapeHtml(d.invoice_number || "—") + "</td>" +
             "<td style=\"text-align:right;\">" + total + "</td></tr>";
         }).join("") +
-        "</tbody></table>";
+        "</tbody></table>" +
+        '<div id="exportSelectionSummary" style="margin-top:.6rem;font-size:.8rem;font-weight:600;color:var(--text);"></div>';
+      updateExportSelectionSummary();
     } catch (error) {
       body.innerHTML = '<div style="color:var(--danger);font-size:.8rem;">โหลดรายการเอกสารไม่สำเร็จ: ' + escapeHtml(error.message) + '</div>';
       if (countEl) countEl.textContent = "";
@@ -4419,7 +4511,8 @@
       file_format: "csv",
       encoding: state.analysis.suggested_encoding || "utf-8",
       delimiter: ",",
-      is_master: false
+      is_master: false,
+      template_mode: state.templateMode
     };
     if (!payload.company_id) {
       throw new Error("Current user has no company assignment for draft template creation");
@@ -4480,11 +4573,17 @@
       showToast("Select a template first", "warn");
       return;
     }
+    var selectedDocIds = getSelectedExportDocIds();
+    if (state.currentCompanyId && state.exportDocs.length && !selectedDocIds.length) {
+      showToast("เลือกอย่างน้อยหนึ่งเอกสารก่อน preview", "warn");
+      return;
+    }
     var payload = {
       template_id: templateId,
       sample_data: getEffectiveSampleData(),
       column_overrides: buildRuntimeColumnPayload({ disableTransforms: state.exportMode === "quick" }),
       company_id: state.currentCompanyId || null,
+      document_ids: selectedDocIds.length ? selectedDocIds : null,
       include_line_items: exportIncludeLineItemsChecked()
     };
     var response = await apiFetch(auth.apiUrl("/api/v1/export/preview"), {
@@ -4543,6 +4642,11 @@
     }
     var format = getEl("exportFormatSelect").value;
     var encoding = getEl("exportEncodingSelect").value;
+    var selectedDocIds = getSelectedExportDocIds();
+    if (state.currentCompanyId && state.exportDocs.length && !selectedDocIds.length) {
+      showToast("เลือกอย่างน้อยหนึ่งเอกสารก่อน export", "warn");
+      return;
+    }
     var response = await apiFetch(auth.apiUrl("/api/v1/export"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -4554,6 +4658,7 @@
         encoding: encoding,
         filename: "w4-live-export",
         company_id: state.currentCompanyId || null,
+        document_ids: selectedDocIds.length ? selectedDocIds : null,
         include_line_items: exportIncludeLineItemsChecked()
       })
     });
@@ -5174,15 +5279,29 @@
 
   /* ── AP/AR master data (W4 SIT closure — wired to existing TASK-1207 API) ── */
 
-  async function loadVendorMaster(companyId) {
+  // HR-17-07: master-data tabs share one pattern — search box, count, and a
+  // deactivate (soft-delete) action per row backed by the new DELETE endpoints.
+  function masterDeleteCell(kind, code, isActive) {
+    if (!isActive) {
+      return '<td style="text-align:center;color:var(--muted);font-size:.72rem;">ปิดใช้งานแล้ว</td>';
+    }
+    var safeCode = escapeHtml(String(code)).replace(/'/g, "\\'");
+    return '<td style="text-align:center;"><button type="button" class="btn btn-ghost btn-sm" ' +
+      'style="padding:1px 8px;color:var(--danger);" title="ปิดใช้งาน (deactivate)" ' +
+      'onclick="deactivateMasterRow(\'' + kind + '\',\'' + safeCode + '\')">🗑 ปิด</button></td>';
+  }
+
+  async function loadVendorMaster(companyId, search) {
     var statusEl = getEl("vendorMasterStatus");
     var tbody = getEl("vendorMasterTableBody");
+    var qs = search ? ("?q=" + encodeURIComponent(search)) : "";
     try {
-      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/vendor-master"));
+      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/vendor-master" + qs));
       if (!response.ok) throw new Error("Vendor master load failed: HTTP " + response.status);
       var result = await response.json();
       var items = result.items || [];
-      if (statusEl) statusEl.textContent = "ผู้จำหน่าย " + (result.total != null ? result.total : items.length) + " รายการ";
+      var count = result.total != null ? result.total : items.length;
+      if (statusEl) statusEl.textContent = "ผู้จำหน่าย " + count + " รายการ" + (search ? " (ค้นหา: \"" + search + "\")" : "");
       if (tbody) {
         tbody.innerHTML = items.length
           ? items.map(function (v) {
@@ -5192,25 +5311,29 @@
                 "<td>" + escapeHtml(v.name) + "</td>" +
                 '<td class="mono">' + escapeHtml(glCode) + "</td>" +
                 "<td>" + (v.is_active ? '<span class="badge badge-ok">Active</span>' : '<span class="badge badge-muted">Inactive</span>') + "</td>" +
+                masterDeleteCell("vendor", v.code, v.is_active) +
               "</tr>";
             }).join("")
-          : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มีข้อมูลผู้จำหน่าย — นำเข้า CSV เพื่อเริ่มต้น</td></tr>';
+          : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">' +
+            (search ? "ไม่พบผู้จำหน่ายที่ตรงกับคำค้น" : "ยังไม่มีข้อมูลผู้จำหน่าย — นำเข้า CSV เพื่อเริ่มต้น") + '</td></tr>';
       }
     } catch (error) {
       if (statusEl) statusEl.textContent = "โหลดข้อมูลผู้จำหน่ายไม่สำเร็จ: " + error.message;
-      if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
     }
   }
 
-  async function loadCustomerMaster(companyId) {
+  async function loadCustomerMaster(companyId, search) {
     var statusEl = getEl("customerMasterStatus");
     var tbody = getEl("customerMasterTableBody");
+    var qs = search ? ("?q=" + encodeURIComponent(search)) : "";
     try {
-      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/customer-master"));
+      var response = await apiFetch(auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + "/customer-master" + qs));
       if (!response.ok) throw new Error("Customer master load failed: HTTP " + response.status);
       var result = await response.json();
       var items = result.items || [];
-      if (statusEl) statusEl.textContent = "ลูกค้า " + (result.total != null ? result.total : items.length) + " รายการ";
+      var count = result.total != null ? result.total : items.length;
+      if (statusEl) statusEl.textContent = "ลูกค้า " + count + " รายการ" + (search ? " (ค้นหา: \"" + search + "\")" : "");
       if (tbody) {
         tbody.innerHTML = items.length
           ? items.map(function (c) {
@@ -5220,15 +5343,71 @@
                 "<td>" + escapeHtml(c.name) + "</td>" +
                 '<td class="mono">' + escapeHtml(String(arFlag)) + "</td>" +
                 "<td>" + (c.is_active ? '<span class="badge badge-ok">Active</span>' : '<span class="badge badge-muted">Inactive</span>') + "</td>" +
+                masterDeleteCell("customer", c.code, c.is_active) +
               "</tr>";
             }).join("")
-          : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มีข้อมูลลูกค้า — นำเข้า CSV เพื่อเริ่มต้น</td></tr>';
+          : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">' +
+            (search ? "ไม่พบลูกค้าที่ตรงกับคำค้น" : "ยังไม่มีข้อมูลลูกค้า — นำเข้า CSV เพื่อเริ่มต้น") + '</td></tr>';
       }
     } catch (error) {
       if (statusEl) statusEl.textContent = "โหลดข้อมูลลูกค้าไม่สำเร็จ: " + error.message;
-      if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
     }
   }
+
+  var _vendorSearchTimer = null;
+  function searchVendorMaster() {
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) return;
+    var q = (getEl("vendorSearchInput") || {}).value || "";
+    if (_vendorSearchTimer) clearTimeout(_vendorSearchTimer);
+    _vendorSearchTimer = setTimeout(function () {
+      loadVendorMaster(companyId, q.trim()).catch(handleError);
+    }, 250);
+  }
+
+  var _customerSearchTimer = null;
+  function searchCustomerMaster() {
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) return;
+    var q = (getEl("customerSearchInput") || {}).value || "";
+    if (_customerSearchTimer) clearTimeout(_customerSearchTimer);
+    _customerSearchTimer = setTimeout(function () {
+      loadCustomerMaster(companyId, q.trim()).catch(handleError);
+    }, 250);
+  }
+
+  async function deactivateMasterRow(kind, code) {
+    var companyId = state.selectedCompanyDetailId;
+    if (!companyId) { showToast("ไม่พบบริษัทที่เลือกอยู่", "warn"); return; }
+    var pathByKind = {
+      vendor: "/vendor-master/",
+      customer: "/customer-master/",
+      product: "/product-master/",
+    };
+    var path = pathByKind[kind];
+    if (!path) return;
+    if (!window.confirm("ปิดใช้งานรายการรหัส '" + code + "' ? (ประวัติจะยังอยู่ แต่จะไม่ถูกใช้ matching/export)")) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/companies/" + encodeURIComponent(companyId) + path + encodeURIComponent(code)),
+        { method: "DELETE" }
+      );
+      if (!response.ok && response.status !== 204) {
+        var body = await response.json().catch(function () { return {}; });
+        throw new Error(body.detail || ("HTTP " + response.status));
+      }
+      showToast("ปิดใช้งานรายการแล้ว ✓", "ok");
+      if (kind === "vendor") await loadVendorMaster(companyId, ((getEl("vendorSearchInput") || {}).value || "").trim());
+      else if (kind === "customer") await loadCustomerMaster(companyId, ((getEl("customerSearchInput") || {}).value || "").trim());
+      else if (kind === "product") await loadProductMaster(companyId, ((getEl("productSearchInput") || {}).value || "").trim());
+    } catch (error) {
+      showToast("ปิดใช้งานไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+  window.searchVendorMaster = searchVendorMaster;
+  window.searchCustomerMaster = searchCustomerMaster;
+  window.deactivateMasterRow = deactivateMasterRow;
 
   async function importVendorMasterFile() {
     var user = await requireLiveAuth();
@@ -5337,24 +5516,28 @@
       if (!response.ok) throw new Error("Product master load failed: HTTP " + response.status);
       var result = await response.json();
       var items = result.items || [];
-      if (statusEl) statusEl.textContent = "สินค้า " + (result.total != null ? result.total : items.length) + " รายการ";
+      var count = result.total != null ? result.total : items.length;
+      if (statusEl) statusEl.textContent = "สินค้า " + count + " รายการ" + (search ? " (ค้นหา: \"" + search + "\")" : "");
       if (tbody) {
         tbody.innerHTML = items.length
           ? items.map(function (p) {
               var cost = p.unit_cost != null ? Number(p.unit_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : "—";
+              var active = p.is_active !== false;
               return "<tr>" +
                 '<td class="mono" style="font-weight:600;">' + escapeHtml(p.code) + "</td>" +
                 "<td>" + escapeHtml(p.name) + "</td>" +
                 "<td>" + escapeHtml(p.unit || "—") + "</td>" +
                 '<td class="mono" style="text-align:right;">' + cost + "</td>" +
                 "<td>" + escapeHtml(p.category || "—") + "</td>" +
+                masterDeleteCell("product", p.code, active) +
               "</tr>";
             }).join("")
-          : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.25rem;">ยังไม่มีข้อมูลสินค้า — นำเข้า CSV เพื่อเริ่มต้น</td></tr>';
+          : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.25rem;">' +
+            (search ? "ไม่พบสินค้าที่ตรงกับคำค้น" : "ยังไม่มีข้อมูลสินค้า — นำเข้า CSV เพื่อเริ่มต้น") + '</td></tr>';
       }
     } catch (error) {
       if (statusEl) statusEl.textContent = "โหลดข้อมูลสินค้าไม่สำเร็จ: " + error.message;
-      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger);padding:1.25rem;">โหลดไม่สำเร็จ</td></tr>';
     }
   }
 
@@ -6255,6 +6438,14 @@
         var errorNote = doc.processing_error
           ? '<div style="font-size:.72rem;color:var(--danger);margin-top:.2rem;">' + escapeHtml(doc.processing_error) + '</div>'
           : "";
+        // HR-17-01: PoC-style first-pass company match — compare the extracted
+        // seller/buyer tax IDs against the selected company right after processing.
+        var taxMatchNote = "";
+        if (doc.taxid_match === true) {
+          taxMatchNote = '<div style="font-size:.7rem;color:var(--ok);margin-top:.15rem;">✓ เลขผู้เสียภาษีตรงกับบริษัทที่เลือก</div>';
+        } else if (doc.taxid_match === false) {
+          taxMatchNote = '<div style="font-size:.7rem;color:var(--warn);margin-top:.15rem;">⚠ เลขผู้เสียภาษีไม่ตรงกับบริษัท — ตรวจสอบว่าอัปโหลดเข้าบริษัทถูกต้อง</div>';
+        }
         var retryHint = failed
           ? '<div style="font-size:.7rem;color:var(--muted);margin-top:.15rem;">ประมวลผลไม่สำเร็จ — กด "ลองใหม่" เพื่อรันเอกสารนี้อีกครั้ง</div>'
           : "";
@@ -6267,7 +6458,7 @@
         var rowStyle = failed ? ' style="background:var(--danger-soft);"'
           : running ? ' style="background:var(--accent-soft);"'
           : "";
-        return "<tr" + rowStyle + "><td class=\"mono\" style=\"font-size:0.82rem;\">" + escapeHtml(doc.filename) + errorNote + "</td>" +
+        return "<tr" + rowStyle + "><td class=\"mono\" style=\"font-size:0.82rem;\">" + escapeHtml(doc.filename) + errorNote + taxMatchNote + "</td>" +
           stageCells +
           "<td><span class=\"badge " + badgeClass + "\">" + escapeHtml(label) + "</span>" + elapsedHtml + retryHint + retryBtn + "</td></tr>";
       }).join("");
@@ -6459,14 +6650,26 @@
     badgesEl.innerHTML = '<span class="badge ' + confBadgeClass + '">' + confidence + '</span>' + taxBadge;
 
     var fieldsEl = getEl("reviewScanFields");
+    // HR-17-02: show seller name + seller tax ID + buyer name + buyer tax ID
+    // together. Party fields that were not extracted are flagged "⚠ ไม่พบข้อมูล"
+    // instead of being silently omitted, so the reviewer can fill them in.
     fieldsEl.innerHTML = [
-      ["เลขที่ใบแจ้งหนี้", "reviewScanFieldInvoiceNumber", doc.invoice_number],
-      ["วันที่ในเอกสาร", "reviewScanFieldInvoiceDate", doc.invoice_date],
-      ["ชื่อผู้ขาย", "reviewScanFieldSellerName", doc.seller_name],
-      ["เลขผู้เสียภาษีผู้ซื้อ", "reviewScanFieldBuyerTaxId", doc.buyer_tax_id],
-    ].map(function (triple) {
-      return '<div class="field-group" style="margin:0;"><label class="field-label">' + triple[0] + '</label>' +
-        '<input class="field-input mono" type="text" id="' + triple[1] + '" value="' + escapeHtml(triple[2] || "") + '" /></div>';
+      ["เลขที่ใบแจ้งหนี้", "reviewScanFieldInvoiceNumber", doc.invoice_number, false],
+      ["วันที่ในเอกสาร", "reviewScanFieldInvoiceDate", doc.invoice_date, false],
+      ["ชื่อผู้ขาย (Seller)", "reviewScanFieldSellerName", doc.seller_name, true],
+      ["เลขผู้เสียภาษีผู้ขาย (Seller Tax ID)", "reviewScanFieldSellerTaxId", doc.seller_tax_id, true],
+      ["ชื่อผู้ซื้อ (Buyer)", "reviewScanFieldBuyerName", doc.buyer_name, true],
+      ["เลขผู้เสียภาษีผู้ซื้อ (Buyer Tax ID)", "reviewScanFieldBuyerTaxId", doc.buyer_tax_id, true],
+    ].map(function (row) {
+      var isParty = row[3];
+      var hasValue = row[2] != null && String(row[2]).trim() !== "";
+      var missingHint = (isParty && !hasValue)
+        ? '<span style="font-size:.68rem;color:var(--warn);font-weight:600;">⚠ ไม่พบข้อมูล</span>'
+        : "";
+      return '<div class="field-group" style="margin:0;">' +
+        '<label class="field-label" style="display:flex;justify-content:space-between;align-items:center;gap:.4rem;">' +
+        '<span>' + row[0] + '</span>' + missingHint + '</label>' +
+        '<input class="field-input mono" type="text" id="' + row[1] + '" value="' + escapeHtml(row[2] || "") + '" /></div>';
     }).join("");
 
     var amountsEl = getEl("reviewScanAmounts");
@@ -6503,31 +6706,71 @@
     card.style.display = "block";
     body.innerHTML =
       '<table class="data-table" style="width:100%;font-size:.78rem;"><thead><tr>' +
-      '<th>สินค้า</th><th style="width:60px;">จำนวน</th><th style="width:52px;">หน่วย</th>' +
-      '<th style="width:80px;">ราคา/หน่วย</th><th style="width:84px;">มูลค่า</th><th style="width:96px;">สถานะ</th>' +
+      '<th>สินค้า</th><th style="width:56px;">จำนวน</th><th style="width:48px;">หน่วย</th>' +
+      '<th style="width:76px;">ราคา/หน่วย</th><th style="width:80px;">มูลค่า</th><th style="width:78px;">สถานะ</th>' +
+      '<th style="width:118px;text-align:center;">จัดการรายการ</th>' +
       '</tr></thead><tbody>' +
       items.map(function (li) {
         var conf = li.confidence != null ? Math.round(li.confidence * 100) : null;
         var confBadge = conf != null
           ? '<span class="badge ' + (conf >= 70 ? "badge-ok" : "badge-warn") + '" style="font-size:.6rem;">' + conf + '%</span> '
           : "";
-        var statusBadge = li.status === "confirmed"
-          ? '<span class="badge badge-ok" style="font-size:.6rem;">ยืนยันแล้ว</span>'
-          : '<span class="badge badge-muted" style="font-size:.6rem;">รอยืนยัน</span>';
+        var statusBadge;
+        if (li.status === "confirmed") {
+          statusBadge = '<span class="badge badge-ok" style="font-size:.6rem;">ยืนยันแล้ว</span>';
+        } else if (li.status === "rejected") {
+          statusBadge = '<span class="badge badge-danger" style="font-size:.6rem;">ปฏิเสธ</span>';
+        } else {
+          statusBadge = '<span class="badge badge-muted" style="font-size:.6rem;">รอยืนยัน</span>';
+        }
         function cell(field, value, mono) {
           return '<td><input class="field-input' + (mono ? " mono" : "") + '" data-li-field="' + field +
             '" style="padding:2px 5px;font-size:.76rem;" value="' + escapeHtml(value != null ? value : "") + '" /></td>';
         }
-        return '<tr data-li-id="' + escapeHtml(li.id) + '">' +
+        // HR-17-04: per-line confirm / reject / unconfirm. The button matching the
+        // current status is disabled so the active state is obvious.
+        var liId = escapeHtml(li.id);
+        function decBtn(decision, label, title, activeStatus) {
+          var isActive = li.status === activeStatus;
+          return '<button type="button" class="btn btn-ghost btn-sm" title="' + title + '" ' +
+            'style="padding:1px 6px;font-size:.72rem;' + (isActive ? "opacity:.45;" : "") + '" ' +
+            (isActive ? "disabled " : "") +
+            'onclick="decideReviewScanLineItem(\'' + liId + '\',\'' + decision + '\')">' + label + '</button>';
+        }
+        var actions = '<td style="white-space:nowrap;text-align:center;">' +
+          decBtn("confirm", "✓", "ยืนยันรายการนี้", "confirmed") +
+          decBtn("reject", "✗", "ปฏิเสธรายการนี้", "rejected") +
+          decBtn("unconfirm", "↺", "ยกเลิกการยืนยัน", "pending") +
+          '</td>';
+        return '<tr data-li-id="' + liId + '">' +
           cell("product_name", li.product_name, false) +
           cell("qty", li.qty, true) +
           cell("unit", li.unit, false) +
           cell("unit_price", li.unit_price, true) +
           cell("line_amount", li.line_amount, true) +
-          '<td>' + confBadge + statusBadge + '</td></tr>';
+          '<td>' + confBadge + statusBadge + '</td>' + actions + '</tr>';
       }).join("") +
       '</tbody></table>';
   }
+
+  async function decideReviewScanLineItem(lineItemId, decision) {
+    if (!state.reviewScanSelectedId) return;
+    try {
+      var response = await apiFetch(
+        auth.apiUrl("/api/v1/documents/" + encodeURIComponent(state.reviewScanSelectedId) +
+          "/line-items/" + encodeURIComponent(lineItemId) + "/decision"),
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: decision }) }
+      );
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      var updated = await response.json();
+      var labels = { confirm: "ยืนยัน", reject: "ปฏิเสธ", unconfirm: "ยกเลิกยืนยัน" };
+      showToast((labels[decision] || "อัปเดต") + "รายการแล้ว ✓", "ok");
+      renderReviewScanDetail(updated);
+    } catch (error) {
+      showToast("อัปเดตรายการไม่สำเร็จ: " + error.message, "warn");
+    }
+  }
+  window.decideReviewScanLineItem = decideReviewScanLineItem;
 
   async function saveReviewScanFieldEdits() {
     if (!state.reviewScanSelectedId) return;
@@ -6535,6 +6778,8 @@
       invoice_number: getEl("reviewScanFieldInvoiceNumber").value || null,
       invoice_date: getEl("reviewScanFieldInvoiceDate").value || null,
       seller_name: getEl("reviewScanFieldSellerName").value || null,
+      seller_tax_id: getEl("reviewScanFieldSellerTaxId").value || null,
+      buyer_name: getEl("reviewScanFieldBuyerName").value || null,
       buyer_tax_id: getEl("reviewScanFieldBuyerTaxId").value || null,
       net_amount: getEl("reviewScanFieldNetAmount").value === "" ? null : Number(getEl("reviewScanFieldNetAmount").value),
       vat_amount: getEl("reviewScanFieldVatAmount").value === "" ? null : Number(getEl("reviewScanFieldVatAmount").value),
@@ -6613,7 +6858,7 @@
         { method: "POST" }
       );
       if (!response.ok) throw new Error("HTTP " + response.status);
-      showToast("Approve สำเร็จ ✓", "ok");
+      showToast("Approve สำเร็จ (รวมยืนยันรายการสินค้าที่ค้างอยู่) ✓", "ok");
       await loadWorkflowDocuments();
       renderReviewScanList();
     } catch (error) {
@@ -6630,7 +6875,7 @@
       );
       if (!response.ok) throw new Error("HTTP " + response.status);
       var result = await response.json();
-      showToast("Approve All สำเร็จ " + result.approved + " เอกสาร ✓", "ok");
+      showToast("Approve All สำเร็จ " + result.approved + " เอกสาร (รวมยืนยันรายการสินค้า) ✓", "ok");
       await loadWorkflowDocuments();
       renderReviewScanList();
     } catch (error) {
@@ -6918,6 +7163,7 @@
 
     setExportMode(state.exportMode || "template");
     setConfiguratorTab(state.configuratorTab || "upload");
+    renderTemplateModeButtons();
     renderConfiguratorAnalysisTable();
     refreshConfiguratorTestTab();
 

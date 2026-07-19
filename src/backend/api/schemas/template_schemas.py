@@ -16,6 +16,11 @@ class ColumnDefSchema(BaseModel):
     transform: Optional[str] = None
 
 
+# HR-17-08: template export row shape. Kept in sync with
+# export_preview._TEMPLATE_MODE_TO_GRANULARITY.
+_TEMPLATE_MODE_PATTERN = "^(flat_document|flatten_row|grouped_summary)$"
+
+
 class TemplateCreate(BaseModel):
     template_name: str = Field(..., min_length=1, max_length=255)
     template_type: str = Field(..., min_length=1, max_length=50)
@@ -25,6 +30,7 @@ class TemplateCreate(BaseModel):
     encoding: str = "utf-8"
     delimiter: str = ","
     is_master: bool = False
+    template_mode: str = Field("flat_document", pattern=_TEMPLATE_MODE_PATTERN)
 
 
 class TemplateUpdate(BaseModel):
@@ -33,6 +39,7 @@ class TemplateUpdate(BaseModel):
     file_format: Optional[str] = None
     encoding: Optional[str] = None
     delimiter: Optional[str] = None
+    template_mode: Optional[str] = Field(None, pattern=_TEMPLATE_MODE_PATTERN)
 
 
 class CloneRequest(BaseModel):
@@ -61,3 +68,4 @@ class TemplateResponse(BaseModel):
     is_master: bool
     is_active: bool
     cloned_from: Optional[str]
+    template_mode: str = "flat_document"

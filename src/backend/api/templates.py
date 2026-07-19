@@ -78,6 +78,7 @@ def _template_to_response(t: ExportTemplate) -> TemplateResponse:
         is_master=t.is_master,
         is_active=t.is_active,
         cloned_from=str(t.cloned_from) if t.cloned_from else None,
+        template_mode=getattr(t, "template_mode", None) or "flat_document",
     )
 
 
@@ -122,6 +123,7 @@ async def create_template(
         encoding=body.encoding,
         delimiter=body.delimiter,
         is_master=body.is_master,
+        template_mode=body.template_mode,
         created_by=current_user.id,
     )
     db.add(tmpl)
@@ -162,6 +164,8 @@ async def update_template(
         tmpl.encoding = body.encoding
     if body.delimiter is not None:
         tmpl.delimiter = body.delimiter
+    if body.template_mode is not None:
+        tmpl.template_mode = body.template_mode
     await db.flush()
     await db.refresh(tmpl)
     return _template_to_response(tmpl)
@@ -212,6 +216,7 @@ async def clone_template(
         encoding=source.encoding,
         delimiter=source.delimiter,
         is_master=False,
+        template_mode=getattr(source, "template_mode", None) or "flat_document",
         cloned_from=source.id,
         created_by=current_user.id,
     )

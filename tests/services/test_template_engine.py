@@ -197,6 +197,27 @@ class TestCsvDateAsText(unittest.TestCase):
         lines = _read_csv(csv_bytes)
         self.assertEqual(lines[1][0], "04/05/69")
 
+    def test_date_column_wrapped_when_typed_as_string_but_has_date_transform(self):
+        # HR-17-06 regression: the UI saves every column as data_type="string",
+        # so relying on data_type alone left dates unwrapped and Excel mangled
+        # them. A thai_date transform must still trigger the Excel-safe wrap.
+        cols = [_col("invoice_date", "วันที่", dtype="string", transform="thai_date_short")]
+        engine = TemplateEngine(cols)
+        headers, rows = engine.render([{"invoice_date": "2026-05-04"}])
+        csv_bytes = engine.write_csv(headers, rows, cols)
+        lines = _read_csv(csv_bytes)
+        self.assertIn('="04/05/69"', lines[1][0])
+
+    def test_date_source_field_wrapped_even_without_transform(self):
+        # A known date source field (invoice_date) with no transform and typed
+        # as string must still be treated as a date for Excel safety.
+        cols = [_col("invoice_date", "วันที่", dtype="string")]
+        engine = TemplateEngine(cols)
+        headers, rows = engine.render([{"invoice_date": "01/05/69"}])
+        csv_bytes = engine.write_csv(headers, rows, cols)
+        lines = _read_csv(csv_bytes)
+        self.assertIn('="01/05/69"', lines[1][0])
+
 
 # ---------------------------------------------------------------------------
 # ac_1001_express — Express transaction fields

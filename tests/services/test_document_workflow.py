@@ -18,6 +18,7 @@ from src.backend.services.document_workflow import (
     confirm_journal_voucher,
     create_document,
     flag_document,
+    set_document_line_item_status,
     update_document_fields,
     update_document_line_items,
     update_journal_line,
@@ -347,6 +348,52 @@ class TestLineItemPersistence(unittest.IsolatedAsyncioTestCase):
         # Editing drops the row back to pending for re-confirmation.
         self.assertEqual(target.status, LineItemStatus.PENDING.value)
 
+    async def test_per_line_confirm_reject_unconfirm_decision(self) -> None:
+        # HR-17-04: the reviewer must be able to act on ONE line item without
+        # touching the others. Before the fix only a bulk confirm-all existed.
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+        await apply_pipeline_result(repo, document, _fake_ctx_with_line_items(company_id))
+        ordered = sorted(document.line_items, key=lambda li: li.line_order)
+        first, second = ordered[0], ordered[1]
+
+        await set_document_line_item_status(repo, document, str(first.id), "confirm")
+        await set_document_line_item_status(repo, document, str(second.id), "reject")
+        self.assertEqual(first.status, LineItemStatus.CONFIRMED.value)
+        self.assertEqual(second.status, LineItemStatus.REJECTED.value)
+
+        await set_document_line_item_status(repo, document, str(first.id), "unconfirm")
+        self.assertEqual(first.status, LineItemStatus.PENDING.value)
+        # second is untouched by the decision on first
+        self.assertEqual(second.status, LineItemStatus.REJECTED.value)
+
+    async def test_line_item_decision_rejects_unknown_decision_and_id(self) -> None:
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+        await apply_pipeline_result(repo, document, _fake_ctx_with_line_items(company_id))
+        good_id = str(document.line_items[0].id)
+        with self.assertRaises(ValueError):
+            await set_document_line_item_status(repo, document, good_id, "bogus")
+        with self.assertRaises(ValueError):
+            await set_document_line_item_status(repo, document, str(uuid.uuid4()), "confirm")
+
+    async def test_approve_confirms_pending_line_items_but_keeps_rejected(self) -> None:
+        # HR-17-04: Approve must include confirmable line items. A rejected item
+        # stays rejected — approve does not silently resurrect it.
+        company_id = uuid.uuid4()
+        repo = InMemoryDocumentRepository([company_id])
+        document = _registered_doc(repo, company_id)
+        await apply_pipeline_result(repo, document, _fake_ctx_with_line_items(company_id))
+        ordered = sorted(document.line_items, key=lambda li: li.line_order)
+        await set_document_line_item_status(repo, document, str(ordered[1].id), "reject")
+
+        await approve_document(repo, document, uuid.uuid4())
+
+        self.assertEqual(ordered[0].status, LineItemStatus.CONFIRMED.value)  # pending -> confirmed
+        self.assertEqual(ordered[1].status, LineItemStatus.REJECTED.value)   # stays rejected
+
 
 class TestApproveAndFlag(unittest.IsolatedAsyncioTestCase):
     async def test_approve_document_sets_scan_approved(self) -> None:
@@ -562,6 +609,27 @@ class TestUpdateDocumentFields(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(updated.invoice_date, date(2026, 8, 15))
+
+    async def test_seller_tax_id_and_buyer_name_are_editable(self) -> None:
+        # HR-17-02: seller tax ID and buyer name were missing from the Review
+        # Scan editable set, so corrections to them were silently dropped.
+        repo = InMemoryDocumentRepository()
+        document = _make_document(uuid.uuid4())
+        document.seller_tax_id = None
+        document.buyer_name = None
+
+        updated = await update_document_fields(
+            repo,
+            document,
+            uuid.uuid4(),
+            {"seller_tax_id": "0105560123456", "buyer_name": "บริษัท ฤทธิ์ล้ำเลิศ จำกัด"},
+        )
+
+        self.assertEqual(updated.seller_tax_id, "0105560123456")
+        self.assertEqual(updated.buyer_name, "บริษัท ฤทธิ์ล้ำเลิศ จำกัด")
+        corrected_fields = {c.field_name for c in repo.field_corrections}
+        self.assertIn("seller_tax_id", corrected_fields)
+        self.assertIn("buyer_name", corrected_fields)
 
 
 if __name__ == "__main__":

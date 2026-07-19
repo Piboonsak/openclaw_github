@@ -15,6 +15,7 @@ from src.backend.db.models import User
 from src.backend.db.session import get_db
 from src.backend.services.master_data_import import (
     SqlAlchemyMasterRepository,
+    deactivate_master_entry,
     import_master_csv,
     list_master_entries,
 )
@@ -120,3 +121,45 @@ async def get_customer_master_entries(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     return JSONResponse(content=dataclasses.asdict(result))
+
+
+@router.delete(
+    "/v1/companies/{company_id}/vendor-master/{vendor_code}", status_code=204
+)
+async def deactivate_vendor_master(
+    company_id: uuid.UUID,
+    vendor_code: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> JSONResponse:
+    """Soft-delete (deactivate) a vendor master row (HR-17-07)."""
+    await ensure_company_access(db, current_user, company_id)
+    repo = SqlAlchemyMasterRepository(db)
+    try:
+        await deactivate_master_entry(repo, company_id, "vendor", vendor_code)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return JSONResponse(status_code=204, content=None)
+
+
+@router.delete(
+    "/v1/companies/{company_id}/customer-master/{customer_code}", status_code=204
+)
+async def deactivate_customer_master(
+    company_id: uuid.UUID,
+    customer_code: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> JSONResponse:
+    """Soft-delete (deactivate) a customer master row (HR-17-07)."""
+    await ensure_company_access(db, current_user, company_id)
+    repo = SqlAlchemyMasterRepository(db)
+    try:
+        await deactivate_master_entry(repo, company_id, "customer", customer_code)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return JSONResponse(status_code=204, content=None)

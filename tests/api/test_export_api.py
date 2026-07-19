@@ -7,7 +7,11 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.backend.api.export_preview import router
+from src.backend.api.export_preview import (
+    _detect_granularity,
+    _granularity_for,
+    router,
+)
 from src.backend.auth.dependencies import get_current_active_user
 from src.backend.db.session import get_db
 
@@ -325,6 +329,32 @@ class TestExportApi(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 422)
+
+
+class TestTemplateModeGranularity(unittest.TestCase):
+    """HR-17-08 / W6-C1-04: an explicit template_mode must drive the export row
+    shape and win over the column-based heuristic. Before the fix the three mode
+    buttons were UI-only and did nothing."""
+
+    def test_each_mode_maps_to_expected_granularity(self) -> None:
+        self.assertEqual(_granularity_for("flat_document", [], False), "document")
+        self.assertEqual(_granularity_for("flatten_row", [], False), "line_item")
+        self.assertEqual(_granularity_for("grouped_summary", [], False), "journal")
+
+    def test_mode_overrides_column_detection(self) -> None:
+        # A column set that would auto-detect as line_item...
+        line_item_col = SimpleNamespace(source_field="product_name")
+        self.assertEqual(_detect_granularity([line_item_col], False), "line_item")
+        # ...is forced to document when the template mode says flat_document.
+        self.assertEqual(
+            _granularity_for("flat_document", [line_item_col], False), "document"
+        )
+
+    def test_missing_mode_falls_back_to_detection(self) -> None:
+        gl_col = SimpleNamespace(source_field="debit")
+        # None / unknown mode -> heuristic still applies (legacy templates).
+        self.assertEqual(_granularity_for(None, [gl_col], False), "journal")
+        self.assertEqual(_granularity_for("", [], True), "line_item")
 
 
 if __name__ == "__main__":

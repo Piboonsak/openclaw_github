@@ -87,6 +87,14 @@ class MasterDataRepository(Protocol):
         search: str | None,
     ) -> list[CustomerMaster]: ...
 
+    async def deactivate_vendor(
+        self, company_id: uuid.UUID, vendor_code: str
+    ) -> bool: ...
+
+    async def deactivate_customer(
+        self, company_id: uuid.UUID, customer_code: str
+    ) -> bool: ...
+
 
 class SqlAlchemyMasterRepository:
     """Production repository backed by AsyncSession."""
@@ -164,6 +172,46 @@ class SqlAlchemyMasterRepository:
         stmt = stmt.order_by(CustomerMaster.customer_code.asc())
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def deactivate_vendor(
+        self, company_id: uuid.UUID, vendor_code: str
+    ) -> bool:
+        entry = await self.get_vendor_by_code(company_id, vendor_code)
+        if entry is None:
+            return False
+        entry.is_active = False
+        await self.db.flush()
+        return True
+
+    async def deactivate_customer(
+        self, company_id: uuid.UUID, customer_code: str
+    ) -> bool:
+        entry = await self.get_customer_by_code(company_id, customer_code)
+        if entry is None:
+            return False
+        entry.is_active = False
+        await self.db.flush()
+        return True
+
+
+async def deactivate_master_entry(
+    repo: MasterDataRepository,
+    company_id: uuid.UUID,
+    entity: MasterEntity,
+    code: str,
+) -> None:
+    """Soft-delete (deactivate) a vendor/customer master row (HR-17-07). The row
+    is kept for audit/history but marked ``is_active=False``. Raises
+    ``LookupError`` if the company is unknown and ``ValueError`` if no row with
+    that code exists."""
+    if not await repo.company_exists(company_id):
+        raise LookupError("Company not found")
+    if entity == "vendor":
+        found = await repo.deactivate_vendor(company_id, code)
+    else:
+        found = await repo.deactivate_customer(company_id, code)
+    if not found:
+        raise ValueError(f"{entity} '{code}' not found")
 
 
 def _normalize_header(header: str | None) -> str:

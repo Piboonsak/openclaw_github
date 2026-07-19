@@ -54,6 +54,27 @@ def _detect_granularity(cols: list, include_line_items: bool) -> str:
     return "document"
 
 
+# HR-17-08 / W6-C1-04: an explicit template mode wins over column heuristics.
+# flatten_row is the line-item export mode; grouped_summary maps to the GL
+# posting (journal) shape. Kept in sync with template_schemas._TEMPLATE_MODE_*.
+_TEMPLATE_MODE_TO_GRANULARITY = {
+    "flat_document": "document",
+    "flatten_row": "line_item",
+    "grouped_summary": "journal",
+}
+
+
+def _granularity_for(
+    template_mode: str | None, cols: list, include_line_items: bool
+) -> str:
+    """Prefer the template's explicit mode; fall back to column-based detection
+    (Quick Export / legacy templates with no mode)."""
+    mapped = _TEMPLATE_MODE_TO_GRANULARITY.get(template_mode or "")
+    if mapped:
+        return mapped
+    return _detect_granularity(cols, include_line_items)
+
+
 async def _resolve_export_rows(
     db: AsyncSession,
     current_user: User,
@@ -182,12 +203,14 @@ async def export_preview(
     """
     runtime_columns = [col.model_dump() for col in body.column_overrides]
     template_columns: list[dict[str, Any]] = []
+    template_mode: str | None = None
 
     if body.template_id:
         tmpl = await db.get(ExportTemplate, body.template_id)
         if not tmpl or not tmpl.is_active:
             raise HTTPException(status_code=404, detail="Template not found")
         template_columns = tmpl.columns if isinstance(tmpl.columns, list) else []
+        template_mode = getattr(tmpl, "template_mode", None)
 
     columns_json = runtime_columns or template_columns
     if not columns_json:
@@ -204,7 +227,7 @@ async def export_preview(
         document_ids=body.document_ids,
         include_line_items=body.include_line_items,
         sample_data=body.sample_data,
-        granularity=_detect_granularity(cols, body.include_line_items),
+        granularity=_granularity_for(template_mode, cols, body.include_line_items),
     )
     return render_preview(cols, rows, max_rows=_PREVIEW_MAX_ROWS)
 
@@ -246,6 +269,7 @@ async def export_file(
     encoding = body.encoding or "utf-8"
     delimiter = body.delimiter or ","
     template_name = "ledgerflow-export"
+    template_mode: str | None = None
 
     if body.template_id:
         tmpl = await db.get(ExportTemplate, body.template_id)
@@ -256,6 +280,7 @@ async def export_file(
         file_format = body.format or tmpl.file_format or "csv"
         encoding = body.encoding or tmpl.encoding or "utf-8"
         delimiter = body.delimiter or tmpl.delimiter or ","
+        template_mode = getattr(tmpl, "template_mode", None)
 
     columns_json = runtime_columns or template_columns
     if not columns_json:
@@ -278,7 +303,7 @@ async def export_file(
         document_ids=body.document_ids,
         include_line_items=body.include_line_items,
         sample_data=body.sample_data,
-        granularity=_detect_granularity(columns, body.include_line_items),
+        granularity=_granularity_for(template_mode, columns, body.include_line_items),
     )
     headers, rows = engine.render(export_rows, column_overrides=columns)
     safe_stem = _sanitize_download_stem(body.filename or template_name)

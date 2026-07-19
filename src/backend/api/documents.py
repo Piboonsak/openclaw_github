@@ -39,6 +39,7 @@ from src.backend.api.schemas.document_schemas import (
     JournalLineResponse,
     JournalLineUpdateRequest,
     JournalVoucherResponse,
+    LineItemDecisionRequest,
     LineItemsUpdateRequest,
 )
 from src.backend.auth.dependencies import ensure_company_access, get_current_active_user
@@ -53,6 +54,7 @@ from src.backend.services.document_workflow import (
     confirm_journal_voucher,
     create_document,
     flag_document,
+    set_document_line_item_status,
     update_document_fields,
     update_document_line_items,
     update_journal_line,
@@ -84,6 +86,8 @@ def _document_to_response(document: Document) -> DocumentResponse:
         if document.invoice_date
         else None,
         seller_name=document.seller_name,
+        seller_tax_id=document.seller_tax_id,
+        buyer_name=document.buyer_name,
         buyer_tax_id=document.buyer_tax_id,
         taxid_match=document.taxid_match,
         net_amount=float(document.net_amount)
@@ -488,6 +492,33 @@ async def confirm_document_line_item_rows(
     document = await _get_document_or_404(repo, document_id)
     await ensure_company_access(db, current_user, document.company_id)
     await confirm_document_line_items(repo, document)
+    document = await _get_document_or_404(repo, document_id)
+    return _document_to_detail_response(document)
+
+
+@router.post(
+    "/v1/documents/{document_id}/line-items/{line_item_id}/decision",
+    response_model=DocumentDetailResponse,
+)
+async def decide_document_line_item(
+    document_id: uuid.UUID,
+    line_item_id: uuid.UUID,
+    body: LineItemDecisionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DocumentDetailResponse:
+    """Per-line confirm/reject/unconfirm on the Review Scan screen (HR-17-04).
+    Confirmed items are export-eligible, rejected are excluded, unconfirmed drop
+    back to pending."""
+    repo = SqlAlchemyDocumentRepository(db)
+    document = await _get_document_or_404(repo, document_id)
+    await ensure_company_access(db, current_user, document.company_id)
+    try:
+        await set_document_line_item_status(
+            repo, document, str(line_item_id), body.decision
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     document = await _get_document_or_404(repo, document_id)
     return _document_to_detail_response(document)
 

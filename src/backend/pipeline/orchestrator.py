@@ -511,16 +511,23 @@ async def run_pipeline(
         ctx.extraction_output["vat_layout"] = reconciliation.get("layout")
         ctx.extraction_output["numeric_consistency_alerts"] = numeric_alerts
 
-        # Buyer tax-id vs company tax-id gate.
+        # Company tax-id gate (HR-17-01): the selected company can appear as the
+        # BUYER (purchase/AP documents) or the SELLER (sales/AR documents), so a
+        # match on either party means the document was loaded into the right
+        # company. Only flag a mismatch when a party tax id is present but neither
+        # matches — a missing party id stays "unknown" (None).
         tax_id_match: bool | None = None
         if company_tax_id:
             buyer_tax_id = "".join(
                 ch for ch in str(fields.get("buyer_tax_id") or "") if ch.isdigit()
             )
+            seller_tax_id = "".join(
+                ch for ch in str(fields.get("seller_tax_id") or "") if ch.isdigit()
+            )
             company_digits = "".join(ch for ch in str(company_tax_id) if ch.isdigit())
-            if buyer_tax_id and company_digits:
-                tax_id_match = buyer_tax_id == company_digits
-                if not tax_id_match:
+            if company_digits and (buyer_tax_id or seller_tax_id):
+                tax_id_match = company_digits in (buyer_tax_id, seller_tax_id)
+                if not tax_id_match and buyer_tax_id:
                     confidence["buyer_tax_id"] = min(
                         float(confidence.get("buyer_tax_id", 0.9) or 0.0), 0.45
                     )

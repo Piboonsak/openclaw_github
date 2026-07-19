@@ -154,6 +154,10 @@ class ProductMasterRepository(Protocol):
         self, company_id: uuid.UUID, search: str | None
     ) -> list[ProductMaster]: ...
 
+    async def deactivate_product(
+        self, company_id: uuid.UUID, product_code: str
+    ) -> bool: ...
+
 
 class SqlAlchemyProductMasterRepository:
     def __init__(self, db: AsyncSession) -> None:
@@ -191,6 +195,29 @@ class SqlAlchemyProductMasterRepository:
         stmt = stmt.order_by(ProductMaster.product_code.asc())
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def deactivate_product(
+        self, company_id: uuid.UUID, product_code: str
+    ) -> bool:
+        entry = await self.get_by_code(company_id, product_code)
+        if entry is None:
+            return False
+        entry.is_active = False
+        await self.db.flush()
+        return True
+
+
+async def deactivate_product_master_entry(
+    repo: ProductMasterRepository,
+    company_id: uuid.UUID,
+    product_code: str,
+) -> None:
+    """Soft-delete (deactivate) a product master row (HR-17-07). Raises
+    ``LookupError`` on unknown company, ``ValueError`` if the code is unknown."""
+    if not await repo.company_exists(company_id):
+        raise LookupError("Company not found")
+    if not await repo.deactivate_product(company_id, product_code):
+        raise ValueError(f"product '{product_code}' not found")
 
 
 async def import_product_master_csv(

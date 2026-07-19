@@ -436,6 +436,8 @@ _EDITABLE_DOCUMENT_FIELDS = (
     "invoice_number",
     "invoice_date",
     "seller_name",
+    "seller_tax_id",
+    "buyer_name",
     "buyer_tax_id",
     "net_amount",
     "vat_amount",
@@ -486,6 +488,12 @@ async def approve_document(repo: DocumentRepository, document: Document, user_id
     document.scan_status = "approved"
     document.scan_reviewed_by = user_id
     document.scan_reviewed_at = _utcnow_naive()
+    # HR-17-04: approving the scan also confirms the document's still-pending line
+    # items so `Approve` / `Approve All` genuinely include the confirmable rows
+    # (they become export-eligible). Explicitly rejected items are left rejected.
+    for line_item in document.line_items:
+        if line_item.status == LineItemStatus.PENDING.value:
+            line_item.status = LineItemStatus.CONFIRMED.value
     await repo.flush()
     return document
 
@@ -604,5 +612,35 @@ async def confirm_document_line_items(
     become eligible for export."""
     for line_item in document.line_items:
         line_item.status = LineItemStatus.CONFIRMED.value
+    await repo.flush()
+    return document
+
+
+_LINE_ITEM_DECISIONS = {
+    "confirm": LineItemStatus.CONFIRMED.value,
+    "reject": LineItemStatus.REJECTED.value,
+    "unconfirm": LineItemStatus.PENDING.value,
+}
+
+
+async def set_document_line_item_status(
+    repo: DocumentRepository,
+    document: Document,
+    line_item_id: str,
+    decision: str,
+) -> Document:
+    """Apply a per-line human decision (HR-17-04): confirm / reject / unconfirm a
+    single extracted line item. Confirmed items are export-eligible, rejected are
+    excluded, unconfirmed drop back to pending. Raises ``ValueError`` on an
+    unknown decision or line-item id that does not belong to this document."""
+    new_status = _LINE_ITEM_DECISIONS.get(decision)
+    if new_status is None:
+        raise ValueError(f"Unknown line-item decision: {decision!r}")
+    target = next(
+        (li for li in document.line_items if str(li.id) == str(line_item_id)), None
+    )
+    if target is None:
+        raise ValueError("Line item not found on this document")
+    target.status = new_status
     await repo.flush()
     return document

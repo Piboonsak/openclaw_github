@@ -469,6 +469,9 @@ class ExportTemplate(Base):
     )
     template_name: Mapped[str] = mapped_column(String(255), nullable=False)
     template_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    # HR-17-08: export row shape — flat_document (1 row/doc), flatten_row
+    # (1 row per confirmed line item), grouped_summary (1 row per GL posting).
+    template_mode: Mapped[str] = mapped_column(String(20), default="flat_document")
     columns: Mapped[dict | None] = mapped_column(JSONB)
     static_values: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     header_mappings: Mapped[dict | None] = mapped_column(JSONB, default=dict)

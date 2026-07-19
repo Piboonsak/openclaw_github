@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.api.schemas.product_master_schemas import (
@@ -23,6 +23,7 @@ from src.backend.db.models import User
 from src.backend.db.session import get_db
 from src.backend.services.product_master_import import (
     SqlAlchemyProductMasterRepository,
+    deactivate_product_master_entry,
     import_product_master_csv,
     list_product_master_entries,
 )
@@ -107,3 +108,24 @@ async def get_product_master_entries(
         page_size=result.page_size,
         search=result.search,
     )
+
+
+@router.delete(
+    "/v1/companies/{company_id}/product-master/{product_code}", status_code=204
+)
+async def deactivate_product_master(
+    company_id: uuid.UUID,
+    product_code: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """Soft-delete (deactivate) a product master row (HR-17-07)."""
+    await ensure_company_access(db, current_user, company_id)
+    repo = SqlAlchemyProductMasterRepository(db)
+    try:
+        await deactivate_product_master_entry(repo, company_id, product_code)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return Response(status_code=204)

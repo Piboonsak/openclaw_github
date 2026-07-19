@@ -20,6 +20,8 @@ class DocumentResponse(BaseModel):
     invoice_number: Optional[str] = None
     invoice_date: Optional[str] = None
     seller_name: Optional[str] = None
+    seller_tax_id: Optional[str] = None
+    buyer_name: Optional[str] = None
     buyer_tax_id: Optional[str] = None
     taxid_match: Optional[bool] = None
     net_amount: Optional[float] = None
@@ -94,6 +96,12 @@ class LineItemsUpdateRequest(BaseModel):
     items: list[LineItemEditRequest] = Field(default_factory=list)
 
 
+class LineItemDecisionRequest(BaseModel):
+    """Per-line human decision (HR-17-04): confirm / reject / unconfirm."""
+
+    decision: str = Field(..., pattern="^(confirm|reject|unconfirm)$")
+
+
 class ApproveAllRequest(BaseModel):
     document_ids: Optional[list[str]] = None
 
@@ -117,6 +125,8 @@ class DocumentFieldsUpdateRequest(BaseModel):
     invoice_number: Optional[str] = Field(None, max_length=100)
     invoice_date: Optional[str] = None
     seller_name: Optional[str] = Field(None, max_length=255)
+    seller_tax_id: Optional[str] = Field(None, max_length=13)
+    buyer_name: Optional[str] = Field(None, max_length=255)
     buyer_tax_id: Optional[str] = Field(None, max_length=13)
     net_amount: Optional[float] = None
     vat_amount: Optional[float] = None
