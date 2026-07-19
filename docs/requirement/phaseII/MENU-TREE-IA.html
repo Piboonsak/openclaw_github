@@ -346,7 +346,7 @@
   </div>
   <div>
     <div class="page-title">Menu Tree & Information Architecture</div>
-    <div class="page-subtitle">Phase II — UX/UI Design Blueprint — 2026-06-15</div>
+    <div class="page-subtitle">Phase II — UX/UI Design Blueprint — W6 closeout sync 2026-07-19</div>
   </div>
   <div class="header-meta">
     <span class="badge badge-accent">Phase II/1</span>
@@ -390,6 +390,26 @@
     W4 pulls the minimum Company/User/Admin persistence slice forward from Epic 12 because the current SIT shell exposes those pages.
     Epic 14, Epic 15, and Epic 16 surfaces must remain hidden or visibly deferred unless intentionally wired for SIT proof.
   </p>
+</div>
+
+<!-- W6 CLOSEOUT DESIGN OVERLAY -->
+<div style="background:white;border:2px solid var(--warn);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;">
+  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.65rem;">
+    <strong style="font-size:0.9rem;color:var(--warn);">W6 Closeout Overlay</strong>
+    <span class="badge badge-warn">Active 2026-07-19</span>
+    <span class="badge badge-muted">See W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md</span>
+  </div>
+  <p style="color:var(--ink);margin-bottom:0.65rem;">
+    After the 2026-07-17 human SIT review, W6 must close the customer-visible gaps before the 2026-07-30 customer review.
+    Keep implementation aligned to <strong>src/frontend/main-ux-ui.html</strong> and the frozen Export/Configurator UX in
+    <strong>docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md</strong>.
+  </p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0.5rem;font-size:0.78rem;">
+    <div><span class="badge badge-accent">Export</span> Full-page flow with document row selection, Select All, inline preview, and selected-doc download proof.</div>
+    <div><span class="badge badge-accent">Review Scan</span> Seller/buyer names and Tax IDs plus line-item approve/reject/unconfirm controls.</div>
+    <div><span class="badge badge-ok">Companies</span> COA, AP, AR, and Product tabs share search, load more, add, edit, and delete/deactivate behavior.</div>
+    <div><span class="badge badge-purple">Templates</span> Template Mode controls must be wired or honestly disabled; manual fallback must be reachable.</div>
+  </div>
 </div>
 
 <!-- ═══ APP SHELL OVERVIEW ═══ -->
@@ -755,7 +775,7 @@
         <span class="tree-section-title">MAIN — Export</span>
         <div class="tree-section-meta">
           <span class="badge badge-accent">Staff+Admin</span>
-          <span class="badge badge-muted">1 page + preview</span>
+          <span class="badge badge-muted">full-page inline flow</span>
         </div>
         <span class="tree-toggle">▶</span>
       </div>
@@ -766,21 +786,21 @@
             <div class="tree-page-url">/export?batch={id}</div>
           </div>
           <div class="tree-page-desc">
-            Template selector (dropdown: Master + Company templates) →
-            Document checklist (เลือก docs ที่จะ export) →
-            Format: CSV / Excel radio →
-            [👁 Preview] → preview table (แสดง 5 แถวแรก) →
-            Balance validation indicator (all balanced ✓ / N unbalanced ✗) →
-            [📥 Download CSV] / [📥 Download Excel] →
-            Export history (previous exports ของ batch นี้)
+            Select document rows with checkbox + Select All →
+            choose Quick Export or Template Export →
+            Template selector for Template Export only (Master + Company templates) →
+            inline Adjust Columns/Data panel (show/hide, reorder, rename, per-run override) →
+            inline preview table, balance validation, and selected-doc count/total →
+            [Download CSV] / [Download Excel] →
+            Export history for this batch
           </div>
           <div><span class="badge badge-accent">Staff+Admin</span></div>
         </div>
         <div class="tree-subpages">
           <div class="tree-subpage">
-            <div class="tree-subpage-name">👁 Modal: Export Preview</div>
-            <div class="tree-subpage-url">modal full-width</div>
-            <div class="tree-subpage-desc">ตาราง 5 แถวแรก + column headers ตาม template + [Download] button</div>
+            <div class="tree-subpage-name">Inline: Export Preview Panel</div>
+            <div class="tree-subpage-url">same /export page</div>
+            <div class="tree-subpage-desc">Preview table + template column headers + validation + selected-doc download actions; not a modal-first picker</div>
           </div>
         </div>
       </div>
@@ -825,8 +845,11 @@
           </div>
           <div class="tree-page-desc">
             Company info header (name, Tax ID, branch) →
-            <strong>COA Tab:</strong> account list (code, name, type) + search + [+เพิ่ม] + [นำเข้า YAML/CSV] →
-            <strong>Settings Tab:</strong> budget limit per company →
+            <strong>COA Tab:</strong> account list (code, name, type) + search + load more + [+เพิ่ม] + [แก้ไข] + delete/deactivate + [นำเข้า YAML/CSV] →
+            <strong>AP Vendor Master Tab:</strong> vendor list + search + load more + add/edit/delete/deactivate + import →
+            <strong>AR Customer Master Tab:</strong> customer list + search + load more + add/edit/delete/deactivate + import →
+            <strong>Product Master Tab:</strong> product/price list + search + load more + add/edit/delete/deactivate + import →
+            <strong>Settings Tab:</strong> budget limit per company and stock/report toggles →
             [← กลับ]
           </div>
           <div><span class="badge badge-ok">Admin</span></div>
@@ -885,10 +908,11 @@
             <div class="tree-page-url">/admin/templates/{id}/configure</div>
           </div>
           <div class="tree-page-desc">
-            <strong>Left:</strong> Available Fields (จาก extraction + journal) → click to add →
-            <strong>Center:</strong> Selected Columns (drag ☰ to reorder, click to rename, ✕ to remove) →
-            <strong>Right:</strong> Column Settings (data type, format, transform, default) →
-            <strong>Bottom:</strong> Preview table (5 rows sample data) →
+            <strong>Tab 1 Upload & Detect:</strong> sample CSV/Excel upload + schema analyzer auto-fill →
+            <strong>Tab 2 Columns:</strong> Available Fields search + Selected Columns drag reorder + rename/remove →
+            <strong>Template Mode:</strong> Flat Document / Flatten Row / Grouped Summary must be wired or visibly disabled →
+            <strong>Manual fallback:</strong> blank/manual column setup remains reachable when sample inference is not usable →
+            <strong>Tab 3 Test Output:</strong> preview table and round-trip proof before save →
             Format/Encoding selector (CSV/Excel · UTF-8/TIS-620) →
             [💾 บันทึก] / [Preview] / [ยกเลิก]
           </div>
@@ -1265,22 +1289,23 @@
       <span class="badge badge-accent">Staff+Admin</span>
     </div>
     <div class="screen-body">
-      <div class="screen-desc">เลือก template → preview → download</div>
+      <div class="screen-desc">Full-page flow: select docs → mode/template → inline adjust → preview → download</div>
       <div class="screen-elements">
         <div class="screen-elements-label">Elements</div>
-        <div class="screen-element">Template dropdown (Master + Company templates)</div>
-        <div class="screen-element">Document checklist (N docs)</div>
+        <div class="screen-element">Document row checkbox + Select All + selected count/total</div>
+        <div class="screen-element">Mode selector: Quick Export / Template Export</div>
+        <div class="screen-element">Template dropdown only for Template Export (Master + Company templates)</div>
         <div class="screen-element">Format radio: CSV / Excel</div>
         <div class="screen-element">Balance validation: all ✓ / N ✗ warning</div>
-        <div class="screen-element">[👁 Preview] → modal preview table</div>
-        <div class="screen-element">[📥 Download] → file download</div>
+        <div class="screen-element">Inline preview table, not modal-first</div>
+        <div class="screen-element">[Download] exports only selected documents</div>
         <div class="screen-element">Export history (previous downloads)</div>
       </div>
     </div>
     <div class="screen-nav">
       <span class="screen-nav-label">→</span>
       <span class="nav-chip primary">[Download] → file</span>
-      <span class="nav-chip">[Preview] → modal</span>
+      <span class="nav-chip">[Preview] → inline panel</span>
       <span class="nav-chip">Done → /dashboard</span>
     </div>
   </div>
@@ -1304,8 +1329,11 @@
         <div class="screen-element">Click row → /admin/companies/{id}</div>
         <div class="screen-elements-label" style="margin-top:0.5rem">Detail Elements</div>
         <div class="screen-element">Company header info</div>
-        <div class="screen-element">COA tab: account list + [Import] + [+Add]</div>
-        <div class="screen-element">Settings tab: budget limit</div>
+        <div class="screen-element">COA tab: search + load more + import + add/edit/delete/deactivate</div>
+        <div class="screen-element">AP Vendor Master tab: search + load more + import + add/edit/delete/deactivate</div>
+        <div class="screen-element">AR Customer Master tab: search + load more + import + add/edit/delete/deactivate</div>
+        <div class="screen-element">Product Master tab: search + load more + import + add/edit/delete/deactivate</div>
+        <div class="screen-element">Settings tab: budget limit + stock/report toggles</div>
       </div>
     </div>
     <div class="screen-nav">
@@ -1334,10 +1362,11 @@
         <div class="screen-element">Cards: name, type, cols count, format, updated</div>
         <div class="screen-element">[Clone to Company] on master cards</div>
         <div class="screen-elements-label" style="margin-top:0.5rem">Configurator Elements</div>
-        <div class="screen-element">Available Fields panel (searchable)</div>
-        <div class="screen-element">Selected Columns (drag-drop reorder)</div>
-        <div class="screen-element">Column settings: rename, transform, format</div>
-        <div class="screen-element">Preview table (5 rows sample)</div>
+        <div class="screen-element">Tab 1 Upload & Detect: sample CSV/Excel + schema analyzer auto-fill</div>
+        <div class="screen-element">Tab 2 Columns: fields search + selected columns drag reorder</div>
+        <div class="screen-element">Template Mode: Flat Document / Flatten Row / Grouped Summary wired or honestly disabled</div>
+        <div class="screen-element">Manual fallback: blank/manual config stays reachable</div>
+        <div class="screen-element">Tab 3 Test Output: preview and round-trip proof before save</div>
         <div class="screen-element">Format/Encoding selector</div>
       </div>
     </div>
@@ -1474,7 +1503,7 @@
     <tr><td>Confidence Detail</td><td>Drawer (right)</td><td>Review Scan confidence badge</td><td>Per-field confidence + source</td><td>[ปิด]</td></tr>
     <tr><td>Flag Document</td><td>Modal</td><td>Review Scan [🚩 Flag]</td><td>เหตุผล + comment</td><td>[บันทึก] [ยกเลิก]</td></tr>
     <tr><td>Unbalanced Warning</td><td>Modal</td><td>Review Mapping [Confirm] on unbalanced</td><td>Difference + options</td><td>[แก้ไข] [Force (Admin)]</td></tr>
-    <tr><td>Export Preview</td><td>Modal (wide)</td><td>Export [👁 Preview]</td><td>Preview table 5 rows</td><td>[Download] [ปิด]</td></tr>
+    <tr><td>Export Preview</td><td>Inline panel</td><td>Export preview step</td><td>Preview table, selected-doc count, template validation, Excel/date warnings</td><td>[Download] [Back]</td></tr>
     <tr><td>Add/Edit Company</td><td>Drawer (right)</td><td>Companies [+เพิ่ม] / [แก้ไข]</td><td>Company form</td><td>[บันทึก] [ยกเลิก]</td></tr>
     <tr><td>Import COA</td><td>Modal</td><td>Company Detail [นำเข้า YAML/CSV]</td><td>File upload + preview + upsert</td><td>[นำเข้า] [ยกเลิก]</td></tr>
     <tr><td>Clone Master Template</td><td>Modal</td><td>Templates [Clone to Company]</td><td>เลือกบริษัท + ตั้งชื่อ</td><td>[Clone] [ยกเลิก]</td></tr>
@@ -1529,8 +1558,8 @@
 </div>
 
 <div style="text-align:center;color:var(--muted);font-size:0.75rem;padding:2rem 0;border-top:1px solid var(--line);margin-top:1rem">
-  LedgerFlow Phase II — Menu Tree & Information Architecture · 2026-06-15<br>
-  Next: Generate HTML prototype per screen → discuss design decisions per epic
+  LedgerFlow Phase II — Menu Tree & Information Architecture · Updated 2026-07-19<br>
+  Next: W6 closeout must align implementation to this IA, UX freeze, and main-ux-ui.html
 </div>
 
 </div><!-- /page-body -->

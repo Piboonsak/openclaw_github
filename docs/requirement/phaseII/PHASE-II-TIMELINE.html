@@ -221,10 +221,17 @@
         <span class="badge badge-purple badge-lg">E14-E16 รวมในวงเงินตาม PO 500,000 บาท (ระยะเวลาอาจปรับได้)</span>
       </div>
       <div style="font-size:0.75rem;color:var(--muted);font-family:var(--mono);text-align:right;margin-top:0.35rem;">
-        Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Updated: 2026-07-10
+        Baseline: 2026-06-15 · Go-Live: ~2026-08-09 · Updated: 2026-07-19
       </div>
       <button class="no-print" onclick="window.print()" style="margin-top:0.4rem;font-size:0.72rem;border:1px solid var(--line);border-radius:6px;padding:3px 10px;background:white;cursor:pointer;color:var(--muted);">🖨 Print</button>
     </div>
+  </div>
+
+  <div class="note-box warn">
+    <strong>W6 Closeout Update (2026-07-19)</strong> — W5 is not fully closed after the 2026-07-17 human SIT review.
+    W6 (20-26 ก.ค. 2569) is now the customer-review closeout sprint for Export selection/date proof, Review Scan party fields,
+    line-item approve flow, Companies master-data UX, Template Configurator mode/manual fallback, and QA proof quality.
+    Use <code>W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md</code> before claiming UAT/customer readiness.
   </div>
 
   <!-- ─── PAYMENT MILESTONES ─── -->
@@ -632,17 +639,17 @@
           </td>
           <td style="font-size:0.78rem;">13 ก.ค. 2569<br>— 19 ก.ค. 2569</td>
           <td>
-            <div><span class="badge badge-accent">E10</span> Clone + Export</div>
-            <div style="margin-top:0.3rem;"><span class="badge badge-warn">E12</span> Login + Dashboard</div>
-            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> Monitoring Setup</div>
+            <div><span class="badge badge-accent">E10</span> Export proof + Template shell</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-warn">E12</span> Login + master data</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> SIT runtime proof</div>
           </td>
           <td>
             <div class="deliverable-list">
-              <div class="deliverable-item">Clone Master → Company template ทำงาน</div>
-              <div class="deliverable-item">Export CSV/Excel ตาม template (ไม่ hardcode)</div>
-              <div class="deliverable-item">Login screen + JWT session ทำงาน</div>
-              <div class="deliverable-item">MVP Dashboard: KPI + Cost meter</div>
-              <div class="deliverable-item">Sentry error tracking เชื่อมต่อ</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Backend/export and focused service tests passed locally for the W5 proof slice</div>
+              <div class="deliverable-item"><strong style="color:var(--ok);">✓</strong> Live SIT health, readiness, and <code>/phase2/prototype</code> route returned 200 on 2026-07-19</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> Human review found remaining visible UX gaps; W5 cannot be accepted as fully closed</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> Export per-document selection, line-item approve flow, Template Mode/manual config, and Excel date proof move to W6 closeout</div>
+              <div class="deliverable-item"><span style="color:var(--warn);">⏳</span> Product Master and W5 export/line-item Playwright proof need repaired login/bootstrap before acceptance</div>
             </div>
           </td>
           <td><span class="badge badge-muted">ไม่มี milestone</span></td>
@@ -656,17 +663,18 @@
           </td>
           <td style="font-size:0.78rem;">20 ก.ค. 2569<br>— 26 ก.ค. 2569</td>
           <td>
-            <div><span class="badge badge-warn">E12</span> Company + Users</div>
-            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> UAT Deploy ▲</div>
+            <div><span class="badge badge-accent">E10</span> Export + Configurator closeout</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-warn">E12</span> Review + Companies closeout</div>
+            <div style="margin-top:0.3rem;"><span class="badge badge-muted">E13</span> SIT proof gate</div>
           </td>
           <td>
             <div class="deliverable-list">
-              <div class="deliverable-item">Company management + COA import (YAML)</div>
-              <div class="deliverable-item">User management + 2-role RBAC</div>
-              <div class="deliverable-item"><strong>UAT environment deploy สำเร็จ</strong></div>
-              <div class="deliverable-item">uat.bwcacc.biz ใช้งานได้ + SSL Let's Encrypt</div>
-              <div class="deliverable-item">E2E workflow ทดสอบบน UAT</div>
-              <div class="deliverable-item">ลูกค้าเริ่ม UAT testing</div>
+              <div class="deliverable-item"><strong>Close HR-17 P0 findings or defer/hide with wording before customer review</strong></div>
+              <div class="deliverable-item">Export: row checkbox, Select All, selected-doc count/total, selected-doc download, Excel-safe date proof</div>
+              <div class="deliverable-item">Review Scan: seller/buyer names and Tax IDs visible/editable; line-item approve/reject/unconfirm; Approve All includes line items</div>
+              <div class="deliverable-item">Companies: COA/AP/AR/Product tabs share search, load more, add, edit, delete/deactivate behavior</div>
+              <div class="deliverable-item">Template Configurator: Template Mode buttons wired or honestly disabled; manual fallback restored/reachable</div>
+              <div class="deliverable-item">SIT proof: E2E tests leave login, hit target screens, and include human-found issue regression coverage</div>
             </div>
           </td>
           <td>
@@ -802,11 +810,11 @@
       </div>
       <div class="delivery-items">
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Dynamic column mapping (ไม่ hardcode)</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Export CSV + Excel + รองรับ TIS-620</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Export CSV + Excel backend path + รองรับ TIS-620</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">รายงานภาษีซื้อ (ภ.พ.30) ย้ายเป็น template-based (Epic 11)</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">ปิด UX freeze gate บน SIT แล้ว และหน้า export/configurator ใช้งานต่อบนเส้นจริงได้</span></div>
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Quick Export / Template Export, preview และ validation เชื่อม backend จริง</span></div>
-        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Template lifecycle และ company-specific refinement ยังมี follow-up ต่อใน W4-W5</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Export selected documents, Select All, Excel date behavior, and line-item export proof are W6 closeout gates</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Template Mode buttons and manual configurator fallback must be wired, hidden, or honestly deferred in W6</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Template lifecycle และ company-specific refinement continue through W6 closeout</span></div>
       </div>
     </div>
 
@@ -819,9 +827,9 @@
         </div>
       </div>
       <div class="delivery-items">
-        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">จัดการบริษัทลูกค้าและผู้ใช้เชื่อมฐานข้อมูลจริงแล้วบน SIT</span></div>
+        <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">จัดการบริษัทลูกค้าและผู้ใช้เชื่อมฐานข้อมูลจริงแล้วบน SIT ในเส้นหลัก</span></div>
         <div class="delivery-item"><span class="di-check">✓</span><span class="di-text">Reset password, first-login flow และ company assignment เดินบนเส้น auth จริง</span></div>
-        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">COA / stock-report config / company delete / Internal Console อยู่ใน follow-up slice ถัดไป</span></div>
+        <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">COA / AP Vendor Master / AR Customer Master / Product Master ต้อง align table UX ใน W6: search, load more, add, edit, delete/deactivate</span></div>
         <div class="delivery-item"><span class="di-check">⏳</span><span class="di-text">Dashboard KPI บางส่วนยังอยู่ในช่วงล้าง demo และผูกข้อมูลจริงต่อ</span></div>
       </div>
     </div>
@@ -870,10 +878,9 @@
   </div>
 
   <div class="note-box">
-    <strong>สถานะปัจจุบัน ณ W4</strong> — งาน foundation, template backend และเส้นงานหลักบน SIT เดินหน้าแล้วมากในช่วง W2-W4:
-    ปัจจุบันทีมกำลังปิด product-shell ส่วนที่เหลือให้ใช้งานจริงต่อเนื่องทั้งเส้น
-    (เช่น company settings, line-item flow, Internal Console, และการล้าง demo text/fixture บางหน้าจอ)
-    ก่อนขยับสู่ UAT เต็มรูปแบบ
+    <strong>สถานะปัจจุบัน ณ W6 planning (2026-07-19)</strong> — SIT route/health พื้นฐานยังเขียว แต่ W5 ยังไม่ปิดเชิง functional proof:
+    ปัจจุบันทีมต้องปิด HR-17 P0 ทั้ง Export, Review Scan, Companies master-data UX, Template Configurator, Upload company match,
+    และ QA proof quality ก่อนสรุปความพร้อมให้ลูกค้าในวันที่ 30 ก.ค. 2569
   </div>
 
   <div class="note-box warn">
@@ -889,8 +896,8 @@
   </div>
 
   <div class="page-footer">
-    LedgerFlow Phase II — Project Timeline · Baseline 2026-06-15 · Updated 2026-07-10<br>
-    Current focus: ปิด SIT product shell ให้ครบเส้นก่อน UAT<br>
+    LedgerFlow Phase II — Project Timeline · Baseline 2026-06-15 · Updated 2026-07-19<br>
+    Current focus: W6 closeout for customer review on 2026-07-30<br>
     สอบถามเพิ่มเติม: สมชาย กิตติคุณ · bwc.co.th
   </div>
 

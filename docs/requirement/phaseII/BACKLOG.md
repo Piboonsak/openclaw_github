@@ -14,6 +14,25 @@
 
 ---
 
+## W6 Closeout Intake - 2026-07-19
+
+The 2026-07-17 human SIT review reopened several items that were previously treated as done, moved, or backlog. For W6, these are not generic backlog candidates; they are closeout gates before customer review on 2026-07-30.
+
+Use `W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md` and `W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md` as the working board.
+
+| Source | Related backlog/task | W6 decision |
+| --- | --- | --- |
+| HR-17-01 Upload company Tax ID match missing | BL-001 / TASK-1207 / upload flow | Promote to W6 closeout: restore PoC-style company match or show explicit mismatch warning before upload commit |
+| HR-17-02 Review Scan party fields incomplete | Epic 9 / Epic 12 | Promote to W6 closeout: seller/buyer names and Tax IDs must be visible/editable and committed |
+| HR-17-04 Line-item confirm/reject/unconfirm missing | TASK-906 / Epic 14 boundary | Promote to W6 closeout for visible SIT flow because line-item controls are already exposed |
+| HR-17-05 Export row selection missing | TASK-1001 / TASK-1006 | Promote to W6 closeout: per-row select and Select All are required for customer review |
+| HR-17-06 Excel date misinterpretation | BL-002 / TASK-1001 | Reopen verification: raw CSV formatting is not enough; prove Excel/client import behavior |
+| HR-17-07 Master-data UX inconsistent | BL-011 / TASK-1207 / Product Master | Promote to W6 closeout: COA/AP/AR/Product tabs need consistent search/load more/add/edit/delete or deactivate UX |
+| HR-17-08/09 Template Mode/manual config unusable | Epic 10 / TASK-1003 / TASK-1006 | Promote to W6 closeout: wire modes or disable honestly; restore/reveal manual fallback |
+| HR-17-10 Tests pass too easily | QA/process | Promote to W6 closeout: E2E proof must leave login and reproduce at least one human-found issue |
+
+---
+
 ## BL-001: AI auto-match vendor/customer from OCR extraction
 
 **Priority**: P1
@@ -65,6 +84,8 @@ TASK-1207 covers the **import** part (CSV upload of vendor/customer lists). This
 ~~dd/mm/yy → dd/mm/yyyy issue when opening CSV in Excel. Fix: write dates as text strings.~~
 
 **Status**: Incorporated into TASK-1001 as `thai_date_short` transform + date-as-text CSV writer fix. See [EPIC-10-TASKS-DETAIL.md](epic-10/EPIC-10-TASKS-DETAIL.md) ac_1001_date_text.
+
+**W6 verification reopened 2026-07-19**: Human review on 2026-07-17 still saw Excel reinterpret date values even when raw CSV formatting looked correct. W6 must prove the actual client open/import path in Excel, or provide an alternate export format/wording before customer review.
 
 ---
 
@@ -296,11 +317,12 @@ LoveAutoBot คือ Windows desktop program ที่อ่าน iniComList c
 | BL-012 | Customer `excelformat` pack classification questions | P1 | ~0.5-1d discovery | Backlog |
 | BL-013 | Cross-epic SIT clickability cleanup | P0 | W4 audit + implementation | **MOVED** to W4-E2E |
 | BL-014 | Phase II/2 visible-surface gating | P1 | ~0.5d design/audit | Backlog |
+| W6-HR17 | W6 human-review closeout bundle | P0 | 1 week closeout | **MOVED** to `W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md` |
 
 ---
 
 *Created: 2026-06-15*
-*Last updated: 2026-07-05*
+*Last updated: 2026-07-19*
 
 ---
 
@@ -430,4 +452,4 @@ Not every Epic 14-16 surface blocks W4, but the design rule must carry forward s
 ---
 
 *Created: 2026-06-15*
-*Last updated: 2026-07-05*
+*Last updated: 2026-07-19*

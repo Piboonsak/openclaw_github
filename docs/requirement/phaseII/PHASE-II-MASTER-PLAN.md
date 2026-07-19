@@ -3,12 +3,14 @@
 > **Status:** Approved for implementation
 > **Approved:** 2026-06-14
 > **Updated:** 2026-07-05 — Added W4 SIT end-to-end delivery rule; weekly delivery now means a browser-clickable vertical slice with honest UI state
+> **W6 Closeout Sync:** 2026-07-19 — W5 is not fully closed; W6 must close/prove HR-17 P0 findings before customer review on 2026-07-30
 > **Scope:** Phase II/1 MVP (8 weeks) + Phase II/2 (CR-based, post-go-live)
 > **Team:** Solo developer
 > **Hosting:** Hostinger VPS (Singapore DC) — UAT + PROD
 > **Payment:** 50% Kickoff / 10% UAT / 20% Prod / 20% Phase II/2
 > **Epic Roadmap:** See `PHASE-II-EPIC-ROADMAP.md` for detailed task breakdown + timeline
 > **W4 Design Sync:** See `W4-DESIGN-IA-SYNC-2026-07-05.md` and `W4-SIT-END-TO-END-CLOSURE-PLAN.md` before claiming SIT complete
+> **W6 Closeout Bundle:** See `W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md` before assigning, accepting, or deferring any W6 work
 
 ---
 
@@ -50,6 +52,28 @@ W4 shifted from lane-by-lane completion to an end-to-end SIT delivery rule:
 - Epic 14, Epic 15, and Epic 16 surfaces remain Phase II/2 unless explicitly wired for SIT; otherwise they must be hidden or visibly deferred.
 
 Design and IA changes from this rule are tracked in `W4-DESIGN-IA-SYNC-2026-07-05.md`.
+
+### W6 Closeout Rule (2026-07-19)
+
+The 2026-07-17 human SIT review found customer-visible gaps after W5, especially around Export, Review Scan, Companies master-data UX, and Template Configurator behavior. W6 therefore becomes a closeout sprint for customer-review readiness, not a broad new-feature week.
+
+The W6 source set is:
+
+- `docs/requirement/phaseII/W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md`
+- `docs/requirement/phaseII/W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md`
+- `docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md`
+- `docs/requirement/phaseII/MENU-TREE-IA.html`
+- `docs/requirement/phaseII/BACKLOG.md`
+- `docs/requirement/phaseII/PHASE-II-TIMELINE.html`
+- `docs/requirement/phaseII/PHASE-II-EPIC-ROADMAP.md`
+
+W6 acceptance rule:
+
+- Every exposed control must stay aligned to the existing production-facing UX/UI in `src/frontend/main-ux-ui.html`.
+- Export must follow the frozen full-page UX: select documents -> select template/mode -> adjust columns/data inline -> preview -> download.
+- Template Configurator remains the persistent setup surface; export-page adjustments are per-run only.
+- Any unfinished P0 must be explicitly marked `Deferred + wording` or hidden before the 2026-07-30 customer review.
+- Automated tests must prove the page reached the target screen, not only pass at login/bootstrap.
 
 ---
 

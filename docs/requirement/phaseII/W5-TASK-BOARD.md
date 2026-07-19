@@ -67,6 +67,10 @@ What is now true after SIT proof:
 - `W5-06` Template continuity is **partially** live-proven: blank Template Configurator path is working; upload sub-tab is honestly deferred; full real-data export continuity still depends on W5-12.
 - `W5-07` Copilot SIT proof pack is **done**.
 - `W5-12` real scanned-data export + line-item path remains the next major implementation task and must stay visible as open.
+- OCR runtime stabilization is now a recorded W5 sub-result, not just a chat conclusion:
+  - note: `docs/requirement/phaseII/W5-OCR-STABILIZATION-NOTE-2026-07-12.md`
+  - current engineering decision: **Conditional Go**
+  - keep SIT at `celery-worker --concurrency=2` and `OCR_TESSERACT_TIMEOUT_SECONDS=45` until export proof + one short soak cycle are completed.
 
 ---
 
@@ -122,7 +126,11 @@ Current SIT result: upload worked, Processing task started, running notice/stage
 Still needed to close: Upload 2-3 real docs -> start Processing -> stage progress completes -> Review Scan opens real docs -> approve -> Review Mapping shows rows -> Export downloads file.
 
 `W5-02` Processing progress and perceived-stall fix:
-Live SIT result: passed. Proof captured `8%`, the running note, and the queued/running stage table without the UI looking frozen.
+Live SIT result: passed and then further stabilized. The original perceived-stall fix landed earlier; the later SIT OCR stabilization pass reduced worker concurrency to `2`, capped native OCR thread fan-out, and added a `45s` tesseract timeout guard. Latest proof batch completed `4/4` docs to `review_scan` with no `SoftTimeLimitExceeded()`.
+
+Reference:
+- `docs/requirement/phaseII/W5-OCR-STABILIZATION-NOTE-2026-07-12.md`
+- `docs/requirement/phaseII/W5-COPILOT-OCR-LIVE-PROOF-13-RESULT.md`
 
 `W5-03` User admin CRUD and role correctness:
 Live SIT result: create `sys_admin`, `SysAdmin` badge, company-name rendering, deactivate, and inactive-after-reload all passed.
@@ -220,9 +228,10 @@ W5 is not done until all P0 gates pass:
 
 ## 9. Recommended Execution Order
 
-1. **Copilot - deploy and live proof of the already-pushed W5 slices**: deploy `dev` including `5836bd6` and `1f4d964` via Openclaw, then run one full SIT proof pack
-2. **Claude - W5-12 implementation**: real scanned-data export + line-item path for `enable_stock=true` companies, because the current deploy should still report this honestly as open unless live SIT somehow already proves otherwise
-3. **Codex - review and customer script**: verify result reports, summarize demo path, update customer-facing status
+1. **Copilot - export normalization live proof (`W5-14`)**: OCR queue/pending-stall is now unblocked enough to continue, so the next customer-facing checkpoint is the real one-row export proof.
+2. **Copilot - short OCR soak cycle**: keep current OCR runtime settings and run 3 consecutive small-batch checks so W5 is not closed from a single lucky run.
+3. **Claude - only if W5-14 fails for real product reasons**: patch export normalization / AP-AR join / template-specific row-shaping based on live proof evidence, not assumption.
+4. **Codex - review and customer script**: verify result reports, summarize demo path, update customer-facing status and final W5 acceptance position.
 
 Full Epic 9 line-item extraction/review is now promoted for the W5 customer-critical path where `enable_stock=true`. Header-only companies must continue to work without line-item blocking.
 
@@ -232,13 +241,105 @@ Full Epic 9 line-item extraction/review is now promoted for the W5 customer-crit
 
 These are the best follow-on tasks that do not need the current SIT deploy result first:
 
-1. **Claude - W5-12 backend design + implementation prep**
-   Lock the production shape for real-data export and line-item flow: storage model, API contract, review surface choice, and export dataset path.
+1. **Codex - capture stabilization decisions**
+   Keep `W5-OCR-STABILIZATION-NOTE-2026-07-12.md` and the board aligned so future reruns do not silently revert concurrency/timeout assumptions.
 2. **Claude - COA Thai glyph normalization spike**
-   Fix the remaining `W5-04` COA PDF text corruption path, because it is independent from the current Processing/User/Template deploy proof.
-3. **Codex - W5-12 implementation prompt**
-   Write the dedicated Claude JSON prompt for `W5-12` so the next lane starts immediately after deploy proof returns.
-4. **Codex - customer-safe demo/status draft**
+   Fix the remaining `W5-04` COA PDF text corruption path, because it is independent from the current OCR stabilization result.
+3. **Codex - customer-safe demo/status draft**
    Prepare the short `done / proving now / next` wording and a safe demo route for the 24 Jul review.
-5. **Copilot - UAT prototype route inventory**
-   Only if it does not block SIT deploy: confirm what `uat.bwcacc.biz/prototype` currently serves and whether it should be refreshed later as a separate lane.
+4. **Copilot - UAT prototype route inventory**
+   Only if it does not block the current SIT proof path: confirm what `uat.bwcacc.biz/prototype` currently serves and whether it should be refreshed later as a separate lane.
+
+---
+
+## 11. Human Review Regression 07 - Current Blocker
+
+After `W5-COPILOT-DEPLOY-PROOF-HARDENED-06`, W5 is **not accepted** for closure.
+
+Detailed issue register:
+
+- `docs/requirement/phaseII/W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md`
+
+Claude Code fix prompt:
+
+- `docs/requirement/phaseII/W5-CLAUDE-HUMAN-REVIEW-REGRESSION-FIX-07.prompt.json`
+
+Copilot deploy/proof prompt after Claude fix:
+
+- `docs/requirement/phaseII/W5-COPILOT-HUMAN-REVIEW-DEPLOY-PROOF-08.prompt.json`
+
+HR-07 acceptance matrix:
+
+- `docs/requirement/phaseII/W5-HR07-ACCEPTANCE-MATRIX-02.md`
+
+Copilot clean-lane follow-up prompt:
+
+- `docs/requirement/phaseII/W5-COPILOT-CLEAN-LANE-FOLLOWUP-09.prompt.json`
+
+Combined final Copilot lane after Claude 07 completion:
+
+- `docs/requirement/phaseII/W5-COPILOT-FINAL-HR07-DEPLOY-PROOF-10.prompt.json`
+
+P0 findings now blocking W5:
+
+| ID | Owner | Status | Required next action |
+| --- | --- | --- | --- |
+| HR-07-01 Browser Basic Auth double login | Copilot runtime + Claude repo guard | Open | Remove browser Basic Auth from app login path through Openclaw deploy proof; app login must be the only visible login. |
+| HR-07-02 Processing `SoftTimeLimitExceeded()` after first success | Claude | Open | Fix provider/stage timeouts, non-blocking line-item extraction, and stage evidence; prove small parallel batch no longer collapses. |
+| HR-07-03 Company delete button missing | Claude | Open | Restore/prove true sys_admin delete visibility and backend enforcement; add regression coverage. |
+| HR-07-04 SysAdmin company assignment cannot save | Claude | Open | Fix role/company assignment payload behavior without weakening sys_admin escalation rules. |
+| HR-07-05 SIT test data left behind | Copilot + optional repo script hardening | Open | Clean W5 proof data by API and make proof runners cleanup or report cleanup evidence. |
+| HR-07-06 Template Configurator demo content | Claude | Open | Remove demo/static template/runtime content from operational blank state. |
+
+Corrected Processing note: this is not only a batch-scope issue. The frontend already fires concurrent processing workers; the live failure pattern points to backend/provider/stage timeout handling and optional line-item extraction behavior.
+
+---
+
+## 12. Codex Closeout Update - 2026-07-19
+
+Latest closeout doc:
+
+- `docs/requirement/phaseII/W5-CODEX-CLOSEOUT-STATUS-2026-07-19.md`
+- W6 decision bundle: `docs/requirement/phaseII/W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md`
+
+Manual SIT review on 2026-07-17 added a new carryover set to the human-review
+register:
+
+- `docs/requirement/phaseII/W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md`
+- New issue IDs: `HR-17-01` through `HR-17-10`
+
+Current decision:
+
+- W5 is **not accepted as fully closed** for customer-readiness.
+- SIT route/health is currently reachable (`/api/health`, `/api/health/ready`, `/phase2/prototype` all returned `200` on 2026-07-19 read-only checks).
+- Backend/service focused tests passed for export, master import/list, product master, stage timeouts, and line-item extraction (`54 passed`).
+- COA/Mapping Rules local Playwright regression passed (`6 passed`).
+- Product Master Playwright and W5 export/line-item Playwright are **verification gaps** because the local harness did not reliably leave the login screen / complete the static auth bootstrap. Do not count these as customer-facing proof.
+
+W6 must start as a closeout sprint, not a broad new-feature sprint. The W6 decision bundle now includes `MENU-TREE-IA.html`, `BACKLOG.md`, `PHASE-II-TIMELINE.html`, `PHASE-II-MASTER-PLAN.md`, and `PHASE-II-EPIC-ROADMAP.md` as mandatory decision inputs.
+
+### W6 P0 Carryover
+
+| Carryover | Source issue | Why it blocks confidence |
+| --- | --- | --- |
+| Export per-document selection + Select All | `HR-17-05` | Customer cannot choose which reviewed documents to export. |
+| Line-item confirm/reject/unconfirm + Approve All behavior | `HR-17-04` | `enable_stock=true` flow cannot be trusted if line rows cannot be explicitly accepted/rejected. |
+| Review Scan party-field completeness | `HR-17-02` | Seller/buyer name and tax ID context is needed for accounting review. |
+| Template Configurator mode/manual-flow repair | `HR-17-08`, `HR-17-09` | UI-only controls and missing manual fallback make the configurator feel broken. |
+| COA/AP/AR/Product Master table UX consistency | `HR-17-07` | Customer cannot comfortably search, page/load more, add, edit, and delete/deactivate master data. |
+| W6 SIT proof after fixes | `HR-17-10` | Automated proof must cover the real human-found problems, not only optimistic mock paths. |
+
+### UX/UI Source Files For All W6 Prompts
+
+Every W6 implementation prompt must explicitly say to align with:
+
+- `docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md`
+- `src/frontend/main-ux-ui.html`
+- `src/frontend/index.html`
+- `src/frontend/ux-ui-prototype.html`
+- `src/frontend/ux-ui-prototype.css`
+- `docs/requirement/phaseII/PHASE-II-PROTOTYPE.html`
+
+Do not replace the frozen full-page Export flow with a modal-first flow. Do not
+leave fake-click controls on customer-facing surfaces; wire, hide, or label them
+as deferred.

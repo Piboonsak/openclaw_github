@@ -3,6 +3,8 @@
 **Timeline: 8 สัปดาห์ (Phase II/1 Go-Live) + CR-based (Phase II/2)**
 **Baseline Date: 2026-06-15**
 **W4 Update: 2026-07-05 — SIT close now requires an end-to-end clickable vertical slice; see `W4-DESIGN-IA-SYNC-2026-07-05.md`**
+**Rebaseline Note: 2026-07-05 — Use `W4-W7-REBASELINE-PLAN.md` and `W1-W3-CARRYOVER-CLEANUP.md` with this roadmap before planning W5-W7**
+**W6 Closeout Update: 2026-07-19 — W5 is not fully closed; use `W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md` before assigning or accepting W6 work**
 **Payment: 50% Kickoff → 10% UAT → 20% Prod → 20% Phase II/2**
 
 ---
@@ -15,11 +17,11 @@
 |------|-------|-------|-----------|------|--------|------|
 | **0** | UX Contract & Workflow Freeze | Lock workflow, state machine, API/DB impact before DB work | TASK-001~006 | ux,infra | Done | 2-4d |
 | **8** | Platform Foundation | DB activation, JWT Auth, MinIO S3, Celery workers | TASK-801A~808 | infra,10 | Partial | 2w |
-| **9** | Extraction Accuracy + Line Item PoC | VAT fix, WHT, OCR gridline, Line item feasibility | TASK-901~906 | 1,2,4 | Partial | 1.5w |
-| **10** | Template Engine + Configurator UI | Dynamic export, drag-drop UI, Master/Clone | TASK-1001~1006 | 5,6,7,8,9 | Partial - backend done, SIT gate cleared 2026-07-05, Configurator/Export UI wired on `main-ux-ui.html` (acceptance pass + `index.html` parity remaining) | 2.5w |
+| **9** | Extraction Accuracy + Line Item PoC | VAT fix, WHT, OCR gridline, Line item feasibility | TASK-901~906 | 1,2,4 | Partial - W6 must close/prove line-item review controls and confidence calibration findings from HR-17 | 1.5w |
+| **10** | Template Engine + Configurator UI | Dynamic export, drag-drop UI, Master/Clone | TASK-1001~1006 | 5,6,7,8,9 | Partial - backend and basic UI paths exist, but W6 must close selected-document export, Excel-safe dates, Template Mode wiring, and manual configurator fallback | 2.5w |
 | **11** | Purchase Tax Report Integration | ภาษีซื้อ integrate กับ template engine | TASK-1101,1104 | 3 | Done (W3 backend) | 0.5w |
-| **12** | Admin UI + Login | Login, MVP Dashboard, Company/COA, User mgmt | TASK-1201~1204 | 7 | Design - minimum Company/User persistence pulled into W4 SIT closure; full scope remains W5-W6 | 1.5w |
-| **13** | Infrastructure + Deployment | Hostinger VPS (UAT/Prod), DNS bwcacc.com, CI/CD, Firewall, Backup, Offsite R2 | TASK-1301~1312 | 10 | Design | ~2w (parallel) |
+| **12** | Admin UI + Login | Login, MVP Dashboard, Company/COA, User mgmt | TASK-1201~1204 | 7 | Partial - W6 must align Companies master tabs (COA/AP/AR/Product) with search/load more/add/edit/delete behavior and close party-field visibility gaps | 1.5w |
+| **13** | Infrastructure + Deployment | Hostinger VPS (UAT/Prod), DNS bwcacc.com, CI/CD, Firewall, Backup, Offsite R2 | TASK-1301~1312 | 10 | Partial - SIT routes are reachable, but W6 functional proof and customer-review readiness remain open before UAT claim | ~2w (parallel) |
 
 ### Phase II/2 — Post-Go-Live Enhancement (CR-based)
 
@@ -53,6 +55,44 @@ The roadmap remains the planning baseline, but W4 SIT closure now uses the stric
 | 14 | Keep hidden/deferred unless line-item PoC surface is intentionally shown |
 | 15 | Keep hidden/deferred unless sales-tax export path is intentionally wired |
 | 16 | Internal/advanced monitoring can be shell-only only if clearly labeled and not customer-facing proof |
+
+---
+
+## W4-W7 Rebaseline Overlay (2026-07-05)
+
+The original roadmap remains the baseline, but week sequencing must now be read through the W4 SIT closure outcome:
+
+| Week band | Rebased intent | Practical meaning |
+| --- | --- | --- |
+| W4 | Close the first honest SIT slice | live deploy proof, no fake-success proof path, minimum Company/User persistence, Export/Configurator still wired |
+| W5 | Stabilize the visible product shell | deepen Admin + Company Settings + Template shell that is already exposed in SIT |
+| W6 | Deepen company-specific workflows | master/template lifecycle, AP/AR quality, company-level working flows |
+| W7 | UAT readiness and hardening | evidence quality, repeatable deploy/runtime proof, remaining visible-surface cleanup |
+
+This means:
+
+- W5 should not be treated as "start Epic 12 from zero" because the minimum Epic 12 slice already moved into W4.
+- W5-W7 should not be filled with new Phase II/2 surfaces until the visible shell stops depending on W4 carryover closure.
+- Use `W4-W7-REBASELINE-PLAN.md` for week-level sequencing and `W1-W3-CARRYOVER-CLEANUP.md` for old carryover tracking.
+
+---
+
+## W6 Closeout Overlay (2026-07-19)
+
+The 2026-07-17 human SIT review found customer-visible gaps after W5. W6 is therefore a closeout sprint for the exposed product shell, with customer review still targeted for 2026-07-30.
+
+Use `W6-CLOSEOUT-DECISION-BUNDLE-2026-07-19.md` as the operational checklist. The following files are mandatory inputs when assigning or accepting W6 work: `MENU-TREE-IA.html`, `BACKLOG.md`, `PHASE-II-TIMELINE.html`, `PHASE-II-MASTER-PLAN.md`, `PHASE-II-EPIC-ROADMAP.md`, `docs/ux/UX-FREEZE-EXPORT-CONFIGURATOR.md`, and `W5-HUMAN-REVIEW-REGRESSION-ISSUES-07.md`.
+
+| W6 lane | Closeout requirement |
+| --- | --- |
+| Export | Per-document selection + Select All, selected-doc export proof, Excel-safe date proof |
+| Review Scan | Seller/buyer names and Tax IDs visible/editable; line-item approve/reject/unconfirm; Approve All includes line items |
+| Companies | COA, AP Vendor Master, AR Customer Master, Product Master use consistent table UX: search, load more, add, edit, delete/deactivate |
+| Template Configurator | Template Mode buttons are wired or honestly disabled; PoC/manual fallback is restored or clearly reachable |
+| Upload | Company Tax ID match/check returns before upload commit or is replaced with explicit warning |
+| QA | E2E tests must prove navigation left login and must reproduce at least one human-found issue before passing |
+
+W6 acceptance is not "all green in mocked UI". Each P0 item must end as `Done + SIT proof`, `Deferred + wording`, or `Hidden`.
 
 ---
 
