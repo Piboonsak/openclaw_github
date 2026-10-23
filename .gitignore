@@ -104,3 +104,10 @@ apps/ios/LocalSigning.xcconfig
 # Generated protocol schema (produced via pnpm protocol:gen)
 dist/protocol.schema.json
 .ant-colony/
+
+# Local Graphify extraction state (keep graph.json and GRAPH_REPORT.md visible)
+/graphify-out/cache/
+/graphify-out/manifest.json
+/graphify-out/.graphify_root
+/graphify-out/cost.json
+/graphify-out/graph.html
